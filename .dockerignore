@@ -1,0 +1,31 @@
+# Node / Next.js
+node_modules
+.next/cache
+.next/trace
+.next/static/cache
+dist
+out
+
+# Env files
+.env
+*.env
+.env.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Tests & reports
+coverage
+playwright-report
+test-results
+
+# Local databases & junk
+prisma/*.db
+prisma/*.db-journal
+prisma/*.sqlite
+prisma/undefined
+.DS_Store
+Thumbs.db

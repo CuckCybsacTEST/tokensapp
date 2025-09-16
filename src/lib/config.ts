@@ -1,14 +1,24 @@
 import { prisma } from "@/lib/prisma";
 
-let cache: { tokensEnabled: boolean; ts: number } | null = null;
+type SystemConfigCache = {
+  tokensEnabled: boolean;
+  featureFlags: {
+    useMarketingRouletteUI: boolean;
+  };
+  ts: number;
+};
+
+let cache: SystemConfigCache | null = null;
 
 export async function getSystemConfig(force = false) {
   const now = Date.now();
   if (!cache || force || now - cache.ts > 60000) {
     const cfg = await prisma.systemConfig.findUnique({ where: { id: 1 } });
-    cache = { 
+    const useMarketingRouletteUI = String(process.env.USE_MARKETING_ROULETTE_UI || "0").trim() === "1";
+    cache = {
       tokensEnabled: cfg?.tokensEnabled ?? true,
-      ts: now 
+      featureFlags: { useMarketingRouletteUI },
+      ts: now,
     };
     console.log('System config cache updated:', cache);
   }

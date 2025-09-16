@@ -648,3 +648,71 @@ Esto elimina dependencia de un símbolo global específico y permite mocking má
 
 ## Notas
 Proyecto en estado inicial, no listo para producción.
+
+## Despliegue (GitHub + Railway + Docker)
+
+Sigue estos pasos para publicar la app usando un contenedor Docker en Railway.
+
+1) Subir el código a GitHub
+
+- Crea un repo vacío en GitHub (sin README inicial para evitar conflictos).
+- En tu terminal PowerShell:
+
+```powershell
+git remote add origin https://github.com/<tu-usuario>/<tu-repo>.git
+git push -u origin main
+```
+
+2) Preparar variables de entorno (Railway)
+
+- En el panel de Railway, crea un nuevo proyecto y elige "Deploy from GitHub" seleccionando tu repo.
+- Define variables (Settings → Variables):
+	- `TOKEN_SECRET` = un secreto fuerte (32+ bytes aleatorios)
+	- `PUBLIC_BASE_URL` = la URL pública que te asigna Railway (actualízala luego si usas dominio propio)
+	- `DATABASE_URL` = `file:./prisma/dev.db` (SQLite dentro del contenedor) o una URL de Postgres si prefieres gestionado
+	- `TWO_PHASE_REDEMPTION` = `false` (o `true` si lo usas)
+	- Opcional marketing dev: `BIRTHDAYS_PUBLIC=0`, `NEXT_PUBLIC_BIRTHDAYS_ENABLED=0`
+	- Si usas serverless multi‑instancia: `REDIS_URL` (no requerido para una sola instancia)
+
+3) Build & Run (Docker)
+
+- Este repo incluye `Dockerfile` multi‑stage y `.dockerignore`.
+- Railway detectará y construirá con Docker automáticamente si activas "Deploy with Dockerfile" o usas Nixpacks deshabilitado.
+- Puerto: la app expone `PORT=3000`. Railway inyecta `PORT` automáticamente.
+- Comando de inicio: `npm start` (sirve el build de Next.js).
+
+4) Base de datos
+
+- Opción simple (recomendada al inicio): SQLite en el contenedor con `DATABASE_URL=file:./prisma/dev.db`.
+	- Para persistencia entre despliegues, considera un volumen o migrar a Postgres.
+- Opción gestionada (recomendada a medio plazo): Postgres de Railway.
+	- Cambia `DATABASE_URL` a la cadena de Postgres.
+	- Ejecuta migraciones en Deploy Hooks o manualmente:
+
+```bash
+npx prisma migrate deploy
+npx prisma db seed # si necesitas datos demo
+```
+
+5) Post‑deploy
+
+- Verifica logs en Railway.
+- Abre la URL pública: comprueba `/admin` (según tu auth), `/u` (checklist BYOD) y endpoints clave.
+- Ajusta `PUBLIC_BASE_URL` a tu dominio propio si haces un custom domain.
+
+6) Dev local con Docker (opcional)
+
+```bash
+docker build -t qr-prizes-app:local .
+docker run --rm -p 3000:3000 -e TOKEN_SECRET=dev_only_change_me -e PUBLIC_BASE_URL=http://localhost:3000 -e DATABASE_URL="file:./prisma/dev.db" qr-prizes-app:local
+```
+
+o con Compose:
+
+```bash
+docker compose up --build
+```
+
+Notas
+- Para multi‑instancia y SSE, usa Redis (pub/sub) y reemplaza el EventEmitter in‑memory.
+- Asegura rotación de secretos según tu política.

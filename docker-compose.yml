@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qr-prizes-app:local
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PUBLIC_BASE_URL=http://localhost:3000
+      - TOKEN_SECRET=dev_only_change_me
+      - DATABASE_URL=file:./prisma/dev.db
+      - TWO_PHASE_REDEMPTION=false
+    volumes:
+      - ./prisma:/app/prisma
+    command: ["npm", "start"]

@@ -97,6 +97,11 @@
 			],
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "Typecheck TS",
+			"type": "shell",
+			"command": "npm run -s typecheck"
 		}
 	]
 }
