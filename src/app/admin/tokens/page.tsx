@@ -42,7 +42,7 @@ async function getMetrics() {
     active: activeTokens < 0 ? 0 : activeTokens,
     pending,
     emittedAggregate,
-    tokensEnabled: config?.tokensEnabled ?? true,
+  tokensEnabled: config?.tokensEnabled ?? false,
     period: {
       name: "this_week",
       startDate: startOfWeek.toISOString(),

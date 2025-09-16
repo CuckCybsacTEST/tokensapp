@@ -16,7 +16,8 @@ export async function getSystemConfig(force = false) {
     const cfg = await prisma.systemConfig.findUnique({ where: { id: 1 } });
     const useMarketingRouletteUI = String(process.env.USE_MARKETING_ROULETTE_UI || "0").trim() === "1";
     cache = {
-      tokensEnabled: cfg?.tokensEnabled ?? true,
+      // Safer default: if config row doesn't exist yet, treat system as OFF
+      tokensEnabled: cfg?.tokensEnabled ?? false,
       featureFlags: { useMarketingRouletteUI },
       ts: now,
     };

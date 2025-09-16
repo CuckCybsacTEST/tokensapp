@@ -124,7 +124,7 @@ export async function GET(request: Request) {
     active: activeTokens < 0 ? 0 : activeTokens,
     pending,
     emittedAggregate,
-    tokensEnabled: config?.tokensEnabled ?? true,
+  tokensEnabled: config?.tokensEnabled ?? false,
     
     // Métricas del período seleccionado
     period: {

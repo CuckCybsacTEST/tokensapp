@@ -49,7 +49,7 @@ export async function GET(req: Request) {
         ok: true,
         latencyMs: ms,
         system: {
-          tokensEnabled: cfg.tokensEnabled,
+          tokensEnabled: Boolean(cfg.tokensEnabled),
           prizes: prizesCount,
           tokens: tokensCount,
         },
