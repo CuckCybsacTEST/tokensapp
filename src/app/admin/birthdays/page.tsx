@@ -215,30 +215,45 @@ export default function AdminBirthdaysPage() {
       {empty && <div className="text-sm text-gray-400">No hay reservas</div>}
 
       <div className="grid gap-2">
-        {items.map(r => (
-          <div key={r.id} className="rounded border border-slate-700 p-3 bg-slate-900">
-            <div className="flex flex-wrap justify-between gap-2">
-              <div>
-                <div className="font-medium">
-                  <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="hover:underline">
-                    {r.celebrantName}
-                  </a>
-                  <span className="text-xs text-slate-400"> ({r.documento})</span>
+        {items.map(r => {
+          const isApproved = r.status === 'approved' || r.status === 'completed';
+          const isAlert = r.status === 'pending_review' || r.status === 'canceled';
+          const cardBorder = isApproved ? 'border-emerald-700' : isAlert ? 'border-rose-700' : 'border-slate-700';
+          const cardBg = isApproved ? 'bg-emerald-950/30' : isAlert ? 'bg-rose-950/30' : 'bg-slate-900';
+          const mutedText = isApproved ? 'text-emerald-300' : isAlert ? 'text-rose-300' : 'text-slate-400';
+          const badgeCls = isApproved
+            ? 'border-emerald-700 bg-emerald-600/20 text-emerald-300'
+            : isAlert
+              ? 'border-rose-700 bg-rose-600/20 text-rose-300'
+              : 'border-slate-700 bg-slate-600/20 text-slate-300';
+          return (
+            <div key={r.id} className={`rounded border p-3 ${cardBorder} ${cardBg}`}>
+              <div className="flex flex-wrap justify-between gap-2">
+                <div>
+                  <div className="font-medium flex items-center gap-2">
+                    <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="hover:underline">
+                      {r.celebrantName}
+                    </a>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeCls}`}>{r.status}</span>
+                    <span className="text-xs text-slate-400">({r.documento})</span>
+                  </div>
+                  <div className={`text-xs ${mutedText}`}>{r.date} {r.timeSlot} • Pack: {r.pack?.name}</div>
+                  <div className={`text-xs ${mutedText}`}>
+                    Estado: {r.status}{r.tokensGeneratedAt ? ` • Tokens: ${r.tokensGeneratedAt}` : ''}
+                  </div>
                 </div>
-                <div className="text-xs text-slate-400">{r.date} {r.timeSlot} • Pack: {r.pack?.name}</div>
-                <div className="text-xs text-slate-400">Estado: {r.status}{r.tokensGeneratedAt ? ` • Tokens: ${r.tokensGeneratedAt}` : ''}</div>
-              </div>
-              <div className="flex gap-2">
-                {r.status === 'pending_review' && (
-                  <button className="btn" disabled={busy[r.id]} onClick={()=>approve(r.id)}>Aprobar</button>
-                )}
-                <button className="btn" disabled={busy[r.id]} onClick={()=>genTokens(r.id)}>Generar tokens</button>
-                <button className="btn" onClick={()=>downloadCards(r.id)}>Descargar tarjetas</button>
-                <a className="btn" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
+                <div className="flex gap-2">
+                  {r.status === 'pending_review' && (
+                    <button className="btn" disabled={busy[r.id]} onClick={()=>approve(r.id)}>Aprobar</button>
+                  )}
+                  <button className="btn" disabled={busy[r.id]} onClick={()=>genTokens(r.id)}>Generar tokens</button>
+                  <button className="btn" onClick={()=>downloadCards(r.id)}>Descargar tarjetas</button>
+                  <a className="btn" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-2">

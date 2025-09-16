@@ -76,6 +76,40 @@ export default function AdminDashboard() {
             <button className="btn opacity-60 cursor-not-allowed pointer-events-none" aria-disabled="true" title="Disponible próximamente">Próximamente</button>
           </div>
         </div>
+
+        {/* Próximamente: Gestión de Pedidos Musicales */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 19V6l12-2v13" />
+                <circle cx="6" cy="19" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Pedidos Musicales</h3>
+            <span className="ml-2 text-xs px-2 py-0.5 rounded bg-slate-700/60 text-slate-200">Próximamente</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn opacity-60 cursor-not-allowed pointer-events-none" aria-disabled="true" title="Disponible próximamente">Próximamente</button>
+          </div>
+        </div>
+
+        {/* Próximamente: Gestión de Recompensas y Fidelización */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Recompensas y Fidelización</h3>
+            <span className="ml-2 text-xs px-2 py-0.5 rounded bg-slate-700/60 text-slate-200">Próximamente</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn opacity-60 cursor-not-allowed pointer-events-none" aria-disabled="true" title="Disponible próximamente">Próximamente</button>
+          </div>
+        </div>
       </section>
       
       {/* (El panel y métricas de tokens ahora viven en /admin/tokens) */}
