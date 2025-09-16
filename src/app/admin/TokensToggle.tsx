@@ -3,12 +3,13 @@
 import React, { useState, useTransition } from "react";
 
 interface Props {
-  // initialEnabled kept for backward compatibility but is optional now
+  // initialEnabled (obsoleto): ya no se usa para representar estado visual inicial
   initialEnabled?: boolean;
 }
 
 export function TokensToggle({ initialEnabled }: Props) {
-  const [enabled, setEnabled] = useState<boolean | null>(initialEnabled ?? null);
+  // Importante: arrancamos en null (loading) para evitar rebote visual por SSR
+  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending] = useTransition();
   const [adminDisabled, setAdminDisabled] = useState(false);
@@ -42,7 +43,10 @@ export function TokensToggle({ initialEnabled }: Props) {
     
     const fetchStatus = async () => {
       try {
-        const res = await fetch('/api/system/tokens/status', { credentials: 'same-origin' });
+        const res = await fetch('/api/system/tokens/status', { 
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
         if (!res.ok) {
           if (res.status === 401) {
             setError('unauthorized - please sign in');
@@ -54,7 +58,7 @@ export function TokensToggle({ initialEnabled }: Props) {
         const body = await res.json();
         if (!mounted) return;
         
-        setEnabled(Boolean(body.tokensEnabled));
+  setEnabled(Boolean(body.tokensEnabled));
         if (typeof body.scheduledEnabled === 'boolean') {
           setScheduledEnabled(Boolean(body.scheduledEnabled));
         }
@@ -170,6 +174,7 @@ export function TokensToggle({ initialEnabled }: Props) {
     "transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-brand-500",
     "cursor-pointer select-none",
   ].join(" ");
+  const loading = !statusLoaded || enabled === null;
   const cls = enabled
     ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/30 dark:text-emerald-300"
     : "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-300";
@@ -187,7 +192,7 @@ export function TokensToggle({ initialEnabled }: Props) {
           <div className={`pointer-events-none absolute -inset-1 bg-gradient-to-r ${enabled ? 'from-red-500 to-rose-500' : 'from-emerald-500 to-teal-500'} rounded-full opacity-70 blur-sm transition-opacity duration-300 will-change-[opacity]`}></div>
           <button
             onClick={toggle}
-            disabled={isPending}
+            disabled={isPending || loading}
             className={`
               relative px-8 py-5 rounded-full text-2xl font-medium transition-all 
               flex items-center justify-center min-w-[240px]
@@ -195,10 +200,18 @@ export function TokensToggle({ initialEnabled }: Props) {
                 ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 hover:shadow-red-600/30 text-white"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-600/30 text-white"
               }
-              ${isPending ? "opacity-70 cursor-not-allowed" : ""}
+              ${(isPending || loading) ? "opacity-70 cursor-not-allowed" : ""}
             `}
           >
-            {isPending ? (
+            {loading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Cargando estado...
+              </span>
+            ) : isPending ? (
               <span className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -224,7 +237,11 @@ export function TokensToggle({ initialEnabled }: Props) {
           </button>
         </div>
         <p className={`text-sm font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-          {enabled ? 'Sistema Activo - Los tokens están funcionando' : 'Sistema Inactivo - Los tokens están desactivados'}
+          {loading
+            ? 'Cargando estado del sistema...'
+            : enabled 
+              ? 'Sistema Activo - Los tokens están funcionando' 
+              : 'Sistema Inactivo - Los tokens están desactivados'}
           {scheduledEnabled !== null && (
             <span className="ml-2 opacity-70">
               {scheduledEnabled === enabled ? '(según horario)' : '(override manual temporal)'}

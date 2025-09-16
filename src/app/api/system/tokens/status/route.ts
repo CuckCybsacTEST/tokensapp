@@ -5,6 +5,10 @@ import { computeTokensEnabled } from '@/lib/tokensMode';
 // Prefer Lima timezone by default; allow override via env
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
+// Evitar cualquier cacheo de esta ruta (Next.js App Router)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     // Invalidar la caché para obtener los datos más recientes
@@ -22,7 +26,7 @@ export async function GET() {
     const activationTime = computed.nextToggleIso || now.toISOString();
     const deactivationTime = computed.nextToggleIso || now.toISOString();
 
-    return NextResponse.json({
+    const res = NextResponse.json({
   tokensEnabled: Boolean(cfg.tokensEnabled), // actual DB state (may be manual override)
   scheduledEnabled,
       serverTimeIso: now.toISOString(),
@@ -34,6 +38,10 @@ export async function GET() {
       systemTime: now.toISOString(),
       lastChangeIso: cfg?.updatedAt ? new Date(cfg.updatedAt as any).toISOString() : null
     });
+    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.headers.set('Pragma', 'no-cache');
+    res.headers.set('Expires', '0');
+    return res;
   } catch (e: any) {
     console.error('status endpoint error', e);
     return NextResponse.json({ error: 'internal_server_error', message: String(e?.message || e) }, { status: 500 });
