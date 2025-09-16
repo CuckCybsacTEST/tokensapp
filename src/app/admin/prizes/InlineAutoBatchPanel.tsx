@@ -27,6 +27,25 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
   const [lastBatchInfo, setLastBatchInfo] = useState<{ batchId: string; prizes: number } | null>(
     null
   );
+  // Post-generación: permitir elegir Descargar ZIP o Ver lote
+  const [postGen, setPostGen] = useState<
+    | null
+    | {
+        batchId: string;
+        blobUrl: string;
+        filename: string;
+        displayName?: string;
+      }
+  >(null);
+
+  // Limpiar Blob URL si cambia el estado o al desmontar
+  useEffect(() => {
+    return () => {
+      if (postGen?.blobUrl) {
+        try { URL.revokeObjectURL(postGen.blobUrl); } catch {}
+      }
+    };
+  }, [postGen?.blobUrl]);
 
   const plannedCount = useMemo(
     () =>
@@ -92,9 +111,21 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
         return;
       }
       if (ct.includes("application/zip")) {
+        // Intentar obtener el batchId desde la cabecera Content-Disposition (filename)
+        let batchIdFromHeader: string | null = null;
+        const cd = res.headers.get("Content-Disposition") || res.headers.get("content-disposition");
+        if (cd) {
+          try {
+            const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+            const rawName = m ? decodeURIComponent((m[1] || m[2] || '').trim()) : '';
+            const idm = rawName.match(/_([^\.]+)\.zip$/i);
+            if (idm && idm[1]) batchIdFromHeader = idm[1];
+          } catch {}
+        }
+
         const blob = await res.blob();
         let totalTokens: number | null = null;
-        let batchId: string | null = null;
+        let batchId: string | null = batchIdFromHeader;
         let prizeCount: number | null = null;
         try {
           const JSZipMod = await import("jszip");
@@ -104,7 +135,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
             const manifestText = await manifestFile.async("text");
             const manifest = JSON.parse(manifestText);
             totalTokens = manifest?.meta?.totalTokens ?? null;
-            batchId = manifest?.batchId || null;
+            if (!batchId) batchId = manifest?.batchId || null;
             prizeCount = Array.isArray(manifest?.prizes) ? manifest.prizes.length : null;
             if (batchId && prizeCount != null) {
               setLastBatchInfo({ batchId, prizes: prizeCount });
@@ -114,19 +145,14 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
           // ignore
         }
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `lote_${Date.now()}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        const filename = `lote_${Date.now()}.zip`;
         setSuccess(
           totalTokens != null
             ? `Lote "${name || "(sin nombre)"}" generado (${totalTokens} tokens)`
             : `Lote "${name || "(sin nombre)"}" generado`
         );
-        router.refresh();
+        // Mostrar SIEMPRE el modal post-generación; si no hay batchId, solo permitimos descargar.
+        setPostGen({ batchId: batchId || "", blobUrl: url, filename, displayName: name || batchId || "(sin nombre)" });
       } else {
         const j = await res.json().catch(() => ({}));
         setError(j.error || "Respuesta inesperada");
@@ -138,6 +164,37 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
     }
   }
 
+  function handleDownloadZip() {
+    if (!postGen) return;
+    const a = document.createElement("a");
+    a.href = postGen.blobUrl;
+    a.download = postGen.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(postGen.blobUrl);
+    setPostGen(null);
+    router.refresh();
+  }
+
+  function handleViewBatch() {
+    if (!postGen) return;
+    // liberar url si existe
+    if (postGen.blobUrl) URL.revokeObjectURL(postGen.blobUrl);
+    const id = postGen.batchId;
+    setPostGen(null);
+    router.push(`/admin/batches/${id}`);
+  }
+
+  function handleCloseModal() {
+    if (!postGen) return;
+    if (postGen.blobUrl) URL.revokeObjectURL(postGen.blobUrl);
+    // Mostrar confirmación de éxito al cerrar sin descargar
+    setSuccess(`Lote "${postGen.displayName || postGen.batchId || "(sin id)"}" creado con éxito`);
+    setPostGen(null);
+    // No refrescamos aquí para no perder el mensaje; el usuario puede refrescar manualmente si desea.
+  }
+
   return (
     <div className="card">
       <div className="card-header flex items-center justify-between">
@@ -147,6 +204,50 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
         </span>
       </div>
       <div className="card-body grid gap-4 md:grid-cols-3">
+        {/* Modal post-generación */}
+        {postGen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="card w-[92%] max-w-md">
+              <div className="card-header">
+                <h3 className="text-sm font-medium">Lote generado</h3>
+              </div>
+              <div className="card-body space-y-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span>¿Qué deseas hacer con el lote</span>
+                  {postGen.batchId ? (
+                    <>
+                      <span className="font-mono">{postGen.batchId}</span>
+                      <button
+                        type="button"
+                        className="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700"
+                        onClick={() => navigator.clipboard?.writeText(postGen.batchId)}
+                        title="Copiar ID"
+                      >
+                        Copiar ID
+                      </button>
+                    </>
+                  ) : (
+                    <span className="italic text-slate-500">(id no disponible aún)</span>
+                  )}
+                  <span>?</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button type="button" className="btn !py-1 !px-3 text-xs" onClick={handleDownloadZip}>Descargar ZIP</button>
+                  <button
+                    type="button"
+                    className={`btn-outline !py-1 !px-3 text-xs ${!postGen.batchId ? "opacity-50 cursor-not-allowed" : ""}`}
+                    onClick={postGen.batchId ? handleViewBatch : undefined}
+                    disabled={!postGen.batchId}
+                    title={!postGen.batchId ? "No se pudo leer el identificador del lote desde el ZIP" : undefined}
+                  >
+                    Ver lote
+                  </button>
+                  <button type="button" className="ml-auto text-xs opacity-70 hover:opacity-100" onClick={handleCloseModal}>Cerrar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="form-row md:col-span-3">
           <label className="text-xs font-medium">Modo de generación</label>
           <div className="flex items-center gap-4 text-xs">

@@ -18,7 +18,9 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "types": [
-      "node"
+      "node",
+      "vitest",
+      "vitest/globals"
     ],
     "baseUrl": "src",
     "paths": {
@@ -40,6 +42,9 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "tests",
+    "src/test",
+    "src/tests"
   ]
 }

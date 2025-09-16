@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { computeTokensEnabled } from '@/lib/tokensMode';
 
 describe('computeTokensEnabled', () => {

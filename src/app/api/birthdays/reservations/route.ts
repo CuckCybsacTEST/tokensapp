@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/rateLimit';
 import { createReservation } from '@/lib/birthdays/service';
 import { signClientSecret } from '@/lib/birthdays/clientAuth';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
+import { corsHeadersFor } from '@/lib/cors';
 
 const CreateReservationSchema = z.object({
   celebrantName: z.string().min(1).max(120),
@@ -18,20 +19,21 @@ const CreateReservationSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const cors = corsHeadersFor(req as unknown as Request);
   // Feature flag: gate public birthdays creation
   if (!isBirthdaysEnabledPublic()) {
-    return apiError('NOT_FOUND', 'Not found', undefined, 404);
+    return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
   }
   const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown';
   const rl = checkRateLimit(`birthdays:create:${ip}`);
   if (!rl.ok) {
-    return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { 'Retry-After': String(rl.retryAfterSeconds) });
+    return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { ...cors, 'Retry-After': String(rl.retryAfterSeconds) });
   }
   try {
     const body = await req.json();
     const parsed = CreateReservationSchema.safeParse(body);
     if (!parsed.success) {
-      return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400);
+      return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
     }
     const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned } = parsed.data;
     const dt = new Date(date + 'T00:00:00.000Z');
@@ -64,8 +66,13 @@ export async function POST(req: NextRequest) {
       createdAt: created.createdAt.toISOString(),
     };
     const clientSecret = signClientSecret(created.id, 15);
-    return apiOk({ ok: true, ...dto, clientSecret }, 201);
+    return apiOk({ ok: true, ...dto, clientSecret }, 201, cors);
   } catch (e) {
-    return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation');
+    return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation', undefined, 500, cors);
   }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  const cors = corsHeadersFor(req as unknown as Request);
+  return new Response(null, { status: 204, headers: cors });
 }

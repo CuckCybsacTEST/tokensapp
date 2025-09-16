@@ -19,6 +19,7 @@ export function TokensToggle({ initialEnabled }: Props) {
   const [timeActive, setTimeActive] = useState<string>("00:00:00");
   const [timeRemaining, setTimeRemaining] = useState<string>("00:00:00");
   const [scheduledEnabled, setScheduledEnabled] = useState<boolean | null>(null);
+  const [lastChange, setLastChange] = useState<Date | null>(null);
   
   // Debug
   React.useEffect(() => {
@@ -59,11 +60,15 @@ export function TokensToggle({ initialEnabled }: Props) {
         }
         setAdminDisabled(false); // Ya no usamos esta bandera
         
-        // Establecer hora del servidor y próxima actualización
+        // Establecer hora del servidor, última modificación y próxima actualización
         const serverTimeDate = new Date(body.serverTimeIso);
         const nextToggleDate = new Date(body.nextSchedule);
         setServerTime(serverTimeDate);
         setNextToggleTime(nextToggleDate);
+        if (body.lastChangeIso) {
+          const lc = new Date(body.lastChangeIso);
+          if (!isNaN(lc.getTime())) setLastChange(lc);
+        }
         
       } catch (e: any) {
         console.error('Failed to load tokens status', e);
@@ -85,22 +90,15 @@ export function TokensToggle({ initialEnabled }: Props) {
   
   // Actualizar temporizadores cada segundo
   React.useEffect(() => {
-    if (!serverTime || !nextToggleTime) return;
+  if (!serverTime || !nextToggleTime) return;
     
     const updateTimers = () => {
       const now = new Date();
 
       // Calcular tiempo que llevan activos los tokens (si están activos)
       if (enabled) {
-        // Considerar la última frontera diaria de activación (18:00 hora local del cliente)
-        const ref = serverTime ?? now;
-        const lastActivation = new Date(ref);
-        lastActivation.setHours(18, 0, 0, 0); // hoy 18:00
-        if (ref.getHours() < 18) {
-          // si aún no son las 18:00, la última activación fue ayer 18:00
-          lastActivation.setDate(lastActivation.getDate() - 1);
-        }
-        const activeSeconds = Math.max(0, Math.floor((now.getTime() - lastActivation.getTime()) / 1000));
+        const baseline = lastChange || serverTime || now;
+        const activeSeconds = Math.max(0, Math.floor((now.getTime() - baseline.getTime()) / 1000));
         setTimeActive(formatTime(activeSeconds));
       } else {
         setTimeActive("00:00:00");
@@ -151,6 +149,13 @@ export function TokensToggle({ initialEnabled }: Props) {
         }
         if (body.serverTimeIso) {
           setServerTime(new Date(body.serverTimeIso));
+        }
+        if (body.lastChangeIso) {
+          const lc = new Date(body.lastChangeIso);
+          if (!isNaN(lc.getTime())) setLastChange(lc);
+        } else {
+          // Fallback: consider now as last change in absence of server-provided timestamp
+          setLastChange(new Date());
         }
       }
   // Evitamos router.refresh() para no provocar un remount que genera un glitch visual

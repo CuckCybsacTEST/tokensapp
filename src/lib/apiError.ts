@@ -11,6 +11,6 @@ export function apiError(
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-export function apiOk(data: any, status = 200) {
-  return new Response(JSON.stringify(data), { status });
+export function apiOk(data: any, status = 200, headers?: Record<string, string>) {
+  return new Response(JSON.stringify(data), { status, headers });
 }

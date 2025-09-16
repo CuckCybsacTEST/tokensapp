@@ -102,7 +102,8 @@ export async function GET(request: Request) {
   const [periodTokens, periodRedeemed, periodRouletteSpins, periodRouletteSessions] = await Promise.all([
     prisma.token.count({ where: { createdAt: { gte: start, lte: end } } }),
     prisma.token.count({ where: { redeemedAt: { gte: start, lte: end } } }),
-    (prisma as any).rouletteSpin.count({ where: { createdAt: { gte: start, lte: end } } }),
+    // Contar giros por tokens revelados (cubre ruleta admin two-phase y flujo marketing)
+    prisma.token.count({ where: { revealedAt: { gte: start, lte: end } } }),
     (prisma as any).rouletteSession.count({ where: { createdAt: { gte: start, lte: end } } }),
   ]);
   

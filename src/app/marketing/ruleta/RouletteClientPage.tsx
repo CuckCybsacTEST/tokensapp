@@ -106,6 +106,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [prizeWon, setPrizeWon] = useState<RouletteElement | null>(null);
   const [showPrizeModal, setShowPrizeModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [delivering, setDelivering] = useState(false);
+  const [deliverError, setDeliverError] = useState<string | null>(null);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -115,31 +117,38 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       return;
     }
 
+    // Reset UI state on token change to avoid showing previous token's state
+    setLoading(true);
+    setError(null);
+    setToken(null);
+    setElements([]);
+    setSpinning(false);
+    setSpun(false);
+    setPrizeIndex(null);
+    setPrizeWon(null);
+    setShowPrizeModal(false);
+    setShowConfetti(false);
+    setDelivering(false);
+    setDeliverError(null);
+
     async function loadToken() {
       try {
         // Obtenemos los datos del token desde la API existente
         const response = await fetch(`/api/tokens/${tokenId}/roulette-data`);
+        const raw = await response.text();
         if (!response.ok) {
-          // Intentamos obtener un mensaje más amigable del JSON si es posible
+          // Intenta parsear JSON desde el texto una sola vez
+          let msg = '';
           try {
-            const errorData = await response.json();
-            throw new Error(
-              response.status === 404 
-                ? "Token no encontrado"
-                : errorData.message || errorData.error || `Error ${response.status}`
-            );
-          } catch (jsonError) {
-            throw new Error(
-              response.status === 404 
-                ? "Token no encontrado" 
-                : response.status === 403
-                  ? "El sistema de tokens está temporalmente desactivado. Por favor, inténtalo más tarde."
-                  : `Error ${response.status}: ${await response.text()}`
-            );
-          }
+            const j = JSON.parse(raw || '{}');
+            msg = j.message || j.error || '';
+          } catch {}
+          if (response.status === 404) throw new Error('Token no encontrado');
+          if (response.status === 403) throw new Error('El sistema de tokens está temporalmente desactivado. Por favor, inténtalo más tarde.');
+          throw new Error(msg || `Error ${response.status}${raw ? `: ${raw}` : ''}`);
         }
 
-        const data = await response.json();
+        const data = raw ? JSON.parse(raw) : {};
         
         setToken(data.token);
         
@@ -167,15 +176,20 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   }, [tokenId]);
 
   const handleSpin = async () => {
+    // Evitar doble clic, giros repetidos o intento sin token
     if (spinning || spun || !tokenId) {
+      return;
+    }
+    // Si el token ya fue revelado o canjeado/entregado, bloquear giro
+    if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) {
       return;
     }
 
     setSpinning(true);
     
     try {
-      // Enviamos petición para girar la ruleta (revela el premio)
-      const response = await fetch(`/api/tokens/${tokenId}/reveal`, {
+      // Enviamos petición para girar la ruleta (revela el premio) usando endpoint singular existente
+      const response = await fetch(`/api/token/${tokenId}/reveal`, {
         method: 'POST',
       });
       
@@ -196,6 +210,29 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       console.error("Error al girar:", err);
       setError(err instanceof Error ? err.message : "Error al girar la ruleta");
       setSpinning(false);
+    }
+  };
+
+  const confirmDeliver = async () => {
+    if (!tokenId) return;
+    setDeliverError(null);
+    setDelivering(true);
+    try {
+      const res = await fetch(`/api/token/${tokenId}/deliver`, { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = body?.error || body?.message || `Error ${res.status}`;
+        setDeliverError(msg);
+        return;
+      }
+      // Update local token state to reflect delivery (mirror redeemedAt)
+      setToken((t) => t ? ({ ...t, deliveredAt: body?.timestamps?.deliveredAt || new Date().toISOString(), redeemedAt: body?.timestamps?.deliveredAt || new Date().toISOString() } as any) : t);
+      setShowPrizeModal(false);
+      setShowConfetti(false);
+    } catch (e: any) {
+      setDeliverError(e?.message || 'DELIVER_FAILED');
+    } finally {
+      setDelivering(false);
     }
   };
 
@@ -226,34 +263,10 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       console.log('Audio no soportado');
     }
 
-    // Retrasamos el canje automático para dar más tiempo al usuario para ver el premio
-    prizeModalTimeoutRef.current = setTimeout(() => {
-      // Opcionalmente realizar el canje automático (consume/deliver)
-      autoRedeem();
-    }, 10000); // Espera 10 segundos antes de canjear el premio
+    // Importante: NO auto-canjear. La confirmación de entrega debe hacerla el STAFF.
+    // En el flujo two-phase, sólo revelamos aquí; el canje/entrega se confirma desde interfaces de staff.
   };
 
-  const autoRedeem = async () => {
-    if (!tokenId) return;
-
-    try {
-      // Enviamos petición para canjear el premio
-      const response = await fetch(`/api/tokens/${tokenId}/deliver`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${await response.text()}`);
-      }
-      
-      // Actualizamos el token con el resultado del canje
-      const data = await response.json();
-      setToken(data.token);
-    } catch (err) {
-      console.error("Error al canjear:", err);
-      setError(err instanceof Error ? err.message : "Error al canjear el premio");
-    }
-  };
 
   if (loading) {
     return (
@@ -339,6 +352,34 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
           <p className="mt-2 text-white/70">
             Este token ha expirado y ya no puede ser utilizado.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si el token ya fue revelado (two-phase) pero aún no entregado, mostrar aviso
+  // Importante: no bloquear durante el giro ni mientras mostramos el modal de premio.
+  if (!spinning && !showPrizeModal && token?.revealedAt && !token?.deliveredAt && !token?.redeemedAt) {
+    return (
+      <div className="text-center py-16 max-w-md mx-auto">
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
+          <p className="text-blue-300 text-lg font-semibold">Premio revelado</p>
+          <p className="mt-2 text-white/70">
+            Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
+          </p>
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <button
+              className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+              onClick={confirmDeliver}
+              disabled={delivering}
+              title="Para uso del STAFF"
+            >
+              {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
+            </button>
+          </div>
+          {deliverError && (
+            <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
+          )}
         </div>
       </div>
     );
@@ -489,6 +530,19 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                 >
                   ¡Entendido!
                 </motion.button>
+                <div className="mt-4 flex items-center justify-center">
+                  <button
+                    className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+                    onClick={confirmDeliver}
+                    disabled={delivering}
+                    title="Para uso del STAFF"
+                  >
+                    {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
+                  </button>
+                </div>
+                {deliverError && (
+                  <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
+                )}
               </div>
             </motion.div>
           </motion.div>

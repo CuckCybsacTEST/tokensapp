@@ -18,30 +18,9 @@ export async function GET() {
     const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
     const scheduledEnabled = computed.enabled;
 
-    // Enforcement: si fuera de ventana y DB dice ON, forzar OFF inmediatamente
-    if (!scheduledEnabled && Boolean(cfg.tokensEnabled)) {
-      try {
-        await prisma.$executeRawUnsafe(`UPDATE SystemConfig SET tokensEnabled = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = 1`);
-        invalidateSystemConfigCache();
-        cfg.tokensEnabled = 0;
-      } catch (e) {
-        console.error('[status] enforcement update failed', e);
-      }
-    }
-
-    // Calcular tiempos de activación/desactivación en TZ fija
-    // Próximas fronteras diarias en Lima: hoy 18:00; próximo 00:00
-    const activationTime = computed.nextToggleIso && !Boolean(cfg.tokensEnabled)
-      ? computed.nextToggleIso
-      : (() => {
-          // hoy a las 18:00 en TZ; si ya pasó, mañana 18:00
-          // Usamos computeTokensEnabled para derivar la siguiente activación si fuese necesario
-          const alt = computeTokensEnabled({ now, tz: TOKENS_TZ });
-          return alt.nextToggleIso || now.toISOString();
-        })();
-    const deactivationTime = computed.nextToggleIso && Boolean(cfg.tokensEnabled)
-      ? computed.nextToggleIso
-      : (() => computed.nextToggleIso || now.toISOString())();
+    // Calcular tiempos con el valor ya calculado por computeTokensEnabled (heurístico)
+    const activationTime = computed.nextToggleIso || now.toISOString();
+    const deactivationTime = computed.nextToggleIso || now.toISOString();
 
     return NextResponse.json({
   tokensEnabled: Boolean(cfg.tokensEnabled), // actual DB state (may be manual override)
@@ -52,7 +31,8 @@ export async function GET() {
       // Información adicional para temporizadores en TZ fija
       activationTime: String(activationTime),
       deactivationTime: String(deactivationTime),
-      systemTime: now.toISOString()
+      systemTime: now.toISOString(),
+      lastChangeIso: cfg?.updatedAt ? new Date(cfg.updatedAt as any).toISOString() : null
     });
   } catch (e: any) {
     console.error('status endpoint error', e);

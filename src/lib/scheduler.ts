@@ -61,13 +61,8 @@ export async function reconcileOnce() {
     const computed = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ });
     const desired = computed.enabled;
     const current = Boolean(cfg?.tokensEnabled);
-    // Policy: enforce OFF outside window, don't force ON (preserve manual disable inside window)
-    if (!desired && current) {
-      await setTokensEnabled(false);
-      console.log(`[scheduler] enforcement: outside window -> forced OFF (was ON)`);
-    } else {
-      console.log(`[scheduler] no change (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
-    }
+    // New policy: respect manual overrides until scheduled hard boundaries (18:00 ON, 00:00 OFF)
+    console.log(`[scheduler] reconcile (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
     // Ensure readers are fresh
     try { invalidateSystemConfigCache(); } catch { /* ignore */ }
     return { ok: true, computed };
@@ -114,16 +109,13 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
-  // Every minute: if outside window but tokens are ON, enforce OFF
+  // Every minute: no enforcement; only log state for observability
   const jobMinute = cron.schedule('* * * * *', async () => {
     try {
       const cfg = await readConfig();
       const current = Boolean(cfg?.tokensEnabled);
       const scheduled = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ }).enabled;
-      if (!scheduled && current) {
-        await setTokensEnabled(false);
-        console.log('[scheduler][minute] enforcement applied: OFF outside window');
-      }
+      console.log(`[scheduler][minute] heartbeat current=${current} scheduled=${scheduled}`);
     } catch (e) {
       console.error('[scheduler][minute] job failed', e);
     }

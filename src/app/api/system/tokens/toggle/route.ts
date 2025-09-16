@@ -73,7 +73,8 @@ export async function POST(req: Request) {
       tokensEnabled: Boolean(updated?.tokensEnabled),
       serverTimeIso: now.toISOString(),
       nextSchedule: nextSchedule,
-      scheduledEnabled
+      scheduledEnabled,
+      lastChangeIso: updated?.updatedAt ? new Date(updated.updatedAt as any).toISOString() : now.toISOString()
     });
   } catch (e: any) {
     console.error('tokens/toggle endpoint error', e);

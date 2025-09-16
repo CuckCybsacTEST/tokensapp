@@ -26,7 +26,8 @@ async function getMetrics() {
   const [periodTokens, periodRedeemed, periodRouletteSpins, periodRouletteSessions] = await Promise.all([
     prisma.token.count({ where: { createdAt: { gte: startOfWeek, lte: endOfWeek } } }),
     prisma.token.count({ where: { redeemedAt: { gte: startOfWeek, lte: endOfWeek } } }),
-    (prisma as any).rouletteSpin.count({ where: { createdAt: { gte: startOfWeek, lte: endOfWeek } } }),
+    // Contar giros por tokens revelados (cubre ruleta admin two-phase y flujo marketing)
+    prisma.token.count({ where: { revealedAt: { gte: startOfWeek, lte: endOfWeek } } }),
     (prisma as any).rouletteSession.count({ where: { createdAt: { gte: startOfWeek, lte: endOfWeek } } }),
   ]);
 

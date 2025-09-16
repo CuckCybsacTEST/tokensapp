@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
-    "typecheck": "tsc --noEmit",
+  "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "prisma:generate": "prisma generate",
     "db:seed": "prisma db seed",
     "db:push": "prisma db push",

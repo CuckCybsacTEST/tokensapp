@@ -368,8 +368,18 @@ export default function ScannerPage() {
         </div>
       )}
 
-      <div className="relative mx-auto aspect-video w-full max-w-2xl overflow-hidden rounded-lg border border-gray-200 bg-black shadow-sm">
+      <div className="relative mx-auto w-full max-w-sm sm:max-w-2xl aspect-square sm:aspect-video overflow-hidden rounded-lg border border-gray-200 bg-black shadow-sm">
         <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
+
+        {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
+        {!overlay && !cameraError && (
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-4 top-4 h-6 w-6 border-l-2 border-t-2 border-emerald-400/80"></div>
+            <div className="absolute right-4 top-4 h-6 w-6 border-r-2 border-t-2 border-emerald-400/80"></div>
+            <div className="absolute left-4 bottom-4 h-6 w-6 border-l-2 border-b-2 border-emerald-400/80"></div>
+            <div className="absolute right-4 bottom-4 h-6 w-6 border-r-2 border-b-2 border-emerald-400/80"></div>
+          </div>
+        )}
 
         {overlay && (
           <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 text-white">
@@ -401,7 +411,7 @@ export default function ScannerPage() {
           Consejo: acércate al QR y mantén la cámara estable. Si el navegador te pide permiso de cámara,
           acepta para poder escanear. En caso de problemas, puedes subir una foto del QR.
         </p>
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50">
+        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 active:shadow">
           Subir imagen del QR
           <input
             type="file"
