@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { logInfo } from '../src/lib/stdout';
 import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
@@ -310,7 +309,8 @@ async function main() {
   } catch (e) {
     // no bloquear seed si el modelo aún no existe
   }
-  logInfo('seed_done');
+  // simple stdout to mark completion (avoid importing app code here)
+  console.log('seed_done');
 }
 
 main().catch(e => { console.error(e); process.exit(1); })

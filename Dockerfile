@@ -35,6 +35,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Ensure Prisma engines have OpenSSL available at runtime
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 
