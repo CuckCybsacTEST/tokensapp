@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSystemConfig } from '@/lib/config';
+import { computeTokensEnabled } from '@/lib/tokensMode';
 import { apiError } from '@/lib/apiError';
 import { DateTime } from 'luxon';
 
@@ -11,19 +12,21 @@ export async function GET(
   try {
     const tokenId = params.tokenId;
     
-  // Verificar que el sistema está habilitado
-  // Forzamos lectura directa de DB para evitar caché desactualizada entre aislamientos de rutas
+  // Verificar que el sistema está habilitado por interruptor Y dentro de ventana horaria
   const cfg = await getSystemConfig(true);
-    console.log(`[roulette-data] Token ${tokenId}: Sistema de tokens está ${cfg.tokensEnabled ? 'HABILITADO' : 'DESHABILITADO'}`);
-    
-    if (!cfg.tokensEnabled) {
-      console.log(`[roulette-data] Rechazando token ${tokenId} porque los tokens están deshabilitados`);
-      return NextResponse.json({ 
-        error: 'El sistema de tokens se encuentra temporalmente desactivado. Por favor, inténtalo más tarde.', 
-        message: 'Los tokens están temporalmente fuera de servicio. Vuelve a intentarlo en unos minutos.',
-        status: 'disabled'
-      }, { status: 403 });
-    }
+  const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
+  const scheduled = computeTokensEnabled({ now: new Date(), tz });
+  const allowedBySwitch = cfg.tokensEnabled;
+  const allowedBySchedule = scheduled.enabled; // 18:00-00:00
+  console.log(`[roulette-data] Token ${tokenId}: switch=${allowedBySwitch ? 'ON' : 'OFF'} scheduled=${allowedBySchedule ? 'OPEN' : 'CLOSED'} tz=${tz}`);
+  if (!allowedBySwitch || !allowedBySchedule) {
+    console.log(`[roulette-data] Rechazando token ${tokenId} por reglas: switch=${allowedBySwitch}, schedule=${allowedBySchedule}`);
+    return NextResponse.json({
+      error: 'Ruleta no disponible en este momento.',
+      message: !allowedBySwitch ? 'El sistema está desactivado temporalmente.' : 'Fuera del horario habilitado.',
+      status: 'disabled'
+    }, { status: 403 });
+  }
     
     // Buscar el token
     const token = await prisma.token.findUnique({

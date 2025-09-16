@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { apiError, apiOk } from "@/lib/apiError";
 import { getSystemConfig } from "@/lib/config";
+import { computeTokensEnabled } from "@/lib/tokensMode";
 import { logEvent } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -24,9 +25,15 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
     );
   }
   const cfg = await getSystemConfig();
+  const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
+  const scheduled = computeTokensEnabled({ now: new Date(), tz });
   if (!cfg.tokensEnabled) {
     await logEvent("REDEEM_BLOCKED", "Intento con sistema OFF", { tokenId });
     return apiError("SYSTEM_OFF", "Tokens deshabilitados temporalmente", { tokenId }, 423);
+  }
+  if (!scheduled.enabled) {
+    await logEvent("REDEEM_BLOCKED_WINDOW", "Fuera de ventana horaria (18:00-00:00)", { tokenId, tz });
+    return apiError("OUT_OF_WINDOW", "Fuera de horario", { tokenId }, 423);
   }
   // Transacción: validación + update condicional para evitar doble redención
   try {

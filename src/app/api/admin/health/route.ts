@@ -44,6 +44,9 @@ export async function GET(req: Request) {
     ]);
 
     const ms = Date.now() - started;
+    const dbUrl = process.env.DATABASE_URL || '';
+    const dbProvider = dbUrl.startsWith('postgres') ? 'postgres' : (dbUrl.startsWith('file:') ? 'sqlite' : 'unknown');
+    const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
     return new Response(
       JSON.stringify({
         ok: true,
@@ -52,6 +55,11 @@ export async function GET(req: Request) {
           tokensEnabled: Boolean(cfg.tokensEnabled),
           prizes: prizesCount,
           tokens: tokensCount,
+        },
+        runtime: {
+          dbProvider,
+          timezone: tz,
+          serverTimeIso: new Date().toISOString(),
         },
         timestamp: new Date().toISOString(),
       }),

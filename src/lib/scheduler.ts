@@ -89,25 +89,10 @@ export function startScheduler() {
   // run immediate reconciliation
   reconcileOnce().catch((e) => console.error('[scheduler] reconcile failed', e));
 
-  // Schedule 18:00 -> always enable
-  const job18 = cron.schedule('0 18 * * *', async () => {
-    try {
-      await setTokensEnabled(true);
-      console.log('[scheduler][18:00] tokensEnabled set to true');
-    } catch (e) {
-      console.error('[scheduler][18:00] job failed', e);
-    }
-  }, { scheduled: true, timezone: TOKENS_TZ });
-
-  // Schedule 00:00 -> always disable
-  const job00 = cron.schedule('0 0 * * *', async () => {
-    try {
-      await setTokensEnabled(false);
-      console.log('[scheduler][00:00] tokensEnabled set to false');
-    } catch (e) {
-      console.error('[scheduler][00:00] job failed', e);
-    }
-  }, { scheduled: true, timezone: TOKENS_TZ });
+  // No cambiamos tokensEnabled automáticamente en 18:00/00:00.
+  // En su lugar, sólo mantenemos heartbeat/logs y expiración de cumpleaños.
+  const job18 = { stop() {} } as any;
+  const job00 = { stop() {} } as any;
 
   // Every minute: no enforcement; only log state for observability
   const jobMinute = cron.schedule('* * * * *', async () => {
@@ -131,7 +116,7 @@ export function startScheduler() {
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   jobs = [job18, job00, jobBday, jobMinute];
-  console.log('[scheduler] started jobs (18:00 enable / 00:00 disable / birthdays */10m expire / enforce off */1m)');
+  console.log('[scheduler] started jobs (no auto flips; birthdays */10m expire; heartbeat */1m)');
   started = true;
 }
 
