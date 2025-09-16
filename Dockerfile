@@ -41,8 +41,8 @@ RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/
 # Create a non-root user
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 
-# Copy node_modules and production build
-COPY --from=deps /app/node_modules ./node_modules
+# Copy node_modules (with Prisma Client already generated) and production build
+COPY --from=prisma /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/public ./public
