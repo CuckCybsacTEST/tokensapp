@@ -15,7 +15,8 @@ export async function GET() {
   const cfg = rows && rows.length ? rows[0] : { tokensEnabled: false };
 
     const now = new Date();
-    const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
+  const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
+  const scheduledEnabled = computed.enabled;
 
     // Calcular tiempos de activación/desactivación en TZ fija
     // Próximas fronteras diarias en Lima: hoy 18:00; próximo 00:00
@@ -32,7 +33,8 @@ export async function GET() {
       : (() => computed.nextToggleIso || now.toISOString())();
 
     return NextResponse.json({
-      tokensEnabled: Boolean(cfg.tokensEnabled),
+  tokensEnabled: Boolean(cfg.tokensEnabled), // actual DB state (may be manual override)
+  scheduledEnabled,
       serverTimeIso: now.toISOString(),
       timezone: TOKENS_TZ,
       nextSchedule: computed.nextToggleIso || now.toISOString(),

@@ -18,6 +18,7 @@ export function TokensToggle({ initialEnabled }: Props) {
   const [nextToggleTime, setNextToggleTime] = useState<Date | null>(null);
   const [timeActive, setTimeActive] = useState<string>("00:00:00");
   const [timeRemaining, setTimeRemaining] = useState<string>("00:00:00");
+  const [scheduledEnabled, setScheduledEnabled] = useState<boolean | null>(null);
   
   // Debug
   React.useEffect(() => {
@@ -53,6 +54,9 @@ export function TokensToggle({ initialEnabled }: Props) {
         if (!mounted) return;
         
         setEnabled(Boolean(body.tokensEnabled));
+        if (typeof body.scheduledEnabled === 'boolean') {
+          setScheduledEnabled(Boolean(body.scheduledEnabled));
+        }
         setAdminDisabled(false); // Ya no usamos esta bandera
         
         // Establecer hora del servidor y próxima actualización
@@ -137,6 +141,9 @@ export function TokensToggle({ initialEnabled }: Props) {
       const body = await res.json().catch(()=>null);
       if (body) {
         setEnabled(Boolean(body.tokensEnabled));
+        if (typeof body.scheduledEnabled === 'boolean') {
+          setScheduledEnabled(Boolean(body.scheduledEnabled));
+        }
         
         // Actualizar los tiempos si hay información disponible
         if (body.nextSchedule) {
@@ -213,6 +220,11 @@ export function TokensToggle({ initialEnabled }: Props) {
         </div>
         <p className={`text-sm font-medium ${enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
           {enabled ? 'Sistema Activo - Los tokens están funcionando' : 'Sistema Inactivo - Los tokens están desactivados'}
+          {scheduledEnabled !== null && (
+            <span className="ml-2 opacity-70">
+              {scheduledEnabled === enabled ? '(según horario)' : '(override manual temporal)'}
+            </span>
+          )}
         </p>
       </div>
 

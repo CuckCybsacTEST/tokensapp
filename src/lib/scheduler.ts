@@ -58,14 +58,15 @@ async function setTokensEnabled(value: boolean) {
 export async function reconcileOnce() {
   try {
     const cfg = await readConfig();
-  const computed = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ });
+    const computed = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ });
     const desired = computed.enabled;
     const current = Boolean(cfg?.tokensEnabled);
-    if (desired !== current) {
-      await setTokensEnabled(desired);
-      console.log(`[scheduler] reconciled tokensEnabled: ${current} -> ${desired} (reason: ${computed.reason})`);
+    // Policy: enforce OFF outside window, don't force ON (preserve manual disable inside window)
+    if (!desired && current) {
+      await setTokensEnabled(false);
+      console.log(`[scheduler] enforcement: outside window -> forced OFF (was ON)`);
     } else {
-      console.log(`[scheduler] tokensEnabled already ${current} (reason: ${computed.reason})`);
+      console.log(`[scheduler] no change (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
     }
     // Ensure readers are fresh
     try { invalidateSystemConfigCache(); } catch { /* ignore */ }
@@ -113,6 +114,21 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
+  // Every minute: if outside window but tokens are ON, enforce OFF
+  const jobMinute = cron.schedule('* * * * *', async () => {
+    try {
+      const cfg = await readConfig();
+      const current = Boolean(cfg?.tokensEnabled);
+      const scheduled = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ }).enabled;
+      if (!scheduled && current) {
+        await setTokensEnabled(false);
+        console.log('[scheduler][minute] enforcement applied: OFF outside window');
+      }
+    } catch (e) {
+      console.error('[scheduler][minute] job failed', e);
+    }
+  }, { scheduled: true, timezone: TOKENS_TZ });
+
   // Birthdays: expire invite tokens periodically and emit minimal logs
   const jobBday = cron.schedule('*/10 * * * *', async () => {
     try {
@@ -122,8 +138,8 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
-  jobs = [job18, job00, jobBday];
-  console.log('[scheduler] started jobs (18:00 enable / 00:00 disable / birthdays */10m expire)');
+  jobs = [job18, job00, jobBday, jobMinute];
+  console.log('[scheduler] started jobs (18:00 enable / 00:00 disable / birthdays */10m expire / enforce off */1m)');
   started = true;
 }
 
