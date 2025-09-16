@@ -15,8 +15,19 @@ export async function GET() {
   const cfg = rows && rows.length ? rows[0] : { tokensEnabled: false };
 
     const now = new Date();
-  const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
-  const scheduledEnabled = computed.enabled;
+    const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
+    const scheduledEnabled = computed.enabled;
+
+    // Enforcement: si fuera de ventana y DB dice ON, forzar OFF inmediatamente
+    if (!scheduledEnabled && Boolean(cfg.tokensEnabled)) {
+      try {
+        await prisma.$executeRawUnsafe(`UPDATE SystemConfig SET tokensEnabled = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = 1`);
+        invalidateSystemConfigCache();
+        cfg.tokensEnabled = 0;
+      } catch (e) {
+        console.error('[status] enforcement update failed', e);
+      }
+    }
 
     // Calcular tiempos de activación/desactivación en TZ fija
     // Próximas fronteras diarias en Lima: hoy 18:00; próximo 00:00
