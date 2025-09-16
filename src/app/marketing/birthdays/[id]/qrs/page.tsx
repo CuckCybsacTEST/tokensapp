@@ -114,19 +114,47 @@ export default function QRsFinalesPage() {
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Cumpleañero (host) */}
         {host && (
-          <div className="rounded-lg border border-white/10 bg-white/5 p-4" data-testid="qr-host">
-            <div className="text-sm font-semibold opacity-90">Cumpleañero</div>
+          <div
+            className="rounded-xl border-2 p-5 relative overflow-hidden"
+            data-testid="qr-host"
+            style={{
+              borderColor: '#D4AF37', // gold
+              background: 'linear-gradient(135deg, #0b0b0b 0%, #1a1a1a 100%)',
+            }}
+          >
+            <div className="absolute -top-3 -right-3 rotate-6 select-none">
+              <span className="text-[10px] tracking-widest font-extrabold px-3 py-1 rounded-full" style={{ background: '#D4AF37', color: '#111' }}>VIP</span>
+            </div>
+            <div className="text-sm font-semibold" style={{ color: '#D4AF37' }}>Cumpleañero</div>
             <div className="mt-1 text-xs opacity-80">Estado: {host.status || 'activo'} · 1 uso</div>
-            <div className="mt-3 flex items-center justify-center">
+            <div className="mt-4 flex items-center justify-center">
               {qrData[host.id] ? (
-                <img src={qrData[host.id]} alt="QR cumpeañero" data-testid="qr-host-img" className="w-56 h-56 bg-white p-2 rounded" />
+                <img
+                  src={qrData[host.id]}
+                  alt="QR cumpleañero"
+                  data-testid="qr-host-img"
+                  className="w-56 h-56 bg-white p-3 rounded-xl"
+                  style={{ boxShadow: '0 0 0 4px #D4AF37' }}
+                />
               ) : (
-                <div className="w-56 h-56 bg-white/10 rounded animate-pulse" />
+                <div className="w-56 h-56 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }} />
               )}
             </div>
             <div className="mt-4 flex gap-2">
-              <button onClick={()=>downloadPng(host.id, 'cumpleanero.png')} className="rounded px-3 py-2 text-sm font-semibold" style={{ background: '#3D2EFF' }}>Descargar PNG</button>
-              <button onClick={()=>copyLink(host.code)} className="rounded px-3 py-2 text-sm font-semibold border border-white/20">Copiar link de canje</button>
+              <button
+                onClick={()=>downloadPng(host.id, 'cumpleanero.png')}
+                className="rounded px-3 py-2 text-sm font-semibold"
+                style={{ background: '#D4AF37', color: '#111' }}
+              >
+                Descargar PNG
+              </button>
+              <button
+                onClick={()=>copyLink(host.code)}
+                className="rounded px-3 py-2 text-sm font-semibold border"
+                style={{ borderColor: '#D4AF37', color: '#D4AF37' }}
+              >
+                Copiar link de canje
+              </button>
             </div>
           </div>
         )}
