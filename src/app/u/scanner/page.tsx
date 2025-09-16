@@ -33,16 +33,33 @@ function base64UrlToJson<T = unknown>(s: string): T | null {
 }
 
 function decodeGlobalModeFromQr(text: string): Mode | null {
+  if (!text) return null;
+  const raw = String(text).trim();
   // Try JSON direct
   try {
-    const j = JSON.parse(text);
+    const j = JSON.parse(raw);
     if (j && typeof j === "object" && j.kind === "GLOBAL" && (j.mode === "IN" || j.mode === "OUT")) {
       return j.mode as Mode;
     }
   } catch {}
   // Try base64url JSON
-  const j = base64UrlToJson<GlobalQrPayload>(text);
+  const j = base64UrlToJson<GlobalQrPayload>(raw);
   if (j && j.kind === "GLOBAL" && (j.mode === "IN" || j.mode === "OUT")) return j.mode;
+  // Fallbacks:
+  // 1) Plain strings like "IN" or "OUT"
+  if (raw === 'IN' || raw === 'OUT') return raw as Mode;
+  // 2) Legacy formats like "GLOBAL:IN" or "GLOBAL|OUT"
+  const upper = raw.toUpperCase();
+  if (upper.startsWith('GLOBAL')) {
+    if (upper.includes('IN')) return 'IN';
+    if (upper.includes('OUT')) return 'OUT';
+  }
+  // 3) URLs that include ?mode=IN|OUT
+  try {
+    const url = new URL(raw);
+    const q = (url.searchParams.get('mode') || '').toUpperCase();
+    if (q === 'IN' || q === 'OUT') return q as Mode;
+  } catch {}
   return null;
 }
 
