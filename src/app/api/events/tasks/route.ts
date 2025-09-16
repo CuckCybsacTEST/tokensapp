@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { taskEvents, type TaskUpdateEvent } from '@/server/events'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   let cleanup: (() => void) | null = null

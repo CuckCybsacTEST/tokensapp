@@ -16,11 +16,21 @@ import { startScheduler } from '@/lib/scheduler';
 
 // Start the scheduler when this module is imported.
 // This file should only be imported/required in a Node server runtime (not on the edge).
-try {
-  startScheduler();
-  console.log('[server/start] started token scheduler');
-} catch (e) {
-  console.error('[server/start] failed to start scheduler', e);
+const PHASE = String(process.env.NEXT_PHASE || '').toLowerCase();
+const IS_BUILD = PHASE.includes('phase-production-build') || process.env.NEXT_BUILD === '1';
+const IS_EXPORT = process.env.NEXT_EXPORT === '1';
+const SHOULD_START = process.env.NODE_ENV === 'production' && !IS_BUILD && !IS_EXPORT;
+
+if (SHOULD_START) {
+  try {
+    startScheduler();
+    console.log('[server/start] started token scheduler');
+  } catch (e) {
+    console.error('[server/start] failed to start scheduler', e);
+  }
+} else {
+  // Helpful during builds to reduce log noise
+  // console.log('[server/start] scheduler not started (build/export phase)');
 }
 
 export default {};
