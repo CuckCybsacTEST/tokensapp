@@ -23,8 +23,19 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return apiError("VALIDATION_ERROR", "Datos inválidos", parsed.error.flatten(), 400);
   }
-  const count = await prisma.prize.count();
-  const key = `premio${count + 1}`;
+  // Compute a robust unique key: find the smallest available "premioN"
+  async function computeNextKey() {
+    const rows = await prisma.prize.findMany({ select: { key: true }, where: { key: { startsWith: 'premio' } } });
+    const used = new Set<number>();
+    for (const r of rows) {
+      const m = /^premio(\d+)$/.exec(String(r.key || ''));
+      if (m) used.add(Number(m[1]));
+    }
+    let i = 1;
+    while (used.has(i)) i++;
+    return `premio${i}`;
+  }
+  let key = await computeNextKey();
   let color = parsed.data.color;
   if (color != null) {
     if (color === "")
@@ -35,7 +46,23 @@ export async function POST(req: Request) {
       color = norm;
     }
   }
-  const prize = await prisma.prize.create({ data: { key, ...parsed.data, color } });
-  invalidatePrizeCache(prize.id);
-  return apiOk(prize, 201);
+  // Create with retry on unique constraint collisions
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const prize = await prisma.prize.create({ data: { key, ...parsed.data, color } });
+      invalidatePrizeCache(prize.id);
+      return apiOk(prize, 201);
+    } catch (e: any) {
+      const code = e?.code || e?.errorCode || e?.meta?.code;
+      const target = Array.isArray(e?.meta?.target) ? e.meta.target.join(',') : e?.meta?.target;
+      // Prisma P2002 = Unique constraint failed on the {constraint}
+      if ((code === 'P2002' || /unique/i.test(String(e?.message))) && String(target || '').includes('key')) {
+        // Recompute next key and retry
+        key = await computeNextKey();
+        continue;
+      }
+      return apiError('CREATE_FAILED', 'No se pudo crear el premio', { message: String(e?.message || e) }, 500);
+    }
+  }
+  return apiError('CREATE_CONFLICT', 'No se pudo generar una clave única para el premio', {}, 409);
 }
