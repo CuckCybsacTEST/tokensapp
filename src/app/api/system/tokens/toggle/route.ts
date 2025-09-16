@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/audit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { invalidateSystemConfigCache } from '@/lib/config';
+import { computeTokensEnabled } from '@/lib/tokensMode';
+const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
 console.log("Toggle route module loaded successfully!");
 
@@ -61,28 +63,17 @@ export async function POST(req: Request) {
       console.error('audit helper failed', e);
     }
 
-  // Calcular tiempos de activación/desactivación para informar al cliente
-    const activationDate = new Date(now);
-    const deactivationDate = new Date(now);
-    
-    // Configurar horas para activación (18:00) y desactivación (00:00 del siguiente día)
-    activationDate.setHours(18, 0, 0, 0);
-    deactivationDate.setHours(0, 0, 0, 0);
-    deactivationDate.setDate(deactivationDate.getDate() + 1); // Siguiente día
-    
-    // Si la hora actual ya pasó las 18:00 y son menos de las 00:00, la próxima activación es mañana
-    if (now.getHours() >= 18) {
-      activationDate.setDate(activationDate.getDate() + 1);
-    }
-    
-    // Próxima programación según el estado
-    const nextSchedule = enabled ? deactivationDate.toISOString() : activationDate.toISOString();
+    // Calcular programación según TZ Lima
+    const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
+    const nextSchedule = computed.nextToggleIso || now.toISOString();
+    const scheduledEnabled = computed.enabled;
 
     return NextResponse.json({ 
       ok: true, 
       tokensEnabled: Boolean(updated?.tokensEnabled),
       serverTimeIso: now.toISOString(),
-      nextSchedule: nextSchedule
+      nextSchedule: nextSchedule,
+      scheduledEnabled
     });
   } catch (e: any) {
     console.error('tokens/toggle endpoint error', e);

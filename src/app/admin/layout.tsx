@@ -3,6 +3,8 @@ import "../globals.css";
 import LogoutButton from "./components/LogoutButton";
 import { verifySessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
+// Garantizar arranque del scheduler también al renderizar el layout de admin
+import "@/server/start";
 
 export const metadata = {
   title: "QR Prize Admin",
