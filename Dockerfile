@@ -45,6 +45,7 @@ COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 # Expose port (Railway sets PORT env)
 ENV PORT=3000
@@ -53,6 +54,10 @@ EXPOSE 3000
 # Health environment defaults
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
-# Start command
+# Ensure runtime has permissions over app dir (including sqlite file path)
+RUN chown -R 1001:1001 /app
+
+# Start command via entrypoint script (auto prisma db push for SQLite)
 USER nextjs
-CMD ["npm", "start"]
+RUN chmod +x /app/scripts/docker-start.sh
+CMD ["/bin/sh", "/app/scripts/docker-start.sh"]
