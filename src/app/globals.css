@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Variables for light/dark themes */
+:root {
+  --color-bg: #ffffff;
+  --color-bg-soft: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-soft: #475569;
+  --color-accent: #0ea5e9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f172a;
+    --color-bg-soft: #1e293b;
+    --color-border: #334155;
+    --color-text: #f1f5f9;
+    --color-text-soft: #cbd5e1;
+    --color-accent: #38bdf8;
+  }
+}
+
+html, body, #__next {
+  height: 100%;
+}
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  font-family: var(--font-text, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji");
+}
+
+/* Scrollbar (webkit) */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* Reusable component classes */
+.app-container { @apply mx-auto px-4 py-6; max-width:72rem; }
+.card { @apply rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800; }
+.card-header { @apply border-b border-slate-200 px-5 py-3 text-sm font-medium dark:border-slate-700; }
+.card-body { @apply p-5; }
+.btn { @apply inline-flex items-center gap-2 rounded-md border border-transparent bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60; }
+.btn-secondary { @apply bg-slate-600 hover:bg-slate-500 focus:ring-slate-500; }
+.btn-outline { @apply border-slate-300 bg-transparent text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700; }
+.btn-danger { @apply inline-flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-600 dark:bg-rose-900/30 dark:text-rose-200; }
+.input { @apply block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100; }
+.badge { @apply inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200; }
+.table { @apply w-full table-auto border-collapse text-sm; }
+.table thead th { @apply border-b border-slate-300 px-3 py-2 text-left font-semibold dark:border-slate-600; }
+.table tbody td { @apply border-b border-slate-200 px-3 py-2 dark:border-slate-700; }
+.form-row { @apply flex flex-col gap-1; }
+.grid-cards { @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3; }
+
+/* Dark overrides */
+.dark .card { @apply bg-slate-800; }
+
+/* Utility helpers */
+.truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

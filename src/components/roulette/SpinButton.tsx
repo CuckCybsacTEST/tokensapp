@@ -1,0 +1,207 @@
+import React, { useState } from 'react';
+
+interface SpinButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+// Componente de botón mejorado con mejor manejo de eventos
+const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false }) => {
+  const [isHover, setIsHover] = useState(false);
+  const [isPress, setIsPress] = useState(false);
+  
+  const size = 130; // Tamaño del botón
+  const center = size / 2;
+  const outerRingRadius = 63; 
+  const innerCircleRadius = 54;
+  
+  // Crear un área efectiva completa para detectar eventos del mouse
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!disabled) {
+      onClick();
+    }
+  };
+  
+  // Controladores de eventos simplificados
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!disabled) setIsPress(true);
+  };
+  
+  const handleMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!disabled) setIsPress(false);
+  };
+  
+  const handleMouseEnter = () => {
+    if (!disabled) setIsHover(true);
+  };
+  
+  const handleMouseLeave = () => {
+    if (!disabled) {
+      setIsHover(false);
+      setIsPress(false);
+    }
+  };
+
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <div 
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: size,
+        height: size,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: '50%',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        zIndex: 30, // Aumentamos el z-index para asegurarnos de que esté por encima
+        background: 'transparent',
+        boxShadow: isFocused ? '0 0 0 3px rgba(255, 215, 0, 0.8)' : 
+                   isHover ? '0 0 15px 5px rgba(255, 215, 0, 0.3)' : 
+                   isPress ? '0 0 8px 3px rgba(255, 215, 0, 0.5)' : 'none',
+        transition: 'box-shadow 0.3s ease, transform 0.2s ease',
+        outline: 'none'
+      }}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        // Activar el giro con Enter o Space
+        if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-label="Girar la ruleta"
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        style={{
+          transform: isPress ? 'scale(0.97)' : isHover ? 'scale(1.03)' : 'scale(1)',
+          filter: `drop-shadow(2px 3px ${isPress ? '3px' : '5px'} rgba(0,0,0,0.4))`,
+          transition: 'transform 0.2s ease-out, filter 0.2s ease-out',
+          opacity: disabled ? 0.7 : 1,
+          pointerEvents: 'none' // El SVG no captura eventos, solo el div padre
+        }}
+      >
+      <defs>
+        <radialGradient id="redGlossy" cx="50%" cy="40%" r="50%" fx="50%" fy="40%">
+          <stop offset="0%" stopColor={isPress ? "#FF7070" : isHover ? "#FF7F7F" : "#FF6B6B"} />
+          <stop offset="100%" stopColor={isPress ? "#D40000" : isHover ? "#D41010" : "#C40C0C"} />
+        </radialGradient>
+        <linearGradient id="spinButtonGold" x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0%" stopColor={isHover ? "#FFF7D0" : "#FFF3C1"} />
+          <stop offset="50%" stopColor="#F0B825" />
+          <stop offset="100%" stopColor={isPress ? "#8F6200" : "#B47C00"} />
+        </linearGradient>
+        <linearGradient id="arrowGradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="50%" stopColor="#FFD700" />
+          <stop offset="100%" stopColor="#F0B825" />
+        </linearGradient>
+        
+        <filter id="arrowShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#614200" floodOpacity="0.5" />
+        </filter>
+        <filter id="buttonGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feFlood floodColor="#FFDD00" floodOpacity="0.3" result="glowColor" />
+          <feComposite in="glowColor" in2="blur" operator="in" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Base que contiene todos los elementos */}
+      <g>
+        {/* Outer gold ring with glow effect when hovered */}
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={outerRingRadius} 
+          fill="url(#spinButtonGold)"
+          stroke="#A66F00"
+          strokeWidth="1.5"
+          filter={isHover ? "url(#buttonGlow)" : "none"}
+        />
+
+        {/* Inner red button */}
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={innerCircleRadius} 
+          fill="url(#redGlossy)" 
+          stroke="#800000" 
+          strokeWidth={isPress ? 2 : 3.5}
+        />
+
+        {/* Texto GIRAR */}
+        <text
+          x={center}
+          y={center}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#FFFFFF"
+          fontFamily="Arial, sans-serif"
+          fontWeight="bold"
+          fontSize="24px"
+          filter="url(#arrowShadow)"
+          style={{
+            textShadow: '0 0 3px rgba(255,255,255,0.7)'
+          }}
+        >
+          GIRAR
+        </text>
+      </g>
+      
+      {/* Efecto pulsante para llamar la atención */}
+      {isHover && !isPress && (
+        <circle 
+          cx={center} 
+          cy={center} 
+          r={outerRingRadius + 5} 
+          fill="none" 
+          stroke="#FFD700" 
+          strokeWidth="2" 
+          opacity="0.8"
+          style={{
+            animation: 'pulse 1.5s infinite',
+          }}
+        >
+          <animate 
+            attributeName="r" 
+            values={`${outerRingRadius + 2};${outerRingRadius + 6};${outerRingRadius + 2}`} 
+            dur="1.5s" 
+            repeatCount="indefinite" 
+          />
+          <animate 
+            attributeName="opacity" 
+            values="0.8;0.4;0.8" 
+            dur="1.5s" 
+            repeatCount="indefinite" 
+          />
+        </circle>
+      )}
+    </svg>
+    </div>
+  );
+};
+
+export default SpinButton;

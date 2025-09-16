@@ -1,0 +1,1 @@
+// deprecated manual endpoint test (removed)

@@ -1,0 +1,93 @@
+// Admin home: simple entry points to main modules (no metrics here)
+
+export default function AdminDashboard() {
+  
+  return (
+    <div className="space-y-8">
+      
+
+      {/* Nueva home con dos funciones principales */}
+  <section className="grid grid-cols-1 gap-6">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 dark:text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Tokens</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/tokens" className="btn">Panel de Control</a>
+            <a href="/admin/prizes" className="btn">Gestión de Tokens</a>
+            <a href="/admin/batches" className="btn">Lotes</a>
+            <a href="/admin/print" className="btn">Impresión</a>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Personal y Actividades</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/attendance" className="btn">Control de Asistencia</a>
+            <a href="/admin/tasks/metrics" className="btn">Métricas de Tareas</a>
+            <a href="/admin/users" className="btn">Gestión de Colaboradores</a>
+            <a href="/admin/tasks" className="btn">Gestión de tareas</a>
+            <a href="/scanner" className="btn">Escáner</a>
+          </div>
+        </div>
+
+        {/* Gestión de Cumpleaños */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15a4 4 0 01-4 4H7a4 4 0 110-8h10a4 4 0 014 4zM8 7v.01M12 7v.01M16 7v.01" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Cumpleaños</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/birthdays" className="btn">Abrir módulo</a>
+          </div>
+        </div>
+
+        {/* Próximamente: Gestión de Carta y Pedidos */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6M9 8h6M4 6h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Carta y Pedidos</h3>
+            <span className="ml-2 text-xs px-2 py-0.5 rounded bg-slate-700/60 text-slate-200">Próximamente</span>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <button className="btn opacity-60 cursor-not-allowed pointer-events-none" aria-disabled="true" title="Disponible próximamente">Próximamente</button>
+          </div>
+        </div>
+      </section>
+      
+      {/* (El panel y métricas de tokens ahora viven en /admin/tokens) */}
+      
+      <footer className="text-xs text-slate-500 dark:text-slate-400 text-center p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          Última actualización: {new Date().toLocaleString()}
+        </div>
+      </footer>
+    </div>
+  );
+}

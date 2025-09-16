@@ -1,0 +1,2 @@
+prize_id,prize_key,prize_label,active,total_tokens,redeemed_overall,redeemed_filtered,redeemed_rate_filtered,remaining_unredeemed,expired_unredeemed,disabled_tokens,first_redeemed_at,last_redeemed_at
+cmfix9etf005qkoyhzklxwghf,A,Premio A,true,1,0,0,0.00,1,0,0,,

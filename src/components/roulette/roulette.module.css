@@ -1,0 +1,90 @@
+.rouletteContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.wheelWrapper {
+  position: relative;
+  width: 500px;
+  height: 500px;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 30; /* elevar por encima del marco decorativo */
+  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  transform-origin: center center;
+  will-change: transform;
+  transition: none; /* Resetear transición por defecto */
+  touch-action: none; /* Prevenir gestos táctiles */
+}
+
+/* Transición suave durante el giro */
+.wheel.spinning {
+  transition: transform 6s cubic-bezier(0.2, 0, 0.2, 1) !important;
+  filter: brightness(1.1); /* Hacer la rueda un poco más brillante durante el giro */
+  will-change: transform; /* Optimización para animaciones */
+  animation: spinGlow 6s ease-out; /* Añadir animación de brillo */
+  pointer-events: none; /* Desactivar interacción mientras gira */
+}
+
+/* Aplicamos una transición suave cuando no está girando */
+.wheel:not(.spinning) {
+  transition: transform 0.5s ease-out;
+}
+
+/* Efecto de resplandor durante el giro */
+.wheelWrapper:has(.wheel.spinning)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.7);
+  animation: glowPulse 1.5s infinite alternate;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes glowPulse {
+  0% { opacity: 0.3; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6); }
+  50% { opacity: 0.5; box-shadow: 0 0 25px 10px rgba(255, 215, 0, 0.8); }
+  100% { opacity: 0.7; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6); }
+}
+
+@keyframes spinGlow {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+  100% { filter: brightness(1.1); }
+}
+
+/* Estilos eliminados del overlay ya que ahora los manejamos en el SpinButton */
+
+/* Añadimos un reflejo en la ruleta para efecto 3D */
+.wheel::before {
+  content: '';
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  right: 5%;
+  bottom: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  z-index: 1; /* mantener el reflejo por debajo de los textos de segmentos */
+  pointer-events: none;
+}
+

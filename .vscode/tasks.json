@@ -1,0 +1,102 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "npm run dev",
+			"args": [],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "Run smoke spin request",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:BIRTHDAYS_PUBLIC='1'; $env:NEXT_PUBLIC_BIRTHDAYS_ENABLED='1'; echo 'GET status'; try { Invoke-RestMethod -UseBasicParsing -Uri 'http://localhost:3000/api/system/tokens/status' } catch { Write-Host $_; }; echo 'Toggle ON'; try { Invoke-RestMethod -UseBasicParsing -Method Post -Headers @{'Cookie'='session=staff'; 'Content-Type'='application/json'} -Body '{\"enabled\":true}' -Uri 'http://localhost:3000/api/system/tokens/toggle' } catch { Write-Host $_; }; Start-Sleep -Seconds 1; echo 'Check status again'; try { Invoke-RestMethod -UseBasicParsing -Uri 'http://localhost:3000/api/system/tokens/status' } catch { Write-Host $_; }"
+			]
+		},
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "npm run dev",
+			"args": [],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "npm run dev",
+			"args": [],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "npm run dev",
+			"args": [],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "npm run dev",
+			"args": [],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "Typecheck TS",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Vitest measurable tasks",
+			"type": "shell",
+			"command": "npx vitest run -t \"measurable task: metadata present and save derives done by target\"",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run measurable E2E",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"e2e",
+				"--",
+				"tests/e2e/checklist-measurable.spec.ts"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "test"
+		},
+		{
+			"label": "Run measurable E2E",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"e2e",
+				"--",
+				"tests/e2e/checklist-measurable.spec.ts"
+			],
+			"isBackground": false,
+			"group": "test"
+		}
+	]
+}

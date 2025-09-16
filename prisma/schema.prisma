@@ -1,0 +1,312 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Prize {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  label          String
+  color          String?
+  description    String?
+  stock          Int?
+  active         Boolean   @default(true)
+  emittedTotal   Int       @default(0)
+  lastEmittedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  assignedTokens Token[]   @relation("AssignedPrize")
+  tokens         Token[]
+}
+
+model Batch {
+  id               String            @id @default(cuid())
+  description      String?
+  createdBy        String?
+  createdAt        DateTime          @default(now())
+  rouletteSessions RouletteSession[]
+  tokens           Token[]
+}
+
+model Token {
+  id                String    @id @default(cuid())
+  prizeId           String
+  batchId           String
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  redeemedAt        DateTime?
+  signature         String
+  signatureVersion  Int       @default(1)
+  disabled          Boolean   @default(false)
+  revealedAt        DateTime?
+  assignedPrizeId   String?
+  deliveredAt       DateTime?
+  deliveredByUserId String?
+  deliveryNote      String?
+  assignedPrize     Prize?    @relation("AssignedPrize", fields: [assignedPrizeId], references: [id])
+  batch             Batch     @relation(fields: [batchId], references: [id])
+  prize             Prize     @relation(fields: [prizeId], references: [id])
+
+  @@index([prizeId])
+  @@index([batchId])
+  @@index([expiresAt])
+  @@index([redeemedAt])
+  @@index([revealedAt])
+  @@index([deliveredAt])
+  @@index([batchId, deliveredAt])
+}
+
+model SystemConfig {
+  id            Int      @id @default(autoincrement())
+  tokensEnabled Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  type      String
+  message   String?
+  metadata  String?
+  createdAt DateTime @default(now())
+}
+
+model PrintTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  filePath  String
+  meta      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+model RouletteSession {
+  id           String         @id @default(cuid())
+  batchId      String
+  mode         String         @default("BY_PRIZE")
+  status       String         @default("ACTIVE")
+  spins        Int            @default(0)
+  maxSpins     Int?
+  createdAt    DateTime       @default(now())
+  finishedAt   DateTime?
+  meta         String
+  batch        Batch          @relation(fields: [batchId], references: [id])
+  spinsHistory RouletteSpin[]
+
+  @@index([batchId])
+  @@index([status])
+}
+
+model RouletteSpin {
+  id             String          @id @default(cuid())
+  sessionId      String
+  prizeId        String
+  tokenId        String?
+  weightSnapshot Int
+  order          Int
+  createdAt      DateTime        @default(now())
+  session        RouletteSession @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, order])
+  @@index([sessionId])
+  @@index([prizeId])
+}
+
+model Person {
+  id               String             @id @default(cuid())
+  code             String             @unique
+  name             String
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  dni              String?            @unique
+  area             String?
+  jobTitle         String?
+  PersonTaskStatus PersonTaskStatus[]
+  scans            Scan[]
+  user             User?
+
+  @@index([code])
+}
+
+model Scan {
+  id        String   @id @default(cuid())
+  personId  String
+  scannedAt DateTime @default(now())
+  type      String   @default("IN")
+  deviceId  String?
+  byUser    String?
+  meta      String?
+  createdAt DateTime @default(now())
+  person    Person   @relation(fields: [personId], references: [id])
+
+  @@index([personId])
+  @@index([scannedAt])
+}
+
+model User {
+  id                  String             @id @default(cuid())
+  username            String             @unique
+  passwordHash        String
+  role                String             @default("COLLAB")
+  personId            String             @unique
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  updatedTaskStatuses PersonTaskStatus[] @relation("TaskStatusUpdatedBy")
+  person              Person             @relation(fields: [personId], references: [id])
+}
+
+model Task {
+  id        String             @id @default(cuid())
+  label     String
+  active    Boolean            @default(true)
+  sortOrder Int                @default(0)
+  priority  Int                @default(0)
+  // When true la tarea ya no se muestra como pendiente (administrativamente completada)
+  completed Boolean            @default(false)
+  // Measurement fields: allow tasks to be "measurable" (user enters a numeric value)
+  measureEnabled Boolean       @default(false)
+  targetValue    Int?
+  unitLabel      String?
+  // Optional scheduling window for visibility in checklist (YYYY-MM-DD strings)
+  startDay  String?
+  endDay    String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  area      String?
+  statuses  PersonTaskStatus[]
+
+  @@index([area])
+}
+
+model PersonTaskStatus {
+  id        String   @id @default(cuid())
+  personId  String
+  taskId    String
+  day       String
+  done      Boolean  @default(false)
+  // For measurable tasks, captures the user's numeric progress for the day
+  measureValue Int    @default(0)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  user      User?    @relation("TaskStatusUpdatedBy", fields: [updatedBy], references: [id])
+  task      Task     @relation(fields: [taskId], references: [id])
+  person    Person   @relation(fields: [personId], references: [id])
+
+  @@unique([personId, taskId, day])
+  @@index([personId])
+  @@index([taskId])
+  @@index([day])
+}
+
+model BirthdayPack {
+  id           String                @id @default(cuid())
+  name         String                @unique
+  qrCount      Int
+  bottle       String
+  perks        String
+  active       Boolean               @default(true)
+  featured     Boolean               @default(false)
+  reservations BirthdayReservation[]
+
+  @@index([active])
+  @@index([featured])
+}
+
+model BirthdayReservation {
+  id                String             @id @default(cuid())
+  celebrantName     String
+  phone             String
+  documento         String
+  email             String?
+  date              DateTime
+  timeSlot          String
+  packId            String
+  guestsPlanned     Int
+  status            String             @default("draft")
+  tokensGeneratedAt DateTime?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  pack              BirthdayPack       @relation(fields: [packId], references: [id])
+  courtesyItems     CourtesyItem[]
+  inviteTokens      InviteToken[]
+  photoDeliveries   PhotoDeliverable[]
+  redemptions       TokenRedemption[]
+
+  @@index([packId])
+  @@index([date, timeSlot])
+  @@index([status])
+}
+
+model InviteToken {
+  id            String              @id @default(cuid())
+  reservationId String
+  code          String              @unique
+  kind          String              @default("guest")
+  status        String              @default("unclaimed")
+  expiresAt     DateTime
+  claim         String
+  metadata      String?
+  // Multi-use support
+  usedCount     Int                 @default(0)
+  maxUses       Int?
+  createdAt     DateTime            @default(now())
+  reservation   BirthdayReservation @relation(fields: [reservationId], references: [id])
+  redemptions   TokenRedemption[]
+
+  @@index([reservationId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model TokenRedemption {
+  id            String               @id @default(cuid())
+  tokenId       String
+  redeemedAt    DateTime             @default(now())
+  by            String?
+  device        String?
+  location      String?
+  reservationId String?
+  reservation   BirthdayReservation? @relation(fields: [reservationId], references: [id])
+  token         InviteToken          @relation(fields: [tokenId], references: [id])
+
+  @@index([tokenId])
+  @@index([redeemedAt])
+  @@index([reservationId])
+}
+
+model CourtesyItem {
+  id            String              @id @default(cuid())
+  reservationId String
+  type          String
+  status        String              @default("pending")
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  reservation   BirthdayReservation @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+  @@index([type])
+  @@index([status])
+}
+
+model PhotoDeliverable {
+  id            String              @id @default(cuid())
+  reservationId String
+  kind          String              @default("group")
+  url           String?
+  status        String              @default("pending")
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  reservation   BirthdayReservation @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+  @@index([status])
+}
