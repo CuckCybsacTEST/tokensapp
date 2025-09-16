@@ -34,8 +34,10 @@ export type ComputeResult = {
  * tz: IANA timezone string (e.g. 'America/Argentina/Buenos_Aires'). If not provided,
  * we use the runtime's resolved timeZone via Intl; fallback to UTC.
  */
+const DEFAULT_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
+
 export function computeTokensEnabled(opts: { now?: Date; tz?: string }): ComputeResult {
-  const tz = opts.tz || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const tz = opts.tz || DEFAULT_TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   // Build a DateTime in the desired tz (Luxon returns new instances)
   const baseNow: any = opts.now ? DateTime.fromJSDate(opts.now) : DateTime.now();
   const now: any = baseNow && typeof baseNow.setZone === 'function' ? baseNow.setZone(tz) : baseNow;

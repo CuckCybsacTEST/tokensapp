@@ -56,6 +56,7 @@ async function getMetrics() {
 
 export default async function TokensPanelPage() {
   const m = await getMetrics();
+  const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
   return (
     <div className="space-y-8">
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
@@ -68,6 +69,7 @@ export default async function TokensPanelPage() {
           </div>
           <h2 className="text-xl font-bold">Control del Sistema</h2>
         </div>
+        <div className="text-sm opacity-70 mb-2">Zona horaria programada: {tz} (activación 18:00, desactivación 00:00)</div>
         <TokensToggle initialEnabled={m.tokensEnabled} />
       </div>
 

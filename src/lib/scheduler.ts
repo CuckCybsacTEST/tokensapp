@@ -24,6 +24,8 @@ import { prisma } from '@/lib/prisma';
 import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from './tokensMode';
 
+const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
+
 let cron: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -56,7 +58,7 @@ async function setTokensEnabled(value: boolean) {
 export async function reconcileOnce() {
   try {
     const cfg = await readConfig();
-    const computed = computeTokensEnabled({ now: new Date() });
+  const computed = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ });
     const desired = computed.enabled;
     const current = Boolean(cfg?.tokensEnabled);
     if (desired !== current) {
@@ -99,7 +101,7 @@ export function startScheduler() {
     } catch (e) {
       console.error('[scheduler][18:00] job failed', e);
     }
-  }, { scheduled: true });
+  }, { scheduled: true, timezone: TOKENS_TZ });
 
   // Schedule 00:00 -> always disable
   const job00 = cron.schedule('0 0 * * *', async () => {
@@ -109,7 +111,7 @@ export function startScheduler() {
     } catch (e) {
       console.error('[scheduler][00:00] job failed', e);
     }
-  }, { scheduled: true });
+  }, { scheduled: true, timezone: TOKENS_TZ });
 
   // Birthdays: expire invite tokens periodically and emit minimal logs
   const jobBday = cron.schedule('*/10 * * * *', async () => {
@@ -118,7 +120,7 @@ export function startScheduler() {
     } catch (e) {
       console.error('[scheduler][birthdays] job failed', e);
     }
-  }, { scheduled: true });
+  }, { scheduled: true, timezone: TOKENS_TZ });
 
   jobs = [job18, job00, jobBday];
   console.log('[scheduler] started jobs (18:00 enable / 00:00 disable / birthdays */10m expire)');

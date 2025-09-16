@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { invalidateSystemConfigCache } from '@/lib/config';
+import { computeTokensEnabled } from '@/lib/tokensMode';
+// Prefer Lima timezone by default; allow override via env
+const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
 export async function GET() {
   try {
@@ -12,31 +15,30 @@ export async function GET() {
   const cfg = rows && rows.length ? rows[0] : { tokensEnabled: false };
 
     const now = new Date();
+    const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
 
-    // Calcular tiempos de activación/desactivación
-    // Próximas fronteras diarias locales
-    const activationDate = new Date(now);
-    activationDate.setHours(18, 0, 0, 0); // hoy a las 18:00
-    if (now.getHours() >= 18) {
-      // si ya pasaron las 18:00, la próxima activación es mañana a las 18:00
-      activationDate.setDate(activationDate.getDate() + 1);
-    }
-
-    const deactivationDate = new Date(now);
-    deactivationDate.setHours(0, 0, 0, 0); // hoy a las 00:00
-    // la próxima desactivación siempre es el próximo 00:00 (mañana a las 00:00)
-    deactivationDate.setDate(deactivationDate.getDate() + 1);
-
-    // Determinar el próximo cambio según el estado actual
-    const nextScheduleDate = Boolean(cfg.tokensEnabled) ? deactivationDate : activationDate;
+    // Calcular tiempos de activación/desactivación en TZ fija
+    // Próximas fronteras diarias en Lima: hoy 18:00; próximo 00:00
+    const activationTime = computed.nextToggleIso && !Boolean(cfg.tokensEnabled)
+      ? computed.nextToggleIso
+      : (() => {
+          // hoy a las 18:00 en TZ; si ya pasó, mañana 18:00
+          // Usamos computeTokensEnabled para derivar la siguiente activación si fuese necesario
+          const alt = computeTokensEnabled({ now, tz: TOKENS_TZ });
+          return alt.nextToggleIso || now.toISOString();
+        })();
+    const deactivationTime = computed.nextToggleIso && Boolean(cfg.tokensEnabled)
+      ? computed.nextToggleIso
+      : (() => computed.nextToggleIso || now.toISOString())();
 
     return NextResponse.json({
       tokensEnabled: Boolean(cfg.tokensEnabled),
       serverTimeIso: now.toISOString(),
-      nextSchedule: nextScheduleDate.toISOString(),
-      // Información adicional para temporizadores
-  activationTime: activationDate.toISOString(),
-  deactivationTime: deactivationDate.toISOString(),
+      timezone: TOKENS_TZ,
+      nextSchedule: computed.nextToggleIso || now.toISOString(),
+      // Información adicional para temporizadores en TZ fija
+      activationTime: String(activationTime),
+      deactivationTime: String(deactivationTime),
       systemTime: now.toISOString()
     });
   } catch (e: any) {
