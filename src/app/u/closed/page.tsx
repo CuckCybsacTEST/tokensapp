@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import "../../globals.css";
 
@@ -11,7 +11,7 @@ function localYMD(): string {
   return local.toISOString().slice(0, 10);
 }
 
-export default function ClosedPage() {
+function ClosedPageInner() {
   const params = useSearchParams();
   const day = params.get("day") || localYMD();
   const time = useMemo(() => new Date().toLocaleTimeString(), []);
@@ -40,5 +40,13 @@ export default function ClosedPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ClosedPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-6">Cargando…</div>}>
+      <ClosedPageInner />
+    </Suspense>
   );
 }

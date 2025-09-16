@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import "../../globals.css";
 
@@ -41,7 +41,7 @@ function ymdUtc(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export default function ChecklistPage() {
+function ChecklistPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const day = params.get("day");
@@ -582,5 +582,13 @@ export default function ChecklistPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ChecklistPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-6">Cargando…</div>}>
+      <ChecklistPageInner />
+    </Suspense>
   );
 }

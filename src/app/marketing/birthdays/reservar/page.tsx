@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = 'force-dynamic';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // Simple validators (could replace with zod/yup)
@@ -8,7 +8,7 @@ function isValidDateYYYYMMDD(v: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
-export default function ReservarCumplePage() {
+function ReservarCumplePageInner() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -269,5 +269,13 @@ export default function ReservarCumplePage() {
         </div>
       </form>
     </section>
+  );
+}
+
+export default function ReservarCumplePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-6">Cargando…</div>}>
+      <ReservarCumplePageInner />
+    </Suspense>
   );
 }
