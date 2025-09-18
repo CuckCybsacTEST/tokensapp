@@ -1,0 +1,26 @@
+/* Layout adaptativo para la página de la ruleta.
+   Separa reglas que antes estaban en <style jsx global> para evitar uso de styled-jsx
+   en un Server Component (causaba import de 'client-only'). */
+
+.rouletteViewport {
+  display: flex;
+  flex-direction: column;
+  /* Mantenemos arriba el contenido y damos un padding-top proporcional */
+  justify-content: flex-start;
+  min-height: calc(100vh - 160px); /* reserva espacio razonable para footer sin empujarlo demasiado */
+}
+
+/* En pantallas muy altas reducimos aún más el espacio inferior limitando altura del bloque principal */
+@media (min-height: 1000px) {
+  .rouletteViewport {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
+
+@media (min-height: 1400px) {
+  .rouletteViewport {
+    padding-top: 3rem;
+    padding-bottom: 2.5rem;
+  }
+}
