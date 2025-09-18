@@ -14,8 +14,8 @@ const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false }) =
         position: 'absolute',
         top: '-30px', // Ajustado para posicionar correctamente el puntero invertido
         left: '50%',
-        transform: 'translateX(-50%)',
-  zIndex: 40,
+  transform: 'translateX(-50%)',
+  zIndex: 1000, // asegurar que quede por encima de glow/overlay
         filter: spinning 
           ? 'drop-shadow(0 0 8px rgba(255,215,0,0.8))' 
           : 'drop-shadow(2px 2px 5px rgba(0,0,0,0.5))'

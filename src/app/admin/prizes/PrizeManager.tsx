@@ -314,8 +314,9 @@ export default function PrizeManager({
                         <th>Label</th>
                         <th>Color</th>
                         <th>Lote</th>
-                        <th>Stock</th>
-                        <th>Info</th>
+                        <th>Emitidos</th>
+                        <th>Revelados</th>
+                        <th>Consumidos</th>
                         <th>Activo</th>
                         <th></th>
                       </tr>
@@ -352,23 +353,32 @@ export default function PrizeManager({
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                          <td>{p.stock == null ? "∞" : p.stock}</td>
+                          {/* Emitidos (histórico) */}
                           <td className="text-xs">
-                            {p.stock === 0 ? (
-                              <span
-                                className="badge border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-600 dark:bg-indigo-800 dark:text-indigo-200"
-                                title={`Total emitido: ${p.emittedTotal || 0}`}
-                              >
-                                Emitido ({p.emittedTotal || 0})
-                              </span>
-                            ) : (
-                              <span
-                                className="badge border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-800 dark:text-amber-200"
-                                title={`Pendiente. Total emitido: ${p.emittedTotal || 0}`}
-                              >
-                                Pendiente ({p.stock == null ? "∞" : p.stock})
-                              </span>
-                            )}
+                            <span
+                              className="badge border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-600 dark:bg-indigo-800 dark:text-indigo-200"
+                              title="Tokens generados históricamente para este premio"
+                            >
+                              {p.emittedTotal ?? 0}
+                            </span>
+                          </td>
+                          {/* Revelados (con revealedAt pero sin deliveredAt) */}
+                          <td className="text-xs">
+                            <span
+                              className="badge border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-800 dark:text-amber-200"
+                              title="Tokens revelados aún no entregados (pending delivery)"
+                            >
+                              {p.revealedCount ?? 0}
+                            </span>
+                          </td>
+                          {/* Consumidos (entregados) */}
+                          <td className="text-xs">
+                            <span
+                              className="badge border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-800 dark:text-emerald-200"
+                              title="Tokens ya entregados / canje confirmados"
+                            >
+                              {p.deliveredCount ?? 0}
+                            </span>
                           </td>
                           <td>
                             <span

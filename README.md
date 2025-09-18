@@ -1,5 +1,7 @@
 # QR Prizes App
 
+![CI](https://github.com/deivipluss/tokensapp/actions/workflows/ci.yml/badge.svg)
+
 Aplicación Next.js para generación de tokens con premios preasignados, QRs y canje con expiración.
 
 ## Stack
@@ -8,6 +10,7 @@ Aplicación Next.js para generación de tokens con premios preasignados, QRs y c
 - Zod, date-fns
 - QRCode, Archiver
 - Sistema de ruleta interactivo
+- Scheduler de tokens (ventana operativa 18:00–00:00 con overrides manuales fuera de horario)
 
 ## Configuración
 1. Copiar `.env.example` a `.env` y ajustar `TOKEN_SECRET`.
@@ -23,9 +26,45 @@ Aplicación Next.js para generación de tokens con premios preasignados, QRs y c
 	Por defecto, en desarrollo los endpoints públicos están habilitados si no configuras nada. En producción, configura explícitamente una de las variables anteriores según tu despliegue.
 
 8. (Seguridad) clientSecret usa el mismo secreto que tokens (`TOKEN_SECRET`)
+### Política de activación (Scheduler Tokens)
+
+El sistema aplica una ventana programada: operativo entre 18:00 (inclusive) y 00:00 (exclusive) en la zona `America/Lima` (configurable vía `TOKENS_TIMEZONE`).
+
+Option B (boundary enforcement):
+- A las 18:00 se fuerza ON.
+- A las 00:00 se fuerza OFF.
+- Si un admin enciende manualmente fuera de la ventana (ej. 02:00) queda ON hasta la medianoche siguiente (override temporal).
+- Si un admin apaga dentro de la ventana (ej. 20:30) queda OFF hasta la medianoche (cuando se fuerza OFF igualmente).
+
+Los endpoints internos diferencian:
+- `tokensEnabled` (estado efectivo persistido en DB)
+- `scheduledEnabled` (cálculo informativo – no bloquea si hay override manual ON)
+
+Más detalle y escenarios en [`docs/tokens-scheduler.md`](./docs/tokens-scheduler.md).
 	- El `clientSecret` que autoriza la generación/listado de QRs se firma con `TOKEN_SECRET`.
 	- Debes definir `TOKEN_SECRET` en producción con un valor fuerte (32+ bytes aleatorios).
 	- En desarrollo ya existe un valor por defecto para facilitar pruebas locales.
+
+### Nota rápida `DATABASE_URL`
+En desarrollo, si olvidas definir `DATABASE_URL`, el archivo `src/lib/prisma.ts` aplica un fallback automático a `file:./prisma/dev.db` para evitar errores ruidosos. En producción este fallback NO se aplica: la variable es obligatoria y el arranque fallará explícitamente si falta. Define siempre la variable en entornos CI/CD y staging.
+
+#### Flag de test: `FORCE_PRISMA_PROD`
+Esta variable de entorno NO debe usarse en entornos reales. Su propósito es únicamente forzar el comportamiento "como producción" dentro de los tests sin necesidad de cambiar `NODE_ENV`. Así validamos que la app falla rápidamente si falta `DATABASE_URL`.
+
+- Cómo se usa en tests: el test `tests/env.production.test.ts` establece `FORCE_PRISMA_PROD=1` y deja `DATABASE_URL` vacío para asegurar que se lanza el error esperado.
+- Qué hace: hace que `src/lib/prisma.ts` trate el entorno como productivo aunque `NODE_ENV !== 'production'`.
+- Nunca establecer en CI/CD normal ni en despliegues; en un entorno real siempre debe bastar con `NODE_ENV=production` y una `DATABASE_URL` válida.
+- Si accidentalmente se define y falta `DATABASE_URL`, la app fallará al arrancar (comportamiento correcto pero diagnóstico más confuso). Simplemente elimina la variable.
+
+Resumen: `FORCE_PRISMA_PROD` existe sólo para pruebas automatizadas y depuración puntual; no documentarlo en `.env.example` para desalentar su uso cotidiano.
+
+## Requisitos
+
+- Node.js 20.x (LTS) (`node -v` para verificar)
+- npm 10.x (usa `npm ci` para instalaciones reproducibles)
+- SQLite incluido (no requiere servicio externo para dev)
+
+Agregado en `package.json` el campo `engines` para facilitar validación en plataformas que lo soporten.
 
 ## Documentación
 La documentación técnica completa está disponible en la carpeta `docs/`:
@@ -37,6 +76,7 @@ La documentación técnica completa está disponible en la carpeta `docs/`:
 - [Checklist de tareas](./docs/checklist.md) - Modelo, APIs, flujo BYOD y operación
 - [Registro de colaboradores](./docs/collaborators.md) - Alta de personas/usuarios, seguridad y ejemplos curl/PowerShell
 - [Roles y permisos](./docs/roles.md) - Diferencias entre `COLLAB`/`STAFF` (BYOD) y `ADMIN`/`STAFF` (panel), rutas habilitadas y buenas prácticas
+- [Troubleshooting local](./docs/troubleshooting.md) - Errores comunes (`DATABASE_URL`, EPERM Windows, regeneración Prisma)
 
 > Nota importante (colaboradores): desde ahora, el “código” de Persona es el DNI normalizado (solo dígitos) y ya no se ingresa manualmente. El formulario usa un select de `Área` con opciones fijas. Ver detalles y ejemplos en [Registro de colaboradores](./docs/collaborators.md).
 

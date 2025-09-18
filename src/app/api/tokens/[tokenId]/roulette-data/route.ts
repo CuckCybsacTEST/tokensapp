@@ -19,13 +19,18 @@ export async function GET(
   const allowedBySwitch = cfg.tokensEnabled;
   const allowedBySchedule = scheduled.enabled; // 18:00-00:00
   console.log(`[roulette-data] Token ${tokenId}: switch=${allowedBySwitch ? 'ON' : 'OFF'} scheduled=${allowedBySchedule ? 'OPEN' : 'CLOSED'} tz=${tz}`);
-  if (!allowedBySwitch || !allowedBySchedule) {
-    console.log(`[roulette-data] Rechazando token ${tokenId} por reglas: switch=${allowedBySwitch}, schedule=${allowedBySchedule}`);
+  // Option B: Si el interruptor está ON, permitimos aunque estemos fuera del horario (override manual temporal)
+  if (!allowedBySwitch) {
+    console.log(`[roulette-data] Rechazando token ${tokenId}: system OFF (override not active)`);
     return NextResponse.json({
-      error: 'Ruleta no disponible en este momento.',
-      message: !allowedBySwitch ? 'El sistema está desactivado temporalmente.' : 'Fuera del horario habilitado.',
+      error: 'Sistema desactivado',
+      message: 'El sistema de tokens está desactivado temporalmente.',
       status: 'disabled'
     }, { status: 403 });
+  }
+  // allowedBySwitch === true: se permite aunque scheduled.enabled sea false; añadimos log informativo
+  if (!allowedBySchedule) {
+    console.log(`[roulette-data] Permitido por override manual fuera de ventana horaria (switch ON, scheduled CLOSED)`);
   }
     
     // Buscar el token

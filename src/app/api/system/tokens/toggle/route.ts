@@ -39,15 +39,18 @@ export async function POST(req: Request) {
     const prev = rows && rows.length ? rows[0] : null;
     const exists = !!prev;
 
-    // Actualizar la configuración
+  // Invalidar cache antes de leer/modificar para minimizar race con lectores concurrentes
+  try { invalidateSystemConfigCache(); } catch {}
+
+  // Actualizar la configuración
     if (exists) {
       await prisma.$executeRawUnsafe(`UPDATE SystemConfig SET tokensEnabled = ${enabled ? 1 : 0}, updatedAt = CURRENT_TIMESTAMP WHERE id = 1`);
     } else {
       await prisma.$executeRawUnsafe(`INSERT INTO SystemConfig (id, tokensEnabled, updatedAt) VALUES (1, ${enabled ? 1 : 0}, CURRENT_TIMESTAMP)`);
     }
 
-    // Invalidar la caché
-    invalidateSystemConfigCache();
+  // Invalidar la caché (post-write) para que posteriores lecturas reflejen el nuevo estado
+  try { invalidateSystemConfigCache(); } catch {}
     
     // Leer la configuración actualizada
     const updatedRows: any[] = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled, updatedAt FROM SystemConfig WHERE id = 1 LIMIT 1`);
@@ -64,16 +67,17 @@ export async function POST(req: Request) {
     }
 
     // Calcular programación según TZ Lima
-    const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
-    const nextSchedule = computed.nextToggleIso || now.toISOString();
-    const scheduledEnabled = computed.enabled;
+  const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });
+  const nextSchedule = computed.nextToggleIso || now.toISOString();
+  const scheduledEnabled = computed.enabled;
 
     return NextResponse.json({ 
       ok: true, 
       tokensEnabled: Boolean(updated?.tokensEnabled),
       serverTimeIso: now.toISOString(),
-      nextSchedule: nextSchedule,
+      nextSchedule,
       scheduledEnabled,
+      policy: 'boundary-enforcement-18:00-on-00:00-off',
       lastChangeIso: updated?.updatedAt ? new Date(updated.updatedAt as any).toISOString() : now.toISOString()
     });
   } catch (e: any) {

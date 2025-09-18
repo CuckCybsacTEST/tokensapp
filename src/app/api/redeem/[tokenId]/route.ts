@@ -31,9 +31,9 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
     await logEvent("REDEEM_BLOCKED", "Intento con sistema OFF", { tokenId });
     return apiError("SYSTEM_OFF", "Tokens deshabilitados temporalmente", { tokenId }, 423);
   }
+  // Option B: si el sistema está ON (override manual), permitimos canje aunque no sea ventana horaria programada
   if (!scheduled.enabled) {
-    await logEvent("REDEEM_BLOCKED_WINDOW", "Fuera de ventana horaria (18:00-00:00)", { tokenId, tz });
-    return apiError("OUT_OF_WINDOW", "Fuera de horario", { tokenId }, 423);
+    await logEvent("REDEEM_OVERRIDE_WINDOW", "Redención fuera de ventana (override manual ON)", { tokenId, tz });
   }
   // Transacción: validación + update condicional para evitar doble redención
   try {

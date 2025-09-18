@@ -3,9 +3,10 @@
  *
  * Behavior:
  * - On start, reconcile DB state: compute tokensEnabled (via computeTokensEnabled) and persist it.
- * - Schedule daily jobs:
- *   - 18:00 server local time: set tokensEnabled = true
- *   - 00:00 server local time: set tokensEnabled = false
+ * - Schedule daily jobs (Option B – boundary enforcement):
+ *   - 18:00 server local time: force tokensEnabled = true (start window)
+ *   - 00:00 server local time: force tokensEnabled = false (end window)
+ *   - Entre esos límites NO se fuerzan cambios: si un admin apaga dentro del tramo ON (>=18:00) queda OFF hasta medianoche; si un admin enciende dentro del tramo OFF (<18:00) queda ON hasta las 18:00.
  *
  * Usage:
  *   import { startScheduler } from '@/lib/scheduler';
@@ -59,11 +60,11 @@ export async function reconcileOnce() {
   try {
     const cfg = await readConfig();
     const computed = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ });
-    const desired = computed.enabled;
-    const current = Boolean(cfg?.tokensEnabled);
-    // New policy: respect manual overrides until scheduled hard boundaries (18:00 ON, 00:00 OFF)
-    console.log(`[scheduler] reconcile (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
-    // Ensure readers are fresh
+  const desired = computed.enabled;
+  const current = Boolean(cfg?.tokensEnabled);
+  // Reconcilia solo informativo (no cambia valor fuera de boundaries)
+  console.log(`[scheduler] reconcile (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
+  // Ensure readers are fresh
     try { invalidateSystemConfigCache(); } catch { /* ignore */ }
     return { ok: true, computed };
   } catch (e) {
@@ -89,10 +90,26 @@ export function startScheduler() {
   // run immediate reconciliation
   reconcileOnce().catch((e) => console.error('[scheduler] reconcile failed', e));
 
-  // No cambiamos tokensEnabled automáticamente en 18:00/00:00.
-  // En su lugar, sólo mantenemos heartbeat/logs y expiración de cumpleaños.
-  const job18 = { stop() {} } as any;
-  const job00 = { stop() {} } as any;
+  // Boundary enforcement jobs (Option B)
+  // 18:00 -> FORZAR ON
+  const job18 = cron.schedule('0 18 * * *', async () => {
+    try {
+      await setTokensEnabled(true);
+      console.log('[scheduler][18:00] enforced ON');
+    } catch (e) {
+      console.error('[scheduler][18:00] enforcement failed', e);
+    }
+  }, { scheduled: true, timezone: TOKENS_TZ });
+
+  // 00:00 -> FORZAR OFF
+  const job00 = cron.schedule('0 0 * * *', async () => {
+    try {
+      await setTokensEnabled(false);
+      console.log('[scheduler][00:00] enforced OFF');
+    } catch (e) {
+      console.error('[scheduler][00:00] enforcement failed', e);
+    }
+  }, { scheduled: true, timezone: TOKENS_TZ });
 
   // Every minute: no enforcement; only log state for observability
   const jobMinute = cron.schedule('* * * * *', async () => {
@@ -116,7 +133,7 @@ export function startScheduler() {
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   jobs = [job18, job00, jobBday, jobMinute];
-  console.log('[scheduler] started jobs (no auto flips; birthdays */10m expire; heartbeat */1m)');
+  console.log('[scheduler] started jobs (boundary flips @18:00 ON @00:00 OFF; birthdays */10m expire; heartbeat */1m)');
   started = true;
 }
 

@@ -120,15 +120,15 @@ export function TokensToggle({ initialEnabled }: Props) {
   }, [enabled, serverTime, nextToggleTime]);
 
   async function toggle() {
-    const next = !enabled;
-    setEnabled(next);
+    if (enabled === null) return; // aún cargando
+    const target = !enabled;
     setError(null);
     try {
       const res = await fetch(`/api/system/tokens/toggle`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: next }),
+        body: JSON.stringify({ enabled: target }),
       });
       if (!res.ok) {
         if (res.status === 401) {
@@ -141,30 +141,20 @@ export function TokensToggle({ initialEnabled }: Props) {
         throw new Error(t?.error || (await res.text()));
       }
       const body = await res.json().catch(()=>null);
-      if (body) {
-        setEnabled(Boolean(body.tokensEnabled));
-        if (typeof body.scheduledEnabled === 'boolean') {
-          setScheduledEnabled(Boolean(body.scheduledEnabled));
-        }
-        
-        // Actualizar los tiempos si hay información disponible
-        if (body.nextSchedule) {
-          setNextToggleTime(new Date(body.nextSchedule));
-        }
-        if (body.serverTimeIso) {
-          setServerTime(new Date(body.serverTimeIso));
-        }
-        if (body.lastChangeIso) {
-          const lc = new Date(body.lastChangeIso);
-          if (!isNaN(lc.getTime())) setLastChange(lc);
-        } else {
-          // Fallback: consider now as last change in absence of server-provided timestamp
-          setLastChange(new Date());
-        }
+      if (!body) throw new Error('empty response');
+      setEnabled(Boolean(body.tokensEnabled));
+      if (typeof body.scheduledEnabled === 'boolean') {
+        setScheduledEnabled(Boolean(body.scheduledEnabled));
       }
-  // Evitamos router.refresh() para no provocar un remount que genera un glitch visual
+      if (body.nextSchedule) setNextToggleTime(new Date(body.nextSchedule));
+      if (body.serverTimeIso) setServerTime(new Date(body.serverTimeIso));
+      if (body.lastChangeIso) {
+        const lc = new Date(body.lastChangeIso);
+        if (!isNaN(lc.getTime())) setLastChange(lc);
+      } else {
+        setLastChange(new Date());
+      }
     } catch (e: any) {
-      setEnabled(!next);
       setError(e?.message || 'Error al actualizar');
     }
   }

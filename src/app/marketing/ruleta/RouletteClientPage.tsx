@@ -100,15 +100,56 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<TokenShape | null>(null);
   const [elements, setElements] = useState<RouletteElement[]>([]);
-  const [spinning, setSpinning] = useState(false);
-  const [spun, setSpun] = useState(false);
+  type Phase = 'READY' | 'SPINNING' | 'REVEALED_MODAL' | 'REVEALED_PANEL' | 'DELIVERED';
+  const [phase, setPhase] = useState<Phase>('READY');
   const [prizeIndex, setPrizeIndex] = useState<number | null>(null);
   const [prizeWon, setPrizeWon] = useState<RouletteElement | null>(null);
-  const [showPrizeModal, setShowPrizeModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [delivering, setDelivering] = useState(false);
   const [deliverError, setDeliverError] = useState<string | null>(null);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Contador de giros (offset base 420). Se obtiene de métricas del periodo "today".
+  const SPIN_BASE_OFFSET = 420;
+  const [spinCounter, setSpinCounter] = useState<number | null>(null);
+
+  // Cargar métrica de giros al montar (period today) para inicializar contador.
+  useEffect(() => {
+    let abort = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/metrics?period=today', { cache: 'no-store' });
+        if (!res.ok) return; // silencioso
+        const data = await res.json();
+        if (!abort && data?.period?.rouletteSpins != null) {
+          // Ajustamos el contador visible: base + giros del día (antes de este spin)
+          setSpinCounter(SPIN_BASE_OFFSET + Number(data.period.rouletteSpins));
+        }
+      } catch {
+        /* ignorar errores de métrica */
+      }
+    })();
+    return () => { abort = true; };
+  }, []);
+
+  // Reconstrucción en recarga: si el token ya está revelado / entregado.
+  useEffect(() => {
+    if (!token) return;
+    if (token.deliveredAt || token.redeemedAt) {
+      setPhase('DELIVERED');
+      return;
+    }
+    if (token.revealedAt && phase === 'READY') {
+      // Derivar prizeIndex del premio original.
+      if (elements.length) {
+        const idx = elements.findIndex(e => e.prizeId === token.prize.id);
+        if (idx >= 0) {
+          setPrizeIndex(idx);
+          setPrizeWon(elements[idx]);
+          setPhase('REVEALED_PANEL'); // tras recarga no abrimos modal para no confundir usuario
+        }
+      }
+    }
+  }, [token, elements, phase]);
 
   useEffect(() => {
     if (!tokenId) {
@@ -122,11 +163,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     setError(null);
     setToken(null);
     setElements([]);
-    setSpinning(false);
-    setSpun(false);
+  setPhase('READY');
     setPrizeIndex(null);
     setPrizeWon(null);
-    setShowPrizeModal(false);
     setShowConfetti(false);
     setDelivering(false);
     setDeliverError(null);
@@ -176,40 +215,24 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   }, [tokenId]);
 
   const handleSpin = async () => {
-    // Evitar doble clic, giros repetidos o intento sin token
-    if (spinning || spun || !tokenId) {
-      return;
-    }
-    // Si el token ya fue revelado o canjeado/entregado, bloquear giro
-    if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) {
-      return;
-    }
-
-    setSpinning(true);
-    
+    if (phase !== 'READY') return;
+    if (!tokenId) return;
+    if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
+    setPhase('SPINNING');
     try {
-      // Enviamos petición para girar la ruleta (revela el premio) usando endpoint singular existente
-      const response = await fetch(`/api/token/${tokenId}/reveal`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${await response.text()}`);
-      }
-      
+      const response = await fetch(`/api/token/${tokenId}/reveal`, { method: 'POST' });
+      if (!response.ok) throw new Error(`Error ${response.status}: ${await response.text()}`);
       const data = await response.json();
-      
-      // Encontramos el índice del premio ganado
+      // Guardamos revealedAt pero dejamos que la animación termine (onSpinEnd)
+      setToken(t => t ? ({ ...t, revealedAt: data?.timestamps?.revealedAt || new Date().toISOString() }) : t);
       const winIndex = elements.findIndex(e => e.prizeId === data.prizeId);
-      if (winIndex >= 0) {
-        setPrizeIndex(winIndex);
-      } else {
-        throw new Error("Premio no encontrado en la ruleta");
-      }
+      if (winIndex < 0) throw new Error('Premio no encontrado en la ruleta');
+      setPrizeIndex(winIndex);
+      // La animación del componente NewRoulette usará prizeIndex y disparará handleSpinEnd
     } catch (err) {
-      console.error("Error al girar:", err);
-      setError(err instanceof Error ? err.message : "Error al girar la ruleta");
-      setSpinning(false);
+      console.error('Error al girar:', err);
+      setError(err instanceof Error ? err.message : 'Error al girar la ruleta');
+      setPhase('READY');
     }
   };
 
@@ -227,7 +250,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       }
       // Update local token state to reflect delivery (mirror redeemedAt)
       setToken((t) => t ? ({ ...t, deliveredAt: body?.timestamps?.deliveredAt || new Date().toISOString(), redeemedAt: body?.timestamps?.deliveredAt || new Date().toISOString() } as any) : t);
-      setShowPrizeModal(false);
+  setPhase('DELIVERED');
       setShowConfetti(false);
     } catch (e: any) {
       setDeliverError(e?.message || 'DELIVER_FAILED');
@@ -237,11 +260,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   };
 
   const handleSpinEnd = (prize: RouletteElement) => {
-    setSpun(true);
-    setSpinning(false);
     setPrizeWon(prize);
-    setShowPrizeModal(true);
+    setPhase('REVEALED_MODAL');
     setShowConfetti(true);
+    // Incrementar contador local tras completar un giro exitoso
+    setSpinCounter(c => (c == null ? SPIN_BASE_OFFSET + 1 : c + 1));
     
     // Limpiamos cualquier timeout anterior
     if (prizeModalTimeoutRef.current) {
@@ -304,7 +327,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     );
   }
 
-  if (token?.redeemedAt || token?.deliveredAt) {
+  if (phase === 'DELIVERED' || token?.redeemedAt || token?.deliveredAt) {
     return (
       <div className="text-center py-16 max-w-md mx-auto">
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
@@ -313,7 +336,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
             Este token ya ha sido utilizado para canjear un premio.
           </p>
           <p className="mt-4 text-xl font-bold">
-            {token.prize.label}
+            {token?.prize?.label}
           </p>
         </div>
       </div>
@@ -325,8 +348,13 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     try {
       if (token.availableFrom) {
         const d = new Date(token.availableFrom);
-        // Formato DD/MM/AAAA
-        availableText = d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' });
+        // Formato determinista DD/MM/AAAA para evitar diferencias de locale entre server y cliente
+        // Usamos 'es-ES' fijo para que SSR y CSR produzcan exactamente el mismo string.
+        // (Locales implícitos pueden variar y causar hydration mismatch.)
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        availableText = `${day}/${month}/${year}`;
       }
     } catch {}
     return (
@@ -357,53 +385,66 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     );
   }
 
-  // Si el token ya fue revelado (two-phase) pero aún no entregado, mostrar aviso
-  // Importante: no bloquear durante el giro ni mientras mostramos el modal de premio.
-  if (!spinning && !showPrizeModal && token?.revealedAt && !token?.deliveredAt && !token?.redeemedAt) {
-    return (
-      <div className="text-center py-16 max-w-md mx-auto">
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-          <p className="text-blue-300 text-lg font-semibold">Premio revelado</p>
-          <p className="mt-2 text-white/70">
-            Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-3">
-            <button
-              className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
-              onClick={confirmDeliver}
-              disabled={delivering}
-              title="Para uso del STAFF"
-            >
-              {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
-            </button>
-          </div>
-          {deliverError && (
-            <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const showRevealedPanel = phase === 'REVEALED_PANEL' || (token?.revealedAt && phase === 'READY');
+
+  // (El fallback prizeWon se maneja ahora en el efecto unificado anterior)
+
+  // Render principal
 
   return (
     <div className="relative">
       {/* Confetti animation */}
       <Confetti active={showConfetti} />
       
-      {/* La ruleta */}
-      <div className="min-h-[600px] flex items-center justify-center">
-        <NewRoulette
-          elements={elements}
-          onSpin={handleSpin}
-          onSpinEnd={handleSpinEnd}
-          spinning={spinning}
-          prizeIndex={prizeIndex}
-        />
-      </div>
+      {/* Ruleta solo en READY / SPINNING */}
+      {(phase === 'READY' || phase === 'SPINNING') && (
+        <div className="min-h-[600px] flex items-center justify-center">
+          <NewRoulette
+            elements={elements}
+            onSpin={handleSpin}
+            onSpinEnd={handleSpinEnd} // mantenemos callback legacy para posible animación futura
+            spinning={phase === 'SPINNING'}
+            prizeIndex={prizeIndex}
+          />
+        </div>
+      )}
+
+      {/* Contador de giros */}
+      {spinCounter != null && (
+        <div className="mt-4 text-center text-sm text-white/60 select-none">
+          Giro #{spinCounter}
+        </div>
+      )}
+
+      {/* Panel permanente tras cerrar modal */}
+      {showRevealedPanel && prizeWon && (
+        <div className="text-center py-16 max-w-md mx-auto">
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
+            <p className="text-blue-300 text-lg font-semibold">Premio revelado</p>
+            <p className="mt-2 text-white/70">
+              Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
+            </p>
+            <p className="mt-4 text-xl font-bold">{prizeWon.label}</p>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+                onClick={confirmDeliver}
+                disabled={delivering}
+                title="Para uso del STAFF"
+              >
+                {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
+              </button>
+            </div>
+            {deliverError && (
+              <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal con el premio ganado - usando AnimatePresence para animaciones de salida */}
       <AnimatePresence>
-        {prizeWon && showPrizeModal && (
+        {prizeWon && phase === 'REVEALED_MODAL' && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -415,10 +456,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.5, delay: 0.2 } }}
               className="absolute inset-0 bg-black/75 backdrop-blur-md"
-              onClick={() => {
-                setShowPrizeModal(false);
-                setShowConfetti(false);
-              }}
+              onClick={() => { setPhase('REVEALED_PANEL'); setShowConfetti(false); }}
             ></motion.div>
             
             <motion.div 
@@ -436,10 +474,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                 className="absolute -top-4 -right-4"
               >
                 <button
-                  onClick={() => {
-                    setShowPrizeModal(false);
-                    setShowConfetti(false);
-                  }}
+                  onClick={() => { setPhase('REVEALED_PANEL'); setShowConfetti(false); }}
                   className="bg-white/10 hover:bg-white/20 rounded-full p-2 text-white/80 hover:text-white transition-colors"
                   aria-label="Cerrar"
                 >
@@ -522,7 +557,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   transition={{ delay: 0.9 }}
                   className="px-10 py-4 rounded-full bg-gradient-to-r from-pink-600 to-blue-600 hover:from-pink-500 hover:to-blue-500 text-white font-bold transition-all shadow-lg hover:shadow-xl text-lg"
                   onClick={() => {
-                    setShowPrizeModal(false);
+                    setPhase('REVEALED_PANEL');
                     setShowConfetti(false);
                   }}
                   whileHover={{ scale: 1.05 }}
