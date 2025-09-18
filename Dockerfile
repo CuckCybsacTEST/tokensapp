@@ -9,6 +9,8 @@ WORKDIR /app
 
 # Install dependencies only when needed
 FROM base AS deps
+# Copy only schema first so postinstall (prisma generate) has it available
+COPY prisma/schema.prisma ./prisma/schema.prisma
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN \
   if [ -f package-lock.json ]; then npm ci; \
