@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import NewRoulette from '@/components/roulette/NewRoulette';
+import RouletteHeading from '@/components/roulette/RouletteHeading';
 import { RouletteElement } from '@/components/roulette/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -110,6 +111,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [delivering, setDelivering] = useState(false);
   const [deliverError, setDeliverError] = useState<string | null>(null);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
+  const [rouletteHeadingHeight, setRouletteHeadingHeight] = useState(0);
   // Contador de giros (offset base 420). Se obtiene de métricas del periodo "today".
   const SPIN_BASE_OFFSET = 420;
   const [spinCounter, setSpinCounter] = useState<number | null>(null);
@@ -393,20 +396,30 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   // Render principal
 
+
   return (
     <div className="relative">
+      <div className="px-4 pt-10 sm:pt-16 text-center max-w-3xl mx-auto">
+        <RouletteHeading
+          kicker="Premios exclusivos"
+          title="Ruleta de Premios"
+          subtitle="Gira la ruleta y descubre qué premio te ha tocado"
+          onHeight={(h) => setRouletteHeadingHeight(h)}
+        />
+      </div>
       {/* Confetti animation */}
       <Confetti active={showConfetti} />
       
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === 'READY' || phase === 'SPINNING') && (
-  <div className="flex items-center justify-center py-8 sm:py-10 min-h-[420px] sm:min-h-[520px]">
+        <div className="flex items-center justify-center py-8 sm:py-10 min-h-[420px] sm:min-h-[520px]">
           <NewRoulette
             elements={elements}
             onSpin={handleSpin}
             onSpinEnd={handleSpinEnd} // mantenemos callback legacy para posible animación futura
             spinning={phase === 'SPINNING'}
             prizeIndex={prizeIndex}
+            variant="inline"
           />
         </div>
       )}

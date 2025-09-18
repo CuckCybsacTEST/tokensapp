@@ -1,8 +1,6 @@
 import React from 'react';
 import { Metadata } from 'next';
 import RouletteClientPage from './RouletteClientPage';
-import SectionContainer from '../components/ui/SectionContainer';
-import { SectionTitle } from '../components/ui/SectionTitle';
 import MarketingNavbar from '../components/MarketingNavbar';
 
 export const metadata: Metadata = {
@@ -17,20 +15,8 @@ export default function RuletaPage({ searchParams }: { searchParams: { tokenId?:
     <>
       <MarketingNavbar />
       
-      <div className="py-24 min-h-screen" style={{ 
-        background: 'linear-gradient(180deg, #0E0606, #07070C)' 
-      }}>
-        <SectionContainer className="px-4">
-          <SectionTitle
-            kicker="Premios exclusivos"
-            title="Ruleta de Premios"
-            subtitle="Gira la ruleta y descubre qué premio te ha tocado"
-          />
-          
-          <div className="mt-16 flex items-center justify-center">
-            <RouletteClientPage tokenId={tokenId} />
-          </div>
-        </SectionContainer>
+      <div className="pt-6 sm:pt-10 pb-24 min-h-screen bg-gradient-to-b from-[#0E0606] to-[#07070C]">
+        <RouletteClientPage tokenId={tokenId} />
       </div>
       
       <footer className="py-8 bg-black/30 text-center text-white/50 text-xs">

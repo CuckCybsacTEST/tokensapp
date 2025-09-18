@@ -19,6 +19,8 @@ interface NewRouletteProps {
   pointerOffset?: number;
   /** Controla si se bloquea el scroll global mientras está montada la ruleta (default true) */
   lockScroll?: boolean;
+  /** Variante de layout: fullscreen (default) o inline (flujo dentro de una página con otros elementos encima). */
+  variant?: 'fullscreen' | 'inline';
 }
 
 const NewRoulette = ({
@@ -29,7 +31,8 @@ const NewRoulette = ({
   prizeIndex,
   topSpacing,
   pointerOffset,
-  lockScroll = true
+  lockScroll = true,
+  variant = 'fullscreen'
 }: NewRouletteProps) => {
   const [rotation, setRotation] = useState(0);
   const [internalSpinning, setInternalSpinning] = useState(false);
@@ -147,12 +150,18 @@ const NewRoulette = ({
 
   // Estilo dinámico del contenedor (permite override sin romper estilos existentes)
   const containerStyle: React.CSSProperties = {};
-  if (topSpacing !== undefined) {
+  const hasCustomSpacing = topSpacing !== undefined;
+  if (hasCustomSpacing) {
     containerStyle.paddingTop = typeof topSpacing === 'number' ? `${topSpacing}px` : topSpacing;
   }
 
   return (
-    <div className={styles.rouletteContainer} style={containerStyle}>
+    <div
+      className={styles.rouletteContainer}
+      style={containerStyle}
+      data-has-custom-spacing={hasCustomSpacing || undefined}
+      data-variant={variant}
+    >
       <div className={styles.roulettePad}>
         <div className={styles.wheelWrapper} ref={wrapperRef}>
         {/* Guardia: si hay menos de 2 elementos, no renderizar la ruleta completa */}

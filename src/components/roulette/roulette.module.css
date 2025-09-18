@@ -18,8 +18,20 @@
   height: 100%;
 }
 
+/* Variante inline: flujo normal, sin forzar altura completa */
+.rouletteContainer[data-variant="inline"] {
+  position: static;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  padding-top: 0; /* se puede controlar externamente */
+  padding-bottom: 0;
+}
+
 /* Reservar espacio superior para títulos / instrucciones */
 .rouletteContainer.hasTitle { padding-top: clamp(70px, 12vh, 110px); }
+/* Si se aplica un spacing custom via prop (data-has-custom-spacing), no aplicar padding por clase */
+.rouletteContainer[data-has-custom-spacing="true"].hasTitle { padding-top: inherit; }
 
 /* Margen superior interno adicional mediante variable para ajustar el wheelWrapper */
 .wheelWrapper { --top-offset: 0px; }
@@ -67,22 +79,22 @@
 
 @media (max-width: 480px) {
   .rouletteContainer {
-    padding: 8px;
-    height: 100%;
-    max-height: 100vh;
-    overflow: hidden;
-    position: fixed;
-    inset: 0;
+    padding: 8px 8px 24px;
+    /* Permitimos flujo normal para que el contenido anterior no quede solapado */
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    position: static;
   }
-  /* En móviles pequeños reservamos un poco más arriba */
-  .rouletteContainer { padding-top: 70px; }
-  .rouletteContainer.hasTitle { padding-top: 82px; }
+  /* En móviles pequeños incrementamos el espacio para evitar que títulos de 1-2 líneas toquen la ruleta */
+  .rouletteContainer { padding-top: 78px; }
+  .rouletteContainer.hasTitle { padding-top: 94px; }
   .roulettePad {
     padding: clamp(4px, 1.5vw, 10px);
   }
   .wheelWrapper {
-    --wheel-size: clamp(240px, 75vw, 400px);
-    margin-top: calc(var(--top-offset) + 4px);
+    --wheel-size: clamp(236px, 72vw, 388px); /* reducir ligeramente para compensar mayor padding superior */
+    margin-top: calc(var(--top-offset) + 12px);
     /* Importante: mantener aspecto perfectamente circular */
     aspect-ratio: 1/1;
     overflow: clip;
@@ -91,12 +103,13 @@
 
 /* Micro-breakpoint: dispositivos ultra pequeños o muy bajos (ej. iPhone SE) */
 @media (max-width: 380px), (max-height: 680px) {
-  .rouletteContainer { padding-top: 76px; }
-  .rouletteContainer.hasTitle { padding-top: 88px; }
-  .rouletteContainer.title-large .wheelWrapper { --top-offset: 38px; }
+  /* Ultra pequeños: más espacio todavía (títulos a 2-3 líneas) */
+  .rouletteContainer { padding-top: 92px; }
+  .rouletteContainer.hasTitle { padding-top: 112px; }
+  .rouletteContainer.title-large .wheelWrapper { --top-offset: 52px; }
   .wheelWrapper {
-    --wheel-size: clamp(228px, 74vw, 360px);
-    margin-top: calc(var(--top-offset) + 6px);
+    --wheel-size: clamp(220px, 71vw, 340px);
+    margin-top: calc(var(--top-offset) + 14px);
   }
 }
 
