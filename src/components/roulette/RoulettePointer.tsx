@@ -1,18 +1,28 @@
 import React from 'react';
+import { usePointerOffset } from './usePointerOffset';
 
 interface RoulettePointerProps {
   spinning?: boolean;
+  scale?: number; // escala relativa a 500px
+  /** Override directo (en px negativos). Si se provee, no se usa el hook. */
+  pointerOffset?: number;
 }
 
-const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false }) => {
+const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, scale = 1, pointerOffset }) => {
+  const baseWidth = 60;
+  const baseHeight = 70;
+  const w = baseWidth * scale;
+  const h = baseHeight * scale;
+  const dynamicOffset = usePointerOffset(scale);
+  const topOffset = pointerOffset !== undefined ? pointerOffset : dynamicOffset;
   return (
     <svg
-      width="60"
-      height="70"
-      viewBox="0 0 60 70"
+      width={w}
+      height={h}
+      viewBox={`0 0 60 70`}
       style={{
         position: 'absolute',
-        top: '-30px', // Ajustado para posicionar correctamente el puntero invertido
+  top: `${topOffset}px`, // controlar vía hook/override
         left: '50%',
   transform: 'translateX(-50%)',
   zIndex: 1000, // asegurar que quede por encima de glow/overlay

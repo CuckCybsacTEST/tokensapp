@@ -7,7 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Simple confetti animation component
 const Confetti = ({ active }: { active: boolean }) => {
-  const confettiCount = 150;
+  // Ajustar cantidad de confetti segun ancho de pantalla para móviles (sin alterar efecto base)
+  const isSmall = typeof window !== 'undefined' && window.innerWidth < 480;
+  const confettiCount = isSmall ? 60 : 150;
   const confettiColors = ['#FF8A00', '#FF5252', '#E040FB', '#7C4DFF', '#448AFF', '#18FFFF', '#B2FF59', '#EEFF41', '#FFC400', '#FF6D00'];
   
   if (!active) return null;
@@ -398,7 +400,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === 'READY' || phase === 'SPINNING') && (
-        <div className="min-h-[600px] flex items-center justify-center">
+  <div className="flex items-center justify-center py-8 sm:py-10 min-h-[420px] sm:min-h-[520px]">
           <NewRoulette
             elements={elements}
             onSpin={handleSpin}
@@ -411,32 +413,32 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
       {/* Contador de giros */}
       {spinCounter != null && (
-        <div className="mt-4 text-center text-sm text-white/60 select-none">
+        <div className="mt-3 text-center text-xs sm:text-sm text-white/60 select-none tracking-wide">
           Giro #{spinCounter}
         </div>
       )}
 
       {/* Panel permanente tras cerrar modal */}
       {showRevealedPanel && prizeWon && (
-        <div className="text-center py-16 max-w-md mx-auto">
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-            <p className="text-blue-300 text-lg font-semibold">Premio revelado</p>
-            <p className="mt-2 text-white/70">
+        <div className="text-center py-10 sm:py-14 max-w-md mx-auto px-4">
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5 sm:p-6">
+            <p className="text-blue-300 text-base sm:text-lg font-semibold">Premio revelado</p>
+            <p className="mt-2 text-white/80 text-sm sm:text-base leading-relaxed">
               Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
             </p>
-            <p className="mt-4 text-xl font-bold">{prizeWon.label}</p>
-            <div className="mt-4 flex items-center justify-center gap-3">
+            <p className="mt-4 text-lg sm:text-xl font-bold break-words px-2">{prizeWon.label}</p>
+            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
               <button
-                className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+                className="px-4 sm:px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors text-sm sm:text-base"
                 onClick={confirmDeliver}
                 disabled={delivering}
                 title="Para uso del STAFF"
               >
-                {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
+                {delivering ? 'Confirmando…' : 'Entregado (staff)'}
               </button>
             </div>
             {deliverError && (
-              <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
+              <div className="mt-2 text-xs text-rose-400 break-words px-2">{deliverError}</div>
             )}
           </div>
         </div>
@@ -463,7 +465,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
               initial={{ y: 30, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 30, opacity: 0, scale: 0.9, transition: { duration: 0.4 } }}
-              className="relative z-10 bg-gradient-to-b from-slate-900 to-slate-950 rounded-xl p-8 max-w-md w-full border border-white/10 shadow-2xl"
+              className="relative z-10 bg-gradient-to-b from-slate-900 to-slate-950 rounded-xl p-6 sm:p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
               style={{
                 boxShadow: '0 0 30px rgba(219, 39, 119, 0.3), 0 0 15px rgba(59, 130, 246, 0.3)'
               }}
@@ -494,7 +496,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                     stiffness: 100,
                     delay: 0.1
                   }}
-                  className="text-7xl mb-6 inline-block"
+                  className="text-5xl sm:text-7xl mb-4 sm:mb-6 inline-block"
                 >
                   🎉
                 </motion.div>
@@ -509,7 +511,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                     initial={{ y: 10 }}
                     animate={{ y: 0 }}
                     transition={{ type: "spring", damping: 12 }}
-                    className="text-3xl font-bold mb-1"
+                    className="text-2xl sm:text-3xl font-bold mb-1"
                   >
                     ¡Felicidades!
                   </motion.h2>
@@ -522,9 +524,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   transition={{ delay: 0.5, type: "spring" }}
                   className="my-6 relative"
                 >
-                  <span className="absolute -left-2 -top-2 text-3xl opacity-30">❝</span>
+                  <span className="absolute -left-2 -top-2 text-2xl sm:text-3xl opacity-30">❝</span>
                   <motion.p 
-                    className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500 my-2 px-4"
+                    className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500 my-2 px-2 sm:px-4 break-words"
                     animate={{ 
                       backgroundPosition: ['0% center', '100% center', '0% center'],
                     }}
@@ -539,14 +541,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   >
                     {prizeWon.label}
                   </motion.p>
-                  <span className="absolute -right-2 -bottom-2 text-3xl opacity-30">❞</span>
+                  <span className="absolute -right-2 -bottom-2 text-2xl sm:text-3xl opacity-30">❞</span>
                 </motion.div>
                 
                 <motion.p 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.7 }}
-                  className="text-white/80 mb-8 text-lg px-2 leading-relaxed"
+                  className="text-white/80 mb-6 sm:mb-8 text-base sm:text-lg px-1 sm:px-2 leading-relaxed"
                 >
                   Tu premio ha sido registrado. Muestra esta pantalla en barra para reclamarlo.
                 </motion.p>
@@ -555,7 +557,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 }}
-                  className="px-10 py-4 rounded-full bg-gradient-to-r from-pink-600 to-blue-600 hover:from-pink-500 hover:to-blue-500 text-white font-bold transition-all shadow-lg hover:shadow-xl text-lg"
+                  className="px-6 sm:px-10 py-3 sm:py-4 rounded-full bg-gradient-to-r from-pink-600 to-blue-600 hover:from-pink-500 hover:to-blue-500 text-white font-bold transition-all shadow-lg hover:shadow-xl text-base sm:text-lg"
                   onClick={() => {
                     setPhase('REVEALED_PANEL');
                     setShowConfetti(false);

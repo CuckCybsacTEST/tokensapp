@@ -22,7 +22,13 @@
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm test",
     "e2e:flow": "tsx scripts/e2eFlow.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "reset:db": "tsx scripts/resetDb.ts",
+    "reset:db:seed": "npm run reset:db -- --seed",
+    "postinstall": "prisma generate"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

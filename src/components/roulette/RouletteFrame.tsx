@@ -2,15 +2,27 @@ import React from 'react';
 
 interface RouletteFrameProps {
   spinning?: boolean;
+  scale?: number; // relativo a 500
+  wheelRadius?: number; // radio interno de segmentos para ajustar gap
 }
 
-const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false }) => {
-  const width = 500;
-  const height = 500;
-  const center = width / 2;
-  const frameOuterRadius = 245;
-  const frameInnerRadius = 205;
-  const lightRadius = 225;
+const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius }) => {
+  const baseSize = 500;
+  const width = baseSize * scale;
+  const height = baseSize * scale;
+  const center = baseSize / 2; // mantenemos viewBox base para simplificar escalado via width/height
+
+  // Ajuste dinámico del marco basado en wheelRadius
+  const computedWheelRadius = wheelRadius ? (wheelRadius / scale) : 205; // convertir a coordenadas base
+  // Reducimos padding para que los sectores se acerquen más al borde interno del marco
+  const desiredPadding = 10; // antes 18
+  let frameInnerRadius = computedWheelRadius + desiredPadding; // menor gap
+  // Limitar para no superar espacio disponible (250 es el máximo centro->borde)
+  if (frameInnerRadius > 238) frameInnerRadius = 238; // margen de seguridad
+  let frameOuterRadius = frameInnerRadius + 34; // mantenemos grosor exterior
+  if (frameOuterRadius > 248) frameOuterRadius = 248; // tope absoluto
+  // Ajustamos el radio de luces para seguir centradas en el anillo
+  const lightRadius = Math.min(frameInnerRadius + 14, frameOuterRadius - 8);
   const numLights = 36;
   const lightSize = 8;
 
@@ -22,7 +34,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false }) => {
   });
 
   return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} style={{ position: 'absolute', top: 0, left: 0, zIndex: 5 }}>
+    <svg width="100%" height="100%" viewBox={`0 0 ${baseSize} ${baseSize}`} style={{ position: 'absolute', top: 0, left: 0, zIndex: 5 }}>
       <defs>
         <radialGradient id="goldGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
           <stop offset="60%" style={{ stopColor: '#F0B825' }} />
@@ -70,7 +82,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false }) => {
         r={frameOuterRadius} 
         fill="url(#goldGradient)" 
         stroke="#4A3000" 
-        strokeWidth="4"
+        strokeWidth={4}
         style={{ filter: spinning ? 'url(#enhancedGlow)' : 'none' }}
       />
       
@@ -84,8 +96,8 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false }) => {
       />
       
       {/* Marco interior y decoración */}
-      <circle cx={center} cy={center} r={frameInnerRadius} fill="transparent" stroke="#FFF2AE" strokeWidth="2.5" />
-      <circle cx={center} cy={center} r={frameInnerRadius + 2} fill="transparent" stroke="#4A3000" strokeWidth="4.5" />
+  <circle cx={center} cy={center} r={frameInnerRadius} fill="transparent" stroke="#FFF2AE" strokeWidth={2.5} />
+  <circle cx={center} cy={center} r={frameInnerRadius + 2} fill="transparent" stroke="#4A3000" strokeWidth={4.5} />
       
       {/* Detalles decorativos en el marco */}
       {Array.from({ length: 12 }, (_, i) => {

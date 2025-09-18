@@ -2,33 +2,135 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  /* Reducir padding para asegurar que todo quepa en la pantalla */
+  padding: 12px; 
   position: relative;
   z-index: 1;
+  /* Prevenir barras de desplazamiento completamente */
+  overflow: hidden;
+  overscroll-behavior: none;
+  /* Forzar contención completa */
+  box-sizing: border-box;
+  /* Establecer altura máxima para evitar desbordamiento */
+  max-height: 100vh;
+  max-width: 100vw;
+  width: 100%;
+  height: 100%;
+}
+
+/* Reservar espacio superior para títulos / instrucciones */
+.rouletteContainer.hasTitle { padding-top: clamp(70px, 12vh, 110px); }
+
+/* Margen superior interno adicional mediante variable para ajustar el wheelWrapper */
+.wheelWrapper { --top-offset: 0px; }
+
+/* Si hay título largo encima (clase opcional a añadir en el contenedor externo) */
+.rouletteContainer.title-large .wheelWrapper { --top-offset: 34px; }
+
+/* Wrapper adicional para dar colchón al glow y evitar recortes en bordes */
+.roulettePad {
+  position: relative;
+  /* Reducir padding para evitar desbordamiento */
+  padding: clamp(8px, 2vw, 20px);
+  /* Contener efectos sin generar barras de desplazamiento */
+  overflow: clip;
+  /* Eliminar la propiedad contain que puede causar problemas */
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .wheelWrapper {
   position: relative;
-  width: 500px;
-  height: 500px;
+  /* Tamaño responsivo optimizado para caber en una sola vista sin scroll */
+  --wheel-size: clamp(280px, 60vw, 520px);
+  /* Ajuste vertical si el puntero invade el título */
+  margin-top: var(--top-offset);
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  /* Asegurar que se mantiene como un círculo perfecto */
+  aspect-ratio: 1/1;
   transform-style: preserve-3d;
   perspective: 1000px;
+  /* Contener efectos sin desbordamiento */
+  overflow: clip;
+  /* Eliminar margen que podría causar asimetrías */
+  margin: 0;
+  /* Centrar el contenido */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .rouletteContainer {
+    padding: 8px;
+    height: 100%;
+    max-height: 100vh;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+  }
+  /* En móviles pequeños reservamos un poco más arriba */
+  .rouletteContainer { padding-top: 70px; }
+  .rouletteContainer.hasTitle { padding-top: 82px; }
+  .roulettePad {
+    padding: clamp(4px, 1.5vw, 10px);
+  }
+  .wheelWrapper {
+    --wheel-size: clamp(240px, 75vw, 400px);
+    margin-top: calc(var(--top-offset) + 4px);
+    /* Importante: mantener aspecto perfectamente circular */
+    aspect-ratio: 1/1;
+    overflow: clip;
+  }
+}
+
+/* Micro-breakpoint: dispositivos ultra pequeños o muy bajos (ej. iPhone SE) */
+@media (max-width: 380px), (max-height: 680px) {
+  .rouletteContainer { padding-top: 76px; }
+  .rouletteContainer.hasTitle { padding-top: 88px; }
+  .rouletteContainer.title-large .wheelWrapper { --top-offset: 38px; }
+  .wheelWrapper {
+    --wheel-size: clamp(228px, 74vw, 360px);
+    margin-top: calc(var(--top-offset) + 6px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .rouletteContainer {
+    height: 100vh;
+    width: 100vw;
+    max-height: 100vh;
+    overflow: hidden;
+    position: fixed;
+    inset: 0;
+    padding-top: 110px; /* más espacio para título en desktop */
+  }
+  .wheelWrapper {
+    /* Tamaño más contenido para asegurar que cabe sin scroll */
+    --wheel-size: clamp(420px, 32vw, 550px);
+    margin-top: var(--top-offset);
+    overflow: clip;
+  }
 }
 
 .wheel {
+  position: absolute;
+  inset: 0; /* top:0;right:0;bottom:0;left:0 */
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 30; /* elevar por encima del marco decorativo */
-  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.5);
-  overflow: visible;
-  transform-origin: center center;
+  z-index: 30;
+  overflow: visible; /* permitir sombras internas */
+  transform-origin: 50% 50%;
   will-change: transform;
-  transition: none; /* Resetear transición por defecto */
-  touch-action: none; /* Prevenir gestos táctiles */
+  transition: none;
+  touch-action: none;
+  transform: translateZ(0);
 }
 
 /* Transición suave durante el giro */
@@ -38,6 +140,8 @@
   will-change: transform; /* Optimización para animaciones */
   animation: spinGlow 6s ease-out; /* Añadir animación de brillo */
   pointer-events: none; /* Desactivar interacción mientras gira */
+  /* Forzar aceleración GPU para animación fluida */
+  transform: translateZ(0) rotate(0deg);
 }
 
 /* Aplicamos una transición suave cuando no está girando */
@@ -45,25 +149,49 @@
   transition: transform 0.5s ease-out;
 }
 
-/* Efecto de resplandor durante el giro */
+/* Efecto de resplandor durante el giro - más contenido para evitar desbordamiento */
 .wheelWrapper:has(.wheel.spinning)::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  /* Reducir tamaño para evitar desbordamiento */
+  inset: 10%;
+  width: 80%;
+  height: 80%;
   border-radius: 50%;
-  box-shadow: 0 0 20px 10px rgba(255, 215, 0, 0.7);
-  animation: glowPulse 1.5s infinite alternate;
-  z-index: 10; /* por debajo del puntero (>=1000) y por encima del fondo */
+  /* Glow más contenido para evitar scroll */
+  box-shadow: 0 0 15px 6px rgba(255,215,0,0.4), 0 0 22px 8px rgba(255,215,0,0.2);
+  animation: glowPulse 1.8s infinite alternate;
+  z-index: 10;
   pointer-events: none;
+  filter: brightness(1.05);
+  /* Forzar aceleración GPU y contención */
+  transform: translateZ(0);
+}
+
+/* Reducir el glow para evitar vibración/scrollbars en móviles pequeños */
+@media (max-width: 480px) {
+  .wheelWrapper:has(.wheel.spinning)::after {
+    /* Versión mínima para móviles para eliminar cualquier desbordamiento */
+    inset: 12%;
+    width: 76%;
+    height: 76%;
+    /* Sombra muy reducida para evitar cualquier posible scroll */
+    box-shadow: 0 0 8px 4px rgba(255,215,0,0.3), 0 0 15px 6px rgba(255,215,0,0.15);
+    animation: glowPulseMobile 2.2s infinite alternate;
+    /* Forzar aceleración GPU y contención */
+    transform: translateZ(0);
+  }
+  @keyframes glowPulseMobile {
+    0% { opacity: 0.2; box-shadow: 0 0 6px 2px rgba(255,215,0,0.3); }
+    50% { opacity: 0.3; box-shadow: 0 0 10px 4px rgba(255,215,0,0.4); }
+    100% { opacity: 0.25; box-shadow: 0 0 7px 3px rgba(255,215,0,0.35); }
+  }
 }
 
 @keyframes glowPulse {
-  0% { opacity: 0.3; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6); }
-  50% { opacity: 0.5; box-shadow: 0 0 25px 10px rgba(255, 215, 0, 0.8); }
-  100% { opacity: 0.7; box-shadow: 0 0 15px 5px rgba(255, 215, 0, 0.6); }
+  0% { opacity: 0.25; box-shadow: 0 0 10px 4px rgba(255, 215, 0, 0.4); }
+  50% { opacity: 0.4; box-shadow: 0 0 18px 7px rgba(255, 215, 0, 0.6); }
+  100% { opacity: 0.5; box-shadow: 0 0 12px 5px rgba(255, 215, 0, 0.5); }
 }
 
 @keyframes spinGlow {

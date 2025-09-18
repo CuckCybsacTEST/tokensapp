@@ -3,17 +3,18 @@ import React, { useState } from 'react';
 interface SpinButtonProps {
   onClick: () => void;
   disabled?: boolean;
+  scale?: number; // escala relativa al tamaño base (500)
 }
 
 // Componente de botón mejorado con mejor manejo de eventos
-const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false }) => {
+const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scale = 1 }) => {
   const [isHover, setIsHover] = useState(false);
   const [isPress, setIsPress] = useState(false);
   
-  const size = 130; // Tamaño del botón
+  const size = 130 * scale; // escalar tamaño del botón
   const center = size / 2;
-  const outerRingRadius = 63; 
-  const innerCircleRadius = 54;
+  const outerRingRadius = 63 * scale; 
+  const innerCircleRadius = 54 * scale;
   
   // Crear un área efectiva completa para detectar eventos del mouse
   const handleClick = (e: React.MouseEvent) => {
@@ -161,7 +162,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false }) =>
           fill="#FFFFFF"
           fontFamily="Arial, sans-serif"
           fontWeight="bold"
-          fontSize="24px"
+          fontSize={`${24 * scale}px`}
           filter="url(#arrowShadow)"
           style={{
             textShadow: '0 0 3px rgba(255,255,255,0.7)'

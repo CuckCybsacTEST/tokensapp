@@ -24,19 +24,27 @@
 
 html, body, #__next {
   height: 100%;
+  margin: 0;
+  padding: 0;
+  /* Scroll habilitado globalmente; se bloqueará de forma localizada con hook en la ruleta */
+  overflow-x: hidden; /* sólo ocultamos horizontal para evitar saltos laterales */
 }
 body {
   background: var(--color-bg);
   color: var(--color-text);
   font-feature-settings: "rlig" 1, "calt" 1;
   font-family: var(--font-text, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji");
+  position: relative; /* revertir fixed que forzaba no scroll */
+  width: 100%;
+  min-height: 100%;
 }
 
-/* Scrollbar (webkit) */
+/* Scrollbar (webkit) - Ocultar completamente */
+/* Restauramos scrollbar; si se desea ocultar sólo en la ruleta se hará local */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
-*::-webkit-scrollbar-thumb:hover { background: #64748b; }
+*::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.4); border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.6); }
 
 /* Reusable component classes */
 .app-container { @apply mx-auto px-4 py-6; max-width:72rem; }

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import RouletteFrame from './RouletteFrame';
 import RouletteSegments from './RouletteSegments';
 import SpinButton from './SpinButton';
 import RoulettePointer from './RoulettePointer';
 import styles from './roulette.module.css';
+import { useNoScroll } from './useNoScroll';
 import { RouletteElement } from './types';
 
 interface NewRouletteProps {
@@ -12,6 +13,12 @@ interface NewRouletteProps {
   onSpinEnd: (prize: RouletteElement) => void;
   spinning: boolean;
   prizeIndex: number | null;
+  /** Espaciado superior explícito para reservar área de título (px o cualquier unidad CSS). Override de clases .hasTitle/.title-large */
+  topSpacing?: number | string;
+  /** Override opcional para el offset del puntero (en px, valor negativo esperado). */
+  pointerOffset?: number;
+  /** Controla si se bloquea el scroll global mientras está montada la ruleta (default true) */
+  lockScroll?: boolean;
 }
 
 const NewRoulette = ({
@@ -19,17 +26,50 @@ const NewRoulette = ({
   onSpin,
   onSpinEnd,
   spinning,
-  prizeIndex
+  prizeIndex,
+  topSpacing,
+  pointerOffset,
+  lockScroll = true
 }: NewRouletteProps) => {
   const [rotation, setRotation] = useState(0);
   const [internalSpinning, setInternalSpinning] = useState(false);
   const [spinCompleted, setSpinCompleted] = useState(false);
 
-  // Dimensiones de la ruleta
-  const width = 500;
-  const height = 500;
-  const center = width / 2;
-  const segmentsRadius = 205;
+  // Dimensiones dinámicas de la ruleta (se basan en el contenedor responsivo CSS)
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState<number>(500); // fallback inicial
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    const el = wrapperRef.current;
+
+    // Observamos cambios de tamaño del wrapper para recalcular el SVG
+    const resizeObserver = new (window as any).ResizeObserver((entries: any[]) => {
+      for (const entry of entries) {
+        const newSize = Math.min(entry.contentRect.width, entry.contentRect.height);
+        if (newSize && Math.abs(newSize - size) > 0.5) {
+          setSize(newSize);
+        }
+      }
+    });
+    resizeObserver.observe(el);
+    // Inicial
+    const rect = el.getBoundingClientRect();
+    const initial = Math.min(rect.width, rect.height);
+    if (initial && Math.abs(initial - size) > 0.5) setSize(initial);
+    return () => resizeObserver.disconnect();
+  }, [wrapperRef.current]);
+
+  // Usamos un sistema de coordenadas fijo (base 500) para evitar desalineaciones
+  const baseSize = 500;
+  const scale = size / baseSize; // factor de escala real
+  const center = baseSize / 2; // centro consistente
+  const segmentsRadiusBase = baseSize * 0.395; // radio base de segmentos (coincide con frame)
+  // Radio en píxeles reales (para pasar al frame decorativo)
+  const segmentsRadiusReal = segmentsRadiusBase * scale;
+
+  // Bloquear scroll sólo mientras la ruleta está montada (vista dedicada)
+  useNoScroll(lockScroll);
 
   // Calcular la rotación basada en el índice del premio
   const calculatePrizeRotation = (index: number) => {
@@ -105,9 +145,16 @@ const NewRoulette = ({
     onSpin();
   };
 
+  // Estilo dinámico del contenedor (permite override sin romper estilos existentes)
+  const containerStyle: React.CSSProperties = {};
+  if (topSpacing !== undefined) {
+    containerStyle.paddingTop = typeof topSpacing === 'number' ? `${topSpacing}px` : topSpacing;
+  }
+
   return (
-    <div className={styles.rouletteContainer}>
-      <div className={styles.wheelWrapper}>
+    <div className={styles.rouletteContainer} style={containerStyle}>
+      <div className={styles.roulettePad}>
+        <div className={styles.wheelWrapper} ref={wrapperRef}>
         {/* Guardia: si hay menos de 2 elementos, no renderizar la ruleta completa */}
         {elements.length < 2 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
@@ -118,50 +165,69 @@ const NewRoulette = ({
         ) : (
           <>
         {/* Puntero en la parte superior */}
-        <RoulettePointer spinning={spinning || internalSpinning} />
+  <RoulettePointer spinning={spinning || internalSpinning} scale={scale} pointerOffset={pointerOffset} />
         
         {/* La rueda con los segmentos que gira */}
         <div
           className={`${styles.wheel} ${spinning || internalSpinning ? styles.spinning : ''}`}
           style={{ 
-            transform: `rotate(${rotation}deg)`, 
-            // Esta propiedad evitará que la ruleta vuelva a la posición inicial
-            transformStyle: 'preserve-3d',
+            transform: `translateZ(0) rotate(${rotation}deg)`,
+            // Optimizaciones para renderizado y animación fluida
+            transformStyle: 'flat',
             backfaceVisibility: 'hidden',
-            transitionProperty: spinning || internalSpinning ? 'transform' : 'none'
+            transitionProperty: spinning || internalSpinning ? 'transform' : 'none',
+            // Forzar que sea un círculo perfecto
+            borderRadius: '50%'
           }}
         >
-          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ zIndex: 5, position: 'relative' }}>
-            {/* Base circular de la ruleta */}
-            <circle 
-              cx={center} 
-              cy={center} 
-              r={segmentsRadius} 
-              fill="#DAA520" 
-              stroke="#4A3000" 
-              strokeWidth="4" 
+          <svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${baseSize} ${baseSize}`}
+            style={{
+              zIndex: 5,
+              position: 'relative',
+              overflow: 'visible', // permitir strokes completos
+              borderRadius: '50%',
+              shapeRendering: 'geometricPrecision'
+            }}
+          >
+            {/* Círculo base */}
+            <circle
+              cx={center}
+              cy={center}
+              r={segmentsRadiusBase}
+              fill="#DAA520"
+              stroke="#4A3000"
+              strokeWidth={3}
             />
-            
-            {/* Los segmentos de la ruleta con colores y etiquetas */}
-            <RouletteSegments 
-              elements={elements} 
-              radius={segmentsRadius} 
-              center={center} 
+            {/* Segmentos */}
+            <RouletteSegments
+              elements={elements}
+              radius={segmentsRadiusBase}
+              center={center}
+              scale={scale}
             />
           </svg>
         </div>
         
         {/* Marco decorativo alrededor de la rueda */}
-        <RouletteFrame spinning={spinning || internalSpinning} />
+        <RouletteFrame
+          spinning={spinning || internalSpinning}
+          scale={scale}
+          wheelRadius={segmentsRadiusReal}
+        />
         
         {/* Botón para girar en el centro - Mejorado para capturar eventos de teclado */}
         <SpinButton 
           onClick={handleSpinClick} 
           disabled={spinning || internalSpinning}
+          scale={scale}
         />
         
           </>
         )}
+        </div>
       </div>
     </div>
   );
