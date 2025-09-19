@@ -1,0 +1,43 @@
+/* Smart preloader: animación ligera + mensajes dinámicos */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: auto;
+  padding: 0;
+  position: relative;
+  z-index: 1; /* ensure over background layers */
+}
+
+/* Espaciado sutil bajo el logo insertado como componente */
+.logoTight { margin-bottom: 0; }
+
+.message {
+  color: #fff;
+  text-align: center;
+  margin-top: 8px; /* small separation for readability */
+}
+
+.title {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.subtitle {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+/* Móvil */
+@media (max-width: 480px) {
+  .root { gap: 1px; }
+  .message { margin-top: 6px; }
+}
+
+/* Respeta reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  /* sin animaciones adicionales definidas aquí */
+}

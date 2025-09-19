@@ -5,22 +5,40 @@
 .rouletteViewport {
   display: flex;
   flex-direction: column;
-  /* Mantenemos arriba el contenido y damos un padding-top proporcional */
   justify-content: flex-start;
-  min-height: calc(100vh - 160px); /* reserva espacio razonable para footer sin empujarlo demasiado */
+  /* Quitamos min-height global para no empujar el footer hacia abajo artificialmente.
+     El contenido interno ya define alturas mínimas razonables. */
+  padding-top: 0.5rem; /* antes dependíamos de pt del contenedor padre */
+  padding-bottom: 1rem; /* más espacio inferior por defecto */
 }
 
-/* En pantallas muy altas reducimos aún más el espacio inferior limitando altura del bloque principal */
-@media (min-height: 1000px) {
+/* En pantallas semi-altas añadimos un pequeño respiro pero sin grandes bloques vacíos */
+@media (min-height: 900px) {
   .rouletteViewport {
-    padding-top: 2rem;
+    padding-top: 1.25rem;
+    padding-bottom: 1.75rem; /* aumentar un poco en pantallas semi-altas */
+  }
+}
+
+/* En pantallas muy altas controlamos un máximo de expansión y no centramos verticalmente */
+@media (min-height: 1200px) {
+  .rouletteViewport {
+    padding-top: 1.75rem;
     padding-bottom: 2rem;
   }
 }
 
-@media (min-height: 1400px) {
+/* Ultra altas (>1500px) incrementamos levemente sin crear hueco exagerado */
+@media (min-height: 1500px) {
   .rouletteViewport {
-    padding-top: 3rem;
-    padding-bottom: 2.5rem;
+    padding-top: 2rem;
+    padding-bottom: 2.25rem;
+  }
+}
+
+/* Excepción: dispositivos de poca altura (ej. iPhone SE) mantienen padding inferior reducido */
+@media (max-height: 680px) {
+  .rouletteViewport {
+    padding-bottom: 0.5rem;
   }
 }

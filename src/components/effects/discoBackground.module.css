@@ -1,0 +1,137 @@
+/* Fondo animado tipo discoteca: blobs de color, haces giratorios y ligera textura.
+   Optimizado para rendimiento: pocas capas, animaciones CSS, pointer-events: none. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0; /* El contenido debe ir por encima (z>0) */
+  overflow: hidden;
+}
+
+/* Capa base con degradado sutil para mezclar con el fondo existente */
+.baseGradient {
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(120% 80% at 20% 10%, var(--disco-base-a, rgba(255, 64, 129, 0.15)), transparent 60%),
+              radial-gradient(80% 100% at 80% 20%, var(--disco-base-b, rgba(59, 130, 246, 0.14)), transparent 60%),
+              radial-gradient(100% 100% at 50% 80%, var(--disco-base-c, rgba(16, 185, 129, 0.12)), transparent 65%);
+  filter: blur(30px);
+}
+
+/* Blobs flotantes de color que se mueven lentamente */
+.blob {
+  position: absolute;
+  width: 36vmax;
+  height: 36vmax;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.22;
+  will-change: transform, opacity;
+  mix-blend-mode: screen;
+}
+
+.blobPink { background: radial-gradient(circle at 30% 30%, var(--disco-blob-a-strong, rgba(255, 64, 129, 0.8)), var(--disco-blob-a-weak, rgba(255, 64, 129, 0.1)) 60%); }
+.blobBlue { background: radial-gradient(circle at 70% 40%, var(--disco-blob-b-strong, rgba(59, 130, 246, 0.8)), var(--disco-blob-b-weak, rgba(59, 130, 246, 0.1)) 60%); }
+.blobViolet { background: radial-gradient(circle at 50% 50%, var(--disco-blob-c-strong, rgba(139, 92, 246, 0.8)), var(--disco-blob-c-weak, rgba(139, 92, 246, 0.1)) 60%); }
+
+.blobPink { animation: floatA 18s ease-in-out infinite; left: -10%; top: 10%; }
+.blobBlue { animation: floatB 22s ease-in-out infinite; right: -8%; top: 20%; }
+.blobViolet { animation: floatC 26s ease-in-out infinite; left: 20%; bottom: -12%; }
+
+@keyframes floatA {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(8%, -6%, 0) scale(1.05); }
+  66% { transform: translate3d(-6%, 6%, 0) scale(0.95); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes floatB {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  25% { transform: translate3d(-6%, 5%, 0) scale(1.08); }
+  50% { transform: translate3d(4%, -4%, 0) scale(0.96); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes floatC {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  40% { transform: translate3d(4%, -8%, 0) scale(1.06); }
+  70% { transform: translate3d(-5%, 6%, 0) scale(0.97); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Haces de luz giratorios usando conic-gradient */
+.beams {
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(from 0deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0.06) 12deg,
+    rgba(255, 255, 255, 0) 24deg,
+    rgba(255, 255, 255, 0.06) 36deg,
+    rgba(255, 255, 255, 0) 48deg,
+    rgba(255, 255, 255, 0.06) 60deg,
+    rgba(255, 255, 255, 0) 72deg,
+    rgba(255, 255, 255, 0.06) 84deg,
+    rgba(255, 255, 255, 0) 96deg,
+    rgba(255, 255, 255, 0.06) 108deg,
+    rgba(255, 255, 255, 0) 120deg,
+    rgba(255, 255, 255, 0.06) 132deg,
+    rgba(255, 255, 255, 0) 144deg,
+    rgba(255, 255, 255, 0.06) 156deg,
+    rgba(255, 255, 255, 0) 168deg,
+    rgba(255, 255, 255, 0.06) 180deg,
+    rgba(255, 255, 255, 0) 192deg,
+    rgba(255, 255, 255, 0.06) 204deg,
+    rgba(255, 255, 255, 0) 216deg,
+    rgba(255, 255, 255, 0.06) 228deg,
+    rgba(255, 255, 255, 0) 240deg,
+    rgba(255, 255, 255, 0.06) 252deg,
+    rgba(255, 255, 255, 0) 264deg,
+    rgba(255, 255, 255, 0.06) 276deg,
+    rgba(255, 255, 255, 0) 288deg,
+    rgba(255, 255, 255, 0.06) 300deg,
+    rgba(255, 255, 255, 0) 312deg,
+    rgba(255, 255, 255, 0.06) 324deg,
+    rgba(255, 255, 255, 0) 336deg,
+    rgba(255, 255, 255, 0.06) 348deg,
+    rgba(255, 255, 255, 0) 360deg);
+  opacity: 0.28;
+  animation: rotateBeams 28s linear infinite;
+  animation-delay: 150ms;
+  filter: blur(8px) saturate(120%);
+  mix-blend-mode: screen;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transform-origin: 50% 50%;
+}
+
+@keyframes rotateBeams {
+  0% { transform: rotate(0.5deg); }
+  100% { transform: rotate(360.5deg); }
+}
+
+/* Textura sutil para dar profundidad */
+.texture {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+}
+
+/* Intensidad controlada por clases */
+.low { opacity: 0.5; }
+.medium { opacity: 0.75; }
+.high { opacity: 1; }
+
+
+/* Ajustes responsive para móviles altos (como iPhone 14 Pro Max) */
+@media (max-width: 420px) and (min-height: 800px) {
+  .blob { width: 60vmax; height: 60vmax; filter: blur(60px); }
+}

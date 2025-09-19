@@ -5,6 +5,7 @@ import NewRoulette from '@/components/roulette/NewRoulette';
 import RouletteHeading from '@/components/roulette/RouletteHeading';
 import { RouletteElement } from '@/components/roulette/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import SmartPreloader from '@/components/common/SmartPreloader';
 
 // Simple confetti animation component
 const Confetti = ({ active }: { active: boolean }) => {
@@ -168,14 +169,17 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     setError(null);
     setToken(null);
     setElements([]);
-  setPhase('READY');
+    setPhase('READY');
     setPrizeIndex(null);
     setPrizeWon(null);
     setShowConfetti(false);
     setDelivering(false);
     setDeliverError(null);
 
-    async function loadToken() {
+    let abort = false;
+    const minPromise = new Promise<void>((resolve) => setTimeout(resolve, 2000));
+
+    (async function loadToken() {
       try {
         // Obtenemos los datos del token desde la API existente
         const response = await fetch(`/api/tokens/${tokenId}/roulette-data`);
@@ -193,7 +197,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         }
 
         const data = raw ? JSON.parse(raw) : {};
-        
+        if (abort) return;
         setToken(data.token);
         
         // Verificamos si hay elementos antes de intentar mapearlos
@@ -205,18 +209,20 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
             color: e.color || getSegmentColor(index),
             prizeId: e.prizeId,
           }));
-          
           setElements(rouletteElements);
         }
-        setLoading(false);
       } catch (err) {
-        console.error("Error cargando datos:", err);
-        setError(err instanceof Error ? err.message : "Error desconocido");
-        setLoading(false);
+        if (!abort) {
+          console.error("Error cargando datos:", err);
+          setError(err instanceof Error ? err.message : "Error desconocido");
+        }
+      } finally {
+        await minPromise;
+        if (!abort) setLoading(false);
       }
-    }
+    })();
 
-    loadToken();
+    return () => { abort = true; };
   }, [tokenId]);
 
   const handleSpin = async () => {
@@ -298,9 +304,10 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   if (loading) {
     return (
-      <div className="text-center py-16">
-        <div className="inline-block w-16 h-16 border-t-4 border-l-4 border-white rounded-full animate-spin"></div>
-        <p className="mt-4 text-white/70">Cargando ruleta...</p>
+      <div className="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none" style={{ overscrollBehavior: 'contain' }}>
+        <div className="relative z-[1]">
+          <SmartPreloader logoSrc="/logo.png" />
+        </div>
       </div>
     );
   }
@@ -399,7 +406,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   return (
     <div className="relative">
-      <div className="px-4 pt-10 sm:pt-16 text-center max-w-3xl mx-auto">
+      <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
         <RouletteHeading
           kicker="Premios exclusivos"
           title="Ruleta de Premios"
@@ -412,7 +419,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === 'READY' || phase === 'SPINNING') && (
-        <div className="flex items-center justify-center py-8 sm:py-10 min-h-[420px] sm:min-h-[520px]">
+  <div className="flex items-center justify-center py-6 sm:py-8 min-h-[400px] sm:min-h-[500px]">
           <NewRoulette
             elements={elements}
             onSpin={handleSpin}
@@ -433,9 +440,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
       {/* Panel permanente tras cerrar modal */}
       {showRevealedPanel && prizeWon && (
-        <div className="text-center py-10 sm:py-14 max-w-md mx-auto px-4">
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5 sm:p-6">
-            <p className="text-blue-300 text-base sm:text-lg font-semibold">Premio revelado</p>
+  <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
+          <div className="rounded-lg p-5 sm:p-6 border" style={{ background: 'rgba(255,77,46,0.10)', borderColor: 'rgba(255,77,46,0.30)' }}>
+            <p className="text-[#FFD166] text-base sm:text-lg font-semibold">Premio revelado</p>
             <p className="mt-2 text-white/80 text-sm sm:text-base leading-relaxed">
               Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
             </p>
@@ -478,15 +485,16 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
               initial={{ y: 30, opacity: 0, scale: 0.9 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 30, opacity: 0, scale: 0.9, transition: { duration: 0.4 } }}
-              className="relative z-10 bg-gradient-to-b from-slate-900 to-slate-950 rounded-xl p-6 sm:p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="relative z-10 rounded-xl p-6 sm:p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
               style={{
-                boxShadow: '0 0 30px rgba(219, 39, 119, 0.3), 0 0 15px rgba(59, 130, 246, 0.3)'
+                background: 'linear-gradient(180deg, #0E0606, #07070C)',
+                boxShadow: '0 12px 32px -10px rgba(255,77,46,0.6)'
               }}
             >
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute -top-4 -right-4"
+                className="absolute top-3 right-3"
               >
                 <button
                   onClick={() => { setPhase('REVEALED_PANEL'); setShowConfetti(false); }}
@@ -526,20 +534,27 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                     transition={{ type: "spring", damping: 12 }}
                     className="text-2xl sm:text-3xl font-bold mb-1"
                   >
-                    ¡Felicidades!
+                    ¡Bien hecho!
                   </motion.h2>
-                  <motion.div className="w-16 h-1 bg-gradient-to-r from-pink-500 to-blue-500 mx-auto rounded-full"/>
+                  <motion.div className="w-16 h-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] mx-auto rounded-full"/>
                 </motion.div>
                 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5, type: "spring" }}
-                  className="my-6 relative"
+                  className="my-6"
                 >
-                  <span className="absolute -left-2 -top-2 text-2xl sm:text-3xl opacity-30">❝</span>
                   <motion.p 
-                    className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-blue-500 my-2 px-2 sm:px-4 break-words"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55 }}
+                    className="text-sm sm:text-base text-white/70 mb-1"
+                  >
+                    Has desbloqueado:
+                  </motion.p>
+                  <motion.p 
+                    className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] my-2 px-2 sm:px-4 break-words"
                     animate={{ 
                       backgroundPosition: ['0% center', '100% center', '0% center'],
                     }}
@@ -554,7 +569,6 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   >
                     {prizeWon.label}
                   </motion.p>
-                  <span className="absolute -right-2 -bottom-2 text-2xl sm:text-3xl opacity-30">❞</span>
                 </motion.div>
                 
                 <motion.p 
@@ -563,14 +577,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   transition={{ delay: 0.7 }}
                   className="text-white/80 mb-6 sm:mb-8 text-base sm:text-lg px-1 sm:px-2 leading-relaxed"
                 >
-                  Tu premio ha sido registrado. Muestra esta pantalla en barra para reclamarlo.
+                  Muestra esta pantalla en la barra y disfruta tu premio.
                 </motion.p>
                 
                 <motion.button 
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 }}
-                  className="px-6 sm:px-10 py-3 sm:py-4 rounded-full bg-gradient-to-r from-pink-600 to-blue-600 hover:from-pink-500 hover:to-blue-500 text-white font-bold transition-all shadow-lg hover:shadow-xl text-base sm:text-lg"
+                  className="px-6 sm:px-10 py-3 sm:py-4 rounded-full bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] hover:from-[#ff5e44] hover:to-[#ff8a54] text-white font-bold transition-all shadow-lg hover:shadow-xl text-base sm:text-lg"
                   onClick={() => {
                     setPhase('REVEALED_PANEL');
                     setShowConfetti(false);
@@ -578,21 +592,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  ¡Entendido!
+                  ¡A rumbear!
                 </motion.button>
-                <div className="mt-4 flex items-center justify-center">
-                  <button
-                    className="px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
-                    onClick={confirmDeliver}
-                    disabled={delivering}
-                    title="Para uso del STAFF"
-                  >
-                    {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
-                  </button>
-                </div>
-                {deliverError && (
-                  <div className="mt-2 text-xs text-rose-400">{deliverError}</div>
-                )}
+                {/* Staff delivery button removed from modal per request */}
               </div>
             </motion.div>
           </motion.div>

@@ -1,0 +1,45 @@
+/* Micro-interacciones móviles para el botón GIRAR */
+
+.container {
+  /* el contenedor ya es absolute vía inline style; aquí añadimos capas decorativas */
+  position: relative; /* para posicionar pseudo-elementos */
+}
+
+/* Wrapper del contenido (sin rebote) */
+.bounce { display: inline-block; }
+
+/* Respetar preferencias de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .container::after,
+  .container::before {
+    animation: none !important;
+  }
+}
+
+/* Efectos sólo en móvil */
+@media (max-width: 480px) and (prefers-reduced-motion: no-preference) {
+  /* Indicador sutil de giro: anillo con ticks girando lentamente */
+  .container::before {
+    content: "";
+    position: absolute;
+    inset: 6%; /* deja margen respecto al borde del botón */
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at center, transparent 58%, rgba(255,255,255,0.06) 59.2%, rgba(255,255,255,0.18) 60%, transparent 63%),
+      repeating-conic-gradient(from 0deg,
+        rgba(255, 215, 0, 0.22) 0deg,
+        rgba(255, 215, 0, 0.22) 4deg,
+        transparent 8deg,
+        transparent 16deg);
+    opacity: 0.35;
+    animation: spinHint 7s linear infinite;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    filter: blur(0.4px) saturate(120%);
+  }
+}
+
+@keyframes spinHint {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -29,6 +29,27 @@ html, body, #__next {
   /* Scroll habilitado globalmente; se bloqueará de forma localizada con hook en la ruleta */
   overflow-x: hidden; /* sólo ocultamos horizontal para evitar saltos laterales */
 }
+
+/* Bloqueo de scroll (se aplica/retira dinámicamente mientras el loader está visible) */
+html.scroll-locked, body.scroll-locked {
+  overflow: hidden !important;
+  height: 100%;
+}
+html.scroll-locked {
+  overscroll-behavior: none;
+}
+
+/* Ocultar el footer de la ruleta mientras el loader está visible */
+html.scroll-locked .roulette-footer,
+body.scroll-locked .roulette-footer {
+  display: none !important;
+}
+
+/* Y también si existe el overlay fixed (cubre SSR/hidratación inicial) */
+/* Nota: :has() ya es soportado en la mayoría de navegadores modernos */
+body:has(.roulette-loading-overlay) .roulette-footer {
+  display: none !important;
+}
 body {
   background: var(--color-bg);
   color: var(--color-text);

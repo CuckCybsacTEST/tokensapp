@@ -58,7 +58,7 @@
 .wheelWrapper {
   position: relative;
   /* Tamaño responsivo optimizado para caber en una sola vista sin scroll */
-  --wheel-size: clamp(280px, 60vw, 520px);
+  --wheel-size: clamp(300px, 62vw, 560px);
   /* Ajuste vertical si el puntero invade el título */
   margin-top: var(--top-offset);
   width: var(--wheel-size);
@@ -79,22 +79,23 @@
 
 @media (max-width: 480px) {
   .rouletteContainer {
-    padding: 8px 8px 24px;
+    padding: 6px 6px 14px;
     /* Permitimos flujo normal para que el contenido anterior no quede solapado */
     height: auto;
     max-height: none;
     overflow: visible;
     position: static;
   }
-  /* En móviles pequeños incrementamos el espacio para evitar que títulos de 1-2 líneas toquen la ruleta */
-  .rouletteContainer { padding-top: 78px; }
-  .rouletteContainer.hasTitle { padding-top: 94px; }
+  /* En móviles: sólo añadimos extra top si NO es variante inline */
+  .rouletteContainer:not([data-variant="inline"]) { padding-top: 72px; }
+  .rouletteContainer.hasTitle:not([data-variant="inline"]) { padding-top: 90px; }
   .roulettePad {
-    padding: clamp(4px, 1.5vw, 10px);
+    padding: clamp(2px, 1vw, 8px);
   }
   .wheelWrapper {
-    --wheel-size: clamp(236px, 72vw, 388px); /* reducir ligeramente para compensar mayor padding superior */
-    margin-top: calc(var(--top-offset) + 12px);
+    /* Maximizar rueda en móviles, respetando viewport corto */
+    --wheel-size: min(92vw, 88vmin);
+    margin-top: calc(var(--top-offset) + 8px);
     /* Importante: mantener aspecto perfectamente circular */
     aspect-ratio: 1/1;
     overflow: clip;
@@ -104,12 +105,12 @@
 /* Micro-breakpoint: dispositivos ultra pequeños o muy bajos (ej. iPhone SE) */
 @media (max-width: 380px), (max-height: 680px) {
   /* Ultra pequeños: más espacio todavía (títulos a 2-3 líneas) */
-  .rouletteContainer { padding-top: 92px; }
-  .rouletteContainer.hasTitle { padding-top: 112px; }
+  .rouletteContainer:not([data-variant="inline"]) { padding-top: 88px; }
+  .rouletteContainer.hasTitle:not([data-variant="inline"]) { padding-top: 108px; }
   .rouletteContainer.title-large .wheelWrapper { --top-offset: 52px; }
   .wheelWrapper {
-    --wheel-size: clamp(220px, 71vw, 340px);
-    margin-top: calc(var(--top-offset) + 14px);
+    --wheel-size: min(94vw, 86vmin);
+    margin-top: calc(var(--top-offset) + 10px);
   }
 }
 

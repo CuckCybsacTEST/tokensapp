@@ -2,6 +2,8 @@ import React from 'react';
 import styles from './rouletteLayout.module.css';
 import { Metadata } from 'next';
 import RouletteClientPage from './RouletteClientPage';
+import ShowBackground from '@/components/background/ShowBackground';
+import FooterGate from './FooterGate';
 // import MarketingNavbar from '../components/MarketingNavbar';
 
 export const metadata: Metadata = {
@@ -27,12 +29,15 @@ export default function RuletaPage({ searchParams }: { searchParams: { tokenId?:
         - En pantallas muy altas (>=1000px) aplicamos justify-center para centrar el bloque principal.
         Usamos clases utilitarias y una media query inline adicional para casos extremos (>1400px).
       */}
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#0E0606] to-[#07070C] px-0 pt-6 sm:pt-10 pb-10 sm:pb-12">
-        <div className={`flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}>
+      <div className="relative min-h-screen flex flex-col px-0 pt-6 sm:pt-10 pb-10 sm:pb-12">
+  {/* Fondo compuesto reutilizable intacto: degradado base + efectos */}
+  <ShowBackground intensity="medium" theme="marketing" />
+        <FooterGate />
+        <div className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}>
           <RouletteClientPage tokenId={tokenId} />
         </div>
-        <footer className="pt-8 text-center text-white/50 text-xs">
-          <p>© {new Date().getFullYear()} QR Platform. Todos los derechos reservados.</p>
+        <footer className="relative z-[1] pt-8 text-center text-white/50 text-xs roulette-footer">
+          <p>©  2025 TOKEN APP - Ktdral Lounge</p>
         </footer>
       </div>
       {/* Eliminado styled-jsx para mantener este Server Component puro y evitar client-only import */}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import btnStyles from './spinButton.module.css';
 
 interface SpinButtonProps {
   onClick: () => void;
@@ -50,6 +51,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
 
   return (
     <div 
+      className={btnStyles.container}
       style={{
         position: 'absolute',
         top: '50%',
@@ -67,7 +69,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
         boxShadow: isFocused ? '0 0 0 3px rgba(255, 215, 0, 0.8)' : 
                    isHover ? '0 0 15px 5px rgba(255, 215, 0, 0.3)' : 
                    isPress ? '0 0 8px 3px rgba(255, 215, 0, 0.5)' : 'none',
-        transition: 'box-shadow 0.3s ease, transform 0.2s ease',
+        transition: 'box-shadow 0.3s ease, transform 0.18s ease-out',
         outline: 'none'
       }}
       onFocus={() => setIsFocused(true)}
@@ -88,18 +90,20 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
       tabIndex={disabled ? -1 : 0}
       aria-label="Girar la ruleta"
     >
+      <div className={btnStyles.bounce}>
       <svg
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         style={{
-          transform: isPress ? 'scale(0.97)' : isHover ? 'scale(1.03)' : 'scale(1)',
+          /* Rebote sutil en móvil al tocar */
+          transform: isPress ? 'scale(0.965)' : isHover ? 'scale(1.03)' : 'scale(1)',
           filter: `drop-shadow(2px 3px ${isPress ? '3px' : '5px'} rgba(0,0,0,0.4))`,
           transition: 'transform 0.2s ease-out, filter 0.2s ease-out',
           opacity: disabled ? 0.7 : 1,
           pointerEvents: 'none' // El SVG no captura eventos, solo el div padre
         }}
-      >
+  >
       <defs>
         <radialGradient id="redGlossy" cx="50%" cy="40%" r="50%" fx="50%" fy="40%">
           <stop offset="0%" stopColor={isPress ? "#FF7070" : isHover ? "#FF7F7F" : "#FF6B6B"} />
@@ -201,6 +205,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
         </circle>
       )}
     </svg>
+      </div>
     </div>
   );
 };

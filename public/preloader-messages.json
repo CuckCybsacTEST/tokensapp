@@ -1,0 +1,19 @@
+{
+  "default": {
+    "title": "Cargando ruleta…",
+    "subtitle": "Preparando premios y sorpresas"
+  },
+  "byWeekday": {
+    "monday": { "title": "Arrancando la semana", "subtitle": "¡Hoy calienta motores!" },
+    "tuesday": { "title": "Martes de suerte", "subtitle": "¿Listo para girar?" },
+    "wednesday": { "title": "Miércoles en marcha", "subtitle": "La ruleta ya casi está" },
+  "thursday": { "title": "No es jueves, es jueveo…", "subtitle": "¡Bienvenido al show!" },
+    "friday": { "title": "Viernes de fiesta", "subtitle": "Premios a la vuelta de la esquina" },
+    "saturday": { "title": "Sábado de premios", "subtitle": "Ambiente listo, ¿giramos?" },
+    "sunday": { "title": "Domingo relax", "subtitle": "Un giro suave para cerrar la semana" }
+  },
+  "byDate": {
+    "2025-12-24": { "title": "Nochebuena de premios", "subtitle": "Felices fiestas" },
+    "2025-12-31": { "title": "Cierre de año", "subtitle": "Últimos giros del año" }
+  }
+}
