@@ -1,3 +1,4 @@
+export {};
 /*
   Restaura batches desde ZIPs exportados por /api/batch/:id/download.
   - Crea/asegura Batch (id, createdAt, description)
@@ -162,6 +163,25 @@ async function restoreFromZip(zipPath: string) {
       await prisma.prize.update({ where: { id: pid }, data: { color } });
       updatedPrizeColors++;
     }
+  }
+
+  // Alinear métricas de Prize para que aparezcan como "Emitidos":
+  // - stock = 0 (no hay pendientes tras restauración)
+  // - emittedTotal = total de tokens existentes para ese premio (idempotente)
+  // - lastEmittedAt = max(actual, createdAt del batch)
+  for (const p of manifest.prizes) {
+    const prize = await prisma.prize.findUnique({ where: { id: p.prizeId } });
+    if (!prize) continue;
+    const totalForPrize: number = await prisma.token.count({ where: { prizeId: p.prizeId } });
+    const newLast = prize.lastEmittedAt && prize.lastEmittedAt > createdAt ? prize.lastEmittedAt : createdAt;
+    await prisma.prize.update({
+      where: { id: p.prizeId },
+      data: {
+        stock: 0,
+        emittedTotal: totalForPrize,
+        lastEmittedAt: newLast,
+      },
+    });
   }
 
   return { batchId, created, skipped, updatedPrizeColors };

@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+export {};
 /**
  * Backfill script for two-phase redemption migration.
  *

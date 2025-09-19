@@ -1,3 +1,4 @@
+export {};
 /* End-to-end batch generation + ZIP parse + redeem test */
 import JSZip from 'jszip';
 import { PrismaClient } from '@prisma/client';
