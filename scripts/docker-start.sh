@@ -58,10 +58,7 @@ if [ -n "$DATABASE_URL" ]; then
   else
     echo "[entrypoint] Unknown DATABASE_URL scheme. Skipping prisma migrations."
   fi
-  if [ "${SEED_ON_START}" = "1" ]; then
-    echo "[entrypoint] SEED_ON_START=1 -> running npm run seed (SEED_MODE=only-empty)"
-    SEED_MODE="${SEED_MODE:-only-empty}" npm run seed || true
-  fi
+  # Seeding is disabled by default. To seed, set ALLOW_SEED=1 and run `npm run seed` manually.
 fi
 
 echo "[entrypoint] Launching app (npm start)"

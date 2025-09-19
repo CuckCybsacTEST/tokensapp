@@ -4,15 +4,13 @@ import bcrypt from 'bcryptjs';
 const { PrismaClient } = require('@prisma/client') as { PrismaClient: any };
 const prisma = new PrismaClient();
 
-// Seed guard: avoid accidental data resets in production or on non-empty DB
+// Seed guard: HARD DISABLE by default. Only run when ALLOW_SEED=1 explicitly.
 async function shouldSkipSeed() {
-  const mode = (process.env.SEED_MODE || 'only-empty').toLowerCase();
-  const isProd = process.env.NODE_ENV === 'production';
-  // Hard block in prod unless explicitly allowed
-  if (isProd && process.env.ALLOW_SEED !== '1') {
-    console.log('seed_skip: production environment and ALLOW_SEED!=1');
+  if (process.env.ALLOW_SEED !== '1') {
+    console.log('seed_skip: ALLOW_SEED!=1 (seed deshabilitado por defecto en todos los entornos)');
     return true;
   }
+  const mode = (process.env.SEED_MODE || 'only-empty').toLowerCase();
   if (mode === 'never') {
     console.log('seed_skip: SEED_MODE=never');
     return true;
