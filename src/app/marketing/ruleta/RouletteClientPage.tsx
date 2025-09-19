@@ -6,64 +6,13 @@ import RouletteHeading from '@/components/roulette/RouletteHeading';
 import { RouletteElement } from '@/components/roulette/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import SmartPreloader from '@/components/common/SmartPreloader';
+import { perfMark, perfMeasure, perfSummarize, perfCheckBudget } from '@/lib/perf';
+import CanvasConfetti from '@/components/visual/CanvasConfetti';
 
-// Simple confetti animation component
-const Confetti = ({ active }: { active: boolean }) => {
-  // Ajustar cantidad de confetti segun ancho de pantalla para móviles (sin alterar efecto base)
-  const isSmall = typeof window !== 'undefined' && window.innerWidth < 480;
-  const confettiCount = isSmall ? 60 : 150;
-  const confettiColors = ['#FF8A00', '#FF5252', '#E040FB', '#7C4DFF', '#448AFF', '#18FFFF', '#B2FF59', '#EEFF41', '#FFC400', '#FF6D00'];
-  
-  if (!active) return null;
-  
-  return (
-    <div style={{ position: 'fixed', zIndex: 999, top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-      {Array.from({ length: confettiCount }).map((_, i) => {
-        const size = Math.random() * 10 + 5; // Random size between 5-15px
-        const color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
-        const left = Math.random() * 100; // Random horizontal position (0-100%)
-        const animDuration = Math.random() * 3 + 2; // Random animation duration (2-5s)
-        const animDelay = Math.random() * 1.5; // Random delay (0-1.5s)
-        
-        return (
-          <motion.div
-            key={i}
-            initial={{ 
-              y: -20,
-              x: `${left}%`,
-              opacity: 1,
-              rotateZ: 0
-            }}
-            animate={{ 
-              y: '100vh',
-              x: [
-                `${left}%`, 
-                `${left + (Math.random() * 20 - 10)}%`, 
-                `${left + (Math.random() * 40 - 20)}%`
-              ],
-              opacity: [1, 1, 0],
-              rotateZ: Math.random() * 360
-            }}
-            transition={{ 
-              duration: animDuration,
-              delay: animDelay,
-              ease: 'easeIn'
-            }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              width: size,
-              height: size * (Math.random() * 0.6 + 0.4), // Random aspect ratio
-              backgroundColor: color,
-              borderRadius: Math.random() > 0.5 ? '50%' : '0%', // Mix of circles and squares
-              zIndex: 999
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-};
+// Confetti ahora usando canvas para menos costo en DOM
+const Confetti = ({ active, lowMotion = false }: { active: boolean; lowMotion?: boolean }) => (
+  <CanvasConfetti active={active && !lowMotion} lowMotion={lowMotion} />
+);
 
 // Función para obtener colores variados para los segmentos de la ruleta
 function getSegmentColor(index: number): string {
@@ -100,6 +49,8 @@ interface RouletteClientPageProps {
 }
 
 export default function RouletteClientPage({ tokenId }: RouletteClientPageProps) {
+  // Mark initial mount
+  useEffect(() => { perfMark('page_mount'); }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<TokenShape | null>(null);
@@ -111,15 +62,29 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [showConfetti, setShowConfetti] = useState(false);
   const [delivering, setDelivering] = useState(false);
   const [deliverError, setDeliverError] = useState<string | null>(null);
+  const [lowMotion, setLowMotion] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
   const [rouletteHeadingHeight, setRouletteHeadingHeight] = useState(0);
   // Contador de giros (offset base 420). Se obtiene de métricas del periodo "today".
   const SPIN_BASE_OFFSET = 420;
   const [spinCounter, setSpinCounter] = useState<number | null>(null);
+  // Tuning constants
+  const FETCH_TIMEOUT_MS = 8000; // abort fetch if backend stalls
+  const MIN_LOADER_MS = 900; // shorter minimum loader time to feel snappy
+  const LOAD_BUDGET_MS = 2500; // presupuesto orientativo para load_total
 
   // Cargar métrica de giros al montar (period today) para inicializar contador.
   useEffect(() => {
+    // Detectar modo de bajo movimiento / heurística de dispositivo
+    try {
+      const mq = typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+      const deviceMem = (navigator as any)?.deviceMemory || 0; // heurística (no estándar en todos los navs)
+      const smallViewport = typeof window !== 'undefined' && (window.innerWidth < 380 || window.innerHeight < 680);
+      const isLow = (!!mq && mq.matches) || deviceMem > 0 && deviceMem <= 2 || smallViewport;
+      setLowMotion(!!isLow);
+    } catch {}
     let abort = false;
     (async () => {
       try {
@@ -177,29 +142,56 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     setDeliverError(null);
 
     let abort = false;
-    const minPromise = new Promise<void>((resolve) => setTimeout(resolve, 2000));
+    const minPromise = new Promise<void>((resolve) => setTimeout(resolve, MIN_LOADER_MS));
 
     (async function loadToken() {
+      perfMark('load_start');
       try {
-        // Obtenemos los datos del token desde la API existente
-        const response = await fetch(`/api/tokens/${tokenId}/roulette-data`);
-        const raw = await response.text();
-        if (!response.ok) {
-          // Intenta parsear JSON desde el texto una sola vez
-          let msg = '';
-          try {
-            const j = JSON.parse(raw || '{}');
-            msg = j.message || j.error || '';
-          } catch {}
-          if (response.status === 404) throw new Error('Token no encontrado');
-          if (response.status === 403) throw new Error('El sistema de tokens está temporalmente desactivado. Por favor, inténtalo más tarde.');
-          throw new Error(msg || `Error ${response.status}${raw ? `: ${raw}` : ''}`);
+        // Control de timeout
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+        const doFetch = async () => {
+          const response = await fetch(`/api/tokens/${tokenId}/roulette-data`, {
+            signal: controller.signal,
+            cache: 'no-store',
+          });
+          const raw = await response.text();
+          if (!response.ok) {
+            // Intenta parsear JSON desde el texto una sola vez
+            let msg = '';
+            try {
+              const j = JSON.parse(raw || '{}');
+              msg = j.message || j.error || '';
+            } catch {}
+            if (response.status === 404) throw new Error('Token no encontrado');
+            if (response.status === 403) throw new Error('El sistema de tokens está temporalmente desactivado. Por favor, inténtalo más tarde.');
+            throw new Error(msg || `Error ${response.status}${raw ? `: ${raw}` : ''}`);
+          }
+          return raw ? JSON.parse(raw) : {};
+        };
+
+        let data: any;
+        try {
+          data = await doFetch();
+        } catch (e: any) {
+          // Reintento rápido una vez si no fue un abort por timeout
+          if (e?.name !== 'AbortError') {
+            try {
+              data = await doFetch();
+            } catch (e2) {
+              throw e; // propaga el error original
+            }
+          } else {
+            throw new Error('Tiempo de espera agotado al cargar la ruleta.');
+          }
+        } finally {
+          clearTimeout(timer);
         }
 
-        const data = raw ? JSON.parse(raw) : {};
-        if (abort) return;
+  if (abort) return;
         setToken(data.token);
-        
+
         // Verificamos si hay elementos antes de intentar mapearlos
         if (data.elements && Array.isArray(data.elements)) {
           // Convertimos los elementos del backend al formato que espera la ruleta
@@ -218,7 +210,15 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         }
       } finally {
         await minPromise;
-        if (!abort) setLoading(false);
+        if (!abort) {
+          setLoading(false);
+          perfMark('loader_hidden');
+          perfMeasure('load_total', 'load_start', 'loader_hidden');
+          // Presupuesto de carga
+          perfCheckBudget('load_total', LOAD_BUDGET_MS, 'load');
+          // Log summary occasionally
+          if (typeof window !== 'undefined' && Math.random() < 0.15) perfSummarize();
+        }
       }
     })();
 
@@ -230,6 +230,24 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     if (!tokenId) return;
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase('SPINNING');
+    perfMark('spin_start');
+    // Lazy-init y primado de audio dentro de interacción de usuario
+    try {
+      if (!winAudioRef.current) {
+        const a = new Audio('/win-sound.mp3');
+        a.volume = 0.5;
+        winAudioRef.current = a;
+        // Intentar primar (algunos navegadores requieren gesto; si falla, se ignora)
+        a.muted = true;
+        a.play().then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        }).catch(() => {
+          a.muted = false;
+        });
+      }
+    } catch {}
     try {
       const response = await fetch(`/api/token/${tokenId}/reveal`, { method: 'POST' });
       if (!response.ok) throw new Error(`Error ${response.status}: ${await response.text()}`);
@@ -271,6 +289,10 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   };
 
   const handleSpinEnd = (prize: RouletteElement) => {
+    perfMark('spin_end');
+    perfMeasure('spin_duration', 'spin_start', 'spin_end');
+    // Presupuesto de animación (varía por lowMotion)
+    perfCheckBudget('spin_duration', lowMotion ? 3600 : 6200, 'spin');
     setPrizeWon(prize);
     setPhase('REVEALED_MODAL');
     setShowConfetti(true);
@@ -287,15 +309,13 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setShowConfetti(false);
     }, 5000); // Detiene el confetti después de 5 segundos
     
-    // Reproducir efecto de sonido (si está disponible en el navegador)
+    // Reproducir efecto de sonido (lazy, si está inicializado)
     try {
-      const audio = new Audio('/win-sound.mp3');
-      audio.volume = 0.5;
-      audio.play().catch(e => console.log('No se pudo reproducir el sonido', e));
-    } catch (err) {
-      // Silenciar errores si el navegador no soporta audio
-      console.log('Audio no soportado');
-    }
+      if (winAudioRef.current) {
+        winAudioRef.current.currentTime = 0;
+        winAudioRef.current.play().catch(() => {});
+      }
+    } catch {}
 
     // Importante: NO auto-canjear. La confirmación de entrega debe hacerla el STAFF.
     // En el flujo two-phase, sólo revelamos aquí; el canje/entrega se confirma desde interfaces de staff.
@@ -315,20 +335,27 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   if (error) {
     // Comprobar si el error está relacionado con tokens desactivados para mostrar un mensaje más amigable
     const isTokensDisabledError = error.includes("desactivado") || error.includes("fuera de servicio");
-    
+    const isTwoPhaseDisabledError = error.includes("TWO_PHASE_DISABLED");
+
+    const boxTone = isTokensDisabledError
+      ? { box: 'bg-amber-500/10 border-amber-500/30', title: 'text-amber-300', heading: 'Cargando el drop', msg: 'Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.' }
+      : isTwoPhaseDisabledError
+      ? { box: 'bg-indigo-500/10 border-indigo-500/30', title: 'text-indigo-300', heading: 'Modo de 1 fase activo', msg: 'Este entorno no tiene habilitado el flujo de 2 fases (reveal → deliver). Activa TWO_PHASE_REDEMPTION=1 y reinicia el servidor para probar la ruleta.' }
+      : { box: 'bg-red-500/10 border-red-500/30', title: 'text-red-300', heading: 'Error', msg: error };
+
     return (
-      <div className="text-center py-16 max-w-md mx-auto">
-        <div className={`${isTokensDisabledError ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-6`}>
-          <p className={`${isTokensDisabledError ? 'text-amber-300' : 'text-red-300'} text-lg font-semibold`}>
-            {isTokensDisabledError ? 'Cargando el drop' : 'Error'}
+      <div className="min-h-[70vh] sm:min-h-[60vh] flex items-center justify-center px-4">
+        <div
+          className={`w-full max-w-[20rem] sm:max-w-md ${boxTone.box} border rounded-xl p-5 sm:p-6 shadow-lg`}
+        >
+          <p className={`${boxTone.title} text-base sm:text-lg font-semibold`}>
+            {boxTone.heading}
           </p>
-          <p className="mt-2 text-white/70">
-            {isTokensDisabledError
-              ? 'Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.'
-              : error}
+          <p className="mt-2 text-white/70 text-sm sm:text-base">
+            {boxTone.msg}
           </p>
-          <button 
-            className="mt-4 px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+          <button
+            className="mt-5 w-full sm:w-auto px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             onClick={() => window.location.reload()}
           >
             Intentar de nuevo
@@ -414,7 +441,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         />
       </div>
       {/* Confetti animation */}
-      <Confetti active={showConfetti} />
+  <Confetti active={showConfetti} lowMotion={lowMotion} />
       
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === 'READY' || phase === 'SPINNING') && (
@@ -426,6 +453,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
             spinning={phase === 'SPINNING'}
             prizeIndex={prizeIndex}
             variant="inline"
+            lowMotion={lowMotion}
           />
         </div>
       )}

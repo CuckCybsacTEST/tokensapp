@@ -1,8 +1,46 @@
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+// Cargar PrismaClient de forma compatible con distintos setups de tipos
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PrismaClient } = require('@prisma/client') as { PrismaClient: any };
 const prisma = new PrismaClient();
 
+// Seed guard: avoid accidental data resets in production or on non-empty DB
+async function shouldSkipSeed() {
+  const mode = (process.env.SEED_MODE || 'only-empty').toLowerCase();
+  const isProd = process.env.NODE_ENV === 'production';
+  // Hard block in prod unless explicitly allowed
+  if (isProd && process.env.ALLOW_SEED !== '1') {
+    console.log('seed_skip: production environment and ALLOW_SEED!=1');
+    return true;
+  }
+  if (mode === 'never') {
+    console.log('seed_skip: SEED_MODE=never');
+    return true;
+  }
+  if (mode === 'only-empty') {
+    try {
+      const [prize, token, person, user, task, packs] = await Promise.all([
+        prisma.prize.count(),
+        prisma.token.count().catch(() => 0 as any),
+        prisma.person.count().catch(() => 0 as any),
+        prisma.user.count().catch(() => 0 as any),
+        prisma.task.count().catch(() => 0 as any),
+        prisma.birthdayPack.count().catch(() => 0 as any),
+      ]);
+      const total = prize + token + person + user + task + packs;
+      if (total > 0) {
+        console.log(`seed_skip: DB not empty (rows=${total})`);
+        return true;
+      }
+    } catch {
+      // If counts fail (tables missing), proceed with seed
+    }
+  }
+  return false;
+}
+
 async function main() {
+  if (await shouldSkipSeed()) return;
   await prisma.systemConfig.upsert({
     where: { id: 1 },
     update: {},

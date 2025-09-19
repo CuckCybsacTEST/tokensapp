@@ -25,6 +25,7 @@
     "e2e": "playwright test",
     "reset:db": "tsx scripts/resetDb.ts",
     "reset:db:seed": "npm run reset:db -- --seed",
+    "backup:batches": "tsx scripts/backup-batches.ts",
     "postinstall": "prisma generate"
   },
   "engines": {

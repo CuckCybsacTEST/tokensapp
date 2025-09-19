@@ -4,9 +4,10 @@ interface RouletteFrameProps {
   spinning?: boolean;
   scale?: number; // relativo a 500
   wheelRadius?: number; // radio interno de segmentos para ajustar gap
+  lowMotion?: boolean; // reduce efectos y animaciones
 }
 
-const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius }) => {
+const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius, lowMotion = false }) => {
   const baseSize = 500;
   const width = baseSize * scale;
   const height = baseSize * scale;
@@ -47,15 +48,15 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
           <stop offset="100%" style={{ stopColor: '#F0B825' }} />
         </radialGradient>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+          <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
         <filter id="enhancedGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="8" result="blur" />
-          <feFlood floodColor="#FFFF00" floodOpacity="0.5" result="yellowGlow" />
+          <feGaussianBlur stdDeviation="5" result="blur" />
+          <feFlood floodColor="#FFFF00" floodOpacity="0.35" result="yellowGlow" />
           <feComposite in="yellowGlow" in2="blur" operator="in" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
@@ -82,8 +83,8 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
         r={frameOuterRadius} 
         fill="url(#goldGradient)" 
         stroke="#4A3000" 
-        strokeWidth={4}
-        style={{ filter: spinning ? 'url(#enhancedGlow)' : 'none' }}
+        strokeWidth={3.2}
+        style={{ filter: spinning && !lowMotion ? 'url(#enhancedGlow)' : 'none' }}
       />
       
       {/* Textura decorativa en el marco */}
@@ -96,8 +97,8 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
       />
       
       {/* Marco interior y decoración */}
-  <circle cx={center} cy={center} r={frameInnerRadius} fill="transparent" stroke="#FFF2AE" strokeWidth={2.5} />
-  <circle cx={center} cy={center} r={frameInnerRadius + 2} fill="transparent" stroke="#4A3000" strokeWidth={4.5} />
+  <circle cx={center} cy={center} r={frameInnerRadius} fill="transparent" stroke="#FFF2AE" strokeWidth={2} />
+  <circle cx={center} cy={center} r={frameInnerRadius + 2} fill="transparent" stroke="#4A3000" strokeWidth={3.8} />
       
       {/* Detalles decorativos en el marco */}
       {Array.from({ length: 12 }, (_, i) => {
@@ -130,9 +131,9 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
             cy={light.cy} 
             r={lightSize} 
             fill="url(#lightGradient)"
-            style={{ opacity: !spinning ? 0.7 : 1 }}
+            style={{ opacity: !spinning ? 0.6 : (lowMotion ? 0.85 : 1) }}
           >
-            {spinning && (
+            {spinning && !lowMotion && (
               <>
                 <animate 
                   attributeName="opacity" 
@@ -155,7 +156,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
       </g>
       
       {/* Efectos adicionales cuando está girando */}
-      {spinning && (
+      {spinning && !lowMotion && (
         <circle 
           cx={center} 
           cy={center} 

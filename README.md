@@ -398,6 +398,35 @@ Inconvenientes:
 1. Congelar escrituras (modo mantenimiento breve).
 2. `sqlite3 app.db ".backup export.db"`.
 3. Importar a Turso (`turso db shell <db> < export.db` o usar herramienta oficial). 
+
+## Persistencia en despliegues (evitar que se borre todo en cada deploy)
+
+Para que no se reinicialicen los seeds ni se pierdan archivos generados (pósters, plantillas), configura una carpeta de datos persistente y variables de entorno adecuadas:
+
+- Monta un volumen en el contenedor en `/data` (Railway/Render/Fly/Kubernetes).
+- Define `DATABASE_URL` de forma persistente:
+	- SQLite: `DATABASE_URL=file:/data/db/prod.db`.
+	- Postgres: `DATABASE_URL=postgres://user:pass@host:5432/db`.
+- Controla el seed: `SEED_ON_START`
+	- Vacío (default): NO ejecuta seed al arrancar.
+	- `1`: ejecuta `npm run seed` en el arranque. Úsalo sólo la primera vez que levantas un entorno vacío; luego quítalo.
+- Dominios públicos:
+	- `PUBLIC_BASE_URL` y `NEXT_PUBLIC_BASE_URL` deben apuntar a tu dominio (ej. `https://tokensapp-production.up.railway.app`).
+
+Qué hace el entrypoint (`scripts/docker-start.sh`):
+- Detecta `/data` y crea subcarpetas `/data/db`, `/data/public/posters`, `/data/public/templates`.
+- Si `DATABASE_URL` es SQLite con ruta relativa, la cambia a `file:/data/db/prod.db` para persistencia.
+- Migra una sola vez los archivos existentes en `public/posters` y `public/templates` hacia `/data/public/...` y crea symlinks de vuelta para que Next los sirva.
+- Ejecuta `prisma db push` (SQLite) o `prisma migrate deploy` (Postgres).
+- Ejecuta seed sólo si `SEED_ON_START=1`.
+
+Ejemplo en Railway:
+- Añade un Volume y móntalo en `/data`.
+- Variables:
+	- `DATABASE_URL=file:/data/db/prod.db`
+	- `PUBLIC_BASE_URL=https://tokensapp-production.up.railway.app`
+	- `NEXT_PUBLIC_BASE_URL=https://tokensapp-production.up.railway.app`
+	- `SEED_ON_START` vacío (colócalo en `1` solo la primera vez si necesitas poblar datos base; luego elimínalo).
 4. Actualizar `DATABASE_URL` y añadir `TURSO_AUTH_TOKEN`.
 5. Desplegar versión con variables nuevas.
 6. Verificar canje y generación de batch; luego reabrir tráfico.

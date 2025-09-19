@@ -21,6 +21,8 @@ interface NewRouletteProps {
   lockScroll?: boolean;
   /** Variante de layout: fullscreen (default) o inline (flujo dentro de una página con otros elementos encima). */
   variant?: 'fullscreen' | 'inline';
+  /** Modo de bajo movimiento: reduce efectos/tiempos para dispositivos con menos recursos o usuarios que lo prefieren */
+  lowMotion?: boolean;
 }
 
 const NewRoulette = ({
@@ -32,7 +34,8 @@ const NewRoulette = ({
   topSpacing,
   pointerOffset,
   lockScroll = true,
-  variant = 'fullscreen'
+  variant = 'fullscreen',
+  lowMotion = false
 }: NewRouletteProps) => {
   const [rotation, setRotation] = useState(0);
   const [internalSpinning, setInternalSpinning] = useState(false);
@@ -83,7 +86,7 @@ const NewRoulette = ({
     // Restamos de 360 porque la ruleta gira en sentido horario
     const baseAngle = 360 - (index * segmentAngle + segmentAngle / 2);
     // Añadimos giros completos para efecto visual
-    const fullSpins = 5;
+    const fullSpins = lowMotion ? 3 : 5;
     return baseAngle + (fullSpins * 360);
   };
 
@@ -98,8 +101,8 @@ const NewRoulette = ({
       // Calculamos la nueva rotación basada en la posición actual para evitar saltos
       const baseRotation = calculatePrizeRotation(prizeIndex);
       
-      // Calculamos giros completos - SIEMPRE al menos 5 vueltas
-      const minSpins = 5;
+  // Calculamos giros completos - menos vueltas en lowMotion
+  const minSpins = lowMotion ? 3 : 5;
       const currentAngle = currentRotation % 360;
       const targetAngle = baseRotation;
       
@@ -120,7 +123,7 @@ const NewRoulette = ({
       setRotation(newRotation);
       
       // Después de que termine la animación
-      const spinDuration = 6000; // Debe coincidir con la duración CSS
+      const spinDuration = lowMotion ? 3500 : 6000; // Debe coordinar con CSS
       setTimeout(() => {
         // Mantenemos la rotación final
         setInternalSpinning(false);
@@ -130,7 +133,7 @@ const NewRoulette = ({
         }
       }, spinDuration);
     }
-  }, [spinning, prizeIndex]);
+  }, [spinning, prizeIndex, lowMotion]);
 
   // Sólo reseteamos cuando cambian los elementos, no al desmontar
   useEffect(() => {
@@ -163,7 +166,7 @@ const NewRoulette = ({
       data-variant={variant}
     >
       <div className={styles.roulettePad}>
-        <div className={styles.wheelWrapper} ref={wrapperRef}>
+        <div className={styles.wheelWrapper} ref={wrapperRef} data-low-motion={lowMotion ? '1' : undefined}>
         {/* Guardia: si hay menos de 2 elementos, no renderizar la ruleta completa */}
         {elements.length < 2 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center gap-4">
@@ -178,7 +181,7 @@ const NewRoulette = ({
         
         {/* La rueda con los segmentos que gira */}
         <div
-          className={`${styles.wheel} ${spinning || internalSpinning ? styles.spinning : ''}`}
+          className={`${styles.wheel} ${spinning || internalSpinning ? styles.spinning : ''} ${lowMotion ? styles.lowMotion : ''}`}
           style={{ 
             transform: `translateZ(0) rotate(${rotation}deg)`,
             // Optimizaciones para renderizado y animación fluida
@@ -223,6 +226,7 @@ const NewRoulette = ({
         {/* Marco decorativo alrededor de la rueda */}
         <RouletteFrame
           spinning={spinning || internalSpinning}
+          lowMotion={lowMotion}
           scale={scale}
           wheelRadius={segmentsRadiusReal}
         />
@@ -242,4 +246,26 @@ const NewRoulette = ({
   );
 };
 
-export default NewRoulette;
+function areRoulettePropsEqual(prev: NewRouletteProps, next: NewRouletteProps) {
+  // Always update when spinning state or prizeIndex changes
+  if (prev.spinning !== next.spinning) return false;
+  if (prev.prizeIndex !== next.prizeIndex) return false;
+  // Compare elements deeply (label/color/prizeId)
+  if (prev.elements.length !== next.elements.length) return false;
+  for (let i = 0; i < prev.elements.length; i++) {
+    const a = prev.elements[i];
+    const b = next.elements[i];
+    if (!a || !b) return false;
+    if (a.label !== b.label || a.color !== b.color || a.prizeId !== b.prizeId) return false;
+  }
+  // Compare simple props
+  if (prev.variant !== next.variant) return false;
+  if (prev.lockScroll !== next.lockScroll) return false;
+  if (prev.topSpacing !== next.topSpacing) return false;
+  if (prev.pointerOffset !== next.pointerOffset) return false;
+  if (prev.lowMotion !== next.lowMotion) return false;
+  // onSpin / onSpinEnd are functions; assume referential changes are not meaningful for re-render of wheel itself
+  return true;
+}
+
+export default React.memo(NewRoulette, areRoulettePropsEqual);

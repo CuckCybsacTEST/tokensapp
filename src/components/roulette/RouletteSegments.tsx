@@ -32,7 +32,7 @@ function splitLabel(label: string): string[] {
   return best ? best.lines : [clean];
 }
 
-const RouletteSegments = ({ elements, radius, center, scale = 1 }: RouletteSegmentsProps) => {
+const RouletteSegmentsComp = ({ elements, radius, center, scale = 1 }: RouletteSegmentsProps) => {
   const totalElements = elements.length;
   const arcAngle = 360 / totalElements;
   const isSingle = totalElements === 1;
@@ -186,7 +186,7 @@ const RouletteSegments = ({ elements, radius, center, scale = 1 }: RouletteSegme
             style={{
               pointerEvents: "none",
               textTransform: "uppercase",
-              textShadow: "0px 0px 3px rgba(0,0,0,0.8)",
+              textShadow: "0 0 2px rgba(0,0,0,0.65)",
             }}
           >
             {lines.map((ln, idx) => (
@@ -214,5 +214,18 @@ const RouletteSegments = ({ elements, radius, center, scale = 1 }: RouletteSegme
     </g>
   );
 };
+
+const RouletteSegments = React.memo(RouletteSegmentsComp, (prev, next) => {
+  // Re-render solo si cambian los elementos o geometría clave
+  if (prev.radius !== next.radius || prev.center !== next.center) return false;
+  if (prev.scale !== next.scale) return false;
+  if (prev.elements.length !== next.elements.length) return false;
+  for (let i = 0; i < prev.elements.length; i++) {
+    const a = prev.elements[i];
+    const b = next.elements[i];
+    if (a.label !== b.label || a.color !== b.color || a.prizeId !== b.prizeId) return false;
+  }
+  return true;
+});
 
 export default RouletteSegments;
