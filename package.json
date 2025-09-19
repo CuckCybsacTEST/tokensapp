@@ -26,6 +26,7 @@
     "reset:db": "tsx scripts/resetDb.ts",
     "reset:db:seed": "npm run reset:db -- --seed",
     "backup:batches": "tsx scripts/backup-batches.ts",
+    "restore:zip": "tsx scripts/restore-batches-from-zip.ts",
     "postinstall": "prisma generate"
   },
   "engines": {
