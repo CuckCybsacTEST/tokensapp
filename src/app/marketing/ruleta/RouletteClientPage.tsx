@@ -320,14 +320,13 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       <div className="text-center py-16 max-w-md mx-auto">
         <div className={`${isTokensDisabledError ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-6`}>
           <p className={`${isTokensDisabledError ? 'text-amber-300' : 'text-red-300'} text-lg font-semibold`}>
-            {isTokensDisabledError ? 'Sistema en mantenimiento' : 'Error'}
+            {isTokensDisabledError ? 'Cargando el drop' : 'Error'}
           </p>
-          <p className="mt-2 text-white/70">{error}</p>
-          {isTokensDisabledError && (
-            <p className="mt-3 text-white/50 text-sm">
-              El sistema de tokens está temporalmente deshabilitado. Por favor, vuelve a intentarlo más tarde.
-            </p>
-          )}
+          <p className="mt-2 text-white/70">
+            {isTokensDisabledError
+              ? 'Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.'
+              : error}
+          </p>
           <button 
             className="mt-4 px-6 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
             onClick={() => window.location.reload()}
@@ -442,9 +441,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       {showRevealedPanel && prizeWon && (
   <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
           <div className="rounded-lg p-5 sm:p-6 border" style={{ background: 'rgba(255,77,46,0.10)', borderColor: 'rgba(255,77,46,0.30)' }}>
-            <p className="text-[#FFD166] text-base sm:text-lg font-semibold">Premio revelado</p>
+            <p className="text-[#FFD166] text-base sm:text-lg font-semibold">¡Premio revelado!</p>
             <p className="mt-2 text-white/80 text-sm sm:text-base leading-relaxed">
-              Este token ya ha revelado su premio. Por favor, muestra esta pantalla en barra para reclamarlo.
+              Muéstralo en barra para canjearlo. Nuestro staff confirmará la entrega en tu pantalla.
             </p>
             <p className="mt-4 text-lg sm:text-xl font-bold break-words px-2">{prizeWon.label}</p>
             <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
@@ -454,7 +453,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                 disabled={delivering}
                 title="Para uso del STAFF"
               >
-                {delivering ? 'Confirmando…' : 'Entregado (staff)'}
+                {delivering ? 'Confirmando…' : 'Marcar entregado (staff)'}
               </button>
             </div>
             {deliverError && (
