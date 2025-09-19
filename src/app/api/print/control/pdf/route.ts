@@ -54,9 +54,9 @@ export async function GET(req: Request) {
     }
 
     // Preparar los tokens en el formato esperado
-    let tokenData = tokens.map(t => ({ 
+    let tokenData = tokens.map((t: { id: string }) => ({ 
       token_id: t.id, 
-      redeem_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://example.com'}/redeem/${t.id}` 
+      redeem_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://example.com'}/r/${t.id}` 
     }));
 
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.
