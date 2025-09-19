@@ -66,3 +66,25 @@ export function getBirthdayQrBaseUrl(urlOrReq?: string | URL): string {
   if (pub) return pub.replace(/\/$/, '');
   return 'http://localhost:3000';
 }
+
+/**
+ * Returns the public base URL for composing links (QRs, redirects, etc.).
+ * Priority:
+ * 1) `process.env.PUBLIC_BASE_URL` (recommended for server-side generation)
+ * 2) Origin from provided request URL (when available)
+ * 3) `process.env.NEXT_PUBLIC_BASE_URL` as fallback for mixed contexts
+ * 4) `http://localhost:3000`
+ */
+export function getPublicBaseUrl(urlOrReq?: string | URL): string {
+  const env = (process.env.PUBLIC_BASE_URL || '').trim();
+  if (env) return env.replace(/\/$/, '');
+  try {
+    const u = typeof urlOrReq === 'string' ? new URL(urlOrReq) : urlOrReq;
+    if (u && u.origin) return u.origin.replace(/\/$/, '');
+  } catch {
+    // ignore
+  }
+  const pub = (process.env.NEXT_PUBLIC_BASE_URL || '').trim();
+  if (pub) return pub.replace(/\/$/, '');
+  return 'http://localhost:3000';
+}

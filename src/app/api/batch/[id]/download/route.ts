@@ -4,6 +4,7 @@ import { logEvent } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
 import { generateQrPngDataUrl } from "@/lib/qr";
 import { createZipStream } from "@/lib/zip";
+import { getPublicBaseUrl } from "@/lib/config";
 
 // GET /api/batch/:id/download?qr=1 (qr=1 => incluye PNGs)
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -49,7 +50,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     "disabled",
   ];
   const csvRows: string[] = [csvColumns.join(",")];
-  const baseUrl = process.env.PUBLIC_BASE_URL || "https://example.com";
+  const baseUrl = getPublicBaseUrl(req.url);
 
   for (const [prizeId, tokens] of byPrize) {
     const prize = tokens[0].prize;

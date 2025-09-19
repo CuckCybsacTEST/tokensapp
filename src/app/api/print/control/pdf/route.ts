@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/audit';
+import { getPublicBaseUrl } from '@/lib/config';
 
 // Helper to convert dataURL to Buffer
 function dataUrlToBuffer(dataUrl: string): Buffer {
@@ -54,9 +55,10 @@ export async function GET(req: Request) {
     }
 
     // Preparar los tokens en el formato esperado
+    const baseUrl = getPublicBaseUrl(req.url);
     let tokenData = tokens.map((t: { id: string }) => ({ 
       token_id: t.id, 
-      redeem_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://example.com'}/r/${t.id}` 
+      redeem_url: `${baseUrl}/r/${t.id}` 
     }));
 
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.

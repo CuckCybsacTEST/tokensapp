@@ -14,6 +14,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 const ALLOWED_EXPIRATION = new Set([1, 3, 5, 7, 15, 30]);
 import { generateQrPngDataUrl } from "@/lib/qr";
 import { createZipStream } from "@/lib/zip";
+import { getPublicBaseUrl } from "@/lib/config";
 
 // Body (legacy): { expirationDays: number, includeQr?: boolean, lazyQr?: boolean, name?: string }
 // Body (new byDays): { mode: 'byDays', expirationDays: number, includeQr?: boolean, lazyQr?: boolean, name?: string }
@@ -131,7 +132,7 @@ export async function POST(req: Request) {
   }
 
   // Validate each prize stock (integer > 0); if any invalid, return immediately
-  for (const p of prizes) {
+  for (const p of prizes as Array<{ id: string; stock: number | null }>) {
     if (typeof p.stock !== "number" || !Number.isInteger(p.stock) || p.stock <= 0) {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", {
         reason: "INVALID_STOCK",
@@ -144,14 +145,14 @@ export async function POST(req: Request) {
   }
 
   // Build prizeRequests using full stock counts
-  const prizeRequests = prizes.map((p) => ({
+  const prizeRequests = prizes.map((p: { id: string; stock: number | null }) => ({
     prizeId: p.id,
     count: p.stock as number,
     expirationDays,
   }));
 
   // Enforce total tokens limit
-  const totalTokensRequested = prizeRequests.reduce((a, p) => a + p.count, 0);
+  const totalTokensRequested = prizeRequests.reduce((a: number, p: { count: number }) => a + p.count, 0);
   const max = parseInt(process.env.BATCH_MAX_TOKENS_AUTO || "10000");
   if (totalTokensRequested > max) {
     await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", {
@@ -292,8 +293,9 @@ export async function POST(req: Request) {
       count: list.length,
       expirationDays: req.expirationDays,
     });
+    const baseUrl = getPublicBaseUrl();
     for (const t of list) {
-      const redeemUrl = `${process.env.PUBLIC_BASE_URL || "https://example.com"}/r/${t.id}`;
+      const redeemUrl = `${baseUrl}/r/${t.id}`;
       csvRows.push(
         [
           t.id,
