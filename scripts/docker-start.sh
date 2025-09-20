@@ -10,6 +10,14 @@ TEMPLATES_DIR="/app/public/templates"
 
 if [ -d "$DATA_DIR" ]; then
   echo "[entrypoint] Detected data volume at $DATA_DIR"
+  # Warn if /data is not a mounted volume (common cause of data loss on redeploy)
+  if grep -qs " $DATA_DIR " /proc/mounts; then
+    echo "[entrypoint] $DATA_DIR is a mounted volume. Persistence OK."
+  else
+    echo "[entrypoint] WARNING: $DATA_DIR no parece ser un volumen montado."
+    echo "[entrypoint] WARNING: Los datos SQLite y archivos en $DATA_DIR se perderán al redeploy."
+    echo "[entrypoint] WARNING: En Railway, crea y monta un Volume en la ruta $DATA_DIR para persistencia."
+  fi
   # Ensure subdirs
   mkdir -p "$DATA_DIR/db" "$DATA_DIR/public/posters" "$DATA_DIR/public/templates"
 
