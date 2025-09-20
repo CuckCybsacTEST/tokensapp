@@ -48,5 +48,11 @@ export function getFeatureFlagsSnapshot() {
     twoPhaseRedemption: isTwoPhaseRedemptionEnabled(),
     birthdaysPublic: isBirthdaysEnabledPublic(),
     birthdaysAdmin: isBirthdaysEnabledAdmin(),
+    allowClientDeliver: parseBool(process.env.ALLOW_CLIENT_DELIVER),
   };
+}
+
+/** Entrega sin autenticación (temporal) controlada por env */
+export function isClientDeliverAllowed(): boolean {
+  return parseBool(process.env.ALLOW_CLIENT_DELIVER);
 }

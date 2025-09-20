@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isTwoPhaseRedemptionEnabled } from "@/lib/featureFlags";
+import { isTwoPhaseRedemptionEnabled, isClientDeliverAllowed } from "@/lib/featureFlags";
 import { logEvent } from "@/lib/log";
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@/lib/auth";
 
@@ -21,12 +21,17 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
     return new Response(JSON.stringify({ error: 'TWO_PHASE_DISABLED' }), { status: 409 });
   }
 
-  // Require STAFF (or ADMIN) role
-  const rawCookie = getSessionCookieFromRequest(_req as any);
-  const session = await verifySessionCookie(rawCookie);
-  const auth = requireRole(session, ['STAFF', 'ADMIN']);
-  if (!auth.ok) {
-    return new Response(JSON.stringify({ error: auth.error }), { status: auth.error === 'UNAUTHORIZED' ? 401 : 403 });
+  // Autenticación flexible: si ALLOW_CLIENT_DELIVER=1, permitimos sin cookie
+  // Caso normal: requerimos STAFF o ADMIN
+  const allowClient = isClientDeliverAllowed();
+  let session: any = null;
+  if (!allowClient) {
+    const rawCookie = getSessionCookieFromRequest(_req as any);
+    session = await verifySessionCookie(rawCookie);
+    const auth = requireRole(session, ['STAFF', 'ADMIN']);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), { status: auth.error === 'UNAUTHORIZED' ? 401 : 403 });
+    }
   }
 
   try {
@@ -48,7 +53,7 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       // 2. Intento de actualización atómica condicionada deliveredAt IS NULL para evitar race
       const deliveredAt = new Date();
       const revealToDeliverMs = deliveredAt.getTime() - token.revealedAt.getTime();
-      const deliveredByUserId = session?.role === 'STAFF' ? 'staff_user' : 'admin_user';
+  const deliveredByUserId = allowClient ? 'client_device' : (session?.role === 'STAFF' ? 'staff_user' : 'admin_user');
 
       const updateRes = await tx.token.updateMany({
         where: { id: tokenId, deliveredAt: null },
