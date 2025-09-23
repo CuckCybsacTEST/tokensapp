@@ -14,7 +14,8 @@ Requeridos
 Notas importantes
 - Ya no se ingresa `code` manualmente; el código de la persona es el DNI normalizado (solo dígitos).
 - El `dni` se normaliza a dígitos. Ejemplo: `12.345.678` → `12345678`.
-- El `area` debe ser uno de: `Barra`, `Mozos`, `Seguridad`, `Animación`, `DJs`, `Multimedia`, `Otros`.
+- El `area` debe ser uno de: `Barra`, `Mozos`, `Seguridad`, `Animación`, `DJs`, `Multimedia`, `Caja`, `Otros`.
+  - Especial: `Caja` habilita el control de tokens (ON/OFF) desde BYOD si el usuario tiene rol `STAFF`. Ver [Control de Tokens (Caja)](./tokens-control.md).
 
 ## Seguridad
 

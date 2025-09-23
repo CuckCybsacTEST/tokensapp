@@ -94,13 +94,24 @@ export async function middleware(req: NextRequest) {
     // Role-based authorization
     // 1) Admin panel: default only ADMIN; allow STAFF for specific pages
     if (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") {
-      const isStaffAllowedPath = pathname === '/admin/attendance';
+      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens';
       const roles = isStaffAllowedPath ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
       const r = requireRoleEdge(session, roles as any);
       if (!r.ok) {
         const loginUrl = new URL('/admin/login', req.nextUrl.origin);
         loginUrl.searchParams.set('next', pathname);
         return NextResponse.redirect(loginUrl);
+      }
+    }
+    // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session (e.g., Caja)
+    if (pathname.startsWith('/api/system')) {
+      const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
+      const userOk = !!uSession && (uSession.role === 'STAFF');
+      if (!adminOk && !userOk) {
+        return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
     // 1b) Admin API: require ADMIN or STAFF depending on endpoint; default ADMIN-only for safety, but allow STAFF for subtrees we know safe.

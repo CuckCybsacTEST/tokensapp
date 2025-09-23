@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from '@/lib/tokensMode';
+import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
 // Prefer Lima timezone by default; allow override via env
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
@@ -9,8 +11,22 @@ const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    // AuthZ: ADMIN or STAFF only (defense-in-depth; middleware already enforces this)
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    const ok = requireRole(session, ['ADMIN', 'STAFF']);
+    if (!ok.ok) {
+      // Allow BYOD STAFF (e.g., Caja) to read status without admin_session
+      const uRaw = getUserCookie(req as any);
+      const uSession = await verifyUserSessionCookie(uRaw);
+      if (!(uSession && uSession.role === 'STAFF')) {
+        const status = ok.error === 'UNAUTHORIZED' ? 401 : 403;
+        return NextResponse.json({ error: ok.error || 'FORBIDDEN' }, { status });
+      }
+    }
+
     // Invalidar la caché para obtener los datos más recientes
     invalidateSystemConfigCache();
     

@@ -1,4 +1,5 @@
 export const ALLOWED_AREAS = [
+  'Caja',
   'Barra',
   'Mozos',
   'Seguridad',

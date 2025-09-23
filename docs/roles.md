@@ -18,7 +18,7 @@ Importante: el rol `STAFF` existe en ambos contextos, pero no es el mismo permis
 
 - BYOD (`user_session`):
   - `COLLAB`: acceso a `/u/**` (scanner BYOD, checklist, asistencia personal), puede marcar IN/OUT y gestionar tareas del día.
-  - `STAFF` (usuario): mismas capacidades que `COLLAB` en `/u/**` hoy; se usa para distinguir personal operativo y preparar permisos futuros.
+  - `STAFF` (usuario): mismas capacidades que `COLLAB` en `/u/**` y habilita permisos específicos por perfil. Caso especial: si la persona asociada tiene `area='Caja'`, puede alternar el estado global de tokens desde `/u/caja` sin requerir sesión de admin. Ver [Control de Tokens (Caja)](./tokens-control.md).
 
 ## Matriz de acceso (extracto)
 
@@ -33,6 +33,7 @@ Importante: el rol `STAFF` existe en ambos contextos, pero no es el mismo permis
 
 - BYOD (`/u/**` y APIs `/api/user/**`, `/api/tasks/**`, `/api/attendance/**`):
   - Requiere `user_session` válida (rol `COLLAB` o `STAFF` de usuario) o bien `admin_session` con `ADMIN` (bypass para pruebas).
+  - Toggle de tokens: solo `STAFF` (BYOD) con `Person.area='Caja'`. Ruta: `/u/caja`. API: `/api/system/tokens/toggle`.
 
 - Página de escáner `/scanner` (kiosco):
   - Permite `admin_session` con `ADMIN` o `STAFF` de admin, o bien cualquier `user_session` válida (COLLAB/STAFF de usuario).
@@ -47,6 +48,7 @@ Importante: el rol `STAFF` existe en ambos contextos, pero no es el mismo permis
 ## Buenas prácticas
 
 - Crea colaboradores como `COLLAB` por defecto. Usa `STAFF` (BYOD) solo si necesitás distinguir en métricas u otorgar permisos futuros en `/u/**`.
+  - Si un colaborador operará caja, asignale `STAFF` (BYOD) y `area='Caja'` en su Persona; así podrá alternar tokens sin credenciales de admin.
 - Para acceso al panel, gestioná credenciales de `admin_session` por separado y asigná `STAFF` de admin solo a quienes necesiten ver módulos habilitados (p. ej. asistencia), reservando `ADMIN` para operación completa.
 - Evitá mezclar roles de contextos: tener `STAFF` en BYOD no otorga acceso al panel admin.
 

@@ -16,7 +16,12 @@ Aplicación Next.js para generación de tokens con premios preasignados, QRs y c
 1. Copiar `.env.example` a `.env` y ajustar `TOKEN_SECRET`.
 2. Instalar dependencias: `npm install`.
 3. Crear tablas: `npm run db:push`.
-4. Seed inicial: `npm run seed`.
+4. Seed inicial (opcional y seguro):
+	 - Por defecto el seed está deshabilitado y NO modifica una base existente.
+	 - Para ejecutarlo solo en una DB vacía, corre en una línea:
+		 - En PowerShell (Windows): `setx ALLOW_SEED 1; $env:ALLOW_SEED='1'; npm run seed`
+		 - En bash: `ALLOW_SEED=1 npm run seed`
+	 - El seed es idempotente y, en modo por defecto, se salta si detecta filas existentes (no borra datos).
 5. Levantar dev: `npm run dev`.
 6. (Opcional) Activar flujo 2 fases reveal->deliver: en `.env` añadir `TWO_PHASE_REDEMPTION=true`. Usa `/src/lib/featureFlags.ts` para leerlo.
 7. (Marketing Cumpleaños) Habilitar endpoints públicos en dev: añade en `.env` una de estas variables (alias):
@@ -103,7 +108,9 @@ Soporte end-to-end para tareas con metas numéricas por persona/día. Detalle co
 | POST | `/api/batch/generate` | DEPRECATED: usar `/api/batch/generate-all` | - | - | 410 (MANUAL_MODE_DISABLED) |
 | GET | `/api/batch/:id/download` | Descarga ZIP de batch existente | query `qr=1` para PNGs | 200 | 404 (NOT_FOUND) |
 | POST | `/api/redeem/:tokenId` | Canjea token si válido | - | 200 | 400 (INVALID_SIGNATURE), 404 (TOKEN_NOT_FOUND), 409 (ALREADY_REDEEMED), 410 (EXPIRED), 423 (SYSTEM_OFF), 429 (RATE_LIMIT) |
-| POST | `/api/system/toggle` | Activa/desactiva canje global | `enabled:boolean` | 200 | 400 |
+| GET | `/api/system/tokens/status` | Estado global y scheduler informativo | - | 200 | 401/403 |
+| POST | `/api/system/tokens/toggle` | Activa/desactiva canje global (con auditoría) | `enabled:boolean` | 200 | 401/403/400 |
+| GET | `/api/system/tokens/capabilities` | Capacidades del usuario actual `{ canView, canToggle }` | - | 200 | 401/403 |
 | GET | `/api/admin/health` | Health check autenticado | Header `Authorization` (Bearer o Basic) | 200 / 503 | 401 (UNAUTHORIZED) |
 
 Notas:
@@ -111,6 +118,8 @@ Notas:
 - En CSV: columnas `token_id, batch_id, prize_id, prize_key, prize_label, prize_color, expires_at_iso, expires_at_unix, signature, redeem_url, redeemed_at, disabled`.
 - `signatureVersion` se almacena por token (futuro soporte rotación clave).
 - Errores siguen formato `{ code, message, ... }` (los legados se están unificando).
+
+Control de tokens por Caja y permisos detallados en: [`docs/tokens-control.md`](./docs/tokens-control.md).
 
 ## Flujo de Emisión de Tokens (`/api/batch/generate-all`)
 
@@ -407,9 +416,7 @@ Para que no se reinicialicen los seeds ni se pierdan archivos generados (póster
 - Define `DATABASE_URL` de forma persistente:
 	- SQLite: `DATABASE_URL=file:/data/db/prod.db`.
 	- Postgres: `DATABASE_URL=postgres://user:pass@host:5432/db`.
-- Controla el seed: `SEED_ON_START`
-	- Vacío (default): NO ejecuta seed al arrancar.
-	- `1`: ejecuta `npm run seed` en el arranque. Úsalo sólo la primera vez que levantas un entorno vacío; luego quítalo.
+- Seed en producción: por seguridad, NO se ejecuta automáticamente. Si necesitás datos base iniciales en un entorno vacío, conectate al contenedor/instancia y ejecuta manualmente: `ALLOW_SEED=1 npm run seed`. No lo uses en entornos con datos.
 - Dominios públicos:
 	- `PUBLIC_BASE_URL` y `NEXT_PUBLIC_BASE_URL` deben apuntar a tu dominio (ej. `https://tokensapp-production.up.railway.app`).
 
@@ -417,8 +424,7 @@ Qué hace el entrypoint (`scripts/docker-start.sh`):
 - Detecta `/data` y crea subcarpetas `/data/db`, `/data/public/posters`, `/data/public/templates`.
 - Si `DATABASE_URL` es SQLite con ruta relativa, la cambia a `file:/data/db/prod.db` para persistencia.
 - Migra una sola vez los archivos existentes en `public/posters` y `public/templates` hacia `/data/public/...` y crea symlinks de vuelta para que Next los sirva.
-- Ejecuta `prisma db push` (SQLite) o `prisma migrate deploy` (Postgres).
-- Ejecuta seed sólo si `SEED_ON_START=1`.
+- Ejecuta `prisma migrate deploy` (o `db push` en SQLite si aplica), sin ejecutar seed.
 
 Ejemplo en Railway:
 - Añade un Volume y móntalo en `/data`.

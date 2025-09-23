@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/audit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
 import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from '@/lib/tokensMode';
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
@@ -10,7 +11,7 @@ console.log("Toggle route module loaded successfully!");
 
 export async function POST(req: Request) {
   try {
-    // Authenticate and require ADMIN role
+    // Authenticate: accept either admin_session (ADMIN) or user_session (STAFF Caja)
     const rawCookie = getSessionCookieFromRequest(req as any);
     const session = await verifySessionCookie(rawCookie);
     try {
@@ -19,11 +20,33 @@ export async function POST(req: Request) {
     } catch (e) {
       /* ignore logging errors */
     }
-    const auth = requireRole(session, ['ADMIN']);
-    if (!auth.ok) {
-      const status = auth.error === 'UNAUTHORIZED' ? 401 : 403;
-      const err = auth.error === 'UNAUTHORIZED' ? 'unauthorized' : 'forbidden';
-      return NextResponse.json({ ok: false, error: err, message: 'Not authorized' }, { status });
+    // Determine permission
+    let allowed = false;
+    let actor: { kind: 'admin' | 'staff-caja' | 'unknown'; userId?: string } = { kind: 'unknown' };
+
+    // Path A: Admin session with ADMIN role
+    const adminAuth = requireRole(session, ['ADMIN']);
+    if (adminAuth.ok && session?.role === 'ADMIN') {
+      allowed = true;
+      actor = { kind: 'admin' };
+    }
+
+    // Path B: BYOD user session with STAFF in Caja (no admin session required)
+    if (!allowed) {
+      const userRaw = getUserCookie(req as any);
+      const userSession = await verifyUserSessionCookie(userRaw);
+      if (userSession?.role === 'STAFF') {
+        try {
+          const u = await prisma.user.findUnique({ where: { id: userSession.userId }, include: { person: true } });
+          if (u?.person?.area === 'Caja') {
+            allowed = true;
+            actor = { kind: 'staff-caja', userId: u.id };
+          }
+        } catch {}
+      }
+    }
+    if (!allowed) {
+      return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -56,12 +79,12 @@ export async function POST(req: Request) {
     const updatedRows: any[] = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled, updatedAt FROM SystemConfig WHERE id = 1 LIMIT 1`);
     const updated = updatedRows[0] || null;
 
-    // Auditar el cambio
+    // Auditar el cambio (actor ADMIN o STAFF Caja)
     try {
-      const by = 'staff';
+      const by = actor.kind === 'admin' ? 'admin' : (actor.kind === 'staff-caja' ? 'staff:caja' : 'unknown');
       const from = prev || null;
       const to = updated || null;
-      await audit('tokens.toggle', by, { from, to, enabled });
+      await audit('tokens.toggle', by, { from, to, enabled, actor });
     } catch (e) {
       console.error('audit helper failed', e);
     }
