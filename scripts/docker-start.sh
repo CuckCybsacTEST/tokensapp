@@ -55,9 +55,14 @@ fi
 if [ -n "$DATABASE_URL" ]; then
   if echo "$DATABASE_URL" | grep -qi "^file:"; then
     echo "[entrypoint] Detected SQLite DATABASE_URL ($DATABASE_URL). Running prisma migrate deploy..."
-    npx prisma migrate deploy --skip-generate || {
-      echo "[entrypoint] prisma migrate deploy failed (continuing anyway)";
-    }
+    if ! npx prisma migrate deploy --skip-generate; then
+      echo "[entrypoint] migrate deploy failed or no migrations applied. Falling back to prisma db push to create schema..."
+      # db push will create schema from prisma/schema.prisma for fresh DBs
+      # Avoid generate here; client is already generated in image
+      npx prisma db push --skip-generate || {
+        echo "[entrypoint] prisma db push also failed. Continuing to start app, but database may be unusable.";
+      }
+    fi
   elif echo "$DATABASE_URL" | grep -Eqi "^postgres(|ql)://"; then
     echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma migrate deploy..."
     npx prisma migrate deploy || {
