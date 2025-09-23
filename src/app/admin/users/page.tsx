@@ -6,9 +6,7 @@ import { ALLOWED_AREAS } from "@/lib/areas";
 export default function AdminUsersPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  // Mode: create with person details vs legacy link by code
-  const [mode, setMode] = useState<'create'|'link'>('create');
-  const [code, setCode] = useState("");
+  // Always create person + user (legacy link mode removed)
   // Person fields
   const [name, setName] = useState("");
   const [dni, setDni] = useState("");
@@ -84,17 +82,11 @@ export default function AdminUsersPage() {
     // Client-side validation
     if (!username || username.trim().length < 3) { setErr('Username inválido'); return; }
     if (!password || password.length < 8) { setErr('Password mínimo 8 caracteres'); return; }
-    if (mode === 'create') {
-      if (!name || name.trim().length < 2) { setErr('Nombre es obligatorio'); return; }
-      if (!dni || dni.trim().length < 3) { setErr('DNI es obligatorio'); return; }
-      if (!(ALLOWED_AREAS as readonly string[]).includes(area as any)) { setErr('Área inválida'); return; }
-    } else {
-      if (!code || code.trim().length < 3) { setErr('DNI / Código inválido'); return; }
-    }
+    if (!name || name.trim().length < 2) { setErr('Nombre es obligatorio'); return; }
+    if (!dni || dni.trim().length < 3) { setErr('DNI es obligatorio'); return; }
+    if (!(ALLOWED_AREAS as readonly string[]).includes(area as any)) { setErr('Área inválida'); return; }
     try {
-      const payload = mode === 'create'
-        ? { username: username.trim(), password, role, person: { name: name.trim(), dni: dni.trim(), area } }
-        : (() => { const norm = code.replace(/\D+/g, ''); return { username: username.trim(), password, role, code: norm || code.trim() }; })();
+      const payload = { username: username.trim(), password, role, person: { name: name.trim(), dni: dni.trim(), area } };
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,12 +94,8 @@ export default function AdminUsersPage() {
       });
       const j = await res.json();
       if (res.ok && j?.ok) {
-        if (mode === 'create') {
-          setMsg(`Usuario creado: ${j.user.username} → ${j.person.code}`);
-        } else {
-          setMsg(`Usuario creado: ${j.user.username} → ${j.user.personCode}`);
-        }
-        setUsername(""); setPassword(""); setCode(""); setName(""); setDni(""); setArea(ALLOWED_AREAS[0]);
+        setMsg(`Usuario creado: ${j.user.username} → ${j.person.code}`);
+        setUsername(""); setPassword(""); setName(""); setDni(""); setArea(ALLOWED_AREAS[0]);
         loadUsers();
       } else {
         const back = j?.code || j?.message || res.status;
@@ -138,13 +126,6 @@ export default function AdminUsersPage() {
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
       <form onSubmit={onSubmit} className="max-w-xl space-y-3 border rounded p-3">
         <div className="grid gap-2">
-          <label className="text-sm text-gray-700">Modo</label>
-          <select value={mode} onChange={(e)=>setMode(e.target.value as any)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-            <option value="create">Crear persona + usuario</option>
-            <option value="link">Vincular usuario a código existente</option>
-          </select>
-        </div>
-        <div className="grid gap-2">
           <label className="text-sm text-gray-700">Username</label>
           <input value={username} onChange={(e)=>setUsername(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
         </div>
@@ -152,39 +133,30 @@ export default function AdminUsersPage() {
           <label className="text-sm text-gray-700">Password</label>
           <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
         </div>
-        {mode === 'create' ? (
-          <>
-            <div className="grid gap-2">
-              <label className="text-sm text-gray-700">Nombre</label>
-              <input value={name} onChange={(e)=>setName(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Nombre y Apellido" />
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm text-gray-700">DNI</label>
-              <input
-                value={dni}
-                onChange={(e)=> setDni((e.target.value || '').replace(/\D+/g, ''))}
-                className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="12345678"
-                inputMode="numeric"
-                pattern="[0-9]*"
-              />
-              <p className="text-xs text-gray-400">Se usará solo números como código</p>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm text-gray-700">Área</label>
-              <select value={area} onChange={(e)=>setArea(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                {ALLOWED_AREAS.map(a => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-            </div>
-          </>
-        ) : (
-          <div className="grid gap-2">
-            <label className="text-sm text-gray-700">DNI / Código</label>
-            <input value={code} onChange={(e)=>setCode(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
-          </div>
-        )}
+        <div className="grid gap-2">
+          <label className="text-sm text-gray-700">Nombre</label>
+          <input value={name} onChange={(e)=>setName(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Nombre y Apellido" />
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm text-gray-700">DNI</label>
+          <input
+            value={dni}
+            onChange={(e)=> setDni((e.target.value || '').replace(/\D+/g, ''))}
+            className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="12345678"
+            inputMode="numeric"
+            pattern="[0-9]*"
+          />
+          <p className="text-xs text-gray-400">Se usará solo números como código</p>
+        </div>
+        <div className="grid gap-2">
+          <label className="text-sm text-gray-700">Área</label>
+          <select value={area} onChange={(e)=>setArea(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+            {ALLOWED_AREAS.map(a => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
         <div className="grid gap-2">
           <label className="text-sm text-gray-700">Rol</label>
           <select value={role} onChange={(e)=>setRole(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
@@ -195,8 +167,8 @@ export default function AdminUsersPage() {
         <button
           className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           type="submit"
-          disabled={mode === 'create' && (!dni || !(ALLOWED_AREAS as readonly string[]).includes(area as any))}
-          aria-disabled={mode === 'create' && (!dni || !(ALLOWED_AREAS as readonly string[]).includes(area as any))}
+          disabled={!dni || !(ALLOWED_AREAS as readonly string[]).includes(area as any)}
+          aria-disabled={!dni || !(ALLOWED_AREAS as readonly string[]).includes(area as any)}
         >
           Crear usuario
         </button>

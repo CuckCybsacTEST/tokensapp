@@ -53,7 +53,7 @@ export default async function CajaControlPage() {
           </div>
           <div className="text-xs opacity-70">Zona horaria: {tz}</div>
         </div>
-        <TokensToggle initialEnabled={metrics.tokensEnabled} canToggle={true} loginPath="/u/login" />
+        <TokensToggle initialEnabled={metrics.tokensEnabled} loginPath="/u/login" />
       </div>
 
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700">

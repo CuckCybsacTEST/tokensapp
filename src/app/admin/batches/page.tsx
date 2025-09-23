@@ -94,6 +94,7 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                 <div className="flex flex-wrap gap-2 pt-1 items-center">
                   <a href={`/api/batch/${b.id}/download?qr=1`} className="btn-outline !px-2 !py-1 text-[10px]">ZIP+QR</a>
                   <a href={`/api/batch/${b.id}/download`} className="btn-outline !px-2 !py-1 text-[10px]">ZIP</a>
+                  <a href={`/api/batch/${b.id}/export`} className="btn-outline !px-2 !py-1 text-[10px]">CSV</a>
                   <Link href={`/admin/print?preselect=${b.id}`} className="btn-outline !px-2 !py-1 text-[10px]">Imprimir</Link>
                   {!session && eligibleByPrize && (
                     <Link href={`/admin/batches?createRoulette=1&batch=${b.id}`} className="btn-outline !px-2 !py-1 text-[10px]">Ruleta</Link>

@@ -6,6 +6,8 @@
    DATABASE_URL="file:./prisma/dev.db" tsx scripts/verify-restore.ts
 */
 
+export {};
+
 // PrismaClient carga en tiempo de ejecución (evita errores si no está generado)
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PrismaClient } = require("@prisma/client") as { PrismaClient: any };

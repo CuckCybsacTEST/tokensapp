@@ -7,6 +7,8 @@
    DATABASE_URL="file:./prisma/dev.db" tsx scripts/reconcile-prizes.ts
 */
 
+export {};
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PrismaLib = require('@prisma/client') as { PrismaClient: new () => any };
 const db: any = new PrismaLib.PrismaClient();

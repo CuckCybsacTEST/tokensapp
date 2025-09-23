@@ -1,7 +1,16 @@
 // Admin home: simple entry points to main modules (no metrics here)
+import { cookies } from "next/headers";
+import { verifySessionCookie } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function AdminDashboard() {
-  
+export default async function AdminDashboard() {
+  // Si el usuario es STAFF, redirigimos directamente al panel de control de tokens
+  const cookie = cookies().get("admin_session")?.value;
+  const session = await verifySessionCookie(cookie);
+  if (session?.role === "STAFF") {
+    redirect("/admin/tokens");
+  }
+
   return (
     <div className="space-y-8">
       

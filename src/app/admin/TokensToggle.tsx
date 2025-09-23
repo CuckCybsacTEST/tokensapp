@@ -5,9 +5,13 @@ import React, { useState, useTransition } from "react";
 interface Props {
   // initialEnabled (obsoleto): ya no se usa para representar estado visual inicial
   initialEnabled?: boolean;
+  // canToggle: controla si el usuario puede activar/desactivar manualmente
+  canToggle?: boolean;
+  // loginPath: ruta de login a usar en redirecciones al detectar 401
+  loginPath?: string;
 }
 
-export function TokensToggle({ initialEnabled }: Props) {
+export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/admin/login' }: Props) {
   // Importante: arrancamos en null (loading) para evitar rebote visual por SSR
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +19,8 @@ export function TokensToggle({ initialEnabled }: Props) {
   const [adminDisabled, setAdminDisabled] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [statusLoaded, setStatusLoaded] = useState(false);
+  const [capabilitiesLoaded, setCapabilitiesLoaded] = useState(false);
+  const [canToggleState, setCanToggleState] = useState<boolean>(canToggle);
   const [serverTime, setServerTime] = useState<Date | null>(null);
   const [nextToggleTime, setNextToggleTime] = useState<Date | null>(null);
   const [timeActive, setTimeActive] = useState<string>("00:00:00");
@@ -37,10 +43,29 @@ export function TokensToggle({ initialEnabled }: Props) {
       .join(':');
   };
 
-  // Load status from server on mount
+  // Load capabilities and status from server on mount
   React.useEffect(() => {
     let mounted = true;
-    
+    const fetchCaps = async () => {
+      try {
+        const res = await fetch('/api/system/tokens/capabilities', { credentials: 'same-origin', cache: 'no-store' });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError('unauthorized - please sign in');
+            window.location.href = loginPath;
+            return;
+          }
+          // if 403, keep default canToggle (likely false for STAFF)
+        } else {
+          const caps = await res.json();
+          if (mounted && typeof caps?.canToggle === 'boolean') setCanToggleState(Boolean(caps.canToggle));
+        }
+      } catch {}
+      finally {
+        if (mounted) setCapabilitiesLoaded(true);
+      }
+    };
+
     const fetchStatus = async () => {
       try {
         const res = await fetch('/api/system/tokens/status', { 
@@ -50,7 +75,7 @@ export function TokensToggle({ initialEnabled }: Props) {
         if (!res.ok) {
           if (res.status === 401) {
             setError('unauthorized - please sign in');
-            window.location.href = '/admin/login';
+            window.location.href = loginPath;
             return;
           }
           throw new Error(await res.text());
@@ -82,7 +107,8 @@ export function TokensToggle({ initialEnabled }: Props) {
       }
     };
 
-    fetchStatus();
+  fetchCaps();
+  fetchStatus();
     
     // Actualizar status cada minuto
     const intervalId = setInterval(fetchStatus, 60000);
@@ -120,6 +146,10 @@ export function TokensToggle({ initialEnabled }: Props) {
   }, [enabled, serverTime, nextToggleTime]);
 
   async function toggle() {
+    if (!canToggleState) {
+      setError('Requiere permisos de Caja o Admin');
+      return;
+    }
     if (enabled === null) return; // aún cargando
     const target = !enabled;
     setError(null);
@@ -133,10 +163,10 @@ export function TokensToggle({ initialEnabled }: Props) {
       if (!res.ok) {
         if (res.status === 401) {
           setError('unauthorized - please sign in');
-          window.location.href = '/admin/login';
+          window.location.href = loginPath;
           return;
         }
-        if (res.status === 403) throw new Error('forbidden');
+      if (res.status === 403) throw new Error('forbidden');
         const t = await res.json().catch(()=>null);
         throw new Error(t?.error || (await res.text()));
       }
@@ -176,13 +206,34 @@ export function TokensToggle({ initialEnabled }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Aviso de permisos cuando no puede togglear (p. ej., STAFF sin sesión Caja activa) */}
+      {capabilitiesLoaded && !canToggleState && (
+        <div className="w-full p-3 rounded-md border text-sm bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/30 dark:text-amber-200">
+          <div className="flex items-start gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="font-medium">Permiso requerido para activar/desactivar</p>
+              <p className="mt-1 opacity-90">
+                Para que CAJA pueda controlar los tokens, necesitás dos sesiones en el mismo navegador y origen:
+              </p>
+              <ol className="mt-2 list-decimal ml-5 space-y-1 opacity-90">
+                <li>Iniciá sesión en el panel <a href="/admin" className="underline">Admin</a> con rol Admin o Staff.</li>
+                <li>En otra pestaña, iniciá sesión en <a href="/u" className="underline">/u</a> con un usuario colaborador de área <span className="font-mono">Caja</span>.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Botón principal */}
       <div className="flex flex-col items-center my-6">
         <div className="relative mb-5">
           <div className={`pointer-events-none absolute -inset-1 bg-gradient-to-r ${enabled ? 'from-red-500 to-rose-500' : 'from-emerald-500 to-teal-500'} rounded-full opacity-70 blur-sm transition-opacity duration-300 will-change-[opacity]`}></div>
           <button
             onClick={toggle}
-            disabled={isPending || loading}
+            disabled={isPending || loading || !canToggleState}
             className={`
               relative px-8 py-5 rounded-full text-2xl font-medium transition-all 
               flex items-center justify-center min-w-[240px]
@@ -190,8 +241,9 @@ export function TokensToggle({ initialEnabled }: Props) {
                 ? "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 hover:shadow-red-600/30 text-white"
                 : "bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-600/30 text-white"
               }
-              ${(isPending || loading) ? "opacity-70 cursor-not-allowed" : ""}
+              ${(isPending || loading || !canToggleState) ? "opacity-70 cursor-not-allowed" : ""}
             `}
+            title={!canToggleState ? 'Requiere permisos de Caja o Admin' : undefined}
           >
             {loading ? (
               <span className="flex items-center">
@@ -200,6 +252,13 @@ export function TokensToggle({ initialEnabled }: Props) {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Cargando estado...
+              </span>
+            ) : (!canToggleState) ? (
+              <span className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5a1 1 0 10-2 0v4a1 1 0 00.293.707l2.5 2.5a1 1 0 101.414-1.414L13 10.586V7z" />
+                </svg>
+                Permiso requerido
               </span>
             ) : isPending ? (
               <span className="flex items-center">
@@ -328,7 +387,7 @@ export function TokensToggle({ initialEnabled }: Props) {
                     if (!r.ok) {
                       if (r.status === 401) {
                         setError('unauthorized - please sign in');
-                        window.location.href = '/admin/login';
+                        window.location.href = loginPath;
                         return;
                       }
                       if (r.status === 403) throw new Error('forbidden');

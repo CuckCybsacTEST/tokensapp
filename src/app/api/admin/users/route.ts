@@ -3,9 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
+import { ALLOWED_AREAS as AREAS_ALLOWED, isValidArea } from '@/lib/areas';
 
 const esc = (s: string) => s.replace(/'/g, "''");
-const ALLOWED_AREAS = ["Barra","Mozos","Seguridad","Animación","DJs","Multimedia","Otros"] as const;
 const normalizeDni = (s: string) => String(s || '').replace(/\D+/g, '');
 
 export async function GET(req: Request) {
@@ -128,39 +128,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD' }, { status: 400 });
     }
 
-    // Backward compatible path: when only linking to an existing Person by code
-    if (body.code && !body.person) {
-      // Interpret 'code' as DNI/código; normalize to digits first, fallback to trimmed
-      const rawCode = String(body.code).trim();
-      const normDigits = rawCode.replace(/\D+/g, '');
-      const code = (normDigits || rawCode).toUpperCase();
-      // Person exists?
-      const prow: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, code FROM Person WHERE upper(code)='${esc(code)}' LIMIT 1`
-      );
-      const person = prow?.[0];
-      if (!person) return NextResponse.json({ ok: false, code: 'PERSON_NOT_FOUND' }, { status: 404 });
-
-      // Username unique? Person already linked?
-      const [uByUsername, uByPerson]: [any[], any[]] = (await Promise.all([
-        prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`),
-        prisma.$queryRawUnsafe(`SELECT id FROM User WHERE personId='${esc(person.id)}' LIMIT 1`),
-      ])) as [any[], any[]];
-      if (uByUsername && uByUsername.length > 0) return NextResponse.json({ ok: false, code: 'USERNAME_TAKEN' }, { status: 409 });
-      if (uByPerson && uByPerson.length > 0) return NextResponse.json({ ok: false, code: 'PERSON_ALREADY_LINKED' }, { status: 409 });
-
-      const salt = bcrypt.genSaltSync(10);
-      const passwordHash = bcrypt.hashSync(password, salt);
-      const nowIso = new Date().toISOString();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(person.id)}', '${nowIso}', '${nowIso}')`
-      );
-
-      return NextResponse.json({ ok: true, user: { username, role, personCode: person.code } });
-    }
-
-    // Extended path: create Person + User transactionally
-  const personInput = body.person || {};
+    // Create Person + User transactionally (mandatory path)
+    const personInput = body.person || {};
     const name = typeof personInput.name === 'string' ? personInput.name.trim() : '';
   const dniRaw = typeof personInput.dni === 'string' ? personInput.dni.trim() : '';
   const dni = normalizeDni(dniRaw);
@@ -174,7 +143,7 @@ export async function POST(req: Request) {
     if (!dni) {
       return NextResponse.json({ ok: false, code: 'INVALID_DNI' }, { status: 400 });
     }
-    if (!area || !ALLOWED_AREAS.includes(area as any)) {
+    if (!area || !isValidArea(area)) {
       return NextResponse.json({ ok: false, code: 'INVALID_AREA' }, { status: 400 });
     }
     // Force code = normalized DNI

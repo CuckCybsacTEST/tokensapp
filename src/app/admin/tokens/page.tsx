@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { TokensToggle } from "@/app/admin/TokensToggle";
 import MetricsDashboard from "../MetricsDashboard";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { verifySessionCookie } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +59,10 @@ async function getMetrics() {
 
 export default async function TokensPanelPage() {
   const m = await getMetrics();
+  // Determinar permisos de toggle: ADMIN puede, STAFF por defecto no
+  const cookie = cookies().get("admin_session")?.value;
+  const session = await verifySessionCookie(cookie);
+  const canToggle = session?.role === 'ADMIN';
   const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
   return (
     <div className="space-y-8">
@@ -71,7 +77,7 @@ export default async function TokensPanelPage() {
           <h2 className="text-xl font-bold">Control del Sistema</h2>
         </div>
         <div className="text-sm opacity-70 mb-2">Zona horaria programada: {tz} (activación 18:00, desactivación 00:00)</div>
-        <TokensToggle initialEnabled={m.tokensEnabled} />
+        <TokensToggle initialEnabled={m.tokensEnabled} canToggle={canToggle} />
       </div>
 
       <Suspense fallback={

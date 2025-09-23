@@ -209,6 +209,9 @@ function DownloadButtons({ batchId, templateId }: { batchId: string; templateId?
   return (
     <div className="flex gap-2">
   <PrintPdfButton batchId={batchId} templateId={templateId} />
+      <a href={`/api/batch/${batchId}/export`} className="btn-outline !px-3 !py-1 text-xs">
+        CSV
+      </a>
       <a href={`/api/batch/${batchId}/download?qr=1`} className="btn-outline !px-3 !py-1 text-xs">
         Descargar ZIP (con QR)
       </a>
