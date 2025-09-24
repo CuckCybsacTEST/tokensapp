@@ -3,6 +3,8 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { checkRateLimit } from '@/lib/rateLimit';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 function esc(s: string) { return s.replace(/'/g, "''"); }
 
 export async function POST(req: Request) {
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
     }
     const code = body.code.trim();
     const name = body.name.trim();
-    const active = body.active === false ? 0 : 1;
+  const active = body.active === false ? false : true;
 
     // Basic validation
     const errors: Record<string, string> = {};
@@ -35,15 +37,14 @@ export async function POST(req: Request) {
     if (Object.keys(errors).length) return NextResponse.json({ error: 'VALIDATION', details: errors }, { status: 400 });
 
     // Unique code
-    const exists: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(code)}' LIMIT 1`);
-    if (exists && exists.length) return NextResponse.json({ error: 'CONFLICT', field: 'code' }, { status: 409 });
+    const existing = await prisma.person.findUnique({ where: { code }, select: { id: true } });
+    if (existing) return NextResponse.json({ error: 'CONFLICT', field: 'code' }, { status: 409 });
 
-    const nowIso = new Date().toISOString();
-    const row: any[] = await prisma.$queryRawUnsafe(
-      `INSERT INTO Person (code, name, active, createdAt, updatedAt) VALUES ('${esc(code)}', '${esc(name)}', ${active}, '${nowIso}', '${nowIso}') RETURNING id, code, name, active, createdAt`
-    );
-    const person = row && row[0];
-    return NextResponse.json(person, { status: 201 });
+    const created = await prisma.person.create({
+      data: { code, name, active },
+      select: { id: true, code: true, name: true, active: true, createdAt: true },
+    });
+    return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
     console.error('admin persons POST error', e);
     return NextResponse.json({ error: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });

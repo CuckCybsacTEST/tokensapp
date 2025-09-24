@@ -29,3 +29,14 @@ prisma/*.sqlite
 prisma/undefined
 .DS_Store
 Thumbs.db
+\n+# VCS and editor
+.git
+.gitignore
+.vscode
+.idea
+*.swp
+\n+# Next.js build output (already covered partially)
+.next
+out
+\n+# Keep example envs, ignore actual
+!.env.example

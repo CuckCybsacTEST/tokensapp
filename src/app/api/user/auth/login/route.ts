@@ -3,6 +3,8 @@ import { logEvent } from "@/lib/log";
 import { createUserSessionCookie, buildSetUserCookie } from "@/lib/auth-user";
 import bcrypt from "bcryptjs";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({} as any));
@@ -13,29 +15,27 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
     }
 
-    // Use raw SQL to avoid Prisma Client type drift when schema recently changed
-    const esc = (s: string) => s.replace(/'/g, "''");
     const normDni = (s: string | undefined | null) => String(s || '').replace(/\D+/g, '');
-    let user: any | null = null;
+    let user: { id: string; username: string; passwordHash: string; role: string; personId: string } | null = null;
 
     // 1) Intentar por username si está presente
     if (username) {
-      const byUsername: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, username, passwordHash, role, personId FROM User WHERE username = '${esc(username)}' LIMIT 1`
-      );
-      user = (byUsername && byUsername[0]) || null;
+      const byUsername = await prisma.user.findUnique({
+        where: { username },
+        select: { id: true, username: true, passwordHash: true, role: true, personId: true },
+      });
+      if (byUsername) user = byUsername;
     }
 
     // 2) Si no se encontró por username, o no vino username, intentar por DNI (normalizado)
     if (!user) {
       const dniInput = normDni(dniRaw || username);
       if (dniInput) {
-        const byDni: any[] = await prisma.$queryRawUnsafe(
-          `SELECT u.id as id, u.username as username, u.passwordHash as passwordHash, u.role as role, u.personId as personId
-             FROM User u JOIN Person p ON p.id = u.personId
-            WHERE p.dni = '${esc(dniInput)}' LIMIT 1`
-        );
-        user = (byDni && byDni[0]) || null;
+        const byDni = await prisma.user.findFirst({
+          where: { person: { dni: dniInput } },
+          select: { id: true, username: true, passwordHash: true, role: true, personId: true },
+        });
+        if (byDni) user = byDni;
       }
     }
 
@@ -45,7 +45,12 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    let ok = false;
+    try {
+      ok = await bcrypt.compare(password, user.passwordHash || "");
+    } catch (_err) {
+      ok = false; // hash inválido o corrupto => credenciales inválidas
+    }
     if (!ok) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: contraseña inválida", { username });
       return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });

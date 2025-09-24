@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from "@/lib/auth-user";
 
+export const dynamic = 'force-dynamic';
+
 function isValidDay(day: string | null): day is string {
   if (!day) return false;
   // YYYY-MM-DD
@@ -24,28 +26,25 @@ export async function GET(req: NextRequest) {
     return new Response(JSON.stringify({ error: "invalid_day" }), { status: 400, headers: { "content-type": "application/json" } });
   }
 
-  // Resolve personId for this user
-  const userRows: Array<{ id: string; personId: string | null }> = await prisma.$queryRaw`SELECT id, personId FROM User WHERE id = ${session.userId} LIMIT 1`;
-  const user = userRows[0];
+  // Resolve personId for this user (Prisma)
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, personId: true } });
   if (!user || !user.personId) {
     return new Response(JSON.stringify({ error: "user_without_person" }), { status: 400, headers: { "content-type": "application/json" } });
   }
 
   // Obtener área de la persona
-  const personRows: Array<{ area: string | null }> = await prisma.$queryRaw`SELECT area FROM Person WHERE id = ${user.personId} LIMIT 1`;
-  const personArea: string | null = (personRows?.[0]?.area as any) ?? null;
+  const person = await prisma.person.findUnique({ where: { id: user.personId }, select: { area: true } });
+  const personArea: string | null = person?.area ?? null;
 
-  // Ensure optional columns exist (dev safety)
-  const info: Array<{ name: string }> = await prisma.$queryRawUnsafe(`PRAGMA table_info(Task)`);
-  const cols = new Set(info.map((c: any) => String(c.name)));
-  const hasPriority = cols.has('priority');
-  const hasStart = cols.has('startDay');
-  const hasEnd = cols.has('endDay');
-  const hasActive = cols.has('active');
-  const hasCompleted = cols.has('completed');
-  const hasMeasureEnabled = cols.has('measureEnabled');
-  const hasTargetValue = cols.has('targetValue');
-  const hasUnitLabel = cols.has('unitLabel');
+  // Prisma schema ya define todas las columnas; no usamos PRAGMA en Postgres
+  const hasPriority = true;
+  const hasStart = true;
+  const hasEnd = true;
+  const hasActive = true;
+  const hasCompleted = true;
+  const hasMeasureEnabled = true;
+  const hasTargetValue = true;
+  const hasUnitLabel = true;
 
   // Fetch tasks y statuses en paralelo, filtrando por ventana de fechas si existen columnas
   // Tareas: activas, globales o del área de la persona y dentro de la ventana (startDay/endDay)
@@ -57,21 +56,29 @@ export async function GET(req: NextRequest) {
   }
   sql += ` ORDER BY ${hasPriority ? 'priority DESC, ' : ''} sortOrder ASC, label ASC`;
 
-  // Also check PersonTaskStatus columns for measurement value
-  const infoPts: Array<{ name: string }> = await prisma.$queryRawUnsafe(`PRAGMA table_info(PersonTaskStatus)`);
-  const colsPts = new Set((infoPts || []).map((c: any) => String(c.name)));
-  const hasMeasureValue = colsPts.has('measureValue');
+  // PersonTaskStatus tiene measureValue según schema
+  const hasMeasureValue = true;
 
   const [tasksRaw, statusesRaw] = await Promise.all([
-    prisma.$queryRawUnsafe(sql, ...params),
-    prisma.$queryRawUnsafe(
-      `SELECT pts.taskId as taskId, pts.done as done, pts.updatedAt as updatedAt, u.username as updatedByUsername${hasMeasureValue ? ', pts.measureValue as measureValue' : ''}
-                     FROM PersonTaskStatus pts
-                     LEFT JOIN User u ON u.id = pts.updatedBy
-                     WHERE pts.personId = ? AND pts.day = ?`,
-      user.personId,
-      day
-    ),
+    prisma.task.findMany({
+      where: {
+        ...(hasActive ? { active: true } : {}),
+        ...(hasCompleted ? { completed: false } : {}),
+        OR: [{ area: null }, { area: personArea ?? undefined }],
+        ...(hasStart && hasEnd ? {
+          AND: [
+            { OR: [{ startDay: null }, { startDay: { lte: day! } }] },
+            { OR: [{ endDay: null }, { endDay: { gte: day! } }] },
+          ],
+        } : {}),
+      },
+      select: { id: true, label: true, sortOrder: true, priority: true, startDay: true, endDay: true, completed: true, measureEnabled: true, targetValue: true, unitLabel: true },
+      orderBy: [{ priority: 'desc' }, { sortOrder: 'asc' }, { label: 'asc' }],
+    }),
+    prisma.personTaskStatus.findMany({
+      where: { personId: user.personId, day: day! },
+      select: { taskId: true, done: true, updatedAt: true, measureValue: true, user: { select: { username: true } } },
+    }),
   ]);
 
   // Normalize booleans in case SQLite returns 0/1
@@ -88,10 +95,10 @@ export async function GET(req: NextRequest) {
   }));
   const statuses = (statusesRaw as any[]).map((s: any) => ({
     taskId: String(s.taskId),
-    done: s.done === 1 || s.done === true,
+    done: !!s.done,
     value: hasMeasureValue ? Number(s.measureValue || 0) : 0,
     updatedAt: s.updatedAt,
-    updatedByUsername: s.updatedByUsername ?? null,
+    updatedByUsername: s.user?.username ?? null,
   }));
 
   return new Response(JSON.stringify({ tasks, statuses }), { headers: { "content-type": "application/json" } });

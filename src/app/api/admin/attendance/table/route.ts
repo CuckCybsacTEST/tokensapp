@@ -5,6 +5,8 @@ import { rangeFromPeriod } from '@/lib/date';
 import { prisma as _p } from '@/lib/prisma';
 import type { Period } from '@/types/metrics';
 
+export const dynamic = 'force-dynamic';
+
 function badRequest(message: string, code: string = 'BAD_REQUEST') {
   return NextResponse.json({ ok: false, code, message }, { status: 400 });
 }
@@ -77,14 +79,14 @@ export async function GET(req: Request) {
          UNION
          SELECT "personId", day FROM tasks
        ), merged AS (
-         SELECT p."code" as personCode, p."name" as personName, p."area" as area,
-                d.day as day,
-                sc.firstIn as firstIn,
-                sc.lastOut as lastOut,
+         SELECT p."code" as "personCode", p."name" as "personName", p."area" as "area",
+                d.day as "day",
+                sc.firstIn as "firstIn",
+                sc.lastOut as "lastOut",
                 CASE WHEN sc.firstIn IS NOT NULL AND sc.lastOut IS NOT NULL AND sc.lastOut > sc.firstIn
-                     THEN EXTRACT(EPOCH FROM (sc.lastOut - sc.firstIn)) / 60.0 END as durationMin,
-                coalesce(tk.doneCount, 0) as doneCount,
-                coalesce(tk.totalCount, 0) as totalCount
+                     THEN EXTRACT(EPOCH FROM (sc.lastOut - sc.firstIn)) / 60.0 END as "durationMin",
+                coalesce(tk.doneCount, 0) as "doneCount",
+                coalesce(tk.totalCount, 0) as "totalCount"
          FROM days d
          JOIN "Person" p ON p."id" = d."personId"
          LEFT JOIN scans sc ON sc."personId" = d."personId" AND sc.day = d.day

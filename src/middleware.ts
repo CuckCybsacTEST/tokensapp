@@ -43,6 +43,7 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/user/auth/")) return NextResponse.next();
   if (pathname === "/admin/login") return NextResponse.next();
   if (pathname === "/u/login") return NextResponse.next();
+  if (pathname === "/u/register") return NextResponse.next();
 
   // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin ADMIN
   if (pathname === "/u" || pathname.startsWith("/u/")) {

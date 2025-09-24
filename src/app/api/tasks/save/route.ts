@@ -47,9 +47,8 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "invalid_items_length" }), { status: 400, headers: { "content-type": "application/json" } });
   }
 
-  // Resolve personId
-  const userRows: Array<{ id: string; personId: string | null }> = await prisma.$queryRaw`SELECT id, personId FROM User WHERE id = ${session.userId} LIMIT 1`;
-  const user = userRows[0];
+  // Resolve personId (Prisma)
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, personId: true } });
   if (!user || !user.personId) {
     return new Response(JSON.stringify({ error: "user_without_person" }), { status: 400, headers: { "content-type": "application/json" } });
   }
@@ -59,50 +58,34 @@ export async function POST(req: NextRequest) {
   if (taskIds.length === 0) {
     return new Response(JSON.stringify({ ok: true, saved: 0 }), { headers: { "content-type": "application/json" } });
   }
-  const placeholders = taskIds.map(() => "?").join(",");
-  const info: Array<{ name: string }> = await prisma.$queryRawUnsafe(`PRAGMA table_info(Task)`);
-  const cols = new Set(info.map((c: any) => String(c.name)));
-  const hasCompleted = cols.has('completed');
-  const hasActive = cols.has('active');
-  const hasMeasureEnabled = cols.has('measureEnabled');
-  const hasTargetValue = cols.has('targetValue');
-  const activeTasks: Array<{ id: string }> = await prisma.$queryRawUnsafe(
-    `SELECT id FROM Task WHERE ${hasActive ? 'active = 1 AND ' : ''}${hasCompleted ? '(completed IS NULL OR completed = 0)' : '1=1'} AND id IN (${placeholders})`,
-    ...taskIds as any
-  );
+  // Schema Prisma garantiza columnas; filtrar activas y no completadas
+  const hasCompleted = true;
+  const hasActive = true;
+  const hasMeasureEnabled = true;
+  const hasTargetValue = true;
+  const activeTasks = await prisma.task.findMany({ where: { id: { in: taskIds }, active: true, completed: false }, select: { id: true } });
   const activeSet = new Set(activeTasks.map(t => t.id));
   const validItems = items.filter(i => activeSet.has(String(i.taskId)));
 
   // Fetch previous statuses for change detection to avoid emitting noisy events
-  const ptsInfo: Array<{ name: string }> = await prisma.$queryRawUnsafe(`PRAGMA table_info(PersonTaskStatus)`);
-  const ptsCols = new Set(ptsInfo.map((c: any) => String(c.name)));
-  const hasMeasureValue = ptsCols.has('measureValue');
-  const prevRows: Array<{ taskId: string; done: number; measureValue?: number | null }> = taskIds.length > 0
-    ? await prisma.$queryRawUnsafe(
-        `SELECT taskId, done${hasMeasureValue ? ', measureValue' : ''} FROM PersonTaskStatus WHERE personId = ? AND day = ? AND taskId IN (${placeholders})`,
-        user.personId,
-        day,
-        ...taskIds as any
-      )
+  const hasMeasureValue = true;
+  const prevRows = taskIds.length > 0
+    ? await prisma.personTaskStatus.findMany({ where: { personId: user.personId, day: day!, taskId: { in: taskIds } }, select: { taskId: true, done: true, measureValue: true } })
     : [];
-  const prevDoneMap = new Map(prevRows.map(r => [String(r.taskId), Number(r.done) === 1] as const));
-  const prevValMap = new Map(prevRows.map(r => [String(r.taskId), Number((r as any).measureValue || 0)] as const));
+  const prevDoneMap = new Map(prevRows.map(r => [String(r.taskId), !!r.done] as const));
+  const prevValMap = new Map(prevRows.map(r => [String(r.taskId), Number(r.measureValue || 0)] as const));
 
   // Upsert each status via SQLite ON CONFLICT on (personId, taskId, day)
   let saved = 0;
-  const nowIso = new Date().toISOString();
   const changedEvents: Array<{ taskId: string; done: boolean; value?: number }> = [];
   // Preload task measurement metadata for derivation when needed
   let measureMeta = new Map<string, { enabled: boolean; target: number | null }>();
   if (hasMeasureEnabled) {
-    const metaRows: Array<{ id: string; measureEnabled?: number | boolean; targetValue?: number | null }> = await prisma.$queryRawUnsafe(
-      `SELECT id, ${hasMeasureEnabled ? 'measureEnabled' : '0 as measureEnabled'}${hasTargetValue ? ', targetValue' : ', NULL as targetValue'} FROM Task WHERE id IN (${placeholders})`,
-      ...taskIds as any
-    );
+    const metaRows = await prisma.task.findMany({ where: { id: { in: taskIds } }, select: { id: true, measureEnabled: true, targetValue: true } });
     for (const r of metaRows) {
-      const en = Number((r as any).measureEnabled) === 1 || (r as any).measureEnabled === true;
-      const tv = (r as any).targetValue;
-      measureMeta.set(String((r as any).id), { enabled: !!en, target: (tv === null || tv === undefined) ? null : Number(tv) });
+      const en = !!r.measureEnabled;
+      const tv = r.targetValue;
+      measureMeta.set(String(r.id), { enabled: en, target: (tv === null || tv === undefined) ? null : Number(tv) });
     }
   }
 
@@ -123,22 +106,12 @@ export async function POST(req: NextRequest) {
       measureVal = hasMeasureValue ? prevValMap.get(tid) ?? 0 : null;
     }
 
-    const doneVal = doneFlag ? 1 : 0;
-    if (hasMeasureValue) {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO PersonTaskStatus (personId, taskId, day, done, measureValue, updatedBy, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(personId, taskId, day) DO UPDATE SET done=excluded.done, measureValue=excluded.measureValue, updatedBy=excluded.updatedBy, updatedAt=excluded.updatedAt`,
-        user.personId, tid, day, doneVal, (measureVal ?? 0), session.userId, nowIso
-      );
-    } else {
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO PersonTaskStatus (personId, taskId, day, done, updatedBy, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(personId, taskId, day) DO UPDATE SET done=excluded.done, updatedBy=excluded.updatedBy, updatedAt=excluded.updatedAt`,
-        user.personId, tid, day, doneVal, session.userId, nowIso
-      );
-    }
+    const doneVal = !!doneFlag;
+    await prisma.personTaskStatus.upsert({
+      where: { personId_taskId_day: { personId: user.personId, taskId: tid, day: day! } },
+      create: { personId: user.personId, taskId: tid, day: day!, done: doneVal, measureValue: hasMeasureValue ? (measureVal ?? 0) : 0, updatedBy: session.userId },
+      update: { done: doneVal, measureValue: hasMeasureValue ? (measureVal ?? 0) : 0, updatedBy: session.userId },
+    });
     saved += 1;
     const prevDone = prevDoneMap.get(tid);
     const prevVal = prevValMap.get(tid);
@@ -170,3 +143,5 @@ export async function POST(req: NextRequest) {
 
   return new Response(JSON.stringify({ ok: true, saved }), { headers: { "content-type": "application/json" } });
 }
+
+export const dynamic = "force-dynamic";

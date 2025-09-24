@@ -3,6 +3,8 @@ import { getAttendanceMetrics } from '@/lib/metrics/attendance';
 import type { Period } from '@/types/metrics';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 function badRequest(message: string, code: string = 'BAD_REQUEST') {
   return NextResponse.json({ ok: false, code, message }, { status: 400 });
 }

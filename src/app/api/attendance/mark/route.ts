@@ -4,6 +4,8 @@ import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth-user';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
 
+export const dynamic = 'force-dynamic';
+
 type Mode = 'IN' | 'OUT';
 const REPLAY_WINDOW_SEC = 10;
 
@@ -14,9 +16,8 @@ export async function POST(req: Request) {
     if (!body || (body.mode !== 'IN' && body.mode !== 'OUT')) {
       return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
     }
-    const mode = body.mode as Mode;
-    const deviceId: string | undefined = typeof body.deviceId === 'string' ? body.deviceId : undefined;
-    const esc = (s: string) => s.replace(/'/g, "''");
+  const mode = body.mode as Mode;
+  const deviceId: string | undefined = typeof body.deviceId === 'string' ? body.deviceId : undefined;
 
     // Auth: require collaborator user session
     const raw = getUserCookie(req);
@@ -29,28 +30,19 @@ export async function POST(req: Request) {
     const rlUser = checkRateLimitCustom(`att:user:${uSession.userId}`, 10, 10_000);
     if (!rlUser.ok) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429, headers: { 'Retry-After': String(rlUser.retryAfterSeconds) } });
 
-    // Load user -> personId
-    const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT u.id as userId, u.personId as personId FROM User u WHERE u.id='${esc(uSession.userId)}' LIMIT 1`
-    );
-    const row = rows && rows[0];
-    if (!row) return NextResponse.json({ ok: false, code: 'USER_NOT_FOUND' }, { status: 404 });
-    const personId: string = row.personId;
+    // Load user -> personId (Prisma)
+    const user = await prisma.user.findUnique({ where: { id: uSession.userId }, select: { id: true, personId: true } });
+    if (!user || !user.personId) return NextResponse.json({ ok: false, code: 'USER_NOT_FOUND' }, { status: 404 });
+    const personId: string = user.personId;
 
-    // Check person is active and get code/name
-    const personRows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id, code, name, active FROM Person WHERE id='${esc(personId)}' LIMIT 1`
-    );
-    const person = personRows && personRows[0];
+    // Check person is active and get code/name (Prisma)
+    const person = await prisma.person.findUnique({ where: { id: personId }, select: { id: true, code: true, name: true, active: true } });
     if (!person) return NextResponse.json({ ok: false, code: 'PERSON_NOT_FOUND' }, { status: 404 });
     if (!person.active) return NextResponse.json({ ok: false, code: 'PERSON_INACTIVE' }, { status: 400 });
 
     // Anti-replay: reject duplicate within window
     const since = new Date(Date.now() - REPLAY_WINDOW_SEC * 1000);
-    const lastRecentRows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id, scannedAt FROM Scan WHERE personId = '${person.id}' AND scannedAt >= '${since.toISOString()}' ORDER BY scannedAt DESC LIMIT 1`
-    );
-    const lastRecent = lastRecentRows && lastRecentRows[0];
+    const lastRecent = await prisma.scan.findFirst({ where: { personId: person.id, scannedAt: { gte: since } }, orderBy: { scannedAt: 'desc' }, select: { id: true, scannedAt: true } });
     if (lastRecent) {
       await prisma.eventLog.create({ data: { type: 'SCAN_DUPLICATE', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
       return NextResponse.json({ ok: false, code: 'DUPLICATE', person: { id: person.id, name: person.name, code: person.code }, lastScanAt: lastRecent.scannedAt }, { status: 400 });
@@ -59,67 +51,74 @@ export async function POST(req: Request) {
     const useBusinessDay = process.env.ATTENDANCE_BUSINESS_DAY === '1';
     if (useBusinessDay) {
       // Business Day logic
-      const cutoff = parseInt(process.env.ATTENDANCE_CUTOFF_HOUR || '10', 10);
-  const businessDay = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
+      const businessDay = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
 
-      const alreadyTodayRows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND businessDay='${esc(businessDay)}' ORDER BY scannedAt ASC LIMIT 1`
-      );
-      const alreadyToday = alreadyTodayRows && alreadyTodayRows[0];
+      const alreadyToday = await prisma.scan.findFirst({ where: { personId: person.id, type: mode, businessDay }, orderBy: { scannedAt: 'asc' }, select: { id: true, scannedAt: true } });
       if (alreadyToday) {
         await prisma.eventLog.create({ data: { type: 'SCAN_ALREADY_MARKED', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
         return NextResponse.json({ ok: false, code: 'ALREADY_TODAY', alreadyMarkedAt: alreadyToday.scannedAt }, { status: 400 });
       }
 
       if (mode === 'OUT') {
-        const inTodayRows: any[] = await prisma.$queryRawUnsafe(
-          `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='IN' AND businessDay='${esc(businessDay)}' ORDER BY scannedAt ASC LIMIT 1`
-        );
-        const hasInToday = !!(inTodayRows && inTodayRows[0]);
+        const hasInToday = !!(await prisma.scan.findFirst({ where: { personId: person.id, type: 'IN', businessDay }, orderBy: { scannedAt: 'asc' }, select: { id: true } }));
         if (!hasInToday) {
           await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
           return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
         }
       }
-
-      const nowIso = new Date().toISOString();
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
-        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay)
-         VALUES ('${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDay)}') RETURNING id`
-      );
-      const scanId = scanIdRows?.[0]?.id;
+      const now = new Date();
+      const created = await prisma.scan.create({
+        data: {
+          personId: person.id,
+          scannedAt: now,
+          type: mode,
+          deviceId: deviceId || null,
+          byUser: uSession.userId,
+          meta: null,
+          businessDay,
+        },
+        select: { id: true },
+      });
+      const scanId = created.id;
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, businessDay }) } });
       return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [] });
     } else {
       // Legacy UTC-day logic (fallback) but still store computed businessDay for metrics compatibility
-      const today = new Date().toISOString().slice(0, 10); // UTC date
-  const businessDayLegacy = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
-      const alreadyRows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND to_char("scannedAt",'YYYY-MM-DD')='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
-      );
-      const already = alreadyRows && alreadyRows[0];
+      const now = new Date();
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+      const businessDayLegacy = computeBusinessDayFromUtc(now, getConfiguredCutoffHour());
+      const already = await prisma.scan.findFirst({
+        where: { personId: person.id, type: mode, scannedAt: { gte: start, lt: end } },
+        orderBy: { scannedAt: 'asc' },
+        select: { id: true, scannedAt: true },
+      });
       if (already) {
         await prisma.eventLog.create({ data: { type: 'SCAN_ALREADY_MARKED_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
         return NextResponse.json({ ok: false, code: 'ALREADY_TODAY', alreadyMarkedAt: already.scannedAt }, { status: 400 });
       }
       if (mode === 'OUT') {
-        const inRows: any[] = await prisma.$queryRawUnsafe(
-          `SELECT id FROM Scan WHERE personId='${person.id}' AND type='IN' AND to_char("scannedAt",'YYYY-MM-DD')='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
-        );
-        const hasIn = !!(inRows && inRows[0]);
+        const hasIn = !!(await prisma.scan.findFirst({ where: { personId: person.id, type: 'IN', scannedAt: { gte: start, lt: end } }, orderBy: { scannedAt: 'asc' }, select: { id: true } }));
         if (!hasIn) {
           await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
           return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
         }
       }
-      const nowIso = new Date().toISOString();
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
-        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay)
-         VALUES ('${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDayLegacy)}') RETURNING id`
-      );
-      const scanId = scanIdRows?.[0]?.id;
-      await prisma.eventLog.create({ data: { type: 'SCAN_OK_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, utcDay: today, businessDay: businessDayLegacy }) } });
-      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, utcDay: today, businessDay: businessDayLegacy, alerts: [] });
+      const createdLegacy = await prisma.scan.create({
+        data: {
+          personId: person.id,
+          scannedAt: now,
+          type: mode,
+          deviceId: deviceId || null,
+          byUser: uSession.userId,
+          meta: null,
+          businessDay: businessDayLegacy,
+        },
+        select: { id: true },
+      });
+      const scanId = createdLegacy.id;
+      await prisma.eventLog.create({ data: { type: 'SCAN_OK_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, utcDay: start.toISOString().slice(0,10), businessDay: businessDayLegacy }) } });
+      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, utcDay: start.toISOString().slice(0,10), businessDay: businessDayLegacy, alerts: [] });
     }
   } catch (e: any) {
     console.error('attendance mark error', e);

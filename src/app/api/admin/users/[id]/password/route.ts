@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
-const esc = (s: string) => s.replace(/'/g, "''");
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -21,17 +21,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD', message: 'Password must be at least 8 chars' }, { status: 400 });
     }
 
-    const userRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE id='${esc(id)}' LIMIT 1`);
-    if (!userRows || userRows.length === 0) {
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
       return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
     }
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
-    const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `UPDATE User SET passwordHash='${esc(passwordHash)}', updatedAt='${nowIso}' WHERE id='${esc(id)}'`
-    );
+    await prisma.user.update({ where: { id }, data: { passwordHash } });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

@@ -28,39 +28,39 @@ export async function GET(req: Request) {
     const sinceIso = since.toISOString();
 
     // Total scans since 'since'
-    const totalRows: Array<{ count: number } & Record<string, any>> = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as count FROM Scan WHERE scannedAt >= '${sinceIso}'`
-    );
-    const total = Number(totalRows?.[0]?.count || 0);
+    const total = await prisma.scan.count({ where: { scannedAt: { gte: since } } });
 
-    // Unique persons scanned since 'since'
-    const uniqueRows: Array<{ count: number } & Record<string, any>> = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(DISTINCT personId) as count FROM Scan WHERE scannedAt >= '${sinceIso}'`
-    );
-    const uniquePersons = Number(uniqueRows?.[0]?.count || 0);
+    // Unique persons scanned since 'since' (distinct personId)
+    const distinctPersons = await prisma.scan.findMany({
+      where: { scannedAt: { gte: since } },
+      distinct: ['personId'],
+      select: { personId: true },
+    });
+    const uniquePersons = distinctPersons.length;
 
     // Duplicates blocked: count EventLog SCAN_DUPLICATE events since 'since'
-    const dupRows: Array<{ count: number } & Record<string, any>> = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as count FROM EventLog WHERE type='SCAN_DUPLICATE' AND createdAt >= '${sinceIso}'`
-    );
-    const duplicatesBlocked = Number(dupRows?.[0]?.count || 0);
+    const duplicatesBlocked = await prisma.eventLog.count({
+      where: { type: 'SCAN_DUPLICATE', createdAt: { gte: since } },
+    });
 
     // Breakdown IN/OUT
-    const breakdownRows: Array<{ type: string; count: number } & Record<string, any>> = await prisma.$queryRawUnsafe(
-      `SELECT type, COUNT(*) as count FROM Scan WHERE scannedAt >= '${sinceIso}' GROUP BY type`
-    );
+    const grouped = await prisma.scan.groupBy({
+      by: ['type'],
+      where: { scannedAt: { gte: since } },
+      _count: { _all: true },
+    });
     let inCount = 0;
     let outCount = 0;
-    for (const r of breakdownRows || []) {
-      if ((r.type || '').toUpperCase() === 'IN') inCount = Number(r.count || 0);
-      else if ((r.type || '').toUpperCase() === 'OUT') outCount = Number(r.count || 0);
+    for (const g of grouped) {
+      const t = String(g.type || '').toUpperCase();
+      const c = Number(g._count?._all || 0);
+      if (t === 'IN') inCount = c; else if (t === 'OUT') outCount = c;
     }
 
     // Checklist saves (TASKS_SAVE) since 'since' — requires audit implemented in /api/tasks/save
-    const tasksSaveRows: Array<{ count: number } & Record<string, any>> = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as count FROM EventLog WHERE type='TASKS_SAVE' AND createdAt >= '${sinceIso}'`
-    );
-    const checklistSaves = Number(tasksSaveRows?.[0]?.count || 0);
+    const checklistSaves = await prisma.eventLog.count({
+      where: { type: 'TASKS_SAVE', createdAt: { gte: since } },
+    });
 
     return NextResponse.json({
       ok: true,

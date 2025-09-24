@@ -5,23 +5,39 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { ALLOWED_AREAS as AREAS_ALLOWED, isValidArea } from '@/lib/areas';
 
-const esc = (s: string) => s.replace(/'/g, "''");
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const normalizeDni = (s: string) => String(s || '').replace(/\D+/g, '');
 
 export async function GET(req: Request) {
   try {
-  const raw = getSessionCookieFromRequest(req);
-  const session = await verifySessionCookie(raw);
-  const ok = requireRole(session, ['ADMIN']);
-  if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    const ok = requireRole(session, ['ADMIN']);
+    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
-    const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT u.id as id, u.username as username, u.role as role, u.createdAt as createdAt,
-              p.code as personCode, p.name as personName, p.dni as dni, p.area as area, p.jobTitle as jobTitle
-         FROM User u
-         JOIN Person p ON p.id = u.personId
-        ORDER BY p.code ASC`
-    );
+    const users = await prisma.user.findMany({
+      orderBy: { person: { code: 'asc' } },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        createdAt: true,
+        person: { select: { code: true, name: true, dni: true, area: true, jobTitle: true } },
+      },
+    });
+    const rows = users.map(u => ({
+      id: u.id,
+      username: u.username,
+      role: u.role,
+      createdAt: u.createdAt,
+      personCode: u.person?.code ?? null,
+      personName: u.person?.name ?? null,
+      dni: u.person?.dni ?? null,
+      area: u.person?.area ?? null,
+      jobTitle: u.person?.jobTitle ?? null,
+    }));
     return NextResponse.json({ ok: true, users: rows });
   } catch (e: any) {
     console.error('admin list users error', e);
@@ -54,10 +70,15 @@ function isValidCode(c: string) {
 async function generateNextPersonCode(): Promise<string> {
   // Default prefix EMP- and 4-digit padding
   const prefix = 'EMP-';
-  const row: Array<{ maxNum: number | null }> = await prisma.$queryRawUnsafe(
-    `SELECT MAX(CAST(substr(code, ${prefix.length + 1}) AS INTEGER)) as maxNum FROM Person WHERE code LIKE '${esc(prefix)}%'`
-  );
-  const next = ((row?.[0]?.maxNum || 0) as number) + 1;
+  const like = `${prefix}%`;
+  const people = await prisma.person.findMany({ where: { code: { startsWith: prefix } }, select: { code: true } });
+  let maxNum = 0;
+  for (const p of people) {
+    const m = p.code?.slice(prefix.length) || '';
+    const n = parseInt(m, 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  }
+  const next = maxNum + 1;
   const padded = String(next).padStart(4, '0');
   return `${prefix}${padded}`;
 }
@@ -73,13 +94,13 @@ function buildCodeFromDni(dni: string): string | null {
 
 async function ensureUniqueCode(initial: string | null): Promise<string | null> {
   if (!initial) return null;
-  const exists: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(initial)}' LIMIT 1`);
-  if (!exists || exists.length === 0) return initial;
+  const exists = await prisma.person.findUnique({ where: { code: initial }, select: { id: true } });
+  if (!exists) return initial;
   // try suffixed variants -2..-9
   for (let i = 2; i <= 9; i++) {
     const variant = `${initial}-${i}`;
-    const row: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(variant)}' LIMIT 1`);
-    if (!row || row.length === 0) return variant.length <= 40 ? variant : variant.slice(0, 40);
+    const row = await prisma.person.findUnique({ where: { code: variant }, select: { id: true } });
+    if (!row) return variant.length <= 40 ? variant : variant.slice(0, 40);
   }
   return null;
 }
@@ -91,14 +112,14 @@ async function generateAutoCodeFromDniOrFallback(dni: string): Promise<string> {
   if (uniqueFromDni) return uniqueFromDni;
   // Fallback: incremental EMP-0001...
   const inc = await generateNextPersonCode();
-  const incCheck: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(inc)}' LIMIT 1`);
-  if (!incCheck || incCheck.length === 0) return inc;
+  const incCheck = await prisma.person.findUnique({ where: { code: inc }, select: { id: true } });
+  if (!incCheck) return inc;
   // Final fallback: EMP-<random4>
   for (let tries = 0; tries < 10; tries++) {
     const r = randomBytes(2).toString('hex').toUpperCase();
     const candidate = `EMP-${r}`;
-    const row: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(candidate)}' LIMIT 1`);
-    if (!row || row.length === 0) return candidate;
+    const row = await prisma.person.findUnique({ where: { code: candidate }, select: { id: true } });
+    if (!row) return candidate;
   }
   // As a last resort, return inc even if duplicate (very unlikely to reach here with above checks)
   return inc;
@@ -137,28 +158,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, code: 'INVALID_CODE' }, { status: 400 });
       }
       // Check username uniqueness
-      const existingUser: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`);
-      if (existingUser.length) {
+      const existingUser = await prisma.user.findUnique({ where: { username }, select: { id: true } });
+      if (existingUser) {
         return NextResponse.json({ ok: false, code: 'USERNAME_TAKEN' }, { status: 409 });
       }
-      const prow: any[] = await prisma.$queryRawUnsafe(`SELECT id, code FROM Person WHERE code='${esc(normalized)}' LIMIT 1`);
-      if (!prow.length) {
+      const prow = await prisma.person.findUnique({ where: { code: normalized }, select: { id: true, code: true } });
+      if (!prow) {
         return NextResponse.json({ ok: false, code: 'CODE_NOT_FOUND' }, { status: 400 });
       }
-      const personId = prow[0].id as string;
+      const personId = prow.id as string;
       // Ensure not already linked
-      const linked: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE personId='${esc(personId)}' LIMIT 1`);
-      if (linked.length) {
+      const linked = await prisma.user.findUnique({ where: { personId }, select: { id: true } });
+      if (linked) {
         return NextResponse.json({ ok: false, code: 'ALREADY_LINKED' }, { status: 409 });
       }
-      const nowIso = new Date().toISOString();
       const salt = bcrypt.genSaltSync(10);
       const passwordHash = bcrypt.hashSync(password, salt);
-      const urow: any[] = await prisma.$queryRawUnsafe(
-        `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt)
-         VALUES ('${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}') RETURNING id`
-      );
-      const userId = urow?.[0]?.id as string;
+      const created = await prisma.user.create({ data: { username, passwordHash, role, personId }, select: { id: true } });
+      const userId = created.id as string;
       return NextResponse.json({ ok: true, user: { id: userId, username, role, personCode: normalized } }, { status: 200 });
     }
 
@@ -184,45 +201,28 @@ export async function POST(req: Request) {
     code = dni.toUpperCase();
 
     // Pre-checks for uniqueness
-    const [uExists, dniExists, codeExists] = (await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`),
-      prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE dni='${esc(dni)}' LIMIT 1`),
-      prisma.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(code)}' LIMIT 1`),
-    ])) as [any[], any[], any[]];
-    if (uExists && uExists.length) {
+    const [uExists, dniExists, codeExists] = await Promise.all([
+      prisma.user.findUnique({ where: { username }, select: { id: true } }),
+      prisma.person.findUnique({ where: { dni }, select: { id: true } }),
+      prisma.person.findUnique({ where: { code: code! }, select: { id: true } }),
+    ]);
+    if (uExists) {
       return NextResponse.json({ ok: false, code: 'USERNAME_TAKEN' }, { status: 409 });
     }
-    if (dniExists && dniExists.length) {
+    if (dniExists) {
       return NextResponse.json({ ok: false, code: 'DNI_TAKEN' }, { status: 409 });
     }
-    if (codeExists && codeExists.length) {
+    if (codeExists) {
       return NextResponse.json({ ok: false, code: 'CODE_TAKEN' }, { status: 409 });
     }
 
-    const nowIso = new Date().toISOString();
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
 
-    let created: { personId: string; userId: string } = { personId: '', userId: '' };
-
-    await prisma.$transaction(async (tx) => {
-      // Insert Person
-      const prow: any[] = await tx.$queryRawUnsafe(
-        `INSERT INTO Person (code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-         VALUES ('${esc(code!)}', '${esc(name)}', NULL, '${esc(dni)}', '${esc(area)}', 1, '${nowIso}', '${nowIso}') RETURNING id`
-      );
-      const personId = prow?.[0]?.id as string;
-      if (!personId) throw new Error('FAILED_TO_CREATE_PERSON');
-
-      // Insert User and return id directly
-      const urow: any[] = await tx.$queryRawUnsafe(
-        `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt)
-         VALUES ('${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}') RETURNING id`
-      );
-      const userId = urow?.[0]?.id as string;
-      if (!userId) throw new Error('FAILED_TO_CREATE_USER');
-
-      created = { personId, userId };
+    const created = await prisma.$transaction(async (tx) => {
+      const createdPerson = await tx.person.create({ data: { code: code!, name, dni, area, active: true } });
+      const createdUser = await tx.user.create({ data: { username, passwordHash, role, personId: createdPerson.id } });
+      return { personId: createdPerson.id, userId: createdUser.id };
     });
 
   return NextResponse.json({ ok: true, user: { id: created.userId, username, role }, person: { id: created.personId, code, name, dni, area } }, { status: 201 });
