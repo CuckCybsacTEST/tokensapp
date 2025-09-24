@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   // Insert scan
   const nowIso = new Date().toISOString();
   await prisma.$executeRawUnsafe(
-    `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt) VALUES (replace(hex(randomblob(16)),'',''), '${esc(user.personId)}', '${nowIso}', '${mode}', 'test', '${esc(user.id)}', NULL, '${nowIso}')`
+    `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt) VALUES ('${esc(user.personId)}', '${nowIso}', '${mode}', 'test', '${esc(user.id)}', NULL, '${nowIso}')`
   );
   return NextResponse.json({ ok: true });
 }

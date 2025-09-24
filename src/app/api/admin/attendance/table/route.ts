@@ -57,38 +57,38 @@ export async function GET(req: Request) {
     // Aggregate per person/day rows
     const rows: any[] = await prisma.$queryRawUnsafe(
       `WITH scans AS (
-         SELECT s.personId, substr(s.scannedAt,1,10) as day,
-                MIN(CASE WHEN s.type='IN' THEN s.scannedAt END) as firstIn,
-                MAX(CASE WHEN s.type='OUT' THEN s.scannedAt END) as lastOut
-         FROM Scan s
-         ${personWhere ? `JOIN Person p ON p.id = s.personId ${personWhere}` : ''}
-         ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-         GROUP BY s.personId, substr(s.scannedAt,1,10)
+         SELECT s."personId", s."businessDay" as day,
+                MIN(CASE WHEN s."type"='IN' THEN s."scannedAt" END) as firstIn,
+                MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
+         FROM "Scan" s
+         ${personWhere ? `JOIN "Person" p ON p."id" = s."personId" ${personWhere}` : ''}
+         ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+         GROUP BY s."personId", s."businessDay"
        ), tasks AS (
-         SELECT pts.personId, pts.day,
-                SUM(CASE WHEN pts.done = 1 THEN 1 ELSE 0 END) as doneCount,
+         SELECT pts."personId", pts."day",
+                SUM(CASE WHEN pts."done" THEN 1 ELSE 0 END) as doneCount,
                 COUNT(1) as totalCount
-         FROM PersonTaskStatus pts
-         ${personWhere ? `JOIN Person p ON p.id = pts.personId ${personWhere}` : ''}
-         ${personWhere ? 'AND' : 'WHERE'} pts.day >= '${startDay}' AND pts.day <= '${endDay}'
-         GROUP BY pts.personId, pts.day
+         FROM "PersonTaskStatus" pts
+         ${personWhere ? `JOIN "Person" p ON p."id" = pts."personId" ${personWhere}` : ''}
+         ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+         GROUP BY pts."personId", pts."day"
        ), days AS (
-         SELECT personId, day FROM scans
+         SELECT "personId", day FROM scans
          UNION
-         SELECT personId, day FROM tasks
+         SELECT "personId", day FROM tasks
        ), merged AS (
-         SELECT p.code as personCode, p.name as personName, p.area as area,
+         SELECT p."code" as personCode, p."name" as personName, p."area" as area,
                 d.day as day,
                 sc.firstIn as firstIn,
                 sc.lastOut as lastOut,
-                CASE WHEN sc.firstIn IS NOT NULL AND sc.lastOut IS NOT NULL AND julianday(sc.lastOut) > julianday(sc.firstIn)
-                     THEN (julianday(sc.lastOut) - julianday(sc.firstIn)) * 1440.0 END as durationMin,
+                CASE WHEN sc.firstIn IS NOT NULL AND sc.lastOut IS NOT NULL AND sc.lastOut > sc.firstIn
+                     THEN EXTRACT(EPOCH FROM (sc.lastOut - sc.firstIn)) / 60.0 END as durationMin,
                 coalesce(tk.doneCount, 0) as doneCount,
                 coalesce(tk.totalCount, 0) as totalCount
          FROM days d
-         JOIN Person p ON p.id = d.personId
-         LEFT JOIN scans sc ON sc.personId = d.personId AND sc.day = d.day
-         LEFT JOIN tasks tk ON tk.personId = d.personId AND tk.day = d.day
+         JOIN "Person" p ON p."id" = d."personId"
+         LEFT JOIN scans sc ON sc."personId" = d."personId" AND sc.day = d.day
+         LEFT JOIN tasks tk ON tk."personId" = d."personId" AND tk.day = d.day
          ${personWhere}
        )
        SELECT * FROM merged
@@ -100,19 +100,19 @@ export async function GET(req: Request) {
     try {
       countRows = await prisma.$queryRawUnsafe(
         `WITH scans AS (
-           SELECT s.personId, substr(s.scannedAt,1,10) as day
-           FROM Scan s
-           WHERE s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-           GROUP BY s.personId, substr(s.scannedAt,1,10)
+           SELECT s."personId", s."businessDay" as day
+           FROM "Scan" s
+           WHERE s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+           GROUP BY s."personId", s."businessDay"
          ), tasks AS (
-           SELECT pts.personId, pts.day
-           FROM PersonTaskStatus pts
-           WHERE pts.day >= '${startDay}' AND pts.day <= '${endDay}'
-           GROUP BY pts.personId, pts.day
+           SELECT pts."personId", pts."day"
+           FROM "PersonTaskStatus" pts
+           WHERE pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+           GROUP BY pts."personId", pts."day"
          ), merged AS (
-           SELECT coalesce(sc.day, tk.day) as day, coalesce(sc.personId, tk.personId) as personId
+           SELECT coalesce(sc.day, tk.day) as day, coalesce(sc."personId", tk."personId") as "personId"
            FROM scans sc
-           FULL OUTER JOIN tasks tk ON tk.personId = sc.personId AND tk.day = sc.day
+           FULL OUTER JOIN tasks tk ON tk."personId" = sc."personId" AND tk.day = sc.day
          )
          SELECT COUNT(1) as total FROM merged`
       );
@@ -120,19 +120,19 @@ export async function GET(req: Request) {
       // SQLite fallback (no FULL OUTER JOIN): use UNION
       countRows = await prisma.$queryRawUnsafe(
         `WITH scans AS (
-           SELECT s.personId, substr(s.scannedAt,1,10) as day
-           FROM Scan s ${personWhere ? `JOIN Person p ON p.id = s.personId ${personWhere}` : ''}
-           ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-           GROUP BY s.personId, substr(s.scannedAt,1,10)
+           SELECT s."personId", s."businessDay" as day
+           FROM "Scan" s ${personWhere ? `JOIN "Person" p ON p."id" = s."personId" ${personWhere}` : ''}
+           ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+           GROUP BY s."personId", s."businessDay"
          ), tasks AS (
-           SELECT pts.personId, pts.day
-           FROM PersonTaskStatus pts ${personWhere ? `JOIN Person p ON p.id = pts.personId ${personWhere}` : ''}
-           ${personWhere ? 'AND' : 'WHERE'} pts.day >= '${startDay}' AND pts.day <= '${endDay}'
-           GROUP BY pts.personId, pts.day
+           SELECT pts."personId", pts."day"
+           FROM "PersonTaskStatus" pts ${personWhere ? `JOIN "Person" p ON p."id" = pts."personId" ${personWhere}` : ''}
+           ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+           GROUP BY pts."personId", pts."day"
          ), merged AS (
-           SELECT personId, day FROM scans
+           SELECT "personId", day FROM scans
            UNION
-           SELECT personId, day FROM tasks
+           SELECT "personId", day FROM tasks
          )
          SELECT COUNT(1) as total FROM merged`
       );

@@ -58,26 +58,24 @@ export async function POST(req: Request) {
     const now = new Date();
 
     // Leer configuración actual
-    const rows: any[] = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled FROM SystemConfig WHERE id = 1 LIMIT 1`);
-    const prev = rows && rows.length ? rows[0] : null;
-    const exists = !!prev;
+  const prev = await prisma.systemConfig.findUnique({ where: { id: 1 } }).catch(() => null);
+  const exists = !!prev;
 
   // Invalidar cache antes de leer/modificar para minimizar race con lectores concurrentes
   try { invalidateSystemConfigCache(); } catch {}
 
   // Actualizar la configuración
     if (exists) {
-      await prisma.$executeRawUnsafe(`UPDATE SystemConfig SET tokensEnabled = ${enabled ? 1 : 0}, updatedAt = CURRENT_TIMESTAMP WHERE id = 1`);
+      await prisma.systemConfig.update({ where: { id: 1 }, data: { tokensEnabled: enabled } });
     } else {
-      await prisma.$executeRawUnsafe(`INSERT INTO SystemConfig (id, tokensEnabled, updatedAt) VALUES (1, ${enabled ? 1 : 0}, CURRENT_TIMESTAMP)`);
+      await prisma.systemConfig.create({ data: { id: 1, tokensEnabled: enabled } });
     }
 
   // Invalidar la caché (post-write) para que posteriores lecturas reflejen el nuevo estado
   try { invalidateSystemConfigCache(); } catch {}
     
     // Leer la configuración actualizada
-    const updatedRows: any[] = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled, updatedAt FROM SystemConfig WHERE id = 1 LIMIT 1`);
-    const updated = updatedRows[0] || null;
+  const updated = await prisma.systemConfig.findUnique({ where: { id: 1 } }).catch(() => null);
 
     // Auditar el cambio (actor ADMIN o STAFF Caja)
     try {

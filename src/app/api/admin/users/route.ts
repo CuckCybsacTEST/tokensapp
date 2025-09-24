@@ -154,11 +154,10 @@ export async function POST(req: Request) {
       const nowIso = new Date().toISOString();
       const salt = bcrypt.genSaltSync(10);
       const passwordHash = bcrypt.hashSync(password, salt);
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
-         VALUES (replace(hex(randomblob(16)),'',''), '${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}')`
+      const urow: any[] = await prisma.$queryRawUnsafe(
+        `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt)
+         VALUES ('${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}') RETURNING id`
       );
-      const urow: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`);
       const userId = urow?.[0]?.id as string;
       return NextResponse.json({ ok: true, user: { id: userId, username, role, personCode: normalized } }, { status: 200 });
     }
@@ -208,20 +207,18 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(async (tx) => {
       // Insert Person
-      await tx.$executeRawUnsafe(
-        `INSERT INTO Person (id, code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-         VALUES (replace(hex(randomblob(16)),'',''), '${esc(code!)}', '${esc(name)}', NULL, '${esc(dni)}', '${esc(area)}', 1, '${nowIso}', '${nowIso}')`
+      const prow: any[] = await tx.$queryRawUnsafe(
+        `INSERT INTO Person (code, name, jobTitle, dni, area, active, createdAt, updatedAt)
+         VALUES ('${esc(code!)}', '${esc(name)}', NULL, '${esc(dni)}', '${esc(area)}', 1, '${nowIso}', '${nowIso}') RETURNING id`
       );
-      const prow: any[] = await tx.$queryRawUnsafe(`SELECT id FROM Person WHERE code='${esc(code!)}' LIMIT 1`);
       const personId = prow?.[0]?.id as string;
       if (!personId) throw new Error('FAILED_TO_CREATE_PERSON');
 
-      // Insert User
-      await tx.$executeRawUnsafe(
-        `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
-         VALUES (replace(hex(randomblob(16)),'',''), '${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}')`
+      // Insert User and return id directly
+      const urow: any[] = await tx.$queryRawUnsafe(
+        `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt)
+         VALUES ('${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}') RETURNING id`
       );
-      const urow: any[] = await tx.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`);
       const userId = urow?.[0]?.id as string;
       if (!userId) throw new Error('FAILED_TO_CREATE_USER');
 

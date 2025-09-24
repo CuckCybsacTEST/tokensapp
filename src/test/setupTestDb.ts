@@ -18,7 +18,7 @@ const CREATE_STATEMENTS = [
 export async function initTestDb(file: string) {
   process.env.DATABASE_URL = `file:./${file}?connection_limit=1`;
   const prisma = new PrismaClient();
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;'); } catch {}
+  // PRAGMA foreign_keys eliminado (era para SQLite). TODO: cuando se usen tests sobre Postgres real, implementar estrategia de truncates.
   for (const stmt of CREATE_STATEMENTS) {
     await prisma.$executeRawUnsafe(stmt);
   }
@@ -75,7 +75,7 @@ export async function initTestDb(file: string) {
 export async function initTestDbMulti(file: string, connectionLimit = 5) {
   process.env.DATABASE_URL = `file:./${file}?connection_limit=${connectionLimit}`;
   const prisma = new PrismaClient();
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;'); } catch {}
+  // PRAGMA foreign_keys eliminado. TODO: migrar a un helper de truncates al usar Postgres.
   for (const stmt of CREATE_STATEMENTS) {
     await prisma.$executeRawUnsafe(stmt);
   }

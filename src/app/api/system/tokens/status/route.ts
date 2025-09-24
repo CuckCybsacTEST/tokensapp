@@ -30,9 +30,9 @@ export async function GET(req: Request) {
     // Invalidar la caché para obtener los datos más recientes
     invalidateSystemConfigCache();
     
-  // Columns tokensAdminDisabled / tokensTestMode were removed; select only existing columns
-  const rows: any[] = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled, updatedAt FROM SystemConfig WHERE id = 1 LIMIT 1`);
-  const cfg = rows && rows.length ? rows[0] : { tokensEnabled: false };
+  // Columns tokensAdminDisabled / tokensTestMode were removed; use Prisma Client for portability
+  const cfg = await prisma.systemConfig.findUnique({ where: { id: 1 } })
+    .catch(() => null as any) || { tokensEnabled: false } as any;
 
     const now = new Date();
     const computed = computeTokensEnabled({ now, tz: TOKENS_TZ });

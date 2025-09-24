@@ -14,13 +14,13 @@ function esc(s: any): string { return String(s).replace(/'/g, "''"); }
 
 function buildPersonWhere(area?: string | null, person?: string | null) {
   const conds: string[] = [];
-  if (area) conds.push(`p.area = '${esc(area)}'`);
+  if (area) conds.push(`p."area" = '${esc(area)}'`);
   if (person) {
     if (person.startsWith('id:')) {
-      conds.push(`p.id = '${esc(person.slice(3))}'`);
+      conds.push(`p."id" = '${esc(person.slice(3))}'`);
     } else {
       // treat as code exact match
-      conds.push(`p.code = '${esc(person)}'`);
+      conds.push(`p."code" = '${esc(person)}'`);
     }
   }
   return conds.length ? 'WHERE ' + conds.join(' AND ') : '';
@@ -34,19 +34,19 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
 
   // Where clause helpers
   const personWhere = buildPersonWhere(area ?? undefined, person ?? undefined);
-  const joinPerson = personWhere ? 'JOIN Person p ON p.id = s.personId' : '';
-  const joinPersonPTS = personWhere ? 'JOIN Person p ON p.id = pts.personId' : '';
+  const joinPerson = personWhere ? 'JOIN "Person" p ON p."id" = s."personId"' : '';
+  const joinPersonPTS = personWhere ? 'JOIN "Person" p ON p."id" = pts."personId"' : '';
 
   // Attendance metrics (fewer queries)
   // totals IN/OUT and uniquePersons (IN) together
   const totalsRows: any[] = await prisma.$queryRawUnsafe(
-    `SELECT 
-        SUM(CASE WHEN s.type = 'IN' THEN 1 ELSE 0 END) as inCount,
-        SUM(CASE WHEN s.type = 'OUT' THEN 1 ELSE 0 END) as outCount,
-        COUNT(DISTINCT CASE WHEN s.type='IN' THEN s.personId END) as uniqIn
-     FROM Scan s ${joinPerson}
-     ${personWhere ? personWhere : ''}
-     ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'`
+   `SELECT 
+      SUM(CASE WHEN s."type" = 'IN' THEN 1 ELSE 0 END) as inCount,
+      SUM(CASE WHEN s."type" = 'OUT' THEN 1 ELSE 0 END) as outCount,
+      COUNT(DISTINCT CASE WHEN s."type"='IN' THEN s."personId" END) as uniqIn
+    FROM "Scan" s ${joinPerson}
+    ${personWhere ? personWhere : ''}
+    ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'`
   );
   const uniquePersons = Number(totalsRows?.[0]?.uniqIn || 0);
   const totalsIN = Number(totalsRows?.[0]?.inCount || 0);
@@ -55,17 +55,17 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // completedDaysPct and avgDurationMin combined via daily CTE
   const dailyRows: any[] = await prisma.$queryRawUnsafe(
     `WITH daily AS (
-       SELECT s.personId, s.businessDay as day,
-              MIN(CASE WHEN s.type='IN' THEN s.scannedAt END) as firstIn,
-              MAX(CASE WHEN s.type='OUT' THEN s.scannedAt END) as lastOut
-       FROM Scan s ${joinPerson}
+       SELECT s."personId", s."businessDay" as day,
+              MIN(CASE WHEN s."type"='IN' THEN s."scannedAt" END) as firstIn,
+              MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
+       FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, s.businessDay
+       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       GROUP BY s."personId", s."businessDay"
      )
      SELECT 
-       AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND julianday(lastOut) > julianday(firstIn)
-                THEN (julianday(lastOut) - julianday(firstIn)) * 1440.0 END) as avgMin,
+       AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND lastOut > firstIn
+                THEN EXTRACT(EPOCH FROM (lastOut - firstIn)) / 60.0 END) as avgMin,
        SUM(CASE WHEN firstIn IS NOT NULL THEN 1 ELSE 0 END) as totalWithIn,
        SUM(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL THEN 1 ELSE 0 END) as totalWithBoth
      FROM daily`
@@ -78,9 +78,9 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // heatmapByHour (UTC)
   const heatRows: any[] = await prisma.$queryRawUnsafe(
     `SELECT EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int as hour,
-            SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as inCount,
-            SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as outCount
-     FROM Scan s ${joinPerson}
+            SUM(CASE WHEN s."type"='IN' THEN 1 ELSE 0 END) as inCount,
+            SUM(CASE WHEN s."type"='OUT' THEN 1 ELSE 0 END) as outCount
+     FROM "Scan" s ${joinPerson}
      ${personWhere ? personWhere : ''}
      ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
      GROUP BY EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int
@@ -94,20 +94,20 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // byArea (present=distinct persons with IN; completedPct per area)
   const byAreaRows: any[] = await prisma.$queryRawUnsafe(
     `WITH days AS (
-  SELECT s.personId, s.businessDay as day,
-    SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as hasIn,
-    SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as hasOut
-  FROM Scan s JOIN Person p ON p.id = s.personId
+  SELECT s."personId", s."businessDay" as day,
+    SUM(CASE WHEN s."type"='IN' THEN 1 ELSE 0 END) as hasIn,
+    SUM(CASE WHEN s."type"='OUT' THEN 1 ELSE 0 END) as hasOut
+  FROM "Scan" s JOIN "Person" p ON p."id" = s."personId"
   ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-  ${area || person ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-  GROUP BY s.personId, s.businessDay
+  ${area || person ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+  GROUP BY s."personId", s."businessDay"
      )
-     SELECT p.area as area,
-       COUNT(DISTINCT CASE WHEN days.hasIn > 0 THEN days.personId END) as present,
+     SELECT p."area" as area,
+       COUNT(DISTINCT CASE WHEN days.hasIn > 0 THEN days."personId" END) as present,
        SUM(CASE WHEN days.hasIn > 0 THEN 1 ELSE 0 END) as withIn,
        SUM(CASE WHEN days.hasIn > 0 AND days.hasOut > 0 THEN 1 ELSE 0 END) as withBoth
-     FROM days JOIN Person p ON p.id = days.personId
-     GROUP BY p.area`
+     FROM days JOIN "Person" p ON p."id" = days."personId"
+     GROUP BY p."area"`
   );
   const byArea = (byAreaRows || []).map((r: any) => {
     const withIn = Number(r.withIn || 0);
@@ -119,12 +119,12 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   const ptsWhere = `${joinPersonPTS} ${personWhere ? personWhere : ''}`;
   const tasksAggRows: any[] = await prisma.$queryRawUnsafe(
     `WITH per_day AS (
-       SELECT pts.personId, pts.day,
-              SUM(CASE WHEN pts.done = 1 THEN 1 ELSE 0 END) as doneCount,
+       SELECT pts."personId", pts."day",
+              SUM(CASE WHEN pts."done" THEN 1 ELSE 0 END) as doneCount,
               COUNT(1) as totalCount
-       FROM PersonTaskStatus pts ${ptsWhere}
-       ${personWhere ? 'AND' : 'WHERE'} pts.day >= '${esc(startDay)}' AND pts.day <= '${esc(endDay)}'
-       GROUP BY pts.personId, pts.day
+       FROM "PersonTaskStatus" pts ${ptsWhere}
+       ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${esc(startDay)}' AND pts."day" <= '${esc(endDay)}'
+       GROUP BY pts."personId", pts."day"
      )
      SELECT 
        SUM(doneCount) as doneCount,
@@ -142,13 +142,13 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
 
   // topIncompleteTasks: top 5 donde done = 0
   const topRows: any[] = await prisma.$queryRawUnsafe(
-    `SELECT pts.taskId as taskId, COALESCE(t.label, pts.taskId) as label,
-            SUM(CASE WHEN pts.done = 0 THEN 1 ELSE 0 END) as missingCount
-     FROM PersonTaskStatus pts ${joinPersonPTS}
-     LEFT JOIN Task t ON t.id = pts.taskId
+    `SELECT pts."taskId" as taskId, COALESCE(t."label", pts."taskId") as label,
+            SUM(CASE WHEN pts."done" = false THEN 1 ELSE 0 END) as missingCount
+     FROM "PersonTaskStatus" pts ${joinPersonPTS}
+     LEFT JOIN "Task" t ON t."id" = pts."taskId"
      ${personWhere ? personWhere : ''}
-     ${personWhere ? 'AND' : 'WHERE'} pts.day >= '${esc(startDay)}' AND pts.day <= '${esc(endDay)}'
-     GROUP BY pts.taskId, t.label
+     ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${esc(startDay)}' AND pts."day" <= '${esc(endDay)}'
+     GROUP BY pts."taskId", t."label"
      ORDER BY missingCount DESC
      LIMIT 5`
   );
@@ -157,24 +157,24 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // Time to first/last task (mins)
   const timeRows: any[] = await prisma.$queryRawUnsafe(
     `WITH first_in AS (
-       SELECT s.personId, s.businessDay as day, MIN(s.scannedAt) as firstIn
-       FROM Scan s JOIN Person p ON p.id = s.personId
+       SELECT s."personId", s."businessDay" as day, MIN(s."scannedAt") as firstIn
+       FROM "Scan" s JOIN "Person" p ON p."id" = s."personId"
        ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-       ${area || person ? 'AND' : 'WHERE'} s.type='IN' AND s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, s.businessDay
+       ${area || person ? 'AND' : 'WHERE'} s."type"='IN' AND s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       GROUP BY s."personId", s."businessDay"
      ), done_tasks AS (
-       SELECT pts.personId, pts.day,
-              MIN(CASE WHEN pts.done = 1 THEN pts.updatedAt END) as firstDone,
-              MAX(CASE WHEN pts.done = 1 THEN pts.updatedAt END) as lastDone
-       FROM PersonTaskStatus pts JOIN Person p ON p.id = pts.personId
+       SELECT pts."personId", pts."day",
+              MIN(CASE WHEN pts."done" THEN pts."updatedAt" END) as firstDone,
+              MAX(CASE WHEN pts."done" THEN pts."updatedAt" END) as lastDone
+       FROM "PersonTaskStatus" pts JOIN "Person" p ON p."id" = pts."personId"
        ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-       ${area || person ? 'AND' : 'WHERE'} pts.day >= '${esc(startDay)}' AND pts.day <= '${esc(endDay)}'
-       GROUP BY pts.personId, pts.day
+       ${area || person ? 'AND' : 'WHERE'} pts."day" >= '${esc(startDay)}' AND pts."day" <= '${esc(endDay)}'
+       GROUP BY pts."personId", pts."day"
      )
      SELECT 
-       AVG((julianday(dt.firstDone) - julianday(fi.firstIn)) * 1440.0) as toFirstMin,
-       AVG((julianday(dt.lastDone) - julianday(fi.firstIn)) * 1440.0) as toLastMin
-     FROM first_in fi JOIN done_tasks dt ON fi.personId = dt.personId AND fi.day = dt.day
+       AVG(EXTRACT(EPOCH FROM (dt.firstDone - fi.firstIn)) / 60.0) as toFirstMin,
+       AVG(EXTRACT(EPOCH FROM (dt.lastDone - fi.firstIn)) / 60.0) as toLastMin
+     FROM first_in fi JOIN done_tasks dt ON fi."personId" = dt."personId" AND fi.day = dt.day
      WHERE dt.firstDone IS NOT NULL`
   );
   const timeToFirstTaskMin = timeRows?.[0]?.toFirstMin != null ? Number(timeRows[0].toFirstMin) : null;
@@ -183,35 +183,35 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // Series byDay (single query combines IO, uniq, avg duration, completion per day)
   const seriesRows: any[] = await prisma.$queryRawUnsafe(
     `WITH io AS (
-       SELECT s.businessDay as day,
-              SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as inCount,
-              SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as outCount,
-              COUNT(DISTINCT CASE WHEN s.type='IN' THEN s.personId END) as uniq
-       FROM Scan s ${joinPerson}
+       SELECT s."businessDay" as day,
+              SUM(CASE WHEN s."type"='IN' THEN 1 ELSE 0 END) as inCount,
+              SUM(CASE WHEN s."type"='OUT' THEN 1 ELSE 0 END) as outCount,
+              COUNT(DISTINCT CASE WHEN s."type"='IN' THEN s."personId" END) as uniq
+       FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.businessDay
+       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       GROUP BY s."businessDay"
      ), daily AS (
-       SELECT s.personId, s.businessDay as day,
-              MIN(CASE WHEN s.type='IN' THEN s.scannedAt END) as firstIn,
-              MAX(CASE WHEN s.type='OUT' THEN s.scannedAt END) as lastOut
-       FROM Scan s ${joinPerson}
+       SELECT s."personId", s."businessDay" as day,
+              MIN(CASE WHEN s."type"='IN' THEN s."scannedAt" END) as firstIn,
+              MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
+       FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, s.businessDay
+       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       GROUP BY s."personId", s."businessDay"
      ), davg AS (
-       SELECT day, AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND julianday(lastOut) > julianday(firstIn)
-                            THEN (julianday(lastOut) - julianday(firstIn)) * 1440.0 END) as avgMin
+       SELECT day, AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND lastOut > firstIn
+                            THEN EXTRACT(EPOCH FROM (lastOut - firstIn)) / 60.0 END) as avgMin
        FROM daily
        GROUP BY day
      ), tpd AS (
-       SELECT pts.day as day,
-              SUM(CASE WHEN pts.done = 1 THEN 1 ELSE 0 END) as doneCount,
+       SELECT pts."day" as day,
+              SUM(CASE WHEN pts."done" THEN 1 ELSE 0 END) as doneCount,
               COUNT(1) as totalCount
-       FROM PersonTaskStatus pts ${joinPersonPTS}
+       FROM "PersonTaskStatus" pts ${joinPersonPTS}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} pts.day >= '${esc(startDay)}' AND pts.day <= '${esc(endDay)}'
-       GROUP BY pts.day
+       ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${esc(startDay)}' AND pts."day" <= '${esc(endDay)}'
+       GROUP BY pts."day"
      ), days AS (
        SELECT day FROM io
        UNION

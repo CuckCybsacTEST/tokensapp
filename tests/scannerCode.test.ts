@@ -54,8 +54,8 @@ describe('Scanner code-based POST', () => {
   it('accepts { code, type: "IN" } and returns ok: true', async () => {
     // Seed a person
     const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Person (id, code, name, active, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), 'EMP-TST-01', 'Test User', 1, '${nowIso}', '${nowIso}')`
+    await prisma.$queryRawUnsafe(
+      `INSERT INTO Person (code, name, active, createdAt, updatedAt) VALUES ('EMP-TST-01', 'Test User', 1, '${nowIso}', '${nowIso}') RETURNING id`
     );
 
     const cookie = await createSessionCookie('ADMIN');

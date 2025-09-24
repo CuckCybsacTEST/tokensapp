@@ -126,15 +126,15 @@ export async function POST(req: NextRequest) {
     const doneVal = doneFlag ? 1 : 0;
     if (hasMeasureValue) {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO PersonTaskStatus (id, personId, taskId, day, done, measureValue, updatedBy, updatedAt)
-         VALUES (replace(hex(randomblob(16)),'',''), ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO PersonTaskStatus (personId, taskId, day, done, measureValue, updatedBy, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(personId, taskId, day) DO UPDATE SET done=excluded.done, measureValue=excluded.measureValue, updatedBy=excluded.updatedBy, updatedAt=excluded.updatedAt`,
         user.personId, tid, day, doneVal, (measureVal ?? 0), session.userId, nowIso
       );
     } else {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO PersonTaskStatus (id, personId, taskId, day, done, updatedBy, updatedAt)
-         VALUES (replace(hex(randomblob(16)),'',''), ?, ?, ?, ?, ?, ?)
+        `INSERT INTO PersonTaskStatus (personId, taskId, day, done, updatedBy, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT(personId, taskId, day) DO UPDATE SET done=excluded.done, updatedBy=excluded.updatedBy, updatedAt=excluded.updatedAt`,
         user.personId, tid, day, doneVal, session.userId, nowIso
       );

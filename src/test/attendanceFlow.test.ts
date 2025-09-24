@@ -16,14 +16,13 @@ describe('Attendance businessDay flow (cross-midnight)', () => {
   let userId: string; let personId: string; let sessionCookie: string;
 
   beforeAll(async () => {
-    // Create isolated person (no global truncation to avoid impacting other tests)
-    personId = (await prisma.$queryRawUnsafe<any[]>(`SELECT replace(hex(randomblob(16)),'','') as id`))[0].id;
-    const pcode = (await prisma.$queryRawUnsafe<any[]>(`SELECT lower(hex(randomblob(6))) as c`))[0].c;
-    await prisma.$executeRawUnsafe(`INSERT INTO Person (id, code, name, active, createdAt, updatedAt) VALUES ('${personId}','${pcode}','Test User ${pcode}',1, datetime('now'), datetime('now'))`);
-    // Create user linked
-    userId = (await prisma.$queryRawUnsafe<any[]>(`SELECT replace(hex(randomblob(16)),'','') as id`))[0].id;
+    // Create isolated person letting DB generate ids
+    const pcode = `p_${Math.random().toString(36).slice(2,8)}`;
+    const prow: any[] = await prisma.$queryRawUnsafe(`INSERT INTO Person (code, name, active, createdAt, updatedAt) VALUES ('${pcode}','Test User ${pcode}',1, datetime('now'), datetime('now')) RETURNING id`);
+    personId = prow[0].id;
     const uname = `testu_${pcode}`;
-    await prisma.$executeRawUnsafe(`INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt) VALUES ('${userId}','${uname}','x','COLLAB','${personId}', datetime('now'), datetime('now'))`);
+    const urow: any[] = await prisma.$queryRawUnsafe(`INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt) VALUES ('${uname}','x','COLLAB','${personId}', datetime('now'), datetime('now')) RETURNING id`);
+    userId = urow[0].id;
     sessionCookie = await createUserSessionCookie(userId, 'COLLAB');
     // Set cutoff env (if not set)
     process.env.ATTENDANCE_CUTOFF_HOUR = '10';

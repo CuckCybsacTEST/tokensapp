@@ -129,14 +129,8 @@ export async function generateBatchCore(
       const b = await tx.batch.create({ data: { description: options.description } });
       batchRecord = { id: b.id, createdAt: b.createdAt, description: b.description };
 
-      // Determine if signatureVersion column exists (legacy DB support) once
-      let supportsSignatureVersion = true;
-      try {
-        const pragma: any[] = await tx.$queryRawUnsafe("PRAGMA table_info(Token)");
-        supportsSignatureVersion = pragma.some((c: any) => c.name === "signatureVersion");
-      } catch {
-        supportsSignatureVersion = true; // assume true if introspection fails
-      }
+      // Postgres baseline includes signatureVersion column; avoid PRAGMA during tx
+      const supportsSignatureVersion = true;
 
       for (const req of prizeRequests) {
         const prize = prizeMap.get(req.prizeId)!;

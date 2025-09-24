@@ -101,15 +101,15 @@ describe('Birthdays: create → approve → generate tokens', () => {
     await seedPacks();
     // Clean event log to avoid interference
     await db.$executeRawUnsafe('DELETE FROM EventLog');
-  // Ensure service uses this prisma instance
-  vi.resetModules();
-  (global as any)._prisma = db;
+    // Ensure service uses this prisma instance
+    vi.resetModules();
+    (global as any)._prisma = db;
   });
 
   it('happy path: creates reservation, approves, generates tokens with valid signatures and expiration', async () => {
     process.env.TOKEN_SECRET = 'test_secret_birthdays_1';
     process.env.BIRTHDAY_TOKEN_TTL_HOURS = '72';
-  const { createReservation, approveReservation, generateInviteTokens } = await import('@/lib/birthdays/service');
+    const { createReservation, approveReservation, generateInviteTokens } = await import('@/lib/birthdays/service');
     const { verifyBirthdayClaim } = await import('@/lib/birthdays/token');
 
     const r = await createReservation({
@@ -121,15 +121,15 @@ describe('Birthdays: create → approve → generate tokens', () => {
     const approved = await approveReservation(r.id);
     expect(approved.status).toBe('approved');
 
-  const tokens = await generateInviteTokens(r.id);
-  // Two-token model: one host + one guest
-  expect(tokens.length).toBe(2);
-  const host = tokens.find(t => t.kind === 'host');
-  const guest = tokens.find(t => t.kind === 'guest');
-  expect(Boolean(host && guest)).toBe(true);
+    const tokens = await generateInviteTokens(r.id);
+    // Two-token model: one host + one guest
+    expect(tokens.length).toBe(2);
+    const host = tokens.find((t: any) => t.kind === 'host');
+    const guest = tokens.find((t: any) => t.kind === 'guest');
+    expect(Boolean(host && guest)).toBe(true);
 
     // Assert each token has valid claim and consistent exp
-    for (const t of tokens) {
+    for (const t of tokens as any[]) {
       expect(typeof t.code).toBe('string');
       expect(t.code.length).toBeGreaterThanOrEqual(6);
       const parsed = JSON.parse(t.claim);
@@ -155,7 +155,7 @@ describe('Birthdays: create → approve → generate tokens', () => {
     await approveReservation(r.id);
     const first = await generateInviteTokens(r.id);
     const second = await generateInviteTokens(r.id);
-    expect(second.map(t => t.code).sort()).toEqual(first.map(t => t.code).sort());
+    expect(second.map((t: any) => t.code).sort()).toEqual(first.map((t: any) => t.code).sort());
     const listed = await listTokens(r.id);
     expect(listed.length).toBe(first.length);
   });
@@ -170,14 +170,14 @@ describe('Birthdays: create → approve → generate tokens', () => {
     await approveReservation(r.id);
 
     // Simulate a partial pre-existing token
-    await db.$executeRawUnsafe(`INSERT INTO InviteToken (id, reservationId, code, kind, status, expiresAt, claim) VALUES (
-      replace(hex(randomblob(16)),'',''), '${r.id}', 'ABC123', 'guest', 'unclaimed', '${new Date(Date.now()+3600_000).toISOString()}', '{"payload":{},"sig":"x"}'
+    await db.$executeRawUnsafe(`INSERT INTO InviteToken (reservationId, code, kind, status, expiresAt, claim) VALUES (
+      '${r.id}', 'ABC123', 'guest', 'unclaimed', '${new Date(Date.now()+3600_000).toISOString()}', '{"payload":{},"sig":"x"}'
     )`);
 
     const tokens = await generateInviteTokens(r.id, { force: true });
     expect(tokens.length).toBe(2);
     // Ensure the manual code is kept as guest
-    const guest = tokens.find(t => t.kind === 'guest');
+    const guest = tokens.find((t: any) => t.kind === 'guest');
     expect(guest?.code).toBe('ABC123');
   });
 });

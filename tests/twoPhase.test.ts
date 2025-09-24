@@ -6,14 +6,14 @@ import { initTestDb } from '@/test/setupTestDb';
 let prisma: PrismaClient;
 
 async function reset() {
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = OFF;'); } catch {}
+  // TODO: Reemplazar este borrado manual por truncates en Postgres.
+  // Eliminado PRAGMA foreign_keys OFF/ON (era específico de SQLite y ya no aplica en Postgres).
   await prisma.eventLog.deleteMany();
   await prisma.rouletteSpin.deleteMany();
   await prisma.rouletteSession.deleteMany();
   await prisma.token.deleteMany();
   await prisma.prize.deleteMany();
   await prisma.batch.deleteMany();
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;'); } catch {}
 }
 
 beforeAll(async () => {

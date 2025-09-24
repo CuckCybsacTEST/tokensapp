@@ -105,11 +105,11 @@ export async function POST(req: Request) {
       // No day-level duplicate existed; proceed to insert
 
       const nowIso = new Date().toISOString();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${type}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, ${uSession ? `'${esc(uSession.userId)}'` : 'NULL'}, NULL, '${nowIso}')`
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
+        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt)
+         VALUES ('${person.id}', '${nowIso}', '${type}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, ${uSession ? `'${esc(uSession.userId)}'` : 'NULL'}, NULL, '${nowIso}') RETURNING id`
       );
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
-      const scanId = scanIdRows && scanIdRows[0]?.id;
+      const scanId = scanIdRows?.[0]?.id;
 
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type }) } });
 
@@ -163,11 +163,11 @@ export async function POST(req: Request) {
       const lastAny = lastAnyRows && lastAnyRows[0];
 
       const nowIso = new Date().toISOString();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${type}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, ${uSession ? `'${esc(uSession.userId)}'` : 'NULL'}, NULL, '${nowIso}')`
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
+        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt)
+         VALUES ('${person.id}', '${nowIso}', '${type}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, ${uSession ? `'${esc(uSession.userId)}'` : 'NULL'}, NULL, '${nowIso}') RETURNING id`
       );
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
-      const scanId = scanIdRows && scanIdRows[0]?.id;
+      const scanId = scanIdRows?.[0]?.id;
 
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type }) } });
 

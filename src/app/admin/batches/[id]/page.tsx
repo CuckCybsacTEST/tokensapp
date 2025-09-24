@@ -89,7 +89,7 @@ export default async function BatchDetailPage({ params }: { params: { id: string
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Entregas por premio</h2>
             </div>
             <div className="card-body p-2 text-[10px] space-y-1">
-              {stats.prizeStats.slice(0,24).map(p=>{
+              {stats.prizeStats.slice(0,24).map((p: any)=>{
                 const total = p.revealed || p.delivered ? p.revealed : p.total;
                 const pending = p.revealedPending;
                 const delivered = p.delivered;
@@ -132,12 +132,12 @@ export default async function BatchDetailPage({ params }: { params: { id: string
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Distribución legacy</h2>
             </div>
             <div className="card-body p-2">
-              <MiniBar data={stats.prizeStats.map(p=> ({ name: p.label || p.key, value: p.redeemed }))} />
+              <MiniBar data={stats.prizeStats.map((p: any)=> ({ name: p.label || p.key, value: p.redeemed }))} />
             </div>
           </div>
         </div>
         {/* Tarjetas por premio */}
-        {stats.prizeStats.map((p) => {
+  {stats.prizeStats.map((p: any) => {
           // find any token of this prize to get earliest expiry
           const sample = batch.tokens.filter(t=> t.prizeId === p.prizeId);
           const firstExpires = sample.length ? sample.reduce((a,b)=> a.expiresAt < b.expiresAt ? a : b).expiresAt.toLocaleDateString() : '-';

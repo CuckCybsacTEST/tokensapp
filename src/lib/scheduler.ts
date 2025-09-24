@@ -39,18 +39,15 @@ let jobs: any[] = [];
 let started = false;
 
 async function readConfig(): Promise<any> {
-  const rows: any = await prisma.$queryRawUnsafe(`SELECT id, tokensEnabled FROM SystemConfig WHERE id = 1 LIMIT 1`);
-  if (Array.isArray(rows) && rows.length) return rows[0];
-  return null;
+  try { return await prisma.systemConfig.findUnique({ where: { id: 1 } }); } catch { return null; }
 }
 
 async function setTokensEnabled(value: boolean) {
-  const rows: any = await prisma.$queryRawUnsafe(`SELECT id FROM SystemConfig WHERE id = 1 LIMIT 1`);
-  const exists = Array.isArray(rows) && rows.length > 0;
-  if (exists) {
-    await prisma.$executeRawUnsafe(`UPDATE SystemConfig SET tokensEnabled = ${value ? 1 : 0}, updatedAt = CURRENT_TIMESTAMP WHERE id = 1`);
+  const existing = await readConfig();
+  if (existing) {
+    await prisma.systemConfig.update({ where: { id: 1 }, data: { tokensEnabled: value } });
   } else {
-    await prisma.$executeRawUnsafe(`INSERT INTO SystemConfig (id, tokensEnabled, updatedAt) VALUES (1, ${value ? 1 : 0}, CURRENT_TIMESTAMP)`);
+    await prisma.systemConfig.create({ data: { id: 1, tokensEnabled: value } });
   }
   // Invalidate in-memory cache so API routes and other readers see the fresh value immediately
   try { invalidateSystemConfigCache(); } catch { /* ignore */ }

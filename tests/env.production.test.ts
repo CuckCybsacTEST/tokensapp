@@ -23,7 +23,7 @@ describe('prisma production env guard', () => {
     expect(threw).toBe(true);
 
     // restore
-    process.env.NODE_ENV = originalNodeEnv;
+  (process as any).env.NODE_ENV = originalNodeEnv;
     if (originalDb) process.env.DATABASE_URL = originalDb;
     if (originalForce) process.env.FORCE_PRISMA_PROD = originalForce; else delete process.env.FORCE_PRISMA_PROD;
   });

@@ -39,10 +39,9 @@ export async function POST(req: Request) {
     if (exists && exists.length) return NextResponse.json({ error: 'CONFLICT', field: 'code' }, { status: 409 });
 
     const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Person (id, code, name, active, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${esc(code)}', '${esc(name)}', ${active}, '${nowIso}', '${nowIso}')`
+    const row: any[] = await prisma.$queryRawUnsafe(
+      `INSERT INTO Person (code, name, active, createdAt, updatedAt) VALUES ('${esc(code)}', '${esc(name)}', ${active}, '${nowIso}', '${nowIso}') RETURNING id, code, name, active, createdAt`
     );
-    const row: any[] = await prisma.$queryRawUnsafe(`SELECT id, code, name, active, createdAt FROM Person WHERE code='${esc(code)}' LIMIT 1`);
     const person = row && row[0];
     return NextResponse.json(person, { status: 201 });
   } catch (e: any) {

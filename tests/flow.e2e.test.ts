@@ -12,15 +12,14 @@ import { isTwoPhaseRedemptionEnabled } from '@/lib/featureFlags';
 const prisma = new PrismaClient();
 
 async function reset() {
-  // Disable FKs to avoid transient constraint issues during cleanup (SQLite tests)
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = OFF;'); } catch {}
+  // TODO: Reemplazar por truncates en Postgres para limpieza más rápida.
+  // Eliminado uso de PRAGMA foreign_keys OFF/ON (solo SQLite).
   await prisma.eventLog.deleteMany();
   await prisma.rouletteSpin.deleteMany();
   await prisma.rouletteSession.deleteMany();
   await prisma.token.deleteMany();
   await prisma.prize.deleteMany();
   await prisma.batch.deleteMany();
-  try { await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON;'); } catch {}
 }
 
 // Minimal NextRequest mock

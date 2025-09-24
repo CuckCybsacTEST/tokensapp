@@ -174,9 +174,9 @@ describe('API /api/admin/users (nuevas reglas: área fija y código = DNI)', () 
     // Crear persona preexistente sin usuario, con code = '12345678'
     const prisma: any = (global as any)._prisma;
     const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Person (id, code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-       VALUES (replace(hex(randomblob(16)),'',''), '12345678', 'Persona Link', NULL, '12345678', 'Barra', 1, '${nowIso}', '${nowIso}')`
+    await prisma.$queryRawUnsafe(
+      `INSERT INTO Person (code, name, jobTitle, dni, area, active, createdAt, updatedAt)
+       VALUES ('12345678', 'Persona Link', NULL, '12345678', 'Barra', 1, '${nowIso}', '${nowIso}') RETURNING id`
     );
 
     const res = await postAdminUsers(makeAdminReq('http://test/api/admin/users', adminCookie, {

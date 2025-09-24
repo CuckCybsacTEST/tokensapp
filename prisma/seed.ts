@@ -70,15 +70,18 @@ async function main() {
     const codeEsc = esc(p.code);
     const nameEsc = esc(p.name);
     const existing: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id FROM Person WHERE code='${codeEsc}' LIMIT 1`
+      `SELECT "id" FROM "Person" WHERE "code"='${codeEsc}' LIMIT 1`
     );
     if (!existing || existing.length === 0) {
-      const nowIso = new Date().toISOString();
-      const jobEsc = esc(p.jobTitle || '');
-      // Omitimos id para que Prisma/DB genere (cuid())
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Person (code, name, jobTitle, active, createdAt, updatedAt) VALUES ('${codeEsc}', '${nameEsc}', ${p.jobTitle ? `'${jobEsc}'` : 'NULL'}, 1, '${nowIso}', '${nowIso}')`
-      );
+      // Use Prisma client to ensure id and updatedAt are set correctly
+      await prisma.person.create({
+        data: {
+          code: p.code,
+          name: p.name,
+          jobTitle: p.jobTitle || null,
+          active: true,
+        },
+      });
     }
   }
 
@@ -92,10 +95,10 @@ async function main() {
     const dni = `DNI-${p.code}`;
     const area = areaByJob[p.jobTitle || ''] || 'General';
     await prisma.$executeRawUnsafe(
-      `UPDATE Person SET dni='${esc(dni)}' WHERE code='${esc(p.code)}' AND (dni IS NULL OR dni='')`
+      `UPDATE "Person" SET "dni"='${esc(dni)}' WHERE "code"='${esc(p.code)}' AND ("dni" IS NULL OR "dni"='')`
     );
     await prisma.$executeRawUnsafe(
-      `UPDATE Person SET area='${esc(area)}' WHERE code='${esc(p.code)}' AND (area IS NULL OR area='')`
+      `UPDATE "Person" SET "area"='${esc(area)}' WHERE "code"='${esc(p.code)}' AND ("area" IS NULL OR "area"='')`
     );
   }
 
@@ -107,7 +110,7 @@ async function main() {
   for (const u of collaborators) {
     // Buscar Person por code
     const prow: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id FROM Person WHERE code='${esc(u.code)}' LIMIT 1`
+      `SELECT "id" FROM "Person" WHERE "code"='${esc(u.code)}' LIMIT 1`
     );
     const personId = prow?.[0]?.id as string | undefined;
     if (!personId) continue; // si no existe la persona, saltar
@@ -115,29 +118,35 @@ async function main() {
     // ¿Existe ya el usuario por username o personId?
     const uEsc = esc(u.username);
     const existingUser: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id FROM User WHERE username='${uEsc}' OR personId='${esc(personId)}' LIMIT 1`
+      `SELECT "id" FROM "User" WHERE "username"='${uEsc}' OR "personId"='${esc(personId)}' LIMIT 1`
     );
     if (existingUser && existingUser.length > 0) continue;
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(u.password, salt);
     const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt) VALUES ('${uEsc}', '${esc(passwordHash)}', 'COLLAB', '${esc(personId)}', '${nowIso}', '${nowIso}')`
-    );
+    await prisma.user.create({
+      data: {
+        username: u.username,
+        passwordHash,
+        role: 'COLLAB',
+        personId,
+        createdAt: new Date(nowIso) as any,
+      },
+    });
   }
 
   // Alinear áreas demo con opciones del dashboard (si existe columna area)
-  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Barra' WHERE code='EMP-0001'`);
-  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Mozos' WHERE code='EMP-0002'`);
-  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Seguridad' WHERE code='EMP-0003'`);
+  await prisma.$executeRawUnsafe(`UPDATE "Person" SET "area"='Barra' WHERE "code"='EMP-0001'`);
+  await prisma.$executeRawUnsafe(`UPDATE "Person" SET "area"='Mozos' WHERE "code"='EMP-0002'`);
+  await prisma.$executeRawUnsafe(`UPDATE "Person" SET "area"='Seguridad' WHERE "code"='EMP-0003'`);
 
   // -----------------------------
   // Attendance & Checklist demo data
   // -----------------------------
   try {
     // Load person ids
-    const personsRows: any[] = await prisma.$queryRawUnsafe(`SELECT id, code FROM Person WHERE code IN ('EMP-0001','EMP-0002','EMP-0003')`);
+  const personsRows: any[] = await prisma.$queryRawUnsafe(`SELECT "id", "code" FROM "Person" WHERE "code" IN ('EMP-0001','EMP-0002','EMP-0003')`);
     const byCode: Record<string, string> = {};
     for (const r of personsRows || []) byCode[r.code] = r.id;
     const p1 = byCode['EMP-0001'];
@@ -158,22 +167,33 @@ async function main() {
       );
       if (rows?.length) return;
       const bd = computeBusinessDayFromUtc(at, cutoff);
-      await prisma.$queryRawUnsafe(
-        `INSERT INTO "Scan" ("personId", "scannedAt", "type", "createdAt", "businessDay") VALUES ('${personId}', '${iso(at)}', '${type}', '${iso(new Date())}', '${bd}') RETURNING id`
-      );
+      await prisma.scan.create({
+        data: {
+          personId,
+          scannedAt: at as any,
+          type,
+          businessDay: bd,
+        },
+      });
     }
 
     // Helper: upsert task status
     async function upsertTaskStatus(personId: string, day: string, done: number) {
       // choose some tasks deterministically
-      const tasks: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Task WHERE active=1 ORDER BY sortOrder LIMIT 3`);
+      const tasks: any[] = await prisma.$queryRawUnsafe(`SELECT "id" FROM "Task" WHERE "active"=true ORDER BY "sortOrder" LIMIT 3`);
       for (let i=0;i<tasks.length;i++) {
         const tid = tasks[i].id as string;
-        const exists: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM PersonTaskStatus WHERE personId='${personId}' AND taskId='${tid}' AND day='${day}' LIMIT 1`);
+        const exists: any[] = await prisma.$queryRawUnsafe(`SELECT "id" FROM "PersonTaskStatus" WHERE "personId"='${personId}' AND "taskId"='${tid}' AND "day"='${day}' LIMIT 1`);
         if (exists?.length) continue;
-        await prisma.$executeRawUnsafe(
-          `INSERT INTO PersonTaskStatus (personId, taskId, day, done, updatedAt) VALUES ('${personId}', '${tid}', '${day}', ${i < done ? 'true' : 'false'}, '${iso(new Date())}')`
-        );
+        await prisma.personTaskStatus.create({
+          data: {
+            personId,
+            taskId: tid,
+            day,
+            done: i < done,
+            updatedAt: new Date() as any,
+          },
+        });
       }
     }
 
@@ -232,16 +252,18 @@ async function main() {
     if (!label) continue;
     const labelEsc = esc(label);
     const existingTask: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id FROM Task WHERE label='${labelEsc}' AND ${t.area ? `area='${esc(t.area)}'` : 'area IS NULL'} LIMIT 1`
+      `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND ${t.area ? `"area"='${esc(t.area)}'` : '"area" IS NULL'} LIMIT 1`
     );
     if (!existingTask || existingTask.length === 0) {
-      const nowIso = new Date().toISOString();
-      const active = (t.active ?? true) ? 'true' : 'false';
       const sortOrder = t.sortOrder ?? i * 10;
-      const area = t.area ? `'${esc(t.area)}'` : 'NULL';
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Task (label, active, sortOrder, area, createdAt, updatedAt) VALUES ('${labelEsc}', ${active}, ${sortOrder}, ${area}, '${nowIso}', '${nowIso}')`
-      );
+      await prisma.task.create({
+        data: {
+          label,
+          active: t.active ?? true,
+          sortOrder,
+          area: t.area ?? null,
+        },
+      });
     }
   }
 
@@ -259,20 +281,34 @@ async function main() {
       const labelEsc = esc(t.label.trim());
       const areaEsc = esc(t.area.trim());
       const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id FROM Task WHERE label='${labelEsc}' AND area='${areaEsc}' LIMIT 1`
+        `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND "area"='${areaEsc}' LIMIT 1`
       );
       const nowIso = new Date().toISOString();
       if (rows && rows.length > 0) {
         const id = rows[0].id as string;
         // Update to ensure measurement flags are set and fields aligned
-        await prisma.$executeRawUnsafe(
-          `UPDATE Task SET measureEnabled=true, targetValue=${t.targetValue}, unitLabel='${esc(t.unitLabel)}', active=true, updatedAt='${nowIso}' WHERE id='${esc(id)}'`
-        );
+        await prisma.task.update({
+          where: { id },
+          data: {
+            measureEnabled: true,
+            targetValue: t.targetValue,
+            unitLabel: t.unitLabel,
+            active: true,
+          },
+        });
       } else {
         const sortOrder = t.sortOrder ?? 10000;
-        await prisma.$executeRawUnsafe(
-          `INSERT INTO Task (label, active, sortOrder, area, measureEnabled, targetValue, unitLabel, createdAt, updatedAt) VALUES ('${labelEsc}', true, ${sortOrder}, '${areaEsc}', true, ${t.targetValue}, '${esc(t.unitLabel)}', '${nowIso}', '${nowIso}')`
-        );
+        await prisma.task.create({
+          data: {
+            label: t.label,
+            active: true,
+            sortOrder,
+            area: t.area,
+            measureEnabled: true,
+            targetValue: t.targetValue,
+            unitLabel: t.unitLabel,
+          },
+        });
       }
     }
   } catch {}
