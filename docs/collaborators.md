@@ -29,7 +29,7 @@ Notas importantes
 
 - Crear colaborador (admin): `POST /api/admin/users`
 - Listar usuarios (admin): `GET /api/admin/users`
-- Login BYOD (colaborador): `POST /api/user/auth/login`
+- Login BYOD (colaborador): `POST /api/user/auth/login` (acepta `dni` o `username`)
 - Ver tareas asignadas (colaborador): `GET /api/tasks/list?day=YYYY-MM-DD`
 
 ## Ejemplos
@@ -66,7 +66,12 @@ Errores comunes:
 ### 2) Verificar login BYOD del colaborador (curl)
 
 ```bash
-# Login de usuario
+# Login colaborador por DNI (recomendado)
+curl -i -X POST http://localhost:3000/api/user/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"dni":"12345678","password":"ana-ana"}'
+
+# Alternativa: login por username (compatibilidad)
 curl -i -X POST http://localhost:3000/api/user/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"ana","password":"ana-ana"}'
@@ -94,9 +99,12 @@ $body = @{
 
 Invoke-WebRequest -Uri "http://localhost:3000/api/admin/users" -Method Post -ContentType "application/json" -Headers @{ Cookie = $adminCookie } -Body $body | Select-Object -ExpandProperty StatusCode
 
-# Login BYOD
-$loginBody = @{ username = "ana"; password = "ana-ana" } | ConvertTo-Json
+# Login BYOD por DNI (recomendado)
+$loginBody = @{ dni = "12345678"; password = "ana-ana" } | ConvertTo-Json
 $loginResp = Invoke-WebRequest -Uri "http://localhost:3000/api/user/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -SessionVariable sess
+# Alternativa: por username
+# $loginBody2 = @{ username = "ana"; password = "ana-ana" } | ConvertTo-Json
+# $loginResp = Invoke-WebRequest -Uri "http://localhost:3000/api/user/auth/login" -Method Post -ContentType "application/json" -Body $loginBody2 -SessionVariable sess
 
 # La cookie de usuario queda en la sesión web $sess
 $day = (Get-Date).ToString('yyyy-MM-dd')

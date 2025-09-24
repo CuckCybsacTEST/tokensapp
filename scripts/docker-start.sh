@@ -63,9 +63,18 @@ if [ -n "$DATABASE_URL" ]; then
     }
   elif echo "$DATABASE_URL" | grep -Eqi "^postgres(|ql)://"; then
     echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma migrate deploy..."
-    npx prisma migrate deploy || {
-      echo "[entrypoint] prisma migrate deploy failed (continuing anyway)";
-    }
+    if npx prisma migrate deploy; then
+      echo "[entrypoint] Migrations applied successfully.";
+    else
+      echo "[entrypoint] prisma migrate deploy failed (likely due to engine switch or legacy SQLite-specific SQL).";
+      echo "[entrypoint] Attempting fallback: prisma db push to create baseline schema (NO migration history).";
+      if npx prisma db push; then
+        echo "[entrypoint] Fallback prisma db push succeeded (schema baseline created).";
+        echo "[entrypoint] WARNING: Migration history not recorded in Postgres. Plan a proper baseline migration soon.";
+      else
+        echo "[entrypoint] Fallback prisma db push failed. Database may be unusable.";
+      fi
+    fi
   else
     echo "[entrypoint] Unknown DATABASE_URL scheme. Skipping prisma migrations."
   fi

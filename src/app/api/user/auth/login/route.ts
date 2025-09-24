@@ -6,21 +6,42 @@ import bcrypt from "bcryptjs";
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({} as any));
-    const { username, password } = body || {};
+    const { username, password, dni: dniRaw } = body || {};
 
-    if (!username || !password) {
+    if ((!username && !dniRaw) || !password) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: credenciales incompletas", { ok: false });
       return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
     }
 
     // Use raw SQL to avoid Prisma Client type drift when schema recently changed
     const esc = (s: string) => s.replace(/'/g, "''");
-    const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id, username, passwordHash, role, personId FROM User WHERE username = '${esc(username)}' LIMIT 1`
-    );
-    const user = rows && rows[0];
+    const normDni = (s: string | undefined | null) => String(s || '').replace(/\D+/g, '');
+    let user: any | null = null;
+
+    // 1) Intentar por username si está presente
+    if (username) {
+      const byUsername: any[] = await prisma.$queryRawUnsafe(
+        `SELECT id, username, passwordHash, role, personId FROM User WHERE username = '${esc(username)}' LIMIT 1`
+      );
+      user = (byUsername && byUsername[0]) || null;
+    }
+
+    // 2) Si no se encontró por username, o no vino username, intentar por DNI (normalizado)
     if (!user) {
-      await logEvent("USER_AUTH_FAIL", "Login colaborador: usuario no encontrado", { username });
+      const dniInput = normDni(dniRaw || username);
+      if (dniInput) {
+        const byDni: any[] = await prisma.$queryRawUnsafe(
+          `SELECT u.id as id, u.username as username, u.passwordHash as passwordHash, u.role as role, u.personId as personId
+             FROM User u JOIN Person p ON p.id = u.personId
+            WHERE p.dni = '${esc(dniInput)}' LIMIT 1`
+        );
+        user = (byDni && byDni[0]) || null;
+      }
+    }
+
+    // Si no se encontró usuario
+    if (!user) {
+      await logEvent("USER_AUTH_FAIL", "Login colaborador: usuario no encontrado", { username: username || null, dni: normDni(dniRaw || username) || null });
       return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
     }
 

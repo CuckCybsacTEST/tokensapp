@@ -29,6 +29,8 @@
     "restore:zip": "tsx scripts/restore-batches-from-zip.ts",
     "verify:restore": "tsx scripts/verify-restore.ts",
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
+  "verify:postgres": "tsx scripts/verify-postgres.ts",
+  "pg:baseline": "tsx scripts/pgBaseline.ts --push",
     "postinstall": "prisma generate"
   },
   "engines": {

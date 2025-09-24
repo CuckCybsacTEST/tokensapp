@@ -9,7 +9,7 @@ export const fetchCache = 'force-no-store';
 function LoginClient() {
   const params = useSearchParams();
   const next = params.get("next") || "/u";
-  const [username, setUsername] = useState("");
+  const [dniOrUser, setDniOrUser] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -24,7 +24,7 @@ function LoginClient() {
       const res = await fetch("/api/user/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username: dniOrUser, dni: dniOrUser, password })
       });
 
       if (!res.ok) {
@@ -51,7 +51,7 @@ function LoginClient() {
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center space-y-4">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Accediendo…</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Ingresando…</p>
             </div>
           </div>
         ) : (
@@ -63,12 +63,12 @@ function LoginClient() {
             <form onSubmit={submit} className="space-y-6 card">
               <div className="card-body space-y-4">
                 <div className="form-row">
-                  <label className="text-xs font-medium">Usuario</label>
+                  <label className="text-xs font-medium">DNI o Usuario</label>
                   <input
                     type="text"
                     className="input"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={dniOrUser}
+                    onChange={(e) => setDniOrUser(e.target.value)}
                     autoFocus
                     required
                   />
@@ -85,7 +85,7 @@ function LoginClient() {
                 </div>
                 {error && <p className="text-xs text-rose-600">{error}</p>}
                 <button disabled={pending} className="btn w-full" type="submit">
-                  {pending ? "Entrando…" : "Entrar"}
+                  {pending ? "Ingresando…" : "Ingresar"}
                 </button>
               </div>
             </form>
