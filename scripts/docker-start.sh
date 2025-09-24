@@ -62,18 +62,16 @@ if [ -n "$DATABASE_URL" ]; then
       echo "[entrypoint] prisma db push failed. Continuing to start app, but database may be unusable.";
     }
   elif echo "$DATABASE_URL" | grep -Eqi "^postgres(|ql)://"; then
-    echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma migrate deploy..."
+    echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma migrate deploy (baseline expected)."
+    # Nota: Se eliminó el fallback automático a 'prisma db push' para evitar divergencia de historial.
+    # Si se necesitara reactivarlo temporalmente (p.ej. entorno efímero sin aplicar baseline),
+    # podría condicionarse a una variable como POSTGRES_ALLOW_DB_PUSH_FALLBACK=1 (no implementada).
     if npx prisma migrate deploy; then
       echo "[entrypoint] Migrations applied successfully.";
     else
-      echo "[entrypoint] prisma migrate deploy failed (likely due to engine switch or legacy SQLite-specific SQL).";
-      echo "[entrypoint] Attempting fallback: prisma db push to create baseline schema (NO migration history).";
-      if npx prisma db push; then
-        echo "[entrypoint] Fallback prisma db push succeeded (schema baseline created).";
-        echo "[entrypoint] WARNING: Migration history not recorded in Postgres. Plan a proper baseline migration soon.";
-      else
-        echo "[entrypoint] Fallback prisma db push failed. Database may be unusable.";
-      fi
+      echo "[entrypoint] ERROR: prisma migrate deploy failed. No fallback automático (intencional).";
+      echo "[entrypoint] Revisa si la base está vacía y la migración baseline existe. Si es un entorno efímero puedes ejecutar manualmente: npx prisma db push (bajo tu responsabilidad).";
+      exit 1
     fi
   else
     echo "[entrypoint] Unknown DATABASE_URL scheme. Skipping prisma migrations."

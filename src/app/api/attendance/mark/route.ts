@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth-user';
-import { nowBusinessDay } from '@/lib/attendanceDay';
+import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
 
 type Mode = 'IN' | 'OUT';
 const REPLAY_WINDOW_SEC = 10;
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     if (useBusinessDay) {
       // Business Day logic
       const cutoff = parseInt(process.env.ATTENDANCE_CUTOFF_HOUR || '10', 10);
-      const businessDay = nowBusinessDay(isNaN(cutoff) ? 10 : cutoff);
+  const businessDay = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
 
       const alreadyTodayRows: any[] = await prisma.$queryRawUnsafe(
         `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND businessDay='${esc(businessDay)}' ORDER BY scannedAt ASC LIMIT 1`
@@ -83,20 +83,19 @@ export async function POST(req: Request) {
       }
 
       const nowIso = new Date().toISOString();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDay)}')`
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
+        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay)
+         VALUES ('${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDay)}') RETURNING id`
       );
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
-      const scanId = scanIdRows && scanIdRows[0]?.id;
+      const scanId = scanIdRows?.[0]?.id;
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, businessDay }) } });
       return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [] });
     } else {
       // Legacy UTC-day logic (fallback) but still store computed businessDay for metrics compatibility
       const today = new Date().toISOString().slice(0, 10); // UTC date
-      const cutoffLegacy = parseInt(process.env.ATTENDANCE_CUTOFF_HOUR || '10', 10);
-      const businessDayLegacy = nowBusinessDay(isNaN(cutoffLegacy) ? 10 : cutoffLegacy);
+  const businessDayLegacy = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
       const alreadyRows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND substr(scannedAt,1,10)='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
+        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND to_char("scannedAt",'YYYY-MM-DD')='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
       );
       const already = alreadyRows && alreadyRows[0];
       if (already) {
@@ -105,7 +104,7 @@ export async function POST(req: Request) {
       }
       if (mode === 'OUT') {
         const inRows: any[] = await prisma.$queryRawUnsafe(
-          `SELECT id FROM Scan WHERE personId='${person.id}' AND type='IN' AND substr(scannedAt,1,10)='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
+          `SELECT id FROM Scan WHERE personId='${person.id}' AND type='IN' AND to_char("scannedAt",'YYYY-MM-DD')='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
         );
         const hasIn = !!(inRows && inRows[0]);
         if (!hasIn) {
@@ -114,11 +113,11 @@ export async function POST(req: Request) {
         }
       }
       const nowIso = new Date().toISOString();
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDayLegacy)}')`
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(
+        `INSERT INTO Scan (personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay)
+         VALUES ('${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDayLegacy)}') RETURNING id`
       );
-      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
-      const scanId = scanIdRows && scanIdRows[0]?.id;
+      const scanId = scanIdRows?.[0]?.id;
       await prisma.eventLog.create({ data: { type: 'SCAN_OK_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, utcDay: today, businessDay: businessDayLegacy }) } });
       return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, utcDay: today, businessDay: businessDayLegacy, alerts: [] });
     }

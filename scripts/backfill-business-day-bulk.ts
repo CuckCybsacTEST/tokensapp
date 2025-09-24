@@ -1,5 +1,13 @@
 #!/usr/bin/env tsx
 /**
+ * LEGACY (SQLite only): Obsoleto tras migración a Postgres. Mantener solo como referencia.
+ * No ejecutar en entornos Postgres; depende de funciones SQLite (strftime, substr, datetime).
+ * Si se necesitara un backfill masivo en Postgres se implementaría vía:
+ *   UPDATE "Scan" SET "businessDay" = to_char(("scannedAt" AT TIME ZONE 'UTC' - make_interval(hours => (cutoff+5)))::date, 'YYYY-MM-DD') WHERE ...
+ *   (o computando en Node y batch-updating). No implementado porque la baseline ya trae businessDay completo.
+ *
+ */
+/**
  * Backfill BULK de businessDay usando una sola sentencia UPDATE en SQLite.
  * Mucho más rápido que el script incremental fila a fila.
  *
@@ -36,6 +44,12 @@ async function main() {
   }
 
   const start = Date.now();
+  // Script sólo válido en SQLite. En Postgres saldrá error; evitamos ejecución accidental detectando provider (heurística simple).
+  if (process.env.DATABASE_URL?.startsWith('postgres')) {
+    console.error('[bulk-backfill] Abort: este script es solo para SQLite (legacy).');
+    await prisma.$disconnect();
+    return;
+  }
   const sql = `UPDATE Scan SET businessDay = substr(datetime(strftime('%s', scannedAt) - (${shiftHours} * 3600), 'unixepoch'),1,10) WHERE businessDay IS NULL OR businessDay=''`;
   const result = await prisma.$executeRawUnsafe(sql);
   const ms = Date.now() - start;

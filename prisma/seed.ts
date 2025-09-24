@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '../src/lib/attendanceDay';
 // Cargar PrismaClient de forma compatible con distintos setups de tipos
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PrismaClient } = require('@prisma/client') as { PrismaClient: any };
@@ -74,43 +75,28 @@ async function main() {
     if (!existing || existing.length === 0) {
       const nowIso = new Date().toISOString();
       const jobEsc = esc(p.jobTitle || '');
+      // Omitimos id para que Prisma/DB genere (cuid())
       await prisma.$executeRawUnsafe(
-        `INSERT INTO Person (id, code, name, jobTitle, active, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${codeEsc}', '${nameEsc}', ${p.jobTitle ? `'${jobEsc}'` : 'NULL'}, 1, '${nowIso}', '${nowIso}')`
+        `INSERT INTO Person (code, name, jobTitle, active, createdAt, updatedAt) VALUES ('${codeEsc}', '${nameEsc}', ${p.jobTitle ? `'${jobEsc}'` : 'NULL'}, 1, '${nowIso}', '${nowIso}')`
       );
     }
   }
 
-  // Backfill DNI y Área para personas demo si las columnas existen y faltan valores (no sobreescribir)
-  try {
-    const info: any[] = await prisma.$queryRawUnsafe("PRAGMA table_info(Person)");
-    const hasDni = info.some((c: any) => c.name === 'dni');
-    const hasArea = info.some((c: any) => c.name === 'area');
-    if (hasDni || hasArea) {
-      const areaByJob: Record<string, string> = {
-        'Supervisora': 'Supervisión',
-        'Operario': 'Operaciones',
-        'Recepción': 'Recepción',
-      };
-      for (const p of persons) {
-        const codeEsc = esc(p.code);
-        if (hasDni) {
-          const dni = `DNI-${p.code}`; // determinístico y único por code demo
-          const dniEsc = esc(dni);
-          await prisma.$executeRawUnsafe(
-            `UPDATE Person SET dni='${dniEsc}' WHERE code='${codeEsc}' AND (dni IS NULL OR dni='')`
-          );
-        }
-        if (hasArea) {
-          const area = areaByJob[p.jobTitle || ''] || 'General';
-          const areaEsc = esc(area);
-          await prisma.$executeRawUnsafe(
-            `UPDATE Person SET area='${areaEsc}' WHERE code='${codeEsc}' AND (area IS NULL OR area='')`
-          );
-        }
-      }
-    }
-  } catch {
-    // Si la tabla no existe o el PRAGMA falla, continuar sin bloquear el seed
+  // Backfill DNI y Área (en Postgres asumimos columnas presentes)
+  const areaByJob: Record<string, string> = {
+    'Supervisora': 'Supervisión',
+    'Operario': 'Operaciones',
+    'Recepción': 'Recepción',
+  };
+  for (const p of persons) {
+    const dni = `DNI-${p.code}`;
+    const area = areaByJob[p.jobTitle || ''] || 'General';
+    await prisma.$executeRawUnsafe(
+      `UPDATE Person SET dni='${esc(dni)}' WHERE code='${esc(p.code)}' AND (dni IS NULL OR dni='')`
+    );
+    await prisma.$executeRawUnsafe(
+      `UPDATE Person SET area='${esc(area)}' WHERE code='${esc(p.code)}' AND (area IS NULL OR area='')`
+    );
   }
 
   // Seed mínimo de colaboradores (Users) vinculados a Person
@@ -137,20 +123,14 @@ async function main() {
     const passwordHash = bcrypt.hashSync(u.password, salt);
     const nowIso = new Date().toISOString();
     await prisma.$executeRawUnsafe(
-      `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${uEsc}', '${esc(passwordHash)}', 'COLLAB', '${esc(personId)}', '${nowIso}', '${nowIso}')`
+      `INSERT INTO User (username, passwordHash, role, personId, createdAt, updatedAt) VALUES ('${uEsc}', '${esc(passwordHash)}', 'COLLAB', '${esc(personId)}', '${nowIso}', '${nowIso}')`
     );
   }
 
   // Alinear áreas demo con opciones del dashboard (si existe columna area)
-  try {
-    const info2: any[] = await prisma.$queryRawUnsafe("PRAGMA table_info(Person)");
-    const hasArea2 = info2.some((c: any) => c.name === 'area');
-    if (hasArea2) {
-      await prisma.$executeRawUnsafe(`UPDATE Person SET area='Barra' WHERE code='EMP-0001'`);
-      await prisma.$executeRawUnsafe(`UPDATE Person SET area='Mozos' WHERE code='EMP-0002'`);
-      await prisma.$executeRawUnsafe(`UPDATE Person SET area='Seguridad' WHERE code='EMP-0003'`);
-    }
-  } catch {}
+  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Barra' WHERE code='EMP-0001'`);
+  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Mozos' WHERE code='EMP-0002'`);
+  await prisma.$executeRawUnsafe(`UPDATE Person SET area='Seguridad' WHERE code='EMP-0003'`);
 
   // -----------------------------
   // Attendance & Checklist demo data
@@ -167,16 +147,19 @@ async function main() {
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     function iso(d: Date) { return d.toISOString(); }
     function add(d: Date, ms: number) { return new Date(d.getTime() + ms); }
-    function dayStr(d: Date) { return d.toISOString().slice(0,10); }
+  function dayStr(d: Date) { return d.toISOString().slice(0,10); }
+  const cutoff = getConfiguredCutoffHour();
 
     // Helper: upsert scan (avoid dup by person+ts proximity)
     async function insertScan(personId: string, at: Date, type: 'IN'|'OUT') {
+      // Evitar duplicados (mismo minuto) usando diferencia en segundos PostgreSQL
       const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id FROM Scan WHERE personId='${personId}' AND abs(julianday(scannedAt) - julianday('${iso(at)}')) < (1.0/1440.0)`
+        `SELECT id FROM "Scan" WHERE "personId"='${personId}' AND ABS(EXTRACT(EPOCH FROM ("scannedAt" - TIMESTAMPTZ '${iso(at)}'))) < 60 LIMIT 1`
       );
       if (rows?.length) return;
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO Scan (id, personId, scannedAt, type, createdAt) VALUES (replace(hex(randomblob(16)),'',''), '${personId}', '${iso(at)}', '${type}', '${iso(new Date())}')`
+      const bd = computeBusinessDayFromUtc(at, cutoff);
+      await prisma.$queryRawUnsafe(
+        `INSERT INTO "Scan" ("personId", "scannedAt", "type", "createdAt", "businessDay") VALUES ('${personId}', '${iso(at)}', '${type}', '${iso(new Date())}', '${bd}') RETURNING id`
       );
     }
 
@@ -189,7 +172,7 @@ async function main() {
         const exists: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM PersonTaskStatus WHERE personId='${personId}' AND taskId='${tid}' AND day='${day}' LIMIT 1`);
         if (exists?.length) continue;
         await prisma.$executeRawUnsafe(
-          `INSERT INTO PersonTaskStatus (id, personId, taskId, day, done, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${personId}', '${tid}', '${day}', ${i < done ? 1 : 0}, '${iso(new Date())}')`
+          `INSERT INTO PersonTaskStatus (personId, taskId, day, done, updatedAt) VALUES ('${personId}', '${tid}', '${day}', ${i < done ? 'true' : 'false'}, '${iso(new Date())}')`
         );
       }
     }
@@ -253,11 +236,11 @@ async function main() {
     );
     if (!existingTask || existingTask.length === 0) {
       const nowIso = new Date().toISOString();
-      const active = (t.active ?? true) ? 1 : 0;
+      const active = (t.active ?? true) ? 'true' : 'false';
       const sortOrder = t.sortOrder ?? i * 10;
       const area = t.area ? `'${esc(t.area)}'` : 'NULL';
       await prisma.$executeRawUnsafe(
-        `INSERT INTO Task (id, label, active, sortOrder, area, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${labelEsc}', ${active}, ${sortOrder}, ${area}, '${nowIso}', '${nowIso}')`
+        `INSERT INTO Task (label, active, sortOrder, area, createdAt, updatedAt) VALUES ('${labelEsc}', ${active}, ${sortOrder}, ${area}, '${nowIso}', '${nowIso}')`
       );
     }
   }
@@ -283,12 +266,12 @@ async function main() {
         const id = rows[0].id as string;
         // Update to ensure measurement flags are set and fields aligned
         await prisma.$executeRawUnsafe(
-          `UPDATE Task SET measureEnabled=1, targetValue=${t.targetValue}, unitLabel='${esc(t.unitLabel)}', active=1, updatedAt='${nowIso}' WHERE id='${esc(id)}'`
+          `UPDATE Task SET measureEnabled=true, targetValue=${t.targetValue}, unitLabel='${esc(t.unitLabel)}', active=true, updatedAt='${nowIso}' WHERE id='${esc(id)}'`
         );
       } else {
         const sortOrder = t.sortOrder ?? 10000;
         await prisma.$executeRawUnsafe(
-          `INSERT INTO Task (id, label, active, sortOrder, area, measureEnabled, targetValue, unitLabel, createdAt, updatedAt) VALUES (replace(hex(randomblob(16)),'',''), '${labelEsc}', 1, ${sortOrder}, '${areaEsc}', 1, ${t.targetValue}, '${esc(t.unitLabel)}', '${nowIso}', '${nowIso}')`
+          `INSERT INTO Task (label, active, sortOrder, area, measureEnabled, targetValue, unitLabel, createdAt, updatedAt) VALUES ('${labelEsc}', true, ${sortOrder}, '${areaEsc}', true, ${t.targetValue}, '${esc(t.unitLabel)}', '${nowIso}', '${nowIso}')`
         );
       }
     }

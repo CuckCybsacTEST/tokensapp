@@ -77,13 +77,13 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
 
   // heatmapByHour (UTC)
   const heatRows: any[] = await prisma.$queryRawUnsafe(
-    `SELECT CAST(strftime('%H', s.scannedAt) as INTEGER) as hour,
+    `SELECT EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int as hour,
             SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as inCount,
             SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as outCount
      FROM Scan s ${joinPerson}
      ${personWhere ? personWhere : ''}
-     ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-     GROUP BY CAST(strftime('%H', s.scannedAt) as INTEGER)
+     ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+     GROUP BY EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int
      ORDER BY hour ASC`
   );
   const heatmapByHour: Array<{ hour: number; in: number; out: number }> = Array.from({ length: 24 }, (_, h) => {

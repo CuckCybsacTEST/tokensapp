@@ -1,11 +1,13 @@
 # Business Day Attendance Model
 
 ## Motivación
-El sistema original agrupaba las marcas (IN/OUT) por día calendario UTC (`substr(scannedAt,1,10)`). Esto causaba problemas en turnos que cruzan medianoche local (América/Lima, UTC-5):
+El sistema original agrupaba las marcas (IN/OUT) por día calendario UTC. Esto causaba problemas en turnos que cruzan medianoche local (América/Lima, UTC-5):
 - Un colaborador que entra 23:30 local y sale 01:30 local del día siguiente era dividido en *dos* días diferentes.
 - Un OUT inmediatamente después de medianoche era rechazado por "NO_IN_TODAY".
 
 La solución: definir un **"día de trabajo" (businessDay)** con un **corte horario configurable** (por defecto 10:00 local). Todas las marcas entre las 10:00 de un día y las 09:59:59 del día siguiente pertenecen al mismo `businessDay`.
+
+> Nota histórica (legacy): Antes de la migración a Postgres se utilizaba la expresión SQLite `substr(scannedAt,1,10)` para agrupar por día UTC puro. Esa técnica quedó obsoleta y sólo se mantiene mencionada para contexto de decisiones anteriores; la implementación vigente usa el cálculo desplazado con `computeBusinessDayFromUtc`.
 
 ## Definición de corte
 Variables de entorno relevantes:

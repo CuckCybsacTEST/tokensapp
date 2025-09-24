@@ -724,6 +724,54 @@ Esto elimina dependencia de un símbolo global específico y permite mocking má
 ## Notas
 Proyecto en estado inicial, no listo para producción.
 
+## Migración a Postgres 2025-09-24
+
+Esta fecha marcó la transición oficial de SQLite a PostgreSQL para soportar:
+- Cálculo consistente de jornada de asistencia (`businessDay`) con reglas de corte.
+- Índices parciales (unicidad condicional IN/OUT por persona y día) no generables todavía vía Prisma.
+- Consultas de métricas usando `EXTRACT`, `to_char` y aritmética de epoch en lugar de funciones específicas de SQLite.
+
+### Enfoque adoptado
+1. Baseline limpio: Se eliminaron migraciones históricas de SQLite y se creó una migración baseline única que refleja el estado final del esquema. Se aceptó descartar datos previos (dataset efímero / demo).
+2. Cambio de provider: En `schema.prisma` `provider = "sqlite"` → `provider = "postgresql"`.
+3. Índices parciales añadidos manualmente (no soportados por Prisma todavía):
+	```sql
+	CREATE UNIQUE INDEX "Scan_person_businessDay_in_unique" ON "Scan"("personId","businessDay","type") WHERE type='IN';
+	CREATE UNIQUE INDEX "Scan_person_businessDay_out_unique" ON "Scan"("personId","businessDay","type") WHERE type='OUT';
+	```
+4. Eliminación de dependencias SQLite en código activo: fuera quedaron `strftime`, `substr(scannedAt,1,10)`, `randomblob`. Los scripts o migraciones antiguos quedaron marcados como LEGACY únicamente informativos.
+5. Generación de IDs: se confía en defaults del modelo (cuid/UUID) o en helper `newId()` (Node `crypto.randomUUID`) si se necesita explícito.
+6. Lógica `businessDay`: centralizada en `computeBusinessDayFromUtc` (TS) en vez de expresiones SQL específicas del motor.
+7. Seed y rutas: reescritos para omitir IDs manuales y usar `RETURNING` donde aplica.
+
+### Scripts Legacy
+`scripts/backfill-business-day-bulk.ts` quedó como referencia (abortará si detecta Postgres). No debe ejecutarse en el nuevo entorno.
+
+### Tests
+- Eliminado el uso de `PRAGMA foreign_keys = OFF/ON` (específico de SQLite).
+- Limpieza actual: `deleteMany()` secuencial en lugar de truncados.
+- TODO: implementar helper de truncado para Postgres (ejemplo futuro):
+  ```sql
+  TRUNCATE TABLE "Scan","PersonTaskStatus","Task","Token","Prize","Batch" RESTART IDENTITY CASCADE;
+  ```
+
+### Verificación post-migración sugerida
+1. `prisma migrate deploy` sobre una base vacía.
+2. Validar índices parciales:
+	```sql
+	SELECT indexdef FROM pg_indexes WHERE tablename='Scan' AND indexname LIKE 'Scan_person_businessDay_%';
+	```
+3. Probar inserción duplicada de IN para mismo (persona,businessDay) → debe fallar.
+4. Revisar consultas de métricas: no deben contener funciones SQLite.
+
+### Consideraciones futuras
+- Añadir truncates para acelerar tests y garantizar integridad referencial limpia por suite.
+- Si se agregan nuevos tipos de scan, reevaluar los índices parciales o introducir constraint CHECK.
+- Documentar proceso de ampliación de baseline (crear migraciones incrementales a partir de aquí; ya no recrear baseline salvo reset total).
+
+### Resumen
+Migración completada con baseline limpio, índices parciales manuales, eliminación de dependencias SQLite en código productivo y plan pendiente para optimizar limpieza de tests vía truncates.
+
 ## Despliegue (GitHub + Railway + Docker)
 
 Sigue estos pasos para publicar la app usando un contenedor Docker en Railway.

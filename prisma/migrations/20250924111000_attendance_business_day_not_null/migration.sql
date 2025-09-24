@@ -17,6 +17,7 @@ CREATE TABLE "_Scan_new" (
 
 INSERT INTO "_Scan_new" (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay)
   SELECT id, personId, scannedAt, type, deviceId, byUser, meta, createdAt,
+         /* LEGACY SQLite fallback: substr(scannedAt,1,10) */
          CASE WHEN businessDay IS NULL OR businessDay = '' THEN substr(scannedAt,1,10) ELSE businessDay END
   FROM Scan;
 

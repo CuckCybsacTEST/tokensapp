@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
+// Importar lógica real de businessDay para validar coherencia con constraints.
+import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '../src/lib/attendanceDay';
 
 async function main() {
   const url = process.env.DATABASE_URL || '';
@@ -43,23 +45,32 @@ async function main() {
       console.log('[verify-postgres] Índices parciales OK.');
     }
 
-    // Inserción de marca simulada (solo si no hay conflicto)
-  const testPerson = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM "Person" ORDER BY id LIMIT 1;`);
+    // Inserción de marca simulada (opcional) respetando uniqueness por (personId,businessDay,type='IN')
+    const testPerson = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM "Person" ORDER BY id LIMIT 1;`);
     if (testPerson.length) {
       const pid = testPerson[0].id;
-      const nowIso = new Date().toISOString();
-      // Solo testear inserción si no hay marca en el último minuto (sintaxis Postgres)
-  const recent = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM "Scan" WHERE "personId"='${pid}' AND "scannedAt" > (now() - interval '1 minute') LIMIT 1;`);
-      if (!recent.length) {
-        const businessDay = nowIso.slice(0,10); // Si la lógica real difiere, aquí podríamos invocar el helper JS.
-        // Usar defaults de Prisma para id/createdAt si existen; si no, explicitamos createdAt.
-        await prisma.$executeRawUnsafe(`INSERT INTO "Scan" ("personId","scannedAt","type","businessDay","createdAt") VALUES ('${pid}','${nowIso}','IN','${businessDay}','${nowIso}');`);
-        console.log('[verify-postgres] Inserción de prueba OK (IN dummy).');
+      const now = new Date();
+      const cutoff = getConfiguredCutoffHour();
+      const businessDay = computeBusinessDayFromUtc(now, cutoff);
+      const nowIso = now.toISOString();
+      // Verificar si ya existe un IN para ese businessDay (evita violar índice parcial único)
+      const existingIn = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM "Scan" WHERE "personId"='${pid}' AND "type"='IN' AND "businessDay"='${businessDay}' LIMIT 1;`);
+      if (existingIn.length) {
+        console.log('[verify-postgres] Ya existe IN para businessDay actual; no se inserta dummy.');
       } else {
-        console.log('[verify-postgres] Saltando inserción (actividad reciente).');
+        try {
+          await prisma.$executeRawUnsafe(`INSERT INTO "Scan" ("personId","scannedAt","type","businessDay","createdAt") VALUES ('${pid}','${nowIso}','IN','${businessDay}','${nowIso}');`);
+          console.log('[verify-postgres] Inserción de prueba OK (IN dummy).');
+        } catch (e: any) {
+          if (/unique|constraint/i.test(e?.message || '')) {
+            console.warn('[verify-postgres] Conflicto de unicidad al insertar dummy (posible carrera). Ignorado.');
+          } else {
+            console.warn('[verify-postgres] Falló inserción dummy:', e?.message || e);
+          }
+        }
       }
     } else {
-      console.warn('[verify-postgres] No hay Person para probar inserción de Scan.');
+      console.warn('[verify-postgres] No hay Person (base vacía). Se omite prueba de inserción sin marcar error.');
     }
   } catch (e: any) {
     const msg = e?.message || String(e);
