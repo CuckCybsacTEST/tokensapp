@@ -143,10 +143,15 @@ model Scan {
   byUser    String?
   meta      String?
   createdAt DateTime @default(now())
+  // Día de trabajo desplazado (business day) calculado según cutoff horario (ej. 10:00 America/Lima) - NOT NULL
+  businessDay String
   person    Person   @relation(fields: [personId], references: [id])
 
   @@index([personId])
   @@index([scannedAt])
+  @@index([businessDay])
+  @@index([businessDay, personId, type])
+  @@index([personId, businessDay])
 }
 
 model User {

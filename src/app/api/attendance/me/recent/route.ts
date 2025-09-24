@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
     const esc = (s: string) => s.replace(/'/g, "''");
     const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT s.id, s.scannedAt, s.type, s.deviceId, p.code, p.name
+      `SELECT s.id, s.scannedAt, s.type, s.deviceId, s.businessDay, p.code, p.name
        FROM User u
        JOIN Person p ON p.id = u.personId
        LEFT JOIN Scan s ON s.personId = p.id

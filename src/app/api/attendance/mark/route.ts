@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth-user';
+import { nowBusinessDay } from '@/lib/attendanceDay';
 
 type Mode = 'IN' | 'OUT';
 const REPLAY_WINDOW_SEC = 10;
@@ -55,43 +56,72 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'DUPLICATE', person: { id: person.id, name: person.name, code: person.code }, lastScanAt: lastRecent.scannedAt }, { status: 400 });
     }
 
-  // Per-day single mark per direction: if already marked today for this type, block with error
-    const now = new Date();
-    const dayStart = new Date(now);
-    dayStart.setHours(0, 0, 0, 0);
-    const nextDayStart = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    const alreadyTodayRows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND scannedAt >= '${dayStart.toISOString()}' AND scannedAt < '${nextDayStart.toISOString()}' ORDER BY scannedAt ASC LIMIT 1`
-    );
-    const alreadyToday = alreadyTodayRows && alreadyTodayRows[0];
-    if (alreadyToday) {
-      await prisma.eventLog.create({ data: { type: 'SCAN_ALREADY_MARKED', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
-      return NextResponse.json({ ok: false, code: 'ALREADY_TODAY', alreadyMarkedAt: alreadyToday.scannedAt }, { status: 400 });
-    }
+    const useBusinessDay = process.env.ATTENDANCE_BUSINESS_DAY === '1';
+    if (useBusinessDay) {
+      // Business Day logic
+      const cutoff = parseInt(process.env.ATTENDANCE_CUTOFF_HOUR || '10', 10);
+      const businessDay = nowBusinessDay(isNaN(cutoff) ? 10 : cutoff);
 
-    // Sequence rule: OUT requires a prior IN today
-    if (mode === 'OUT') {
-      const inTodayRows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='IN' AND scannedAt >= '${dayStart.toISOString()}' AND scannedAt < '${nextDayStart.toISOString()}' ORDER BY scannedAt ASC LIMIT 1`
+      const alreadyTodayRows: any[] = await prisma.$queryRawUnsafe(
+        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND businessDay='${esc(businessDay)}' ORDER BY scannedAt ASC LIMIT 1`
       );
-      const hasInToday = !!(inTodayRows && inTodayRows[0]);
-      if (!hasInToday) {
-        await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
-        return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
+      const alreadyToday = alreadyTodayRows && alreadyTodayRows[0];
+      if (alreadyToday) {
+        await prisma.eventLog.create({ data: { type: 'SCAN_ALREADY_MARKED', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
+        return NextResponse.json({ ok: false, code: 'ALREADY_TODAY', alreadyMarkedAt: alreadyToday.scannedAt }, { status: 400 });
       }
+
+      if (mode === 'OUT') {
+        const inTodayRows: any[] = await prisma.$queryRawUnsafe(
+          `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='IN' AND businessDay='${esc(businessDay)}' ORDER BY scannedAt ASC LIMIT 1`
+        );
+        const hasInToday = !!(inTodayRows && inTodayRows[0]);
+        if (!hasInToday) {
+          await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
+          return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDay)}')`
+      );
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
+      const scanId = scanIdRows && scanIdRows[0]?.id;
+      await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, businessDay }) } });
+      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [] });
+    } else {
+      // Legacy UTC-day logic (fallback) but still store computed businessDay for metrics compatibility
+      const today = new Date().toISOString().slice(0, 10); // UTC date
+      const cutoffLegacy = parseInt(process.env.ATTENDANCE_CUTOFF_HOUR || '10', 10);
+      const businessDayLegacy = nowBusinessDay(isNaN(cutoffLegacy) ? 10 : cutoffLegacy);
+      const alreadyRows: any[] = await prisma.$queryRawUnsafe(
+        `SELECT id, scannedAt FROM Scan WHERE personId='${person.id}' AND type='${mode}' AND substr(scannedAt,1,10)='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
+      );
+      const already = alreadyRows && alreadyRows[0];
+      if (already) {
+        await prisma.eventLog.create({ data: { type: 'SCAN_ALREADY_MARKED_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
+        return NextResponse.json({ ok: false, code: 'ALREADY_TODAY', alreadyMarkedAt: already.scannedAt }, { status: 400 });
+      }
+      if (mode === 'OUT') {
+        const inRows: any[] = await prisma.$queryRawUnsafe(
+          `SELECT id FROM Scan WHERE personId='${person.id}' AND type='IN' AND substr(scannedAt,1,10)='${esc(today)}' ORDER BY scannedAt ASC LIMIT 1`
+        );
+        const hasIn = !!(inRows && inRows[0]);
+        if (!hasIn) {
+          await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
+          return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
+        }
+      }
+      const nowIso = new Date().toISOString();
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt, businessDay) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}', '${esc(businessDayLegacy)}')`
+      );
+      const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
+      const scanId = scanIdRows && scanIdRows[0]?.id;
+      await prisma.eventLog.create({ data: { type: 'SCAN_OK_LEGACY', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, utcDay: today, businessDay: businessDayLegacy }) } });
+      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, utcDay: today, businessDay: businessDayLegacy, alerts: [] });
     }
-
-    // Insert scan
-    const nowIso = new Date().toISOString();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Scan (id, personId, scannedAt, type, deviceId, byUser, meta, createdAt) VALUES (replace(hex(randomblob(16)),'',''), '${person.id}', '${nowIso}', '${mode}', ${deviceId ? `'${esc(deviceId)}'` : 'NULL'}, '${esc(uSession.userId)}', NULL, '${nowIso}')`
-    );
-    const scanIdRows: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM Scan WHERE personId='${person.id}' ORDER BY createdAt DESC LIMIT 1`);
-    const scanId = scanIdRows && scanIdRows[0]?.id;
-
-    await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode }) } });
-
-    return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, alerts: [] });
   } catch (e: any) {
     console.error('attendance mark error', e);
     return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });

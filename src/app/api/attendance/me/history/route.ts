@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
     const esc = (s: string) => s.replace(/'/g, "''");
     const rows: any[] = await prisma.$queryRawUnsafe(
-      `SELECT s.id, s.scannedAt, s.type, s.deviceId
+      `SELECT s.id, s.scannedAt, s.type, s.deviceId, s.businessDay
        FROM Scan s
        WHERE s.personId = (SELECT personId FROM User WHERE id='${esc(u.userId)}')
        ORDER BY s.scannedAt DESC

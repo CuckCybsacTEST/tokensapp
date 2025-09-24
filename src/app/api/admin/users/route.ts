@@ -128,6 +128,41 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD' }, { status: 400 });
     }
 
+    // Link path: provide code (DNI-normalized) without person object → attach new User to existing Person
+    if (body.code && !body.person) {
+      const rawCode = String(body.code).trim();
+      // Normalize similar to DNI (digits only) because creation path forces code = normalized DNI
+      const normalized = normalizeDni(rawCode) || rawCode.replace(/\W+/g, '');
+      if (!normalized) {
+        return NextResponse.json({ ok: false, code: 'INVALID_CODE' }, { status: 400 });
+      }
+      // Check username uniqueness
+      const existingUser: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`);
+      if (existingUser.length) {
+        return NextResponse.json({ ok: false, code: 'USERNAME_TAKEN' }, { status: 409 });
+      }
+      const prow: any[] = await prisma.$queryRawUnsafe(`SELECT id, code FROM Person WHERE code='${esc(normalized)}' LIMIT 1`);
+      if (!prow.length) {
+        return NextResponse.json({ ok: false, code: 'CODE_NOT_FOUND' }, { status: 400 });
+      }
+      const personId = prow[0].id as string;
+      // Ensure not already linked
+      const linked: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE personId='${esc(personId)}' LIMIT 1`);
+      if (linked.length) {
+        return NextResponse.json({ ok: false, code: 'ALREADY_LINKED' }, { status: 409 });
+      }
+      const nowIso = new Date().toISOString();
+      const salt = bcrypt.genSaltSync(10);
+      const passwordHash = bcrypt.hashSync(password, salt);
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
+         VALUES (replace(hex(randomblob(16)),'',''), '${esc(username)}', '${esc(passwordHash)}', '${role}', '${esc(personId)}', '${nowIso}', '${nowIso}')`
+      );
+      const urow: any[] = await prisma.$queryRawUnsafe(`SELECT id FROM User WHERE username='${esc(username)}' LIMIT 1`);
+      const userId = urow?.[0]?.id as string;
+      return NextResponse.json({ ok: true, user: { id: userId, username, role, personCode: normalized } }, { status: 200 });
+    }
+
     // Create Person + User transactionally (mandatory path)
     const personInput = body.person || {};
     const name = typeof personInput.name === 'string' ? personInput.name.trim() : '';

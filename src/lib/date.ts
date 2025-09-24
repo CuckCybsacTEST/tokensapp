@@ -75,3 +75,18 @@ export function rangeFromPeriod(period: Period, startDate?: string, endDate?: st
   const endDay = ymdUtc(addDays(end, -1)); // inclusive end day
   return { name, start, end, startIso: start.toISOString(), endIso: end.toISOString(), startDay, endDay };
 }
+
+/**
+ * rangeBusinessDays:
+ *  Igual que rangeFromPeriod pero semánticamente orientado a "business days" (días de trabajo)
+ *  definidos por la columna Scan.businessDay. Por ahora, como el businessDay es un string YYYY-MM-DD
+ *  derivado mediante un corrimiento horario fijo (sin DST), el rango de business days coincide
+ *  1:1 con el rango de fechas calendario en UTC utilizado en rangeFromPeriod.
+ *
+ *  Futuras adaptaciones (DST u offsets variables) podrían redefinir aquí la lógica sin tocar
+ *  el resto de consumidores.
+ */
+export function rangeBusinessDays(period: Period, startDate?: string, endDate?: string) {
+  // Implementación inicial: delega a rangeFromPeriod.
+  return rangeFromPeriod(period, startDate, endDate);
+}

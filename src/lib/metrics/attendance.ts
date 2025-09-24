@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { rangeFromPeriod, ymdUtc, addDays } from '@/lib/date';
+import { rangeBusinessDays, ymdUtc, addDays } from '@/lib/date';
 import type { Period, MetricsResponse, AttendanceMetrics, TaskMetrics, SeriesByDay } from '@/types/metrics';
 
 export type GetMetricsParams = {
@@ -28,7 +28,8 @@ function buildPersonWhere(area?: string | null, person?: string | null) {
 
 export async function getAttendanceMetrics(params: GetMetricsParams): Promise<MetricsResponse> {
   const { period, startDate, endDate, area, person } = params;
-  const range = rangeFromPeriod(period, startDate, endDate);
+  // Usamos rango de business days (por ahora equivalente a rango calendario UTC)
+  const range = rangeBusinessDays(period, startDate, endDate);
   const { startIso, endIso, startDay, endDay } = range;
 
   // Where clause helpers
@@ -54,13 +55,13 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // completedDaysPct and avgDurationMin combined via daily CTE
   const dailyRows: any[] = await prisma.$queryRawUnsafe(
     `WITH daily AS (
-       SELECT s.personId, substr(s.scannedAt,1,10) as day,
+       SELECT s.personId, s.businessDay as day,
               MIN(CASE WHEN s.type='IN' THEN s.scannedAt END) as firstIn,
               MAX(CASE WHEN s.type='OUT' THEN s.scannedAt END) as lastOut
        FROM Scan s ${joinPerson}
        ${personWhere ? personWhere : ''}
        ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, substr(s.scannedAt,1,10)
+       GROUP BY s.personId, s.businessDay
      )
      SELECT 
        AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND julianday(lastOut) > julianday(firstIn)
@@ -93,18 +94,18 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // byArea (present=distinct persons with IN; completedPct per area)
   const byAreaRows: any[] = await prisma.$queryRawUnsafe(
     `WITH days AS (
-       SELECT s.personId, substr(s.scannedAt,1,10) as day,
-              SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as hasIn,
-              SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as hasOut
-       FROM Scan s JOIN Person p ON p.id = s.personId
-       ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-       ${area || person ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, substr(s.scannedAt,1,10)
+  SELECT s.personId, s.businessDay as day,
+    SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as hasIn,
+    SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as hasOut
+  FROM Scan s JOIN Person p ON p.id = s.personId
+  ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
+  ${area || person ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
+  GROUP BY s.personId, s.businessDay
      )
      SELECT p.area as area,
-            COUNT(DISTINCT CASE WHEN days.hasIn > 0 THEN days.personId END) as present,
-            SUM(CASE WHEN days.hasIn > 0 THEN 1 ELSE 0 END) as withIn,
-            SUM(CASE WHEN days.hasIn > 0 AND days.hasOut > 0 THEN 1 ELSE 0 END) as withBoth
+       COUNT(DISTINCT CASE WHEN days.hasIn > 0 THEN days.personId END) as present,
+       SUM(CASE WHEN days.hasIn > 0 THEN 1 ELSE 0 END) as withIn,
+       SUM(CASE WHEN days.hasIn > 0 AND days.hasOut > 0 THEN 1 ELSE 0 END) as withBoth
      FROM days JOIN Person p ON p.id = days.personId
      GROUP BY p.area`
   );
@@ -156,11 +157,11 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // Time to first/last task (mins)
   const timeRows: any[] = await prisma.$queryRawUnsafe(
     `WITH first_in AS (
-       SELECT s.personId, substr(s.scannedAt,1,10) as day, MIN(s.scannedAt) as firstIn
+       SELECT s.personId, s.businessDay as day, MIN(s.scannedAt) as firstIn
        FROM Scan s JOIN Person p ON p.id = s.personId
        ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
        ${area || person ? 'AND' : 'WHERE'} s.type='IN' AND s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, substr(s.scannedAt,1,10)
+       GROUP BY s.personId, s.businessDay
      ), done_tasks AS (
        SELECT pts.personId, pts.day,
               MIN(CASE WHEN pts.done = 1 THEN pts.updatedAt END) as firstDone,
@@ -182,22 +183,22 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   // Series byDay (single query combines IO, uniq, avg duration, completion per day)
   const seriesRows: any[] = await prisma.$queryRawUnsafe(
     `WITH io AS (
-       SELECT substr(s.scannedAt,1,10) as day,
+       SELECT s.businessDay as day,
               SUM(CASE WHEN s.type='IN' THEN 1 ELSE 0 END) as inCount,
               SUM(CASE WHEN s.type='OUT' THEN 1 ELSE 0 END) as outCount,
               COUNT(DISTINCT CASE WHEN s.type='IN' THEN s.personId END) as uniq
        FROM Scan s ${joinPerson}
        ${personWhere ? personWhere : ''}
        ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY substr(s.scannedAt,1,10)
+       GROUP BY s.businessDay
      ), daily AS (
-       SELECT s.personId, substr(s.scannedAt,1,10) as day,
+       SELECT s.personId, s.businessDay as day,
               MIN(CASE WHEN s.type='IN' THEN s.scannedAt END) as firstIn,
               MAX(CASE WHEN s.type='OUT' THEN s.scannedAt END) as lastOut
        FROM Scan s ${joinPerson}
        ${personWhere ? personWhere : ''}
        ${personWhere ? 'AND' : 'WHERE'} s.scannedAt >= '${startIso}' AND s.scannedAt < '${endIso}'
-       GROUP BY s.personId, substr(s.scannedAt,1,10)
+       GROUP BY s.personId, s.businessDay
      ), davg AS (
        SELECT day, AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND julianday(lastOut) > julianday(firstIn)
                             THEN (julianday(lastOut) - julianday(firstIn)) * 1440.0 END) as avgMin
@@ -232,21 +233,21 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
      ORDER BY d.day ASC`
   );
 
-  // Ensure all days in range represented and normalize nulls
-  const days: string[] = [];
+  // Generamos la lista completa de businessDays dentro del rango (equiv. actual a días calendario).
+  const businessDays: string[] = [];
   {
     const start = new Date(startIso);
     const end = new Date(endIso);
     for (let d = start; d < end; d = addDays(d, 1)) {
-      days.push(ymdUtc(d));
+      businessDays.push(ymdUtc(d));
     }
   }
-  const byDay: SeriesByDay[] = days.map((day) => {
-    const r = seriesRows?.find((x: any) => String(x.day) === day);
+  const byDay: SeriesByDay[] = businessDays.map((bday) => {
+    const r = seriesRows?.find((x: any) => String(x.day) === bday);
     const done = Number(r?.doneCount || 0);
     const tot = Number(r?.totalCount || 0);
     return {
-      day,
+      day: bday,
       in: Number(r?.inCount || 0),
       out: Number(r?.outCount || 0),
       uniquePersons: Number(r?.uniq || 0),
