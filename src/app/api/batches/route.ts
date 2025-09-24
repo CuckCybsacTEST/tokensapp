@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
+// Evitar prerender en build: esta API depende de la DB
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // GET /api/batches
 // Returns batches with counts: total, redeemed, expired, active
 export async function GET() {
