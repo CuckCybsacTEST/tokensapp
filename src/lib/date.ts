@@ -87,6 +87,19 @@ export function rangeFromPeriod(period: Period, startDate?: string, endDate?: st
  *  el resto de consumidores.
  */
 export function rangeBusinessDays(period: Period, startDate?: string, endDate?: string) {
-  // Implementación inicial: delega a rangeFromPeriod.
+  // Para hoy/ayer, usamos el "business day" actual según cutoff (America/Lima)
+  // para alinear métricas/tablas con la etiqueta Scan.businessDay.
+  if (period === 'today' || period === 'yesterday') {
+    // Import tardío para evitar ciclos si algún consumidor importa date.ts desde attendanceDay.ts
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { currentBusinessDay } = require('./attendanceDay') as { currentBusinessDay: () => string };
+    const base = currentBusinessDay(); // YYYY-MM-DD del día de trabajo activo
+    const baseDate = new Date(base + 'T00:00:00.000Z');
+    const day = period === 'today' ? base : ymdUtc(addDays(baseDate, -1));
+    const start = new Date(day + 'T00:00:00.000Z');
+    const end = addDays(start, 1);
+    return { name: period, start, end, startIso: start.toISOString(), endIso: end.toISOString(), startDay: day, endDay: day };
+  }
+  // Resto de periodos calendario en UTC (semana/mes/custom)
   return rangeFromPeriod(period, startDate, endDate);
 }
