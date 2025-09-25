@@ -92,9 +92,9 @@ export async function POST(req: Request) {
       });
       const scanId = created.id;
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, businessDay }) } });
-      // Provide undo window hint for client when OUT
-      const undoWindowMs = mode === 'OUT' ? 30_000 : 0;
-      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [], undoWindowMs }, { status: 200 });
+  // Undo disabled: do not expose undo window to client
+  const undoWindowMs = 0;
+  return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [], undoWindowMs }, { status: 200 });
     } else {
       // Legacy UTC-day logic (fallback) but still store computed businessDay for metrics compatibility
       const now = new Date();

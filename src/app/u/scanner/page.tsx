@@ -127,7 +127,6 @@ export default function UserScannerPage() {
             const params = new URLSearchParams();
             params.set('day', day);
             if (json.scanId) params.set('scanId', json.scanId);
-            if (json.undoWindowMs) params.set('undoMs', String(json.undoWindowMs));
             window.location.href = `/u/closed?${params.toString()}`;
           }
         }, 700);

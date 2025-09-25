@@ -83,7 +83,6 @@ export default function ManualAttendancePage() {
             const usp = new URLSearchParams();
             usp.set('day', day);
             if (json.scanId) usp.set('scanId', json.scanId);
-            if (json.undoWindowMs) usp.set('undoMs', String(json.undoWindowMs));
             window.location.href = `/u/closed?${usp.toString()}`;
           }
         }, 700);
