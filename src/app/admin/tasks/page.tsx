@@ -1,18 +1,340 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ALLOWED_AREAS } from '@/lib/areas';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 type Task = { id: string; label: string; completed?: boolean; sortOrder: number; priority?: number; startDay?: string | null; endDay?: string | null; area?: string | null; completedToday?: number; sumValueToday?: number; measureEnabled?: boolean; targetValue?: number | null; unitLabel?: string | null };
 
+function AreaSection(props: {
+  areaKey: string;
+  allTasks: Task[];
+  statusFilter: string;
+  onUpdateTask: (id: string, patch: Partial<Task>) => Promise<void>;
+  onDeleteTask: (id: string) => Promise<void>;
+  onCreateTaskInArea: (areaKey: string, refsKey: string) => Promise<void>;
+  createRefs: React.MutableRefObject<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null }>>;
+  creatingRef: React.MutableRefObject<Set<string>>;
+  todayYmd: () => string;
+  load: () => Promise<void>;
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+}) {
+  const { areaKey, allTasks, statusFilter, onUpdateTask: updateTask, onDeleteTask: deleteTask, onCreateTaskInArea: createTaskInArea, createRefs, creatingRef, todayYmd, load, setTasks } = props;
+  let groupTasks = allTasks.filter(t => (t.area || '') === areaKey);
+  if (statusFilter === 'pending') groupTasks = groupTasks.filter(t => !t.completed);
+  else if (statusFilter === 'completed') groupTasks = groupTasks.filter(t => !!t.completed);
+  const label = areaKey === '' ? 'Todos' : areaKey;
+  const canDrag = statusFilter === '__ALL';
+
+  const dragItemId = useRef<string | null>(null);
+  const [localOrder, setLocalOrder] = useState<string[]>(groupTasks.map(t => t.id));
+  useEffect(() => {
+    setLocalOrder(groupTasks.map(t => t.id));
+  }, [allTasks, areaKey, statusFilter]);
+
+  // Persist a given order of IDs for this area
+  const persistOrder = async (ids: string[]) => {
+    try {
+      const res = await fetch('/api/admin/tasks/reorder', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ area: areaKey || null, ids }),
+      });
+      if (!res.ok) await load();
+    } catch { await load(); }
+  };
+
+  const applyLocalOrder = (ids: string[]) => {
+    setLocalOrder(ids);
+    // optimistic UI across tasks of this area
+    setTasks((old) => {
+      const reorderedSet = new Set(ids);
+      const kept = old.filter(t => (t.area || '') !== areaKey);
+      const reordered = ids.map(id => old.find(t => t.id === id)!).filter(Boolean) as Task[];
+      const unaffectedInArea = old.filter(t => (t.area || '') === areaKey && !reorderedSet.has(t.id));
+      return [...kept, ...reordered, ...unaffectedInArea];
+    });
+  };
+
+  const moveItem = (id: string, dir: 'up' | 'down') => {
+    if (!canDrag) return;
+    setLocalOrder((prev) => {
+      const ids = prev.slice();
+      const idx = ids.indexOf(id);
+      if (idx === -1) return prev;
+      const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+      if (swapWith < 0 || swapWith >= ids.length) return prev;
+      [ids[idx], ids[swapWith]] = [ids[swapWith], ids[idx]];
+      applyLocalOrder(ids);
+      // persist asynchronously
+      void persistOrder(ids);
+      return ids;
+    });
+  };
+
+  const onDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
+    if (!canDrag) return;
+    dragItemId.current = id;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', id); } catch {}
+  };
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!canDrag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+  const onDrop = async (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
+    if (!canDrag) return;
+    e.preventDefault();
+    const sourceId = dragItemId.current || targetId;
+    if (!sourceId || sourceId === targetId) return;
+    setLocalOrder((prev) => {
+      const ids = prev.slice();
+      const from = ids.indexOf(sourceId);
+      const to = ids.indexOf(targetId);
+      if (from === -1 || to === -1) return prev;
+      ids.splice(from, 1);
+      ids.splice(to, 0, sourceId);
+      applyLocalOrder(ids);
+      void persistOrder(ids);
+      return ids;
+    });
+  };
+
+  return (
+    <div key={`sec-${areaKey}`} className="mb-6">
+      <div className="mb-2 font-semibold text-gray-100 bg-gray-800/60 rounded px-2 py-1 flex items-center justify-between">
+        <span>{label}</span>
+        {!canDrag && (
+          <span className="text-xs text-gray-400">Para reordenar, cambia el filtro de estado a "Todas"</span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {groupTasks
+          .sort((a, b) => (localOrder.indexOf(a.id)) - (localOrder.indexOf(b.id)))
+          .map((t) => {
+            return (
+              <div
+                key={t.id}
+                className={`rounded border border-gray-700 bg-gray-900 p-3 ${canDrag ? 'cursor-move' : ''}`}
+                draggable={canDrag}
+                onDragStart={(e)=> onDragStart(e, t.id)}
+                onDragOver={onDragOver}
+                onDrop={(e)=> onDrop(e, t.id)}
+              >
+                {canDrag && (
+                  <div className="mb-1 flex items-center justify-between text-xs text-gray-400">
+                    <span className="hidden sm:inline">Arrastra para reordenar</span>
+                    <div className="sm:hidden flex items-center gap-1">
+                      <button
+                        className="px-2 py-0.5 rounded border border-gray-700 hover:bg-gray-800"
+                        onClick={() => moveItem(t.id, 'up')}
+                        aria-label="Mover arriba"
+                      >▲</button>
+                      <button
+                        className="px-2 py-0.5 rounded border border-gray-700 hover:bg-gray-800"
+                        onClick={() => moveItem(t.id, 'down')}
+                        aria-label="Mover abajo"
+                      >▼</button>
+                    </div>
+                  </div>
+                )}
+                <div className="mb-2">
+                  <input className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue={t.label} onBlur={(e)=>{
+                    const v = e.target.value.trim(); if (v && v !== t.label) updateTask(t.id, { label: v });
+                  }} />
+                </div>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-4 text-xs">
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name={`status-${t.id}`} checked={!t.completed} onChange={() => updateTask(t.id, { completed: false } as any)} />
+                      <span>Pendiente</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1">
+                      <input type="radio" name={`status-${t.id}`} checked={!!t.completed} onChange={() => updateTask(t.id, { completed: true } as any)} />
+                      <span>Completada</span>
+                    </label>
+                  </div>
+                  {/* Prioridad: control responsive */}
+                  {/* Desktop/Tablet: select con etiquetas completas */}
+                  <div className="hidden sm:block">
+                    <select
+                      className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      defaultValue={(t.priority ?? 0).toString()}
+                      onChange={(e)=>{
+                        const v = Math.floor(Number(e.target.value) || 0);
+                        if (v !== (t.priority || 0)) updateTask(t.id, { priority: v } as any);
+                      }}
+                    >
+                      <option value={2}>Rojo (Alta)</option>
+                      <option value={1}>Amarillo (Media)</option>
+                      <option value={0}>Verde (Baja)</option>
+                    </select>
+                  </div>
+                  {/* Móvil: grupo compacto de botones */}
+                  <div className="flex sm:hidden w-full justify-end">
+                    <div className="inline-flex items-center gap-1 text-xs">
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded border ${t.priority === 2 ? 'bg-red-700 border-red-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-red-800`}
+                        onClick={()=> { if ((t.priority || 0) !== 2) updateTask(t.id, { priority: 2 } as any); }}
+                        aria-label="Prioridad alta"
+                        title="Prioridad alta"
+                      >Alta</button>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded border ${t.priority === 1 ? 'bg-yellow-700 border-yellow-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-yellow-800`}
+                        onClick={()=> { if ((t.priority || 0) !== 1) updateTask(t.id, { priority: 1 } as any); }}
+                        aria-label="Prioridad media"
+                        title="Prioridad media"
+                      >Media</button>
+                      <button
+                        type="button"
+                        className={`px-2 py-1 rounded border ${t.priority === 0 ? 'bg-green-700 border-green-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-green-800`}
+                        onClick={()=> { if ((t.priority || 0) !== 0) updateTask(t.id, { priority: 0 } as any); }}
+                        aria-label="Prioridad baja"
+                        title="Prioridad baja"
+                      >Baja</button>
+                    </div>
+                  </div>
+                </div>
+                {/* Área select removed: las tarjetas ya están agrupadas por área */}
+                <div className="mb-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-400">Inicio</label>
+                    <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.startDay || ''} onBlur={(e)=>{
+                      const v = e.target.value.trim(); if ((t.startDay || '') !== v) updateTask(t.id, { startDay: v || null } as any);
+                    }} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Vencimiento</label>
+                    <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.endDay || ''} onBlur={(e)=>{
+                      const v = e.target.value.trim(); if ((t.endDay || '') !== v) updateTask(t.id, { endDay: v || null } as any);
+                    }} />
+                  </div>
+                  {typeof t.completedToday === 'number' && (
+                    <div className="text-xs text-gray-400">Completadas hoy: <span className="font-mono">{t.completedToday}</span></div>
+                  )}
+                  {t.measureEnabled && (
+                    <div className="text-xs text-gray-400">Avance hoy: <span className="font-mono">{Number(t.sumValueToday || 0)}</span> {t.unitLabel || ''}</div>
+                  )}
+                </div>
+                {/* Medición (config admin) */}
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={!!t.measureEnabled}
+                      onChange={(e) => {
+                        const v = e.target.checked;
+                        updateTask(t.id, { measureEnabled: v } as any);
+                      }}
+                    />
+                    <span>Tarea medible</span>
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    placeholder="Objetivo"
+                    defaultValue={typeof t.targetValue === 'number' ? t.targetValue : ''}
+                    onBlur={(e) => {
+                      const raw = e.target.value;
+                      const val = raw === '' ? null : Math.max(0, Math.floor(Number(raw)) || 0);
+                      updateTask(t.id, { targetValue: val } as any);
+                    }}
+                    className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Unidad"
+                    defaultValue={t.unitLabel ?? ''}
+                    onBlur={(e) => {
+                      const s = (e.target.value || '').toString().trim().slice(0, 30);
+                      updateTask(t.id, { unitLabel: s.length === 0 ? null : s } as any);
+                    }}
+                    className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={30}
+                  />
+                </div>
+                <div className="text-right">
+                  <button className="text-red-500 hover:underline" onClick={()=> deleteTask(t.id)}>Eliminar</button>
+                </div>
+              </div>
+            );
+          })}
+        {/* Create card */}
+        {(() => {
+          const refsKey = `${areaKey}-new`;
+          if (!createRefs.current[refsKey]) createRefs.current[refsKey] = { label: null, priority: null, start: null, end: null, measureEnabled: null, targetValue: null, unitLabel: null };
+          return (
+            <div key={`new-${areaKey}`} className="rounded border border-dashed border-gray-700 bg-gray-900 p-3">
+              <div className="mb-2 font-medium text-gray-300">Nueva tarea</div>
+              <div className="mb-2">
+                <input ref={el => (createRefs.current[refsKey].label = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Etiqueta de la tarea" />
+              </div>
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <select ref={el => (createRefs.current[refsKey].priority = el)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue="">
+                  <option value="">Prioridad</option>
+                  <option value={2}>Rojo (Alta)</option>
+                  <option value={1}>Amarillo (Media)</option>
+                  <option value={0}>Verde (Baja)</option>
+                </select>
+                <div className="text-gray-400 text-sm flex items-center">Área: <span className="ml-1 text-gray-200">{label}</span></div>
+              </div>
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <input ref={el => (createRefs.current[refsKey].start = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={todayYmd()} />
+                <input ref={el => (createRefs.current[refsKey].end = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" />
+              </div>
+              {/* Medición (opcional al crear) */}
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+                <label className="inline-flex items-center gap-1">
+                  <input
+                    ref={el => (createRefs.current[refsKey].measureEnabled = el)}
+                    type="checkbox"
+                  />
+                  <span>Tarea medible</span>
+                </label>
+                <input
+                  ref={el => (createRefs.current[refsKey].targetValue = el)}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  placeholder="Objetivo"
+                  className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  ref={el => (createRefs.current[refsKey].unitLabel = el)}
+                  type="text"
+                  placeholder="Unidad"
+                  className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  maxLength={30}
+                />
+              </div>
+              <div className="text-right">
+                <button className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50" onClick={()=> createTaskInArea(areaKey, refsKey)} disabled={creatingRef.current.has(refsKey)}>Crear</button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminTasksPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Card create inputs will use refs per slot; no global create form
   const creatingRef = useRef<Set<string>>(new Set());
-  // Area filter: "__ALL" shows grouped view, "" means Global, or a specific area value
-  const [areaFilter, setAreaFilter] = useState<string>("__ALL");
+  // Area filter: "" = Todos (global), or a specific area value from ALLOWED_AREAS
+  const [areaFilter, setAreaFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("pending"); // pending | completed | __ALL
 
   const load = useMemo(() => async () => {
@@ -32,6 +354,23 @@ export default function AdminTasksPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Initialize area from URL (?area=) and keep it in sync
+  useEffect(() => {
+    const a = (searchParams?.get('area') || '').toString();
+    // Validate area: allow '' (Todos) or one of ALLOWED_AREAS; otherwise default ''
+    const allowed = a === '' || (ALLOWED_AREAS as readonly string[]).includes(a);
+    setAreaFilter(allowed ? a : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const changeArea = (a: string) => {
+    setAreaFilter(a);
+    const params = new URLSearchParams(Array.from(searchParams?.entries?.() || []));
+    if (a === '') params.delete('area'); else params.set('area', a);
+    const qs = params.toString();
+    router.replace(`/admin/tasks${qs ? `?${qs}` : ''}`);
+  };
 
   // Live updates via SSE
   useEffect(() => {
@@ -169,185 +508,49 @@ export default function AdminTasksPage() {
   // Refs per-slot for create inputs
   const createRefs = useRef<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null }>>({});
 
-  const renderAreaSection = (areaKey: string) => {
-  let groupTasks = tasks.filter(t => (t.area || '') === areaKey);
-  if (statusFilter === 'pending') groupTasks = groupTasks.filter(t => !t.completed);
-  else if (statusFilter === 'completed') groupTasks = groupTasks.filter(t => !!t.completed);
-    const label = areaKey === '' ? '(Todos)' : areaKey;
-    return (
-      <div key={`sec-${areaKey}`} className="mb-6">
-        <div className="mb-2 font-semibold text-gray-100 bg-gray-800/60 rounded px-2 py-1">{label}</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {groupTasks.map((t) => {
-              return (
-                <div key={t.id} className="rounded border border-gray-700 bg-gray-900 p-3">
-                  <div className="mb-2">
-                    <input className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue={t.label} onBlur={(e)=>{
-                      const v = e.target.value.trim(); if (v && v !== t.label) updateTask(t.id, { label: v });
-                    }} />
-                  </div>
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-4 text-xs">
-                      <label className="inline-flex items-center gap-1">
-                        <input type="radio" name={`status-${t.id}`} checked={!t.completed} onChange={() => updateTask(t.id, { completed: false } as any)} />
-                        <span>Pendiente</span>
-                      </label>
-                      <label className="inline-flex items-center gap-1">
-                        <input type="radio" name={`status-${t.id}`} checked={!!t.completed} onChange={() => updateTask(t.id, { completed: true } as any)} />
-                        <span>Completada</span>
-                      </label>
-                    </div>
-                    <select className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue={(t.priority ?? 0).toString()} onChange={(e)=>{
-                      const v = Math.floor(Number(e.target.value) || 0);
-                      if (v !== (t.priority || 0)) updateTask(t.id, { priority: v } as any);
-                    }}>
-                      <option value={2}>Rojo (Alta)</option>
-                      <option value={1}>Amarillo (Media)</option>
-                      <option value={0}>Verde (Baja)</option>
-                    </select>
-                  </div>
-                  {/* Área select removed: las tarjetas ya están agrupadas por área */}
-                  <div className="mb-2 grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-400">Inicio</label>
-                      <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.startDay || ''} onBlur={(e)=>{
-                        const v = e.target.value.trim(); if ((t.startDay || '') !== v) updateTask(t.id, { startDay: v || null } as any);
-                      }} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400">Vencimiento</label>
-                      <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.endDay || ''} onBlur={(e)=>{
-                        const v = e.target.value.trim(); if ((t.endDay || '') !== v) updateTask(t.id, { endDay: v || null } as any);
-                      }} />
-                    </div>
-                    {typeof t.completedToday === 'number' && (
-                      <div className="text-xs text-gray-400">Completadas hoy: <span className="font-mono">{t.completedToday}</span></div>
-                    )}
-                    {t.measureEnabled && (
-                      <div className="text-xs text-gray-400">Avance hoy: <span className="font-mono">{Number(t.sumValueToday || 0)}</span> {t.unitLabel || ''}</div>
-                    )}
-                  </div>
-                  {/* Medición (config admin) */}
-                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-300">
-                    <label className="inline-flex items-center gap-1">
-                      <input
-                        type="checkbox"
-                        checked={!!t.measureEnabled}
-                        onChange={(e) => {
-                          const v = e.target.checked;
-                          updateTask(t.id, { measureEnabled: v } as any);
-                        }}
-                      />
-                      <span>Tarea medible</span>
-                    </label>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      placeholder="Objetivo"
-                      defaultValue={typeof t.targetValue === 'number' ? t.targetValue : ''}
-                      onBlur={(e) => {
-                        const raw = e.target.value;
-                        const val = raw === '' ? null : Math.max(0, Math.floor(Number(raw)) || 0);
-                        updateTask(t.id, { targetValue: val } as any);
-                      }}
-                      className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Unidad"
-                      defaultValue={t.unitLabel ?? ''}
-                      onBlur={(e) => {
-                        const s = (e.target.value || '').toString().trim().slice(0, 30);
-                        updateTask(t.id, { unitLabel: s.length === 0 ? null : s } as any);
-                      }}
-                      className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      maxLength={30}
-                    />
-                  </div>
-                  <div className="text-right">
-                    <button className="text-red-500 hover:underline" onClick={()=> deleteTask(t.id)}>Eliminar</button>
-                  </div>
-                </div>
-              );
-            })}
-            {/* Create card */}
-            {(() => {
-              const refsKey = `${areaKey}-new`;
-            if (!createRefs.current[refsKey]) createRefs.current[refsKey] = { label: null, priority: null, start: null, end: null, measureEnabled: null, targetValue: null, unitLabel: null };
-              return (
-              <div key={`new-${areaKey}`} className="rounded border border-dashed border-gray-700 bg-gray-900 p-3">
-                <div className="mb-2 font-medium text-gray-300">Nueva tarea</div>
-                <div className="mb-2">
-                  <input ref={el => (createRefs.current[refsKey].label = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Etiqueta de la tarea" />
-                </div>
-                <div className="mb-2 grid grid-cols-2 gap-2">
-                  <select ref={el => (createRefs.current[refsKey].priority = el)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue="">
-                    <option value="">Prioridad</option>
-                    <option value={2}>Rojo (Alta)</option>
-                    <option value={1}>Amarillo (Media)</option>
-                    <option value={0}>Verde (Baja)</option>
-                  </select>
-                  <div className="text-gray-400 text-sm flex items-center">Área: <span className="ml-1 text-gray-200">{label}</span></div>
-                </div>
-                <div className="mb-2 grid grid-cols-2 gap-2">
-                  <input ref={el => (createRefs.current[refsKey].start = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={todayYmd()} />
-                  <input ref={el => (createRefs.current[refsKey].end = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" />
-                </div>
-                {/* Medición (opcional al crear) */}
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-300">
-                  <label className="inline-flex items-center gap-1">
-                    <input
-                      ref={el => (createRefs.current[refsKey].measureEnabled = el)}
-                      type="checkbox"
-                    />
-                    <span>Tarea medible</span>
-                  </label>
-                  <input
-                    ref={el => (createRefs.current[refsKey].targetValue = el)}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    step={1}
-                    placeholder="Objetivo"
-                    className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <input
-                    ref={el => (createRefs.current[refsKey].unitLabel = el)}
-                    type="text"
-                    placeholder="Unidad"
-                    className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    maxLength={30}
-                  />
-                </div>
-                <div className="text-right">
-                  <button className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50" onClick={()=> createTaskInArea(areaKey, refsKey)} disabled={creatingRef.current.has(refsKey)}>Crear</button>
-                </div>
-              </div>
-              );
-            })()}
-        </div>
-      </div>
-    );
-  };
+  const renderAreaSection = (areaKey: string) => (
+    <AreaSection
+      key={`area-${areaKey || 'todos'}`}
+      areaKey={areaKey}
+      allTasks={tasks}
+      statusFilter={statusFilter}
+      onUpdateTask={updateTask}
+      onDeleteTask={deleteTask}
+      onCreateTaskInArea={createTaskInArea}
+      createRefs={createRefs}
+      creatingRef={creatingRef}
+      todayYmd={todayYmd}
+      load={load}
+      setTasks={setTasks}
+    />
+  );
 
   return (
     <div className="max-w-3xl mx-auto p-4">
       <h1 className="text-2xl font-semibold mb-4">Tareas (Checklist)</h1>
 
+      {/* Tabs: Todos + cada área */}
+      <div className="mb-3 overflow-x-auto">
+        <div className="inline-flex items-center gap-1 border-b border-gray-700">
+          {['', ...ALLOWED_AREAS].map((a) => {
+            const active = areaFilter === a;
+            const label = a === '' ? 'Todos' : a;
+            return (
+              <button
+                key={`tab-${a || 'todos'}`}
+                onClick={() => changeArea(a)}
+                className={`${active ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-300 hover:text-gray-100'} px-3 py-2`}
+                aria-current={active ? 'page' : undefined}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex items-center gap-3 mb-4">
-        <label className="text-sm text-gray-300">Filtrar por área:</label>
-        <select
-          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-60 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          value={areaFilter}
-          onChange={(e)=> setAreaFilter(e.target.value)}
-        >
-          <option value="__ALL">Todas las áreas (agrupado)</option>
-          <option value="">(Todos)</option>
-          {ALLOWED_AREAS.map(a => (<option key={a} value={a}>{a}</option>))}
-        </select>
-        <label className="text-sm text-gray-300 ml-4">Estado:</label>
+        <label className="text-sm text-gray-300">Estado:</label>
         <select
           className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           value={statusFilter}
@@ -361,11 +564,7 @@ export default function AdminTasksPage() {
 
       {loading ? (<div>Cargando…</div>) : error ? (<div className="text-red-600">{error}</div>) : (
         <div>
-          {areaFilter === "__ALL" ? (
-            ALLOWED_AREAS.map((k) => renderAreaSection(k))
-          ) : (
-            renderAreaSection(areaFilter)
-          )}
+          {renderAreaSection(areaFilter)}
         </div>
       )}
     </div>

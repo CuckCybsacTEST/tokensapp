@@ -1,10 +1,13 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { composeTemplateWithQr } from '@/lib/print/compose';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
 import qrcode from 'qrcode';
+import os from 'os';
+import { writeFile, unlink } from 'fs/promises';
+import { randomUUID } from 'crypto';
 
 export async function GET(req: Request) {
   try {
@@ -121,6 +124,90 @@ export async function GET(req: Request) {
 
   } catch (err: any) {
     console.error('print preview error', err);
+    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+  }
+}
+
+// POST /api/print/control/preview
+// Accepts multipart/form-data with a 'file' field (image) and optional 'meta' JSON string.
+// Generates a composed preview (template + example QR) without persisting anything.
+export async function POST(req: NextRequest) {
+  try {
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+    const roleCheck = requireRole(session, ['ADMIN']);
+    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+
+    // Parse multipart form
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const metaStr = (formData.get('meta') as string | null) ?? null;
+
+    if (!file) {
+      return NextResponse.json({ error: 'MISSING_FILE' }, { status: 400 });
+    }
+    if (!file.type?.startsWith('image/')) {
+      return NextResponse.json({ error: 'INVALID_FILE_TYPE' }, { status: 400 });
+    }
+
+    // Defaults; allow override via meta if provided
+    let dpi = 300;
+    let qrMeta = { xMm: 150, yMm: 230, widthMm: 30, rotationDeg: 0 } as {
+      xMm: number; yMm: number; widthMm: number; rotationDeg?: number;
+    };
+    if (metaStr) {
+      try {
+        const parsed = JSON.parse(metaStr);
+        if (parsed?.dpi) dpi = Number(parsed.dpi) || dpi;
+        if (parsed?.qr) {
+          qrMeta = { ...qrMeta, ...parsed.qr };
+        }
+      } catch (e) {
+        // ignore malformed meta; keep defaults
+      }
+    }
+
+    // Write the uploaded image to a temporary file so composeTemplateWithQr can read it
+    const arrayBuffer = await file.arrayBuffer();
+    const tmpDir = os.tmpdir();
+    const ext = (file.name?.split('.')?.pop() || 'png').toLowerCase();
+    const tmpPath = path.join(tmpDir, `preview-${randomUUID()}.${ext}`);
+    await writeFile(tmpPath, new Uint8Array(arrayBuffer));
+
+    // Generate example QR
+    const exampleQrUrl = 'https://ejemplo.com/qr-de-ejemplo';
+    const qrBuffer = await qrcode.toBuffer(exampleQrUrl, {
+      errorCorrectionLevel: 'M',
+      width: 300,
+      margin: 1,
+      color: { dark: '#000000', light: '#FFFFFF' },
+    });
+
+    try {
+      const previewImage = await composeTemplateWithQr({
+        templatePath: tmpPath,
+        qrBuffer,
+        qrMetadata: qrMeta,
+        dpi,
+      });
+
+      const uint8Array = new Uint8Array(previewImage);
+      return new NextResponse(uint8Array, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+    } finally {
+      // Best-effort cleanup
+      try { await unlink(tmpPath); } catch {}
+    }
+  } catch (err: any) {
+    console.error('print preview (upload) error', err);
     return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
   }
 }

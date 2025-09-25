@@ -20,6 +20,7 @@ export function PrintControlClient() {
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState<string>("");
+  const [previewing, setPreviewing] = useState(false);
 
   // Función para generar un QR de ejemplo para previsualización
   const generatePreviewQR = async (templateId: string) => {
@@ -74,6 +75,8 @@ export function PrintControlClient() {
     }
   };
 
+  // Vista previa efímera eliminada: la UI se limita a plantillas persistentes
+
   // Cargar lotes y plantillas disponibles
   useEffect(() => {
     let mounted = true; // Para evitar actualizar el estado si el componente se desmonta
@@ -111,41 +114,11 @@ export function PrintControlClient() {
         const templatesData = await templatesRes.json();
         if (!mounted) return;
         setTemplates(templatesData);
-
-        // Seleccionar la última plantilla subida por defecto
-        if (templatesData.length > 0) {
-          // Ordenar por fecha de creación descendente y tomar la primera
-          const latestTemplate = [...templatesData].sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )[0];
-          
-          if (latestTemplate) {
-            setSelectedTemplateId(latestTemplate.id);
-            
-            // Primero mostrar la plantilla base sin QR mientras carga el preview
-            const imagePath = latestTemplate.filePath.replace(/^public\//, '/');
-            if (mounted) setTemplatePreview(imagePath);
-            
-            // Intentar precargar la imagen base
-            const img = document.createElement('img');
-            img.src = `${imagePath}?t=${timestamp}`;
-            
-            // Después de precargar la base, generar vista previa con QR
-            img.onload = async () => {
-              if (!mounted) return;
-              try {
-                const previewWithQR = await generatePreviewQR(latestTemplate.id);
-                if (!mounted) return;
-                
-                if (previewWithQR) {
-                  setTemplatePreview(previewWithQR);
-                }
-              } catch (previewErr) {
-                console.error("Error al generar preview inicial:", previewErr);
-              }
-            };
-          }
-        }
+        // Nota: No autoseleccionamos una plantilla por defecto para evitar spinners no deseados.
+        // El usuario puede previsualizar sin guardar o subir y luego ver la vista previa.
+        // Limpiamos cualquier preview residual.
+        setSelectedTemplateId("");
+        setTemplatePreview(null);
         
         if (mounted) setLoading(false);
       } catch (err: any) {
@@ -232,6 +205,8 @@ export function PrintControlClient() {
     }
   };
 
+  // Selector efímero eliminado
+
   // Función para subir una nueva plantilla
   const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -314,9 +289,10 @@ export function PrintControlClient() {
         setTemplatePreview(baseTemplatePath);
       }
       
-      // Generar vista previa con QR ejemplo - esperamos a que termine
-      console.log('Generando vista previa de QR para la nueva plantilla:', newTemplate.id);
-      const previewUrl = await generatePreviewQR(newTemplate.id);
+  // Generar vista previa con QR ejemplo - esperamos a que termine
+  console.log('Generando vista previa de QR para la nueva plantilla:', newTemplate.id);
+  setPreviewing(true);
+  const previewUrl = await generatePreviewQR(newTemplate.id);
       
       if (previewUrl) {
         console.log('Vista previa generada correctamente:', previewUrl);
@@ -355,13 +331,16 @@ export function PrintControlClient() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    } catch (err: any) {
+      } catch (err: any) {
       console.error("Error al subir la plantilla:", err);
       setError(`Error al subir la plantilla: ${err.message}`);
     } finally {
       setUploadingTemplate(false);
+      setPreviewing(false);
     }
   };
+
+  // Manejo de archivo efímero eliminado
 
   // Función para generar PDF
   const handleGeneratePdf = async () => {
@@ -605,8 +584,8 @@ export function PrintControlClient() {
                 </div>
               )}
               
-              {/* Indicador de carga si es una plantilla base sin QR aún */}
-              {templatePreview && !templatePreview.startsWith('blob:') && !templatePreview.startsWith('data:') && (
+              {/* Indicador de carga solo cuando estamos generando explícitamente una vista previa */}
+              {previewing && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <div className="text-white flex flex-col items-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-2"></div>
@@ -623,6 +602,7 @@ export function PrintControlClient() {
               )}
             </div>
           </div>
+          {/* Controles efímeros eliminados para simplificar la UI */}
           <p className="text-xs text-slate-500 mt-2 text-center">
             La posición del QR en esta vista previa representa la ubicación exacta en la impresión final.
           </p>
