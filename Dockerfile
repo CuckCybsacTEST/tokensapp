@@ -6,7 +6,7 @@ ARG NODE_VERSION=20
 # Use AWS Public ECR mirror of Docker Official Images (avoids Docker Hub rate limits)
 FROM public.ecr.aws/docker/library/node:${NODE_VERSION}-alpine AS base
 USER root
-RUN apk add --no-cache openssl ca-certificates
+RUN apk add --no-cache openssl ca-certificates libc6-compat
 WORKDIR /app
 
 # Install dependencies only when needed
@@ -15,7 +15,9 @@ FROM base AS deps
 COPY prisma/schema.prisma ./prisma/schema.prisma
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN \
-  if [ -f package-lock.json ]; then npm ci; \
+  # Skip lifecycle scripts here to avoid running postinstall (prisma generate) twice
+  # Prisma Client will be generated explicitly in the next stage
+  if [ -f package-lock.json ]; then npm ci --ignore-scripts --no-audit --fund=false; \
   elif [ -f pnpm-lock.yaml ]; then npm i -g pnpm@9 && pnpm install --frozen-lockfile; \
   elif [ -f yarn.lock ]; then npm i -g yarn && yarn install --frozen-lockfile; \
   else npm install; fi
@@ -27,7 +29,9 @@ RUN npx prisma generate
 
 # Build the application
 FROM prisma AS builder
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+  NODE_OPTIONS=--max_old_space_size=2048 \
+  NEXT_PRIVATE_BUILD_WORKERS=2
 COPY . .
 # Ensure env defaults for build (DATABASE_URL may be unused at build but prisma generate might need it)
 ENV DATABASE_URL="file:./prisma/dev.db"
@@ -40,8 +44,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 USER root
-# Ensure Prisma engines have OpenSSL available at runtime
-RUN apk add --no-cache openssl ca-certificates
+# Ensure Prisma engines and Next native deps have required libs at runtime
+RUN apk add --no-cache openssl ca-certificates libc6-compat
 
 # Copy node_modules (with Prisma Client already generated) and production build
 COPY --from=prisma /app/node_modules ./node_modules
