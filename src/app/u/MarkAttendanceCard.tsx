@@ -6,59 +6,18 @@ type Props = {
   nextAction: "IN" | "OUT";
 };
 
-function ensureDeviceId(): string {
-  try {
-    const key = "scannerDeviceId";
-    let v = localStorage.getItem(key);
-    if (!v) { v = crypto.randomUUID(); localStorage.setItem(key, v); }
-    return v;
-  } catch { return "home"; }
-}
-
 export default function MarkAttendanceCard({ nextAction }: Props) {
   const [holdMs, setHoldMs] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [loading] = useState(false);
+  const [msg] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
 
-  const callMark = async (mode: "IN" | "OUT") => {
-    setLoading(true);
-    setMsg(null);
-    try {
-      const deviceId = ensureDeviceId();
-      const res = await fetch('/api/attendance/mark', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, deviceId }) });
-      const json: any = await res.json().catch(() => ({}));
-      if (res.ok && json?.ok) {
-        const day = (json && typeof json.businessDay === 'string' && json.businessDay) || new Date().toISOString().slice(0,10);
-        setTimeout(() => {
-          if (mode === 'IN') {
-            window.location.href = `/u/checklist?day=${day}&mode=IN`;
-          } else {
-            const usp = new URLSearchParams();
-            usp.set('day', day);
-            if (json.scanId) usp.set('scanId', json.scanId);
-            window.location.href = `/u/closed?${usp.toString()}`;
-          }
-        }, 200);
-      } else {
-        let code = String(json?.code || 'ERROR');
-        if (code === 'DUPLICATE') code = 'REPLAY';
-        const human = code === 'REPLAY' ? 'Intento duplicado (<10s)' :
-                       code === 'PERSON_INACTIVE' ? 'Persona inactiva' :
-                       code === 'ALREADY_TODAY' ? 'Ya registraste esta acción hoy' :
-                       code === 'NO_IN_TODAY' ? 'No puedes registrar salida sin haber registrado entrada hoy' :
-                       code === 'OUT_COOLDOWN' ? `Debes esperar ${json?.waitSeconds ?? 60}s desde tu entrada antes de registrar salida` : code;
-        setMsg(human);
-      }
-    } catch (e: any) {
-      setMsg(`Fallo de red: ${String(e?.message || e)}`);
-    } finally {
-      setLoading(false);
-    }
+  const goToScanner = () => {
+    window.location.href = '/u/scanner?from=home';
   };
 
   const startHoldIfOut = () => {
-    if (nextAction !== 'OUT') { void callMark('IN'); return; }
+  if (nextAction !== 'OUT') { goToScanner(); return; }
     if (loading) return;
     setHoldMs(0);
     const start = Date.now();
@@ -69,7 +28,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
         window.clearInterval(id);
         timerRef.current = null;
         setHoldMs(0);
-        void callMark('OUT');
+        goToScanner();
       }
     }, 50);
     timerRef.current = id as unknown as number;
