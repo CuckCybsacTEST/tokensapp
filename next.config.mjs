@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   eslint: {
     // Permitir build aunque existan errores de lint (para smoke tests rápidos)
     ignoreDuringBuilds: true,
