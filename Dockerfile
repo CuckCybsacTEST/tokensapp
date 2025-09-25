@@ -59,7 +59,7 @@ EXPOSE 3000
 # Health environment defaults
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
-"# Ensure runtime has permissions over app dir (including sqlite file path)"
+# Ensure runtime has permissions over app dir (including sqlite file path)
 RUN chown -R 65532:65532 /app
 
 # Start command via entrypoint script (auto prisma db push for SQLite)
