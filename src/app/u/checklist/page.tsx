@@ -379,6 +379,36 @@ function ChecklistPageInner() {
   const nextActionLabel = nextAction === 'IN' ? 'Registrar entrada' : 'Registrar salida';
   const lockedAfterOut = lastTodayType === 'OUT';
   const canEdit = lastTodayType === 'IN';
+  const [comment, setComment] = useState("");
+  const [commentMsg, setCommentMsg] = useState<string | null>(null);
+  const [commentErr, setCommentErr] = useState<string | null>(null);
+  const [commentSaving, setCommentSaving] = useState(false);
+
+  async function submitComment() {
+    if (!isValidDay(day)) return;
+    const text = comment.trim();
+    if (!text) { setCommentErr('Escribe un comentario'); return; }
+    setCommentErr(null); setCommentMsg(null); setCommentSaving(true);
+    try {
+      const r = await fetch('/api/checklist/comment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day, text })
+      });
+      const j = await r.json().catch(()=>({}));
+      if (r.ok && j?.ok) {
+        setComment(''); setCommentMsg('Comentario enviado');
+        setTimeout(()=> setCommentMsg(null), 2000);
+      } else {
+        const m = j?.code || j?.message || r.status;
+        const map: Record<string,string> = { RATE_LIMIT: 'Muy rápido. Intenta en unos segundos', INVALID_DAY: 'Día inválido' };
+        setCommentErr(map[String(m)] || `No se pudo enviar (${m})`);
+      }
+    } catch (e: any) {
+      setCommentErr(`Error de red: ${String(e?.message || e)}`);
+    } finally {
+      setCommentSaving(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -424,6 +454,23 @@ function ChecklistPageInner() {
                 {brief.updatedAt && <div className="mt-2 text-[11px] opacity-60">Actualizado: {new Date(brief.updatedAt).toLocaleString()}</div>}
               </div>
             )}
+            {/* Optional collaborator comment */}
+            <div className="mt-4 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+              <div className="font-medium mb-1">Comentario (opcional)</div>
+              {commentMsg && <div className="mb-2 text-emerald-600 text-xs">{commentMsg}</div>}
+              {commentErr && <div className="mb-2 text-red-500 text-xs">{commentErr}</div>}
+              <textarea
+                value={comment}
+                onChange={(e)=> setComment(e.target.value)}
+                className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded px-2 py-2 min-h-[70px]"
+                placeholder="Cuéntanos algo importante de tu turno de hoy (opcional)"
+              />
+              <div className="mt-2 flex justify-end">
+                <button onClick={submitComment} disabled={commentSaving || !comment.trim()} className="rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 text-sm">
+                  {commentSaving ? 'Enviando…' : 'Enviar'}
+                </button>
+              </div>
+            </div>
           </div>
           <div />
         </div>
