@@ -1,6 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import sharp from 'sharp';
+// Importación perezosa: evitar cargar sharp durante el build.
+async function getSharp() {
+  const m = await import('sharp');
+  return m.default || (m as any);
+}
 
 /**
  * Metadata that describes where the QR must be placed on the template, in millimetres.
@@ -72,6 +76,7 @@ export async function composeTemplateWithQr(opts: ComposeOpts): Promise<Buffer> 
 
   // Read template metadata so we can ensure the QR we composite will not be
   // larger than the template. Sharp throws if the overlay is bigger than the base.
+  const sharp = await getSharp();
   const templateMeta = await sharp(resolvedPath).metadata();
   const templateWidth = templateMeta.width ?? 0;
   const templateHeight = templateMeta.height ?? 0;
@@ -106,7 +111,7 @@ export async function composeTemplateWithQr(opts: ComposeOpts): Promise<Buffer> 
 
   // Read template and composite
   try {
-    const template = sharp(resolvedPath);
+  const template = sharp(resolvedPath);
 
     // We don't change the template's dimensions; we place the QR at the pixel coordinates
     // computed from mm and dpi. If the template was created at a different DPI, the
@@ -132,7 +137,7 @@ export async function composeTemplateWithQr(opts: ComposeOpts): Promise<Buffer> 
         const smallW = Math.floor(templateWidth / scale);
         const smallH = Math.floor(templateHeight / scale);
 
-        const { data, info } = await sharp(pathToImage).resize(smallW, smallH).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(pathToImage).resize(smallW, smallH).removeAlpha().raw().toBuffer({ resolveWithObject: true });
         const threshold = 240; // near-white threshold
 
         // compute per-column and per-row white fractions

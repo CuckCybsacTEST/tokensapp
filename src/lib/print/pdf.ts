@@ -1,5 +1,9 @@
 import { PDFDocument } from 'pdf-lib';
-import sharp from 'sharp';
+// Importación perezosa de sharp
+async function getSharp() {
+  const m = await import('sharp');
+  return m.default || (m as any);
+}
 
 /**
  * Create a PDF from an array of page PNG buffers. Each buffer becomes one A4 page
@@ -39,7 +43,8 @@ export async function composePdfFromPagePngs(
 
     // Convert the PNG page buffer to a compressed JPEG to reduce PDF size.
     // Sharp will decode the PNG and re-encode as JPEG with the provided quality.
-    const jpegBuf = await sharp(buf).jpeg({ quality: jpegQuality, mozjpeg: true }).toBuffer();
+  const sharp = await getSharp();
+  const jpegBuf = await sharp(buf).jpeg({ quality: jpegQuality, mozjpeg: true }).toBuffer();
 
     // Embed JPEG into PDF (pdf-lib supports embedJpg)
   const jpegUint8 = new Uint8Array(jpegBuf);

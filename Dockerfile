@@ -33,8 +33,8 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
   NODE_OPTIONS=--max_old_space_size=2048 \
   NEXT_PRIVATE_BUILD_WORKERS=2
 COPY . .
-# Ensure env defaults for build (DATABASE_URL may be unused at build but prisma generate might need it)
-ENV DATABASE_URL="file:./prisma/dev.db"
+# Ensure env defaults for build (fake Postgres DSN just to satisfy modules that read env at build time)
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build_db"
 RUN npm run build
 
 # Production image, copy needed artifacts
@@ -44,21 +44,14 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 USER root
-# Ensure Prisma engines and Next native deps have required libs at runtime
 RUN apk add --no-cache openssl ca-certificates libc6-compat
 
-# Copy node_modules (with Prisma Client already generated) and production build
-COPY --from=prisma /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json* ./
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
+# Copy standalone output instead of full node_modules to minimize runtime image
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts/docker-start.sh ./scripts/docker-start.sh
-
-# Remove devDependencies to shrink the final image size
-RUN if [ -f package-lock.json ]; then npm prune --omit=dev --no-audit --fund=false; fi
+COPY --from=builder /app/scripts/docker-start.sh ./docker-start.sh
 
 # Expose port (Railway sets PORT env)
 ENV PORT=3000
@@ -67,10 +60,10 @@ EXPOSE 3000
 # Health environment defaults
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
-# Ensure runtime has permissions over app dirs that require writes
-RUN chown -R node:node /app/.next /app/public /app/prisma /app/scripts || true
+# Ensure runtime has permissions over app dirs that may require writes
+RUN chown -R node:node /app/.next /app/public /app/prisma || true
 
 # Start command via entrypoint script (auto prisma db push for SQLite)
-RUN chmod +x /app/scripts/docker-start.sh
+RUN chmod +x /app/docker-start.sh
 USER node
-CMD ["/bin/sh", "/app/scripts/docker-start.sh"]
+CMD ["/bin/sh", "/app/docker-start.sh"]

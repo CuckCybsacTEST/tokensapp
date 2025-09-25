@@ -1,4 +1,8 @@
-import sharp from 'sharp';
+// Importación perezosa para evitar cargar sharp en build
+async function getSharp() {
+  const m = await import('sharp');
+  return m.default || (m as any);
+}
 
 /**
  * Options for assemblePages
@@ -29,6 +33,7 @@ function mmToPx(mm: number, dpi: number): number {
  * Each input image is resized with fit='contain' into its cell and centered.
  */
 export async function assemblePages(images: Buffer[], options: AssembleOptions): Promise<Buffer[]> {
+  const sharp = await getSharp();
   const dpi = options.dpi ?? 300;
   const cols = options.cols;
   const rows = options.rows;
