@@ -51,8 +51,8 @@ if [ -d "$DATA_DIR" ]; then
   ln -s "$DATA_DIR/public/templates" "$TEMPLATES_DIR"
 fi
 
-# Auto-migrate schema based on DATABASE_URL
-if [ -n "$DATABASE_URL" ]; then
+# Auto-migrate schema based on DATABASE_URL (optional). Default disabled unless ALLOW_MIGRATIONS=1
+if [ -n "$DATABASE_URL" ] && [ "$ALLOW_MIGRATIONS" = "1" ]; then
   if echo "$DATABASE_URL" | grep -qi "^file:"; then
     echo "[entrypoint] Detected SQLite DATABASE_URL ($DATABASE_URL). Running prisma migrate deploy..."
     npx prisma migrate deploy --skip-generate || echo "[entrypoint] migrate deploy failed (will still attempt db push)"
@@ -79,5 +79,15 @@ if [ -n "$DATABASE_URL" ]; then
   # Seeding is disabled by default. To seed, set ALLOW_SEED=1 and run `npm run seed` manually.
 fi
 
-echo "[entrypoint] Launching app (npm start)"
-exec npm start
+if [ -f "server.js" ]; then
+  echo "[entrypoint] Launching Next standalone server (server.js)"
+  exec node server.js
+else
+  if command -v next >/dev/null 2>&1; then
+    echo "[entrypoint] Launching app via next start (fallback)"
+    exec next start
+  else
+    echo "[entrypoint] ERROR: No server.js (standalone) y 'next' no está disponible en PATH. Revisa el Dockerfile/copia de .next/standalone."
+    exit 1
+  fi
+fi
