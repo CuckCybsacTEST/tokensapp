@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
+import nextDynamic from 'next/dynamic';
+const MarkActionButton = nextDynamic(() => import('@/components/MarkActionButton'), { ssr: false });
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -65,10 +67,7 @@ export default async function UHome() {
               {nextAction === 'IN' ? 'Comienza tu turno registrando tu Entrada.' : 'Finaliza tu turno registrando tu Salida.'}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <a href="/u/manual" className="btn">
-                {nextAction === 'IN' ? 'Registrar entrada' : 'Registrar salida'}
-              </a>
-              <a href="/u/scanner" className="btn-outline text-sm">Abrir escáner</a>
+              <MarkActionButton action={nextAction} />
             </div>
             {nextAction === 'OUT' && (
               <div className="mt-2 text-xs text-slate-500">Consejo: en la pantalla siguiente, mantén presionado el botón 2s para confirmar la salida.</div>
