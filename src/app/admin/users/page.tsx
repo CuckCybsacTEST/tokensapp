@@ -18,6 +18,8 @@ export default function AdminUsersPage() {
   const [pwEdit, setPwEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [otp, setOtp] = useState<Record<string, { code: string; expiresAt: string; generating?: boolean }>>({});
+  const [nameEdit, setNameEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
+  
 
   async function loadUsers() {
     try {
@@ -71,6 +73,8 @@ export default function AdminUsersPage() {
       setOtp(prev => ({ ...prev, [userId]: { code: prev[userId]?.code || '', expiresAt: prev[userId]?.expiresAt || '', generating: false } }));
     }
   }
+
+  
 
   async function changePassword(userId: string) {
     const state = pwEdit[userId];
@@ -214,7 +218,56 @@ export default function AdminUsersPage() {
               {users.map((u)=> (
                 <tr key={u.id} className="border-b last:border-0">
                   <td className="py-2 pr-4">{u.personCode}</td>
-                  <td className="py-2 pr-4">{u.personName}</td>
+                  <td className="py-2 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span>{u.personName}</span>
+                      <button
+                        className="text-[11px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600"
+                        onClick={() => setNameEdit(prev => ({ ...prev, [u.id]: { open: !prev[u.id]?.open, value: prev[u.id]?.value ?? (u.personName || '') } }))}
+                      >Editar</button>
+                    </div>
+                    {nameEdit[u.id]?.open && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={nameEdit[u.id]?.value || ''}
+                          onChange={(e)=> setNameEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value } }))}
+                          placeholder="Nombre completo"
+                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs w-[280px]"
+                        />
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"
+                          disabled={(nameEdit[u.id]?.value || '').trim().length < 2 || nameEdit[u.id]?.saving}
+                          onClick={async () => {
+                            try {
+                              setNameEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: true } }));
+                              const res = await fetch(`/api/admin/users/${encodeURIComponent(u.id)}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ personName: (nameEdit[u.id]?.value || '').trim() }),
+                              });
+                              const j = await res.json().catch(() => ({}));
+                              if (res.ok && j?.ok) {
+                                setUsers(prev => prev.map(x => x.id === u.id ? { ...x, personName: (nameEdit[u.id]?.value || '').trim() } : x));
+                                setMsg('Nombre actualizado'); setErr(null);
+                                setNameEdit(prev => ({ ...prev, [u.id]: { open: false, value: '', saving: false } }));
+                              } else {
+                                const back = j?.code || j?.message || res.status;
+                                setErr(`Error al actualizar nombre: ${back}`);
+                                setNameEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                              }
+                            } catch (e: any) {
+                              setErr(`Error de red: ${String(e?.message || e)}`);
+                              setNameEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                            }
+                          }}
+                        >{nameEdit[u.id]?.saving ? 'Guardando…' : 'Guardar'}</button>
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-slate-600"
+                          onClick={() => setNameEdit(prev => ({ ...prev, [u.id]: { open: false, value: '' } }))}
+                        >Cancelar</button>
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">{u.dni || '-'}</td>
                   <td className="py-2 pr-4">{u.area || '-'}</td>
                   <td className="py-2 pr-4">{u.username}</td>
@@ -230,6 +283,7 @@ export default function AdminUsersPage() {
                         disabled={otp[u.id]?.generating}
                         onClick={() => generateOtp(u.id)}
                       >{otp[u.id]?.generating ? 'Generando…' : 'Generar OTP'}</button>
+                      
                       <button
                         className="text-xs px-2 py-1 rounded bg-red-700 hover:bg-red-600 disabled:opacity-50"
                         disabled={!!deleting[u.id]}

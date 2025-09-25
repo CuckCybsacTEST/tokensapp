@@ -19,6 +19,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     // Cascade delete related records in a transaction
     await prisma.$transaction(async (tx) => {
+      // Delete any password reset OTPs referencing this user (FK may block otherwise)
+      await tx.$executeRawUnsafe('DELETE FROM "PasswordResetOtp" WHERE "userId"=$1', user.id);
       // Delete task statuses updated by this user (foreign relation)
       await tx.personTaskStatus.deleteMany({ where: { updatedBy: user.id } });
       // Delete scans and task statuses for the person
@@ -34,6 +36,32 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('admin delete user error', e);
+    return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    const ok = requireRole(session, ['ADMIN']);
+    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
+
+    const id = params.id;
+    if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
+
+    const body = await req.json().catch(() => null) as { personName?: string } | null;
+    const personName = String(body?.personName || '').trim();
+    if (!personName || personName.length < 2 || personName.length > 120) {
+      return NextResponse.json({ ok: false, code: 'INVALID_NAME' }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, personId: true } });
+    if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+    await prisma.person.update({ where: { id: user.personId }, data: { name: personName } });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error('admin patch user error', e);
     return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });
   }
 }
