@@ -76,7 +76,7 @@ export default function ManualAttendancePage() {
       if (res.ok && json?.ok) {
         setMsg({ variant: 'success', text: `${mode === 'IN' ? 'Entrada' : 'Salida'} registrada correctamente.` });
         // redirigir como el escáner
-        const day = ymdUtc(new Date());
+        const day = (json && typeof json.businessDay === 'string' && json.businessDay) || ymdUtc(new Date());
         setTimeout(() => {
           if (mode === 'IN') window.location.href = `/u/checklist?day=${day}&mode=IN`;
           else {

@@ -119,7 +119,7 @@ export default function UserScannerPage() {
         setCooldownUntil(Date.now() + 1000);
 
         // Redirecciones: IN -> checklist; OUT -> página de cierre (siempre)
-  const day = ymdUtc();
+        const day = (json && typeof json.businessDay === 'string' && json.businessDay) || ymdUtc();
         setTimeout(() => {
           if (m === 'IN') {
             window.location.href = `/u/checklist?day=${day}&mode=IN`;

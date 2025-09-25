@@ -45,7 +45,7 @@ function ChecklistPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const day = params.get("day");
-  const mode = params.get("mode"); // opcional
+  const mode = params.get("mode"); // opcional, solo hint de UI
   const [recent, setRecent] = useState<Recent>(null);
   // Estado real del día actual según última marca de asistencia
   const [lastTodayType, setLastTodayType] = useState<"IN" | "OUT" | null>(null);
@@ -112,15 +112,20 @@ function ChecklistPageInner() {
         throw new Error("No se pudo cargar el usuario");
       }
       setUser(ju);
-      // Recent attendance to decide next action (IN/OUT)
+      // Recent attendance to decide next action (IN/OUT) y alinear day con businessDay real
       try {
         const rRecent = await fetch(`/api/attendance/me/recent`, { cache: "no-store", signal });
         const jRecent = await rRecent.json().catch(() => ({}));
         const rec = (jRecent?.recent ?? null) as Recent;
         setRecent(rec);
         if (rec?.scannedAt) {
-          const lastDay = ymdUtc(new Date(rec.scannedAt));
-          if (isValidDay(day) && lastDay === day) {
+          // Preferir businessDay si viene del backend
+          const lastDay = (rec as any)?.businessDay || ymdUtc(new Date(rec.scannedAt));
+          if (!isValidDay(day)) {
+            router.replace(`/u/checklist?day=${lastDay}${mode ? `&mode=${mode}` : ''}`);
+            return;
+          }
+          if (lastDay === day) {
             const t = rec.type === 'IN' ? 'IN' : rec.type === 'OUT' ? 'OUT' : null;
             if (t) setLastTodayType(t);
           }
@@ -397,7 +402,8 @@ function ChecklistPageInner() {
 
   if (!isValidDay(day)) return null;
 
-  const nextAction: "IN" | "OUT" = mode === 'IN' ? 'OUT' : mode === 'OUT' ? 'IN' : (lastTodayType === 'IN' ? 'OUT' : 'IN');
+  // La próxima acción depende del estado real del día (lastTodayType). El parámetro ?mode es solo un hint visual.
+  const nextAction: "IN" | "OUT" = lastTodayType === 'IN' ? 'OUT' : 'IN';
   const nextActionLabel = nextAction === 'IN' ? 'Registrar entrada' : 'Registrar salida';
   const lockedAfterOut = lastTodayType === 'OUT';
   const canEdit = lastTodayType === 'IN';
