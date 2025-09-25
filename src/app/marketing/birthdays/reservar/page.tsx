@@ -179,7 +179,7 @@ function ReservarCumplePageInner() {
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 15% 85%, rgba(255,77,46,0.35), transparent 40%), radial-gradient(circle at 85% 15%, rgba(255,122,60,0.35), transparent 40%)' }} />
         <div className="relative z-10 px-5 md:px-8 py-8 md:py-10">
           <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight">Tu cumple, con accesos QR</h1>
-          <p className="mt-2 md:mt-3 text-base md:text-lg opacity-85 max-w-2xl">Elegí tu Pack, coordinamos por WhatsApp y recibís tus tarjetas QR para vos y tus invitados. Rápido, simple y con beneficios.</p>
+          <p className="mt-2 md:mt-3 text-base md:text-lg opacity-85 max-w-2xl">Elige tu Pack, coordinamos por WhatsApp y recibirás tus tarjetas QR para ti y tus invitados. Rápido, simple y con beneficios.</p>
           {/* Chips de beneficios */}
           <div className="mt-4 flex flex-wrap gap-2">
             {['QR para invitados','Botella de cortesía','Coordinación por WhatsApp','Fecha y horario a elección'].map(b => (

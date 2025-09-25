@@ -216,11 +216,11 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
             <div>
               <p className="font-medium">Permiso requerido para activar/desactivar</p>
               <p className="mt-1 opacity-90">
-                Para que CAJA pueda controlar los tokens, necesitás dos sesiones en el mismo navegador y origen:
+                Para que CAJA pueda controlar los tokens, necesitas dos sesiones en el mismo navegador y origen:
               </p>
               <ol className="mt-2 list-decimal ml-5 space-y-1 opacity-90">
-                <li>Iniciá sesión en el panel <a href="/admin" className="underline">Admin</a> con rol Admin o Staff.</li>
-                <li>En otra pestaña, iniciá sesión en <a href="/u" className="underline">/u</a> con un usuario colaborador de área <span className="font-mono">Caja</span>.</li>
+                <li>Inicia sesión en el panel <a href="/admin" className="underline">Admin</a> con rol Admin o Staff.</li>
+                <li>En otra pestaña, inicia sesión en <a href="/u" className="underline">/u</a> con un usuario colaborador del área <span className="font-mono">Caja</span>.</li>
               </ol>
             </div>
           </div>

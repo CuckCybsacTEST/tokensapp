@@ -164,6 +164,7 @@ model User {
   updatedAt           DateTime           @updatedAt
   updatedTaskStatuses PersonTaskStatus[] @relation("TaskStatusUpdatedBy")
   person              Person             @relation(fields: [personId], references: [id])
+  passwordResetOtps   PasswordResetOtp[]
 }
 
 model Task {
@@ -314,4 +315,19 @@ model PhotoDeliverable {
 
   @@index([reservationId])
   @@index([status])
+}
+
+// OTP efímero para recuperación/cambio de contraseña de colaboradores
+model PasswordResetOtp {
+  id         String   @id @default(cuid())
+  userId     String
+  code       String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
 }

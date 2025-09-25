@@ -49,7 +49,14 @@ export default async function BatchDetailPage({ params }: { params: { id: string
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-lg font-semibold">Batch {batch.id}</h1>
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold max-w-2xl truncate" title={batch.description || `Batch ${batch.id}`}>
+            {batch.description || `Batch ${batch.id}`}
+          </h1>
+          {batch.description && (
+            <div className="text-[11px] text-slate-500" title={batch.id}>Batch {batch.id}</div>
+          )}
+        </div>
   <div className="flex items-center gap-2">
           {session && (
             <Link href={`/admin/roulette/session/${session.id}`} className="btn !py-1 !px-3 text-xs">
@@ -61,9 +68,6 @@ export default async function BatchDetailPage({ params }: { params: { id: string
         </div>
       </div>
   {/* Uploader de template removido de esta vista */}
-      {batch.description && (
-        <div className="text-sm text-slate-600 dark:text-slate-400">{batch.description}</div>
-      )}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Dashboard resumen */}
   <div className="col-span-full grid md:grid-cols-4 gap-4">

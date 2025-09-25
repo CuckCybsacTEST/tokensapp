@@ -44,9 +44,14 @@ export async function middleware(req: NextRequest) {
   if (pathname === "/admin/login") return NextResponse.next();
   if (pathname === "/u/login") return NextResponse.next();
   if (pathname === "/u/register") return NextResponse.next();
+  if (pathname === "/u/reset-password") return NextResponse.next();
 
   // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin ADMIN
   if (pathname === "/u" || pathname.startsWith("/u/")) {
+    // Allow unauthenticated access for the public reset page
+    if (pathname === '/u/reset-password') {
+      return NextResponse.next();
+    }
     const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
     const adminSession = await verifySessionCookie(adminRaw);
     const uRaw = getUserCookieEdge(req as unknown as Request);
@@ -117,11 +122,11 @@ export async function middleware(req: NextRequest) {
     }
     // 1b) Admin API: require ADMIN or STAFF depending on endpoint; default ADMIN-only for safety, but allow STAFF for subtrees we know safe.
     if (pathname.startsWith(ADMIN_API_PREFIX)) {
-      // By default require ADMIN; you can expand allowedStaffPaths when needed.
-      const allowedStaffPaths = new Set<string>([
-        // e.g., '/api/admin/attendance', add more safe endpoints if needed
-      ]);
-      const roles = allowedStaffPaths.has(pathname) ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
+      // By default require ADMIN; allow STAFF for specific endpoints.
+      const staffAllowed = (
+        pathname.startsWith('/api/admin/users/') && pathname.endsWith('/password-otp')
+      );
+      const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
       const r = requireRoleEdge(session, roles as any);
       if (!r.ok) {
         return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {

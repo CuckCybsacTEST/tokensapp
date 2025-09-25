@@ -17,6 +17,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [pwEdit, setPwEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
+  const [otp, setOtp] = useState<Record<string, { code: string; expiresAt: string; generating?: boolean }>>({});
 
   async function loadUsers() {
     try {
@@ -50,6 +51,26 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => { loadUsers(); }, []);
+
+  async function generateOtp(userId: string) {
+    setMsg(null); setErr(null);
+    try {
+      setOtp(prev => ({ ...prev, [userId]: { code: prev[userId]?.code || '', expiresAt: prev[userId]?.expiresAt || '', generating: true } }));
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/password-otp`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j?.ok && j?.code) {
+        setOtp(prev => ({ ...prev, [userId]: { code: j.code, expiresAt: j.expiresAt, generating: false } }));
+        setMsg('Código generado');
+      } else {
+        const back = j?.code || j?.message || res.status;
+        setErr(`No se pudo generar: ${back}`);
+        setOtp(prev => ({ ...prev, [userId]: { code: prev[userId]?.code || '', expiresAt: prev[userId]?.expiresAt || '', generating: false } }));
+      }
+    } catch (e: any) {
+      setErr(`Error de red: ${String(e?.message || e)}`);
+      setOtp(prev => ({ ...prev, [userId]: { code: prev[userId]?.code || '', expiresAt: prev[userId]?.expiresAt || '', generating: false } }));
+    }
+  }
 
   async function changePassword(userId: string) {
     const state = pwEdit[userId];
@@ -205,11 +226,28 @@ export default function AdminUsersPage() {
                         onClick={() => setPwEdit(prev => ({ ...prev, [u.id]: { open: !prev[u.id]?.open, value: prev[u.id]?.value || '' } }))}
                       >Cambiar contraseña</button>
                       <button
+                        className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50"
+                        disabled={otp[u.id]?.generating}
+                        onClick={() => generateOtp(u.id)}
+                      >{otp[u.id]?.generating ? 'Generando…' : 'Generar OTP'}</button>
+                      <button
                         className="text-xs px-2 py-1 rounded bg-red-700 hover:bg-red-600 disabled:opacity-50"
                         disabled={!!deleting[u.id]}
                         onClick={() => deleteUser(u.id)}
                       >{deleting[u.id] ? 'Eliminando…' : 'Eliminar'}</button>
                     </div>
+                    {otp[u.id]?.code && (
+                      <div className="mt-2 text-xs p-2 rounded border border-emerald-700 bg-emerald-900/30 text-emerald-100 flex items-center justify-between gap-2">
+                        <div>
+                          <div><span className="opacity-70">Código:</span> <span className="font-mono tracking-wider text-base">{otp[u.id].code}</span></div>
+                          <div className="opacity-80">Vence: {new Date(otp[u.id].expiresAt).toLocaleTimeString()}</div>
+                        </div>
+                        <button
+                          className="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600"
+                          onClick={() => navigator.clipboard?.writeText(otp[u.id].code)}
+                        >Copiar</button>
+                      </div>
+                    )}
                     {pwEdit[u.id]?.open && (
                       <div className="mt-2 flex items-center gap-2">
                         <input

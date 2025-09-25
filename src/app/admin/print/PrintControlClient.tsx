@@ -22,6 +22,22 @@ export function PrintControlClient() {
   const [templateName, setTemplateName] = useState<string>("");
   const [previewing, setPreviewing] = useState(false);
 
+  // Formatear nombre amigable para lotes en el selector
+  function formatBatchLabel(batch: any): string {
+    const desc = (batch?.description || batch?.name || '').toString().trim();
+    if (desc) return desc;
+    try {
+      const d = new Date(batch?.createdAt);
+      if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `Batch ${dd}.${mm}.${yyyy}`;
+      }
+    } catch {}
+    return String(batch?.id || 'lote');
+  }
+
   // Función para generar un QR de ejemplo para previsualización
   const generatePreviewQR = async (templateId: string) => {
     try {
@@ -408,11 +424,15 @@ export function PrintControlClient() {
           onChange={(e) => setSelectedBatchId(e.target.value)}
         >
           <option value="">Seleccione un lote</option>
-          {batches.map((batch) => (
-            <option key={batch.id} value={batch.id}>
-              {batch.name || batch.id} ({batch.tokens?.length || 0} tokens)
-            </option>
-          ))}
+          {batches.map((batch) => {
+            const label = formatBatchLabel(batch);
+            const count = Number(batch?.tokens?.length || 0);
+            return (
+              <option key={batch.id} value={batch.id} title={`${label} — ${batch.id}`}>
+                {label} ({count} tokens)
+              </option>
+            );
+          })}
         </select>
       </div>
 

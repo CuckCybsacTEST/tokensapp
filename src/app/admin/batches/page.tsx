@@ -76,10 +76,20 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
             <div key={b.id} className="card transition-colors hover:border-brand-400/60">
               <div className="card-body space-y-3">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex flex-col">
-                    <Link href={`/admin/batches/${b.id}`} className="text-sm font-medium hover:underline">Batch {b.id}</Link>
-                    {b.description && (
-                      <span className="max-w-xs truncate text-[11px] text-slate-500 dark:text-slate-400">{b.description}</span>
+                  <div className="flex flex-col min-w-0">
+                    {b.description ? (
+                      <>
+                        <Link
+                          href={`/admin/batches/${b.id}`}
+                          className="text-base font-semibold hover:underline max-w-xl truncate"
+                          title={b.description}
+                        >
+                          {b.description}
+                        </Link>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400" title={b.id}>Batch {b.id}</span>
+                      </>
+                    ) : (
+                      <Link href={`/admin/batches/${b.id}`} className="text-sm font-medium hover:underline">Batch {b.id}</Link>
                     )}
                   </div>
                   <span className="text-[10px] tabular-nums text-slate-500 dark:text-slate-400">{new Date(b.createdAt).toLocaleString()}</span>
