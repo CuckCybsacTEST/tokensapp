@@ -14,6 +14,7 @@ function LoginClient() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,13 +76,35 @@ function LoginClient() {
                 </div>
                 <div className="form-row">
                   <label className="text-xs font-medium">Contraseña</label>
-                  <input
-                    type="password"
-                    className="input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPwd ? "text" : "password"}
+                      className="input pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      aria-label={showPwd ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      title={showPwd ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      onClick={() => setShowPwd(v => !v)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-500 hover:text-slate-700"
+                    >
+                      {/* ojo/ocultar simple en SVG inline, sin librerías */}
+                      {showPwd ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58M9.88 4.24A9.53 9.53 0 0112 4c5 0 9 4 9 8 0 1.41-.43 2.73-1.17 3.86M6.17 6.17C4.43 7.27 3 9.1 3 12c0 4 4 8 9 8 1.41 0 2.73-.43 3.86-1.17" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+                          <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 {error && <p className="text-xs text-rose-600">{error}</p>}
                 <button disabled={pending} className="btn w-full" type="submit">
