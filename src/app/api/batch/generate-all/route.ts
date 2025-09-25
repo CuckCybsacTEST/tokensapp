@@ -102,7 +102,8 @@ export async function POST(req: Request) {
       includeQr = parsed.data.includeQr;
       lazyQr = parsed.data.lazyQr;
       providedName = parsed.data.name;
-      const dt = DateTime.fromISO(parsed.data.singleDayDate, { zone: "system" });
+  // Usar zona horaria de Lima para evitar confusiones de fin de día
+  const dt = DateTime.fromISO(parsed.data.singleDayDate, { zone: "America/Lima" });
       if (!dt.isValid) {
         await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "BAD_REQUEST" });
         return new Response(JSON.stringify({ error: "BAD_REQUEST", details: "INVALID_DATE" }), { status: 400 });
@@ -211,7 +212,8 @@ export async function POST(req: Request) {
 
   // Post-process for single-day mode: adjust expiresAt to endOfDay and toggle disabled for future dates.
   if (mode === "singleDay" && batch?.id && singleDayEnd && singleDayStart) {
-    const nowStart = DateTime.now().setZone("system").startOf("day");
+  // Comparación en zona Lima: si el día seleccionado es futuro, los tokens se crean deshabilitados y se podrán habilitar el mismo día.
+  const nowStart = DateTime.now().setZone("America/Lima").startOf("day");
     const isFutureDay = singleDayStart.toJSDate().getTime() > nowStart.toJSDate().getTime();
     await prisma.token.updateMany({
       where: { batchId: batch.id },

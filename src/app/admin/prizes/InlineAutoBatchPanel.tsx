@@ -345,8 +345,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
         </div>
         {mode === "singleDay" && (
           <p className="col-span-full text-[10px] text-slate-500">
-            Expiran a las 23:59:59 del día seleccionado (hora del servidor). Si es una fecha futura,
-            se entregan deshabilitados.
+            Expiran a las 23:59:59 del día seleccionado (hora Lima). Si es una fecha futura, se generarán deshabilitados y se habilitan el mismo día.
           </p>
         )}
         {(error || success) && (
