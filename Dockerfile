@@ -3,8 +3,10 @@
 
 ARG NODE_VERSION=20
 
-FROM node:${NODE_VERSION}-slim AS base
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Use Chainguard's Node image (hosted at cgr.dev) to avoid Docker Hub pulls
+FROM cgr.dev/chainguard/node:${NODE_VERSION} AS base
+USER root
+RUN apk add --no-cache openssl ca-certificates
 WORKDIR /app
 
 # Install dependencies only when needed
@@ -32,16 +34,14 @@ ENV DATABASE_URL="file:./prisma/dev.db"
 RUN npm run build
 
 # Production image, copy needed artifacts
-FROM node:${NODE_VERSION}-slim AS runner
+FROM cgr.dev/chainguard/node:${NODE_VERSION} AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+USER root
 # Ensure Prisma engines have OpenSSL available at runtime
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# Create a non-root user
-RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
+RUN apk add --no-cache openssl ca-certificates
 
 # Copy node_modules (with Prisma Client already generated) and production build
 COPY --from=prisma /app/node_modules ./node_modules
@@ -59,10 +59,10 @@ EXPOSE 3000
 # Health environment defaults
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
-# Ensure runtime has permissions over app dir (including sqlite file path)
-RUN chown -R 1001:1001 /app
+"# Ensure runtime has permissions over app dir (including sqlite file path)"
+RUN chown -R 65532:65532 /app
 
 # Start command via entrypoint script (auto prisma db push for SQLite)
-USER nextjs
 RUN chmod +x /app/scripts/docker-start.sh
+USER 65532
 CMD ["/bin/sh", "/app/scripts/docker-start.sh"]
