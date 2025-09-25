@@ -40,41 +40,43 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10) || 20));
 
-    const { startIso, endIso, startDay, endDay } = rangeFromPeriod(periodParam, startDate, endDate);
+  const { startIso, endIso, startDay, endDay } = rangeFromPeriod(periodParam, startDate, endDate);
 
     const area = url.searchParams.get('area') || undefined;
     const person = url.searchParams.get('person') || undefined;
     const esc = (s: any) => String(s).replace(/'/g, "''");
-    const personWhereParts: string[] = [];
-    if (area) personWhereParts.push(`p.area = '${esc(area)}'`);
+    const personWhereConds: string[] = [];
+    if (area) personWhereConds.push(`p."area" = '${esc(area)}'`);
     if (person) {
       if (person.startsWith('id:')) {
-        personWhereParts.push(`p.id = '${esc(person.slice(3))}'`);
+        personWhereConds.push(`p."id" = '${esc(person.slice(3))}'`);
       } else {
-        personWhereParts.push(`p.code = '${esc(person)}'`);
+        personWhereConds.push(`p."code" = '${esc(person)}'`);
       }
     }
-    const personWhere = personWhereParts.length ? `WHERE ${personWhereParts.join(' AND ')}` : '';
+    const personWhereCond = personWhereConds.join(' AND ');
 
     // Aggregate per person/day rows
     const rows: any[] = await prisma.$queryRawUnsafe(
       `WITH scans AS (
-         SELECT s."personId", s."businessDay" as day,
-                MIN(CASE WHEN s."type"='IN' THEN s."scannedAt" END) as firstIn,
-                MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
-         FROM "Scan" s
-         ${personWhere ? `JOIN "Person" p ON p."id" = s."personId" ${personWhere}` : ''}
-         ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
-         GROUP BY s."personId", s."businessDay"
-       ), tasks AS (
-         SELECT pts."personId", pts."day",
-                SUM(CASE WHEN pts."done" THEN 1 ELSE 0 END) as doneCount,
-                COUNT(1) as totalCount
-         FROM "PersonTaskStatus" pts
-         ${personWhere ? `JOIN "Person" p ON p."id" = pts."personId" ${personWhere}` : ''}
-         ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
-         GROUP BY pts."personId", pts."day"
-       ), days AS (
+    SELECT s."personId", s."businessDay" as day,
+      MIN(CASE WHEN s."type"='IN' THEN s."scannedAt" END) as firstIn,
+      MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
+    FROM "Scan" s
+    LEFT JOIN "Person" p ON p."id" = s."personId"
+    WHERE s."businessDay" >= '${startDay}' AND s."businessDay" <= '${endDay}'
+    ${personWhereCond ? `AND ${personWhereCond}` : ''}
+    GROUP BY s."personId", s."businessDay"
+  ), tasks AS (
+    SELECT pts."personId", pts."day",
+      SUM(CASE WHEN pts."done" THEN 1 ELSE 0 END) as doneCount,
+      COUNT(1) as totalCount
+    FROM "PersonTaskStatus" pts
+    LEFT JOIN "Person" p ON p."id" = pts."personId"
+    WHERE pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+    ${personWhereCond ? `AND ${personWhereCond}` : ''}
+    GROUP BY pts."personId", pts."day"
+  ), days AS (
          SELECT "personId", day FROM scans
          UNION
          SELECT "personId", day FROM tasks
@@ -91,10 +93,10 @@ export async function GET(req: Request) {
          JOIN "Person" p ON p."id" = d."personId"
          LEFT JOIN scans sc ON sc."personId" = d."personId" AND sc.day = d.day
          LEFT JOIN tasks tk ON tk."personId" = d."personId" AND tk.day = d.day
-         ${personWhere}
+         ${personWhereCond ? `WHERE ${personWhereCond}` : ''}
        )
        SELECT * FROM merged
-       ORDER BY day DESC, personName ASC
+     ORDER BY day DESC, "personName" ASC
        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`
     );
 
@@ -103,13 +105,15 @@ export async function GET(req: Request) {
       countRows = await prisma.$queryRawUnsafe(
         `WITH scans AS (
            SELECT s."personId", s."businessDay" as day
-           FROM "Scan" s
-           WHERE s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+           FROM "Scan" s LEFT JOIN "Person" p ON p."id" = s."personId"
+           WHERE s."businessDay" >= '${startDay}' AND s."businessDay" <= '${endDay}'
+           ${personWhereCond ? `AND ${personWhereCond}` : ''}
            GROUP BY s."personId", s."businessDay"
          ), tasks AS (
            SELECT pts."personId", pts."day"
-           FROM "PersonTaskStatus" pts
+           FROM "PersonTaskStatus" pts LEFT JOIN "Person" p ON p."id" = pts."personId"
            WHERE pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+           ${personWhereCond ? `AND ${personWhereCond}` : ''}
            GROUP BY pts."personId", pts."day"
          ), merged AS (
            SELECT coalesce(sc.day, tk.day) as day, coalesce(sc."personId", tk."personId") as "personId"
@@ -123,13 +127,15 @@ export async function GET(req: Request) {
       countRows = await prisma.$queryRawUnsafe(
         `WITH scans AS (
            SELECT s."personId", s."businessDay" as day
-           FROM "Scan" s ${personWhere ? `JOIN "Person" p ON p."id" = s."personId" ${personWhere}` : ''}
-           ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+           FROM "Scan" s LEFT JOIN "Person" p ON p."id" = s."personId"
+           WHERE s."businessDay" >= '${startDay}' AND s."businessDay" <= '${endDay}'
+           ${personWhereCond ? `AND ${personWhereCond}` : ''}
            GROUP BY s."personId", s."businessDay"
          ), tasks AS (
            SELECT pts."personId", pts."day"
-           FROM "PersonTaskStatus" pts ${personWhere ? `JOIN "Person" p ON p."id" = pts."personId" ${personWhere}` : ''}
-           ${personWhere ? 'AND' : 'WHERE'} pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+           FROM "PersonTaskStatus" pts LEFT JOIN "Person" p ON p."id" = pts."personId"
+           WHERE pts."day" >= '${startDay}' AND pts."day" <= '${endDay}'
+           ${personWhereCond ? `AND ${personWhereCond}` : ''}
            GROUP BY pts."personId", pts."day"
          ), merged AS (
            SELECT "personId", day FROM scans
@@ -153,8 +159,8 @@ export async function GET(req: Request) {
         personCode: String(r.personCode),
         personName: String(r.personName),
         area: r.area ? String(r.area) : null,
-        firstIn: r.firstIn ? String(r.firstIn) : null,
-        lastOut: r.lastOut ? String(r.lastOut) : null,
+        firstIn: r.firstIn ? (r.firstIn instanceof Date ? r.firstIn.toISOString() : String(r.firstIn)) : null,
+        lastOut: r.lastOut ? (r.lastOut instanceof Date ? r.lastOut.toISOString() : String(r.lastOut)) : null,
         durationMin: r.durationMin != null ? Number(r.durationMin) : null,
         doneCount: done,
         totalCount: tot,

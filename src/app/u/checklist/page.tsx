@@ -84,6 +84,9 @@ function ChecklistPageInner() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const [pendingLockedIds, setPendingLockedIds] = useState<Set<string>>(new Set());
+  // Long-press state for the primary action (OUT)
+  const [holdMs, setHoldMs] = useState(0);
+  const holdTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setChecked(initialMap);
@@ -343,6 +346,30 @@ function ChecklistPageInner() {
     }
     window.location.href = "/u/scanner?from=checklist";
   };
+  
+  const startHoldIfOut = () => {
+    if (nextAction !== 'OUT') return;
+    setHoldMs(0);
+    const start = Date.now();
+    const id = window.setInterval(() => {
+      const ms = Date.now() - start;
+      setHoldMs(ms);
+      if (ms >= 2000) {
+        window.clearInterval(id);
+        setHoldMs(0);
+        holdTimerRef.current = null;
+        void openScanner();
+      }
+    }, 50);
+    holdTimerRef.current = id as unknown as number;
+  };
+  const clearHold = () => {
+    if (holdTimerRef.current) {
+      window.clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    setHoldMs(0);
+  };
 
   // Autosave con debounce cuando cambian los estados
   function mapsEqual(a: Map<string, boolean>, b: Map<string, boolean>) {
@@ -424,7 +451,33 @@ function ChecklistPageInner() {
           </ul>
         )}
         {!loading && data && data.tasks.length === 0 && (
-          <div className="text-sm text-gray-500">No hay tareas configuradas.</div>
+          <>
+            <div className="text-sm text-gray-500 mb-3">No hay tareas configuradas.</div>
+            {/* Barra inferior sticky con acción principal incluso sin tareas */}
+            <div className="sticky bottom-0 z-10 mt-4 -mx-4 border-t border-slate-200 bg-white/85 px-4 py-4 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+              <div className="mx-auto flex max-w-3xl flex-col items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    if (nextAction === 'OUT') { e.preventDefault(); return; }
+                    void openScanner();
+                  }}
+                  onPointerDown={startHoldIfOut}
+                  onPointerUp={clearHold}
+                  onPointerLeave={clearHold}
+                  onPointerCancel={clearHold}
+                  disabled={saving || loading}
+                  className="btn relative w-full max-w-xs !py-3 !px-6 !text-base"
+                >
+                  {nextAction === 'OUT'
+                    ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar salida')
+                    : nextActionLabel}
+                  {nextAction === 'OUT' && holdMs > 0 && (
+                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
         )}
         {!loading && data && data.tasks.length > 0 && (
           <>
@@ -570,11 +623,23 @@ function ChecklistPageInner() {
               <div className="mx-auto flex max-w-3xl flex-col items-center gap-2">
                 <div className="text-xs text-gray-600 dark:text-slate-300">Completadas {Array.from(checked.values()).filter(Boolean).length} / {data.tasks.length}</div>
                 <button
-                  onClick={openScanner}
+                  onClick={(e) => {
+                    if (nextAction === 'OUT') { e.preventDefault(); return; }
+                    void openScanner();
+                  }}
+                  onPointerDown={startHoldIfOut}
+                  onPointerUp={clearHold}
+                  onPointerLeave={clearHold}
+                  onPointerCancel={clearHold}
                   disabled={saving || loading}
-                  className="btn w-full max-w-xs !py-3 !px-6 !text-base"
+                  className="btn relative w-full max-w-xs !py-3 !px-6 !text-base"
                 >
-                  {nextActionLabel}
+                  {nextAction === 'OUT'
+                    ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar salida')
+                    : nextActionLabel}
+                  {nextAction === 'OUT' && holdMs > 0 && (
+                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+                  )}
                 </button>
               </div>
             </div>

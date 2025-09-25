@@ -232,84 +232,92 @@ async function main() {
     // non-fatal for seed
   }
 
-  // Seed de tareas por defecto (Checklist) - globales (area NULL) + específicas por área
-  const defaultTasks: { label: string; sortOrder?: number; active?: boolean; area?: string | null }[] = [
-    // Globales
-    { label: 'Revisar stocks de insumos' },
-    { label: 'Preparar área de atención' },
-    { label: 'Verificar limpieza de sala' },
-    // Específicas por área (ejemplos)
-    { label: 'Revisar hieleras y vasos', area: 'Barra' },
-    { label: 'Preparar POS de barra', area: 'Barra' },
-    { label: 'Chequeo de bandejas y servilletas', area: 'Mozos' },
-    { label: 'Relevamiento de mesas asignadas', area: 'Mozos' },
-    { label: 'Verificar cámaras y radios', area: 'Seguridad' },
-    { label: 'Briefing de accesos y salidas', area: 'Seguridad' },
-  ];
-  for (let i = 0; i < defaultTasks.length; i++) {
-    const t = defaultTasks[i];
-    const label = t.label.trim();
-    if (!label) continue;
-    const labelEsc = esc(label);
-    const existingTask: any[] = await prisma.$queryRawUnsafe(
-      `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND ${t.area ? `"area"='${esc(t.area)}'` : '"area" IS NULL'} LIMIT 1`
-    );
-    if (!existingTask || existingTask.length === 0) {
-      const sortOrder = t.sortOrder ?? i * 10;
-      await prisma.task.create({
-        data: {
-          label,
-          active: t.active ?? true,
-          sortOrder,
-          area: t.area ?? null,
-        },
-      });
+  // Seed de tareas por defecto (Checklist) solo si SEED_DEMO_TASKS=1
+  if (process.env.SEED_DEMO_TASKS === '1') {
+    console.log('seed_info: creando tareas demo (SEED_DEMO_TASKS=1)');
+    const defaultTasks: { label: string; sortOrder?: number; active?: boolean; area?: string | null }[] = [
+      // Globales
+      { label: 'Revisar stocks de insumos' },
+      { label: 'Preparar área de atención' },
+      { label: 'Verificar limpieza de sala' },
+      // Específicas por área (ejemplos)
+      { label: 'Revisar hieleras y vasos', area: 'Barra' },
+      { label: 'Preparar POS de barra', area: 'Barra' },
+      { label: 'Chequeo de bandejas y servilletas', area: 'Mozos' },
+      { label: 'Relevamiento de mesas asignadas', area: 'Mozos' },
+      { label: 'Verificar cámaras y radios', area: 'Seguridad' },
+      { label: 'Briefing de accesos y salidas', area: 'Seguridad' },
+    ];
+    for (let i = 0; i < defaultTasks.length; i++) {
+      const t = defaultTasks[i];
+      const label = t.label.trim();
+      if (!label) continue;
+      const labelEsc = esc(label);
+      const existingTask: any[] = await prisma.$queryRawUnsafe(
+        `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND ${t.area ? `"area"='${esc(t.area)}'` : '"area" IS NULL'} LIMIT 1`
+      );
+      if (!existingTask || existingTask.length === 0) {
+        const sortOrder = t.sortOrder ?? i * 10;
+        await prisma.task.create({
+          data: {
+            label,
+            active: t.active ?? true,
+            sortOrder,
+            area: t.area ?? null,
+          },
+        });
+      }
     }
+  } else {
+    console.log('seed_skip: tareas demo no creadas (SEED_DEMO_TASKS!=1)');
   }
 
   // -----------------------------
   // Seed: Tareas medibles de ejemplo (idempotentes)
   // -----------------------------
   try {
-    const measurableTasks: { label: string; area: string; targetValue: number; unitLabel: string; sortOrder?: number }[] = [
-      { label: 'Vender copas', area: 'Pruebas', targetValue: 7, unitLabel: 'copas', sortOrder: 9000 },
-      { label: 'Promocionar copas', area: 'Pruebas', targetValue: 7, unitLabel: 'copas', sortOrder: 9010 },
-      // E2E: tarea fija y visible para área Barra
-      { label: 'E2E Medible Barra', area: 'Barra', targetValue: 3, unitLabel: 'copas', sortOrder: 9050 },
-    ];
-    for (const t of measurableTasks) {
-      const labelEsc = esc(t.label.trim());
-      const areaEsc = esc(t.area.trim());
-      const rows: any[] = await prisma.$queryRawUnsafe(
-        `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND "area"='${areaEsc}' LIMIT 1`
-      );
-      const nowIso = new Date().toISOString();
-      if (rows && rows.length > 0) {
-        const id = rows[0].id as string;
-        // Update to ensure measurement flags are set and fields aligned
-        await prisma.task.update({
-          where: { id },
-          data: {
-            measureEnabled: true,
-            targetValue: t.targetValue,
-            unitLabel: t.unitLabel,
-            active: true,
-          },
-        });
-      } else {
-        const sortOrder = t.sortOrder ?? 10000;
-        await prisma.task.create({
-          data: {
-            label: t.label,
-            active: true,
-            sortOrder,
-            area: t.area,
-            measureEnabled: true,
-            targetValue: t.targetValue,
-            unitLabel: t.unitLabel,
-          },
-        });
+    if (process.env.SEED_DEMO_TASKS === '1') {
+      console.log('seed_info: creando tareas medibles demo (SEED_DEMO_TASKS=1)');
+      const measurableTasks: { label: string; area: string; targetValue: number; unitLabel: string; sortOrder?: number }[] = [
+        { label: 'Vender copas', area: 'Pruebas', targetValue: 7, unitLabel: 'copas', sortOrder: 9000 },
+        { label: 'Promocionar copas', area: 'Pruebas', targetValue: 7, unitLabel: 'copas', sortOrder: 9010 },
+        // E2E: tarea fija y visible para área Barra
+        { label: 'E2E Medible Barra', area: 'Barra', targetValue: 3, unitLabel: 'copas', sortOrder: 9050 },
+      ];
+      for (const t of measurableTasks) {
+        const labelEsc = esc(t.label.trim());
+        const areaEsc = esc(t.area.trim());
+        const rows: any[] = await prisma.$queryRawUnsafe(
+          `SELECT "id" FROM "Task" WHERE "label"='${labelEsc}' AND "area"='${areaEsc}' LIMIT 1`
+        );
+        if (rows && rows.length > 0) {
+          const id = rows[0].id as string;
+          await prisma.task.update({
+            where: { id },
+            data: {
+              measureEnabled: true,
+              targetValue: t.targetValue,
+              unitLabel: t.unitLabel,
+              active: true,
+            },
+          });
+        } else {
+          const sortOrder = t.sortOrder ?? 10000;
+          await prisma.task.create({
+            data: {
+              label: t.label,
+              active: true,
+              sortOrder,
+              area: t.area,
+              measureEnabled: true,
+              targetValue: t.targetValue,
+              unitLabel: t.unitLabel,
+            },
+          });
+        }
       }
+    } else {
+      console.log('seed_skip: tareas medibles demo no creadas (SEED_DEMO_TASKS!=1)');
     }
   } catch {}
   

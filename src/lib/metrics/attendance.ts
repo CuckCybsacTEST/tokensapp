@@ -46,7 +46,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
       COUNT(DISTINCT CASE WHEN s."type"='IN' THEN s."personId" END) as uniqIn
     FROM "Scan" s ${joinPerson}
     ${personWhere ? personWhere : ''}
-    ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'`
+    ${personWhere ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'`
   );
   const uniquePersons = Number(totalsRows?.[0]?.uniqIn || 0);
   const totalsIN = Number(totalsRows?.[0]?.inCount || 0);
@@ -60,7 +60,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
               MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
        FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       ${personWhere ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
        GROUP BY s."personId", s."businessDay"
      )
      SELECT 
@@ -75,15 +75,15 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
   const completedDaysPct = totalWithIn > 0 ? (100 * totalWithBoth) / totalWithIn : 0;
   const avgDurationMin = dailyRows?.[0]?.avgMin != null ? Number(dailyRows[0].avgMin) : null;
 
-  // heatmapByHour (UTC)
+  // heatmapByHour (America/Lima)
   const heatRows: any[] = await prisma.$queryRawUnsafe(
-    `SELECT EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int as hour,
+    `SELECT EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'America/Lima')::int as hour,
             SUM(CASE WHEN s."type"='IN' THEN 1 ELSE 0 END) as inCount,
             SUM(CASE WHEN s."type"='OUT' THEN 1 ELSE 0 END) as outCount
      FROM "Scan" s ${joinPerson}
      ${personWhere ? personWhere : ''}
-     ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
-     GROUP BY EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'UTC')::int
+     ${personWhere ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
+     GROUP BY EXTRACT(HOUR FROM s."scannedAt" AT TIME ZONE 'America/Lima')::int
      ORDER BY hour ASC`
   );
   const heatmapByHour: Array<{ hour: number; in: number; out: number }> = Array.from({ length: 24 }, (_, h) => {
@@ -99,7 +99,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
     SUM(CASE WHEN s."type"='OUT' THEN 1 ELSE 0 END) as hasOut
   FROM "Scan" s JOIN "Person" p ON p."id" = s."personId"
   ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-  ${area || person ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+  ${area || person ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
   GROUP BY s."personId", s."businessDay"
      )
      SELECT p."area" as area,
@@ -160,7 +160,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
        SELECT s."personId", s."businessDay" as day, MIN(s."scannedAt") as firstIn
        FROM "Scan" s JOIN "Person" p ON p."id" = s."personId"
        ${area || person ? buildPersonWhere(area ?? undefined, person ?? undefined) : ''}
-       ${area || person ? 'AND' : 'WHERE'} s."type"='IN' AND s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       ${area || person ? 'AND' : 'WHERE'} s."type"='IN' AND s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
        GROUP BY s."personId", s."businessDay"
      ), done_tasks AS (
        SELECT pts."personId", pts."day",
@@ -189,7 +189,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
               COUNT(DISTINCT CASE WHEN s."type"='IN' THEN s."personId" END) as uniq
        FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       ${personWhere ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
        GROUP BY s."businessDay"
      ), daily AS (
        SELECT s."personId", s."businessDay" as day,
@@ -197,7 +197,7 @@ export async function getAttendanceMetrics(params: GetMetricsParams): Promise<Me
               MAX(CASE WHEN s."type"='OUT' THEN s."scannedAt" END) as lastOut
        FROM "Scan" s ${joinPerson}
        ${personWhere ? personWhere : ''}
-       ${personWhere ? 'AND' : 'WHERE'} s."scannedAt" >= '${startIso}' AND s."scannedAt" < '${endIso}'
+       ${personWhere ? 'AND' : 'WHERE'} s."businessDay" >= '${esc(startDay)}' AND s."businessDay" <= '${esc(endDay)}'
        GROUP BY s."personId", s."businessDay"
      ), davg AS (
        SELECT day, AVG(CASE WHEN firstIn IS NOT NULL AND lastOut IS NOT NULL AND lastOut > firstIn

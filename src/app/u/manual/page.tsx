@@ -26,6 +26,8 @@ export default function ManualAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ variant: "success" | "error"; text: string } | null>(null);
+  const [holdMs, setHoldMs] = useState(0);
+  const holdTimerRef = useRef<number | null>(null);
   // Category tab: QR or MANUAL
   const [tab, setTab] = useState<"QR" | "MANUAL">("QR");
   // Scanner state
@@ -70,14 +72,20 @@ export default function ManualAttendancePage() {
     try {
       const deviceId = ensureDeviceId();
       const res = await fetch('/api/attendance/mark', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, deviceId }) });
-      const json = await res.json().catch(() => ({}));
+      const json: any = await res.json().catch(() => ({}));
       if (res.ok && json?.ok) {
         setMsg({ variant: 'success', text: `${mode === 'IN' ? 'Entrada' : 'Salida'} registrada correctamente.` });
         // redirigir como el escáner
         const day = ymdUtc(new Date());
         setTimeout(() => {
           if (mode === 'IN') window.location.href = `/u/checklist?day=${day}&mode=IN`;
-          else window.location.href = `/u/closed?day=${day}`;
+          else {
+            const usp = new URLSearchParams();
+            usp.set('day', day);
+            if (json.scanId) usp.set('scanId', json.scanId);
+            if (json.undoWindowMs) usp.set('undoMs', String(json.undoWindowMs));
+            window.location.href = `/u/closed?${usp.toString()}`;
+          }
         }, 700);
       } else {
         let code = String(json?.code || 'ERROR');
@@ -85,7 +93,8 @@ export default function ManualAttendancePage() {
         const human = code === 'REPLAY' ? 'Intento duplicado (<10s)' :
                        code === 'PERSON_INACTIVE' ? 'Persona inactiva' :
                        code === 'ALREADY_TODAY' ? 'Ya registraste esta acción hoy' :
-                       code === 'NO_IN_TODAY' ? 'No puedes registrar salida sin haber registrado entrada hoy' : code;
+                       code === 'NO_IN_TODAY' ? 'No puedes registrar salida sin haber registrado entrada hoy' :
+                       code === 'OUT_COOLDOWN' ? `Debes esperar ${json?.waitSeconds ?? 60}s desde tu entrada antes de registrar salida` : code;
         setMsg({ variant: 'error', text: human });
       }
     } catch (e: any) {
@@ -265,8 +274,35 @@ export default function ManualAttendancePage() {
             </div>
 
             <div className="mt-4">
-              <button className="btn" disabled={submitting || mode == null} onClick={handleSubmit}>
-                {submitting ? 'Enviando…' : 'Registrar'}
+              <button
+                className="btn relative"
+                disabled={submitting || mode == null}
+                onMouseDown={(e) => {
+                  if (mode !== 'OUT') return; // no long-press for IN
+                  setHoldMs(0);
+                  const start = Date.now();
+                  const id = window.setInterval(() => {
+                    const ms = Date.now() - start;
+                    setHoldMs(ms);
+                    if (ms >= 2000) {
+                      window.clearInterval(id);
+                      setHoldMs(0);
+                      handleSubmit();
+                    }
+                  }, 50);
+                  holdTimerRef.current = id as unknown as number;
+                }}
+                onMouseUp={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
+                onMouseLeave={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
+                onClick={(e) => {
+                  if (mode === 'OUT') { e.preventDefault(); return; }
+                  handleSubmit();
+                }}
+              >
+                {submitting ? 'Enviando…' : (mode === 'OUT' ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar Salida') : 'Registrar entrada')}
+                {mode === 'OUT' && holdMs > 0 && (
+                  <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+                )}
               </button>
               <Link href="/u/scanner" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400">Abrir escáner en página completa</Link>
             </div>

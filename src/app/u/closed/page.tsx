@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import "../../globals.css";
 
@@ -14,7 +14,23 @@ function localYMD(): string {
 function ClosedPageInner() {
   const params = useSearchParams();
   const day = params.get("day") || localYMD();
+  const scanId = params.get("scanId") || "";
+  const undoMs = Math.max(0, Number(params.get("undoMs") || 0));
   const time = useMemo(() => new Date().toLocaleTimeString(), []);
+  const [leftMs, setLeftMs] = useState<number>(undoMs);
+  const ticking = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!undoMs) return;
+    const end = Date.now() + undoMs;
+    const id = window.setInterval(() => {
+      const remain = Math.max(0, end - Date.now());
+      setLeftMs(remain);
+      if (remain <= 0) window.clearInterval(id);
+    }, 250);
+    ticking.current = id;
+    return () => { if (ticking.current) window.clearInterval(ticking.current); };
+  }, [undoMs]);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -23,6 +39,31 @@ function ClosedPageInner() {
           <h1 className="mb-2 text-2xl font-semibold">¡Tu salida fue registrada!</h1>
           <p className="text-sm opacity-90">Turno cerrado correctamente.</p>
           <p className="mt-2 text-sm opacity-90">Fecha: <span className="font-mono">{day}</span> · Hora: <span className="font-mono">{time}</span></p>
+          {undoMs > 0 && scanId && (
+            <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-amber-800">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm">¿Fue un error? Puedes deshacer esta salida por {Math.ceil(leftMs / 1000)}s.</span>
+                <button
+                  className="btn-outline whitespace-nowrap"
+                  disabled={!scanId || leftMs <= 0}
+                  onClick={async () => {
+                    try {
+                      const r = await fetch('/api/attendance/undo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scanId }) });
+                      const j = await r.json();
+                      if (r.ok && j?.ok) {
+                        // Go back to checklist so user can continue
+                        window.location.href = `/u/checklist?day=${day}`;
+                      } else {
+                        alert(`No se pudo deshacer: ${j?.code || r.status}`);
+                      }
+                    } catch (e: any) {
+                      alert(`Error de red: ${String(e?.message || e)}`);
+                    }
+                  }}
+                >Deshacer salida</button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex items-center gap-3">

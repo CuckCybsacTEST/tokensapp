@@ -107,7 +107,7 @@ export default function UserScannerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: m, deviceId })
       });
-      const json: { ok?: boolean; alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string; code?: string } = await res.json();
+      const json: any = await res.json();
       if (res.ok && json?.ok) {
         const already = json.alerts?.includes('already_marked');
         const same = json.alerts?.includes('same_direction');
@@ -124,7 +124,11 @@ export default function UserScannerPage() {
           if (m === 'IN') {
             window.location.href = `/u/checklist?day=${day}&mode=IN`;
           } else {
-            window.location.href = `/u/closed?day=${day}`;
+            const params = new URLSearchParams();
+            params.set('day', day);
+            if (json.scanId) params.set('scanId', json.scanId);
+            if (json.undoWindowMs) params.set('undoMs', String(json.undoWindowMs));
+            window.location.href = `/u/closed?${params.toString()}`;
           }
         }, 700);
       } else {
@@ -136,6 +140,7 @@ export default function UserScannerPage() {
           case 'PERSON_INACTIVE': human = 'Persona inactiva'; break;
           case 'ALREADY_TODAY': human = 'Ya registraste esta acción hoy'; break;
           case 'NO_IN_TODAY': human = 'No puedes registrar salida sin haber registrado entrada hoy'; break;
+          case 'OUT_COOLDOWN': human = `Debes esperar ${json?.waitSeconds ?? 60}s desde tu entrada antes de registrar salida`; break;
           default: human = String(msg);
         }
         setBanner({ variant: "error", message: human });

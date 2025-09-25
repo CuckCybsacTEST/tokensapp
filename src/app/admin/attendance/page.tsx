@@ -192,6 +192,24 @@ export default function AdminAttendancePage() {
     ];
   }, [metrics]);
 
+  // Format HH:mm in Peru timezone for display
+  const fmtHHmmLima = (v: string | Date | null | undefined): string => {
+    if (!v) return '-';
+    const d = v instanceof Date ? v : new Date(v);
+    try {
+      return new Intl.DateTimeFormat('es-PE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'America/Lima',
+      }).format(d);
+    } catch {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -278,7 +296,7 @@ export default function AdminAttendancePage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-              <div className="text-sm font-semibold mb-2">Actividad por hora (UTC)</div>
+              <div className="text-sm font-semibold mb-2">Actividad por hora (Lima)</div>
               <HoursStackedBar data={metrics.attendance.heatmapByHour} />
             </div>
             {/* Tareas separadas al dashboard de tareas */}
@@ -305,7 +323,7 @@ export default function AdminAttendancePage() {
                         .sort((a, b) => new Date(a.firstIn || 0).getTime() - new Date(b.firstIn || 0).getTime())
                         .map((r, i) => (
                           <tr key={`in-${i}`} className="border-b border-slate-100 dark:border-slate-800">
-                            <td className="py-1 px-2 whitespace-nowrap">{r.firstIn ? new Date(r.firstIn).toISOString().slice(11,16) : '-'}</td>
+                            <td className="py-1 px-2 whitespace-nowrap">{fmtHHmmLima(r.firstIn)}</td>
                             <td className="py-1 px-2 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                             <td className="py-1 px-2 whitespace-nowrap">{r.area || '-'}</td>
                           </tr>
@@ -336,7 +354,7 @@ export default function AdminAttendancePage() {
                         .sort((a, b) => new Date(b.lastOut || 0).getTime() - new Date(a.lastOut || 0).getTime())
                         .map((r, i) => (
                           <tr key={`out-${i}`} className="border-b border-slate-100 dark:border-slate-800">
-                            <td className="py-1 px-2 whitespace-nowrap">{r.lastOut ? new Date(r.lastOut).toISOString().slice(11,16) : '-'}</td>
+                            <td className="py-1 px-2 whitespace-nowrap">{fmtHHmmLima(r.lastOut)}</td>
                             <td className="py-1 px-2 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                             <td className="py-1 px-2 whitespace-nowrap">{r.area || '-'}</td>
                           </tr>
@@ -386,8 +404,8 @@ export default function AdminAttendancePage() {
                       <td className="py-2 px-3 whitespace-nowrap">{r.day}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.area || '-'}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">{r.firstIn ? new Date(r.firstIn).toISOString().slice(11,16) : '-'}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">{r.lastOut ? new Date(r.lastOut).toISOString().slice(11,16) : '-'}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.firstIn)}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.lastOut)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{pct(r.completionPct)}</td>

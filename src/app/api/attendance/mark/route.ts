@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 type Mode = 'IN' | 'OUT';
 const REPLAY_WINDOW_SEC = 10;
+const OUT_COOLDOWN_SEC = 60; // minimal time after IN before allowing OUT
 
 export async function POST(req: Request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'DUPLICATE', person: { id: person.id, name: person.name, code: person.code }, lastScanAt: lastRecent.scannedAt }, { status: 400 });
     }
 
-    const useBusinessDay = process.env.ATTENDANCE_BUSINESS_DAY === '1';
+  const useBusinessDay = process.env.ATTENDANCE_BUSINESS_DAY === '1';
     if (useBusinessDay) {
       // Business Day logic
       const businessDay = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
@@ -60,10 +61,20 @@ export async function POST(req: Request) {
       }
 
       if (mode === 'OUT') {
-        const hasInToday = !!(await prisma.scan.findFirst({ where: { personId: person.id, type: 'IN', businessDay }, orderBy: { scannedAt: 'asc' }, select: { id: true } }));
+        const lastIn = await prisma.scan.findFirst({ where: { personId: person.id, type: 'IN', businessDay }, orderBy: { scannedAt: 'desc' }, select: { id: true, scannedAt: true } });
+        const hasInToday = !!lastIn;
         if (!hasInToday) {
           await prisma.eventLog.create({ data: { type: 'SCAN_OUT_WITHOUT_IN', message: person.code, metadata: JSON.stringify({ personId: person.id }) } });
           return NextResponse.json({ ok: false, code: 'NO_IN_TODAY' }, { status: 400 });
+        }
+        // Enforce cooldown since last IN
+        if (lastIn) {
+          const elapsed = (Date.now() - new Date(lastIn.scannedAt).getTime()) / 1000;
+          if (elapsed < OUT_COOLDOWN_SEC) {
+            const wait = Math.ceil(OUT_COOLDOWN_SEC - elapsed);
+            await prisma.eventLog.create({ data: { type: 'SCAN_OUT_COOLDOWN', message: person.code, metadata: JSON.stringify({ personId: person.id, wait }) } });
+            return NextResponse.json({ ok: false, code: 'OUT_COOLDOWN', waitSeconds: wait }, { status: 400 });
+          }
         }
       }
       const now = new Date();
@@ -81,7 +92,9 @@ export async function POST(req: Request) {
       });
       const scanId = created.id;
       await prisma.eventLog.create({ data: { type: 'SCAN_OK', message: person.code, metadata: JSON.stringify({ personId: person.id, type: mode, businessDay }) } });
-      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [] });
+      // Provide undo window hint for client when OUT
+      const undoWindowMs = mode === 'OUT' ? 30_000 : 0;
+      return NextResponse.json({ ok: true, person: { id: person.id, name: person.name, code: person.code }, scanId, businessDay, alerts: [], undoWindowMs }, { status: 200 });
     } else {
       // Legacy UTC-day logic (fallback) but still store computed businessDay for metrics compatibility
       const now = new Date();
