@@ -50,11 +50,15 @@ RUN apk add --no-cache openssl ca-certificates libc6-compat
 # Copy node_modules (with Prisma Client already generated) and production build
 COPY --from=prisma /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json* ./
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/scripts/docker-start.sh ./scripts/docker-start.sh
+
+# Remove devDependencies to shrink the final image size
+RUN if [ -f package-lock.json ]; then npm prune --omit=dev --no-audit --fund=false; fi
 
 # Expose port (Railway sets PORT env)
 ENV PORT=3000
@@ -63,8 +67,8 @@ EXPOSE 3000
 # Health environment defaults
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
-# Ensure runtime has permissions over app dir (including sqlite file path)
-RUN chown -R node:node /app
+# Ensure runtime has permissions over app dirs that require writes
+RUN chown -R node:node /app/.next /app/public /app/prisma /app/scripts || true
 
 # Start command via entrypoint script (auto prisma db push for SQLite)
 RUN chmod +x /app/scripts/docker-start.sh
