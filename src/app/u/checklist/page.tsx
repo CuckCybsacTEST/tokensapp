@@ -42,6 +42,52 @@ function ymdUtc(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+// TaskCommentBox component defined once below
+
+function TaskCommentBox({ day, taskId }: { day: string; taskId: string }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const canSend = text.trim().length > 0 && !saving;
+  async function send() {
+    if (!canSend) return;
+    setSaving(true); setMsg(null); setErr(null);
+    try {
+      const r = await fetch('/api/tasks/comment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day, taskId, text: text.trim() })
+      });
+      const j = await r.json().catch(()=>({}));
+      if (r.ok && j?.ok) { setText(''); setMsg('Comentario enviado'); setOpen(false); setTimeout(()=> setMsg(null), 2000); }
+      else {
+        const m = j?.code || j?.message || r.status;
+        const map: Record<string,string> = { RATE_LIMIT: 'Muy rápido. Intenta en unos segundos', INVALID_DAY: 'Día inválido', INVALID_TASK: 'Tarea inválida' };
+        setErr(map[String(m)] || `No se pudo enviar (${m})`);
+      }
+    } catch (e: any) { setErr(String(e?.message || e)); }
+    finally { setSaving(false); }
+  }
+  return (
+    <div className="mt-2">
+      {msg && <div className="text-emerald-600 text-xs mb-1">{msg}</div>}
+      {err && <div className="text-red-500 text-xs mb-1">{err}</div>}
+      {!open ? (
+        <button onClick={()=> setOpen(true)} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600">Agregar comentario</button>
+      ) : (
+        <div className="space-y-2">
+          <textarea value={text} onChange={(e)=> setText(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded px-2 py-2 min-h-[60px]" placeholder="Escribe tu comentario sobre esta tarea" />
+          <div className="flex gap-2 justify-end">
+            <button onClick={()=> setOpen(false)} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600">Cancelar</button>
+            <button onClick={send} disabled={!canSend} className="text-xs px-3 py-1.5 rounded bg-blue-600 text-white disabled:opacity-50">Enviar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChecklistPageInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -379,36 +425,6 @@ function ChecklistPageInner() {
   const nextActionLabel = nextAction === 'IN' ? 'Registrar entrada' : 'Registrar salida';
   const lockedAfterOut = lastTodayType === 'OUT';
   const canEdit = lastTodayType === 'IN';
-  const [comment, setComment] = useState("");
-  const [commentMsg, setCommentMsg] = useState<string | null>(null);
-  const [commentErr, setCommentErr] = useState<string | null>(null);
-  const [commentSaving, setCommentSaving] = useState(false);
-
-  async function submitComment() {
-    if (!isValidDay(day)) return;
-    const text = comment.trim();
-    if (!text) { setCommentErr('Escribe un comentario'); return; }
-    setCommentErr(null); setCommentMsg(null); setCommentSaving(true);
-    try {
-      const r = await fetch('/api/checklist/comment', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day, text })
-      });
-      const j = await r.json().catch(()=>({}));
-      if (r.ok && j?.ok) {
-        setComment(''); setCommentMsg('Comentario enviado');
-        setTimeout(()=> setCommentMsg(null), 2000);
-      } else {
-        const m = j?.code || j?.message || r.status;
-        const map: Record<string,string> = { RATE_LIMIT: 'Muy rápido. Intenta en unos segundos', INVALID_DAY: 'Día inválido' };
-        setCommentErr(map[String(m)] || `No se pudo enviar (${m})`);
-      }
-    } catch (e: any) {
-      setCommentErr(`Error de red: ${String(e?.message || e)}`);
-    } finally {
-      setCommentSaving(false);
-    }
-  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -454,23 +470,7 @@ function ChecklistPageInner() {
                 {brief.updatedAt && <div className="mt-2 text-[11px] opacity-60">Actualizado: {new Date(brief.updatedAt).toLocaleString()}</div>}
               </div>
             )}
-            {/* Optional collaborator comment */}
-            <div className="mt-4 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-              <div className="font-medium mb-1">Comentario (opcional)</div>
-              {commentMsg && <div className="mb-2 text-emerald-600 text-xs">{commentMsg}</div>}
-              {commentErr && <div className="mb-2 text-red-500 text-xs">{commentErr}</div>}
-              <textarea
-                value={comment}
-                onChange={(e)=> setComment(e.target.value)}
-                className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded px-2 py-2 min-h-[70px]"
-                placeholder="Cuéntanos algo importante de tu turno de hoy (opcional)"
-              />
-              <div className="mt-2 flex justify-end">
-                <button onClick={submitComment} disabled={commentSaving || !comment.trim()} className="rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 text-sm">
-                  {commentSaving ? 'Enviando…' : 'Enviar'}
-                </button>
-              </div>
-            </div>
+            {/* Comentario global eliminado: se implementará por tarea */}
           </div>
           <div />
         </div>
@@ -505,7 +505,10 @@ function ChecklistPageInner() {
           </ul>
         )}
         {!loading && data && data.tasks.length === 0 && (
-          <div className="text-sm text-gray-500 mb-3">No hay tareas configuradas.</div>
+          <div className="mb-4 rounded-md border border-slate-200 bg-white p-4 text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            <div className="text-base font-medium mb-1">No tienes tareas hoy</div>
+            <div className="text-sm opacity-80">No hay tareas activas para tu área en este día. Si crees que falta algo, avisa a tu coordinador.</div>
+          </div>
         )}
         {!loading && data && data.tasks.length > 0 && (
           <>
@@ -566,6 +569,10 @@ function ChecklistPageInner() {
                         </div>
                       )}
                     </div>
+                    {/* Optional per-task comment */}
+                    {!measurable && (
+                      <TaskCommentBox day={day!} taskId={t.id} />
+                    )}
                     {isAdmin && (
                       <div className="mb-1 mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
                         <label className="inline-flex items-center gap-1">
