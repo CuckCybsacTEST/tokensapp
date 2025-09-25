@@ -331,3 +331,18 @@ model PasswordResetOtp {
   @@index([code])
   @@index([expiresAt])
 }
+
+// Resumen del día para colaboradores (show, promos, notas)
+model DayBrief {
+  id        String   @id @default(cuid())
+  day       String   @unique
+  title     String?
+  show      String?
+  promos    String?
+  notes     String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([day])
+}

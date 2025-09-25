@@ -59,6 +59,7 @@ function ChecklistPageInner() {
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [adminSums, setAdminSums] = useState<Map<string, number>>(new Map());
   const [metaSavingIds, setMetaSavingIds] = useState<Set<string>>(new Set());
+  const [brief, setBrief] = useState<{ day: string; title?: string | null; show?: string | null; promos?: string | null; notes?: string | null; updatedAt?: string } | null>(null);
 
   // Local state of check statuses
   const initialMap = useMemo(() => {
@@ -135,6 +136,12 @@ function ChecklistPageInner() {
       if (!r.ok) throw new Error(`No se pudo cargar la checklist (HTTP ${r.status})`);
       const j: TasksList = await r.json();
       setData(j);
+      // Brief del día (público)
+      try {
+        const rb = await fetch(`/api/user/day-brief?day=${encodeURIComponent(day!)}`, { cache: 'no-store', signal });
+        const jb = await rb.json().catch(() => ({}));
+        if (jb?.ok) setBrief(jb.brief || null);
+      } catch {}
     } catch (e: any) {
       // Friendly error for network issues
       const msg = String(e?.message || e);
@@ -388,12 +395,37 @@ function ChecklistPageInner() {
             {user && (user as any).ok && (
               <p className="text-sm text-gray-600">Usuario: {(user as any).user.personName} ({(user as any).user.personCode})</p>
             )}
+            {brief && (
+              <div className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                {brief.title && <div className="font-semibold mb-1">{brief.title}</div>}
+                <div className="grid grid-cols-1 gap-1 text-[13px]">
+                  {brief.show && (
+                    <div>
+                      <div className="opacity-70">Eventos:</div>
+                      <ul className="list-disc ml-5">
+                        {String(brief.show).split(/\r?\n|;|•/).map((s, i) => s.trim()).filter(Boolean).map((s, i)=> (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {brief.promos && (
+                    <div>
+                      <div className="opacity-70">Promos:</div>
+                      <ul className="list-disc ml-5">
+                        {String(brief.promos).split(/\r?\n|;|•/).map((s, i) => s.trim()).filter(Boolean).map((s, i)=> (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {brief.notes && <div><span className="opacity-70">Apuntes:</span> {brief.notes}</div>}
+                </div>
+                {brief.updatedAt && <div className="mt-2 text-[11px] opacity-60">Actualizado: {new Date(brief.updatedAt).toLocaleString()}</div>}
+              </div>
+            )}
           </div>
-          <div>
-            <Link href="/u" className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50">
-              ← Volver
-            </Link>
-          </div>
+          <div />
         </div>
 
         {/* Notices */}

@@ -100,7 +100,7 @@ export async function middleware(req: NextRequest) {
     // Role-based authorization
     // 1) Admin panel: default only ADMIN; allow STAFF for specific pages
     if (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") {
-      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens';
+      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens' || pathname === '/admin/day-brief';
       const roles = isStaffAllowedPath ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
       const r = requireRoleEdge(session, roles as any);
       if (!r.ok) {
@@ -124,7 +124,8 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith(ADMIN_API_PREFIX)) {
       // By default require ADMIN; allow STAFF for specific endpoints.
       const staffAllowed = (
-        pathname.startsWith('/api/admin/users/') && pathname.endsWith('/password-otp')
+        (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/password-otp')) ||
+        pathname.startsWith('/api/admin/day-brief')
       );
       const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
       const r = requireRoleEdge(session, roles as any);
