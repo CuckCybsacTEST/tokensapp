@@ -299,6 +299,29 @@
 			"type": "shell",
 			"command": "npm run -s typecheck",
 			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc)",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc)",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc)",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc) via npm",
+			"type": "shell",
+			"command": "npm run -s typecheck"
 		}
 	]
 }

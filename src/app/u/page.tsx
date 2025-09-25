@@ -4,8 +4,7 @@ import { cookies } from 'next/headers';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
-import nextDynamic from 'next/dynamic';
-const MarkActionButton = nextDynamic(() => import('@/components/MarkActionButton'), { ssr: false });
+import MarkAttendanceCard from './MarkAttendanceCard';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -31,6 +30,7 @@ export default async function UHome() {
   const cutoff = getConfiguredCutoffHour();
   const todayBD = computeBusinessDayFromUtc(new Date(), cutoff);
   let nextAction: 'IN' | 'OUT' = 'IN';
+  let personName: string | undefined;
   try {
     const me = await prisma.user.findUnique({
       where: { id: session.userId },
@@ -50,29 +50,18 @@ export default async function UHome() {
       },
     });
     const scans = me?.person?.scans || [];
+    personName = me?.person?.name || undefined;
     const hasInToday = scans.some(s => s.type === 'IN');
     const hasOutToday = scans.some(s => s.type === 'OUT');
     nextAction = hasInToday && !hasOutToday ? 'OUT' : 'IN';
   } catch {}
-
-  // Página de selección de acciones: Acción principal (IN/OUT) / Ver lista de tareas / Control Caja (si aplica)
   return (
+    // Página de selección de acciones: Acción principal (IN/OUT) / Ver lista de tareas / Control Caja (si aplica)
     <div className="min-h-screen bg-[var(--color-bg)]">
       <div className="mx-auto max-w-3xl px-4 py-8">
-  <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100 mb-6">¿Qué quieres hacer?</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100 mb-6">Bienvenido{personName ? `, ${personName}` : ''}</h1>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Marcar asistencia</div>
-            <p className="text-sm text-gray-600 dark:text-slate-300">
-              {nextAction === 'IN' ? 'Comienza tu turno registrando tu Entrada.' : 'Finaliza tu turno registrando tu Salida.'}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <MarkActionButton action={nextAction} />
-            </div>
-            {nextAction === 'OUT' && (
-              <div className="mt-2 text-xs text-slate-500">Consejo: en la pantalla siguiente, mantén presionado el botón 2s para confirmar la salida.</div>
-            )}
-          </div>
+          <MarkAttendanceCard nextAction={nextAction} />
           <Link href="/u/checklist" className="block rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800">
             <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Ver lista de tareas</div>
             <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>

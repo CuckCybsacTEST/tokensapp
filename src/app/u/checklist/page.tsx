@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import "../../globals.css";
 
@@ -84,9 +85,7 @@ function ChecklistPageInner() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const [pendingLockedIds, setPendingLockedIds] = useState<Set<string>>(new Set());
-  // Long-press state for the primary action (OUT)
-  const [holdMs, setHoldMs] = useState(0);
-  const holdTimerRef = useRef<number | null>(null);
+  // Nota: esta página ya no incluye botones de entrada/salida; solo muestra la checklist
 
   useEffect(() => {
     setChecked(initialMap);
@@ -342,40 +341,6 @@ function ChecklistPageInner() {
 
   // Ya no se requiere que todas las tareas estén marcadas para registrar salida
 
-  const openScanner = async () => {
-    if (!isValidDay(day)) return;
-    // Guardar progreso solo cuando la próxima acción es SALIDA (ya hubo ENTRADA)
-    if (data && nextAction === 'OUT') {
-      const ok = await onSave();
-      if (ok === false) return;
-    }
-    window.location.href = "/u/scanner?from=checklist";
-  };
-  
-  const startHoldIfOut = () => {
-    if (nextAction !== 'OUT') return;
-    setHoldMs(0);
-    const start = Date.now();
-    const id = window.setInterval(() => {
-      const ms = Date.now() - start;
-      setHoldMs(ms);
-      if (ms >= 2000) {
-        window.clearInterval(id);
-        setHoldMs(0);
-        holdTimerRef.current = null;
-        void openScanner();
-      }
-    }, 50);
-    holdTimerRef.current = id as unknown as number;
-  };
-  const clearHold = () => {
-    if (holdTimerRef.current) {
-      window.clearInterval(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    setHoldMs(0);
-  };
-
   // Autosave con debounce cuando cambian los estados
   function mapsEqual(a: Map<string, boolean>, b: Map<string, boolean>) {
     if (a.size !== b.size) return false;
@@ -424,7 +389,11 @@ function ChecklistPageInner() {
               <p className="text-sm text-gray-600">Usuario: {(user as any).user.personName} ({(user as any).user.personCode})</p>
             )}
           </div>
-          {/* Removed header "Abrir escáner" to give more hierarchy to the primary action at the bottom */}
+          <div>
+            <Link href="/u" className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50">
+              ← Volver
+            </Link>
+          </div>
         </div>
 
         {/* Notices */}
@@ -457,33 +426,7 @@ function ChecklistPageInner() {
           </ul>
         )}
         {!loading && data && data.tasks.length === 0 && (
-          <>
-            <div className="text-sm text-gray-500 mb-3">No hay tareas configuradas.</div>
-            {/* Barra inferior sticky con acción principal incluso sin tareas */}
-            <div className="sticky bottom-0 z-10 mt-4 -mx-4 border-t border-slate-200 bg-white/85 px-4 py-4 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
-              <div className="mx-auto flex max-w-3xl flex-col items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    if (nextAction === 'OUT') { e.preventDefault(); return; }
-                    void openScanner();
-                  }}
-                  onPointerDown={startHoldIfOut}
-                  onPointerUp={clearHold}
-                  onPointerLeave={clearHold}
-                  onPointerCancel={clearHold}
-                  disabled={saving || loading}
-                  className="btn relative w-full max-w-xs !py-3 !px-6 !text-base"
-                >
-                  {nextAction === 'OUT'
-                    ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar salida')
-                    : nextActionLabel}
-                  {nextAction === 'OUT' && holdMs > 0 && (
-                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
+          <div className="text-sm text-gray-500 mb-3">No hay tareas configuradas.</div>
         )}
         {!loading && data && data.tasks.length > 0 && (
           <>
@@ -624,31 +567,7 @@ function ChecklistPageInner() {
                 );
               })}
             </div>
-            {/* Barra inferior sticky centrada con acción principal destacada */}
-            <div className="sticky bottom-0 z-10 mt-4 -mx-4 border-t border-slate-200 bg-white/85 px-4 py-4 backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
-              <div className="mx-auto flex max-w-3xl flex-col items-center gap-2">
-                <div className="text-xs text-gray-600 dark:text-slate-300">Completadas {Array.from(checked.values()).filter(Boolean).length} / {data.tasks.length}</div>
-                <button
-                  onClick={(e) => {
-                    if (nextAction === 'OUT') { e.preventDefault(); return; }
-                    void openScanner();
-                  }}
-                  onPointerDown={startHoldIfOut}
-                  onPointerUp={clearHold}
-                  onPointerLeave={clearHold}
-                  onPointerCancel={clearHold}
-                  disabled={saving || loading}
-                  className="btn relative w-full max-w-xs !py-3 !px-6 !text-base"
-                >
-                  {nextAction === 'OUT'
-                    ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar salida')
-                    : nextActionLabel}
-                  {nextAction === 'OUT' && holdMs > 0 && (
-                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
-                  )}
-                </button>
-              </div>
-            </div>
+            {/* Eliminado el botón de acción: esta vista ahora solo muestra la lista de tareas */}
           </>
         )}
       </div>
