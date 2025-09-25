@@ -15,9 +15,9 @@ FROM base AS deps
 COPY prisma/schema.prisma ./prisma/schema.prisma
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 RUN \
-  # Skip lifecycle scripts here to avoid running postinstall (prisma generate) twice
-  # Prisma Client will be generated explicitly in the next stage
-  if [ -f package-lock.json ]; then npm ci --ignore-scripts --no-audit --fund=false; \
+  # Allow lifecycle scripts so native modules like sharp can fetch/build binaries
+  # Prisma Client will also run its postinstall; that's OK (we still run generate explicitly later)
+  if [ -f package-lock.json ]; then npm ci --no-audit --fund=false; \
   elif [ -f pnpm-lock.yaml ]; then npm i -g pnpm@9 && pnpm install --frozen-lockfile; \
   elif [ -f yarn.lock ]; then npm i -g yarn && yarn install --frozen-lockfile; \
   else npm install; fi
