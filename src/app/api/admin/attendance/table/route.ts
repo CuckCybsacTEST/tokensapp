@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { rangeFromPeriod } from '@/lib/date';
+import { rangeBusinessDays } from '@/lib/date';
 import { prisma as _p } from '@/lib/prisma';
 import type { Period } from '@/types/metrics';
 
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10) || 20));
 
-  const { startIso, endIso, startDay, endDay } = rangeFromPeriod(periodParam, startDate, endDate);
+  const { startIso, endIso, startDay, endDay } = rangeBusinessDays(periodParam, startDate, endDate);
 
     const area = url.searchParams.get('area') || undefined;
     const person = url.searchParams.get('person') || undefined;
