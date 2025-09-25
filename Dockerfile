@@ -3,8 +3,8 @@
 
 ARG NODE_VERSION=20
 
-# Use Chainguard's Node image (hosted at cgr.dev) to avoid Docker Hub pulls
-FROM cgr.dev/chainguard/node:${NODE_VERSION} AS base
+# Use AWS Public ECR mirror of Docker Official Images (avoids Docker Hub rate limits)
+FROM public.ecr.aws/docker/library/node:${NODE_VERSION}-alpine AS base
 USER root
 RUN apk add --no-cache openssl ca-certificates
 WORKDIR /app
@@ -34,7 +34,7 @@ ENV DATABASE_URL="file:./prisma/dev.db"
 RUN npm run build
 
 # Production image, copy needed artifacts
-FROM cgr.dev/chainguard/node:${NODE_VERSION} AS runner
+FROM public.ecr.aws/docker/library/node:${NODE_VERSION}-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -60,9 +60,9 @@ EXPOSE 3000
 ENV PUBLIC_BASE_URL=http://localhost:3000
 
 # Ensure runtime has permissions over app dir (including sqlite file path)
-RUN chown -R 65532:65532 /app
+RUN chown -R node:node /app
 
 # Start command via entrypoint script (auto prisma db push for SQLite)
 RUN chmod +x /app/scripts/docker-start.sh
-USER 65532
+USER node
 CMD ["/bin/sh", "/app/scripts/docker-start.sh"]
