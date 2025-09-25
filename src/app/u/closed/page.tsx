@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import "../../globals.css";
 
@@ -15,22 +15,8 @@ function ClosedPageInner() {
   const params = useSearchParams();
   const day = params.get("day") || localYMD();
   const scanId = params.get("scanId") || "";
-  const undoMs = 0; // Set undoMs to 0 to remove undo functionality
   const time = useMemo(() => new Date().toLocaleTimeString(), []);
-  const [leftMs, setLeftMs] = useState<number>(undoMs);
-  const ticking = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!undoMs) return;
-    const end = Date.now() + undoMs;
-    const id = window.setInterval(() => {
-      const remain = Math.max(0, end - Date.now());
-      setLeftMs(remain);
-      if (remain <= 0) window.clearInterval(id);
-    }, 250);
-    ticking.current = id;
-    return () => { if (ticking.current) window.clearInterval(ticking.current); };
-  }, [undoMs]);
+  
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
