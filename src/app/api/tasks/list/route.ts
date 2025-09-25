@@ -73,7 +73,8 @@ export async function GET(req: NextRequest) {
         } : {}),
       },
       select: { id: true, label: true, sortOrder: true, priority: true, startDay: true, endDay: true, completed: true, measureEnabled: true, targetValue: true, unitLabel: true },
-      orderBy: [{ priority: 'desc' }, { sortOrder: 'asc' }, { label: 'asc' }],
+      // Respetar el orden definido por admin (sortOrder) como criterio principal; prioridad queda como tie-breaker
+      orderBy: [{ sortOrder: 'asc' }, { priority: 'desc' }, { label: 'asc' }],
     }),
     prisma.personTaskStatus.findMany({
       where: { personId: user.personId, day: day! },
