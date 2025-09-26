@@ -76,6 +76,13 @@ export async function middleware(req: NextRequest) {
     (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") ||
     pathname.startsWith(SCANNER_PAGE_PREFIX);
   if (needsAuth) {
+    // Early bypass for cron: allow calling the scheduled-enable endpoint with x-cron-secret without any session
+    if (pathname === '/api/system/tokens/enable-scheduled') {
+      const cronSecret = req.headers.get('x-cron-secret') || '';
+      if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
+        return NextResponse.next();
+      }
+    }
     const raw = getSessionCookieFromRequest(req as unknown as Request);
     const session = await verifySessionCookie(raw);
     // User session (collaborator) for scanner access

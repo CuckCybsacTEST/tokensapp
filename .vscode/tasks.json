@@ -328,6 +328,11 @@
 			"type": "shell",
 			"command": "npm run -s typecheck",
 			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc) - cron bypass check",
+			"type": "shell",
+			"command": "npm run -s typecheck"
 		}
 	]
 }
