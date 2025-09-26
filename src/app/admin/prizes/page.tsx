@@ -48,10 +48,46 @@ async function getPrizesWithLastBatch() {
     revealedCount: revealedCount[p.id] || 0,
     deliveredCount: deliveredCount[p.id] || 0,
   }));
-  return { prizes: enriched, lastBatch } as any;
+
+  // === NUEVO: estadística reciente por batch (evitar traer todos los tokens) ===
+  const recentBatches = await prisma.batch.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 12, // límite razonable para UI
+    select: { id: true, description: true, createdAt: true }
+  });
+  const recentIds = recentBatches.map(b => b.id);
+  let batchPrizeStats: Array<{ batchId: string; description: string; createdAt: Date; prizes: Array<{ prizeId: string; label: string; color: string|null; count: number }> }> = [];
+  if (recentIds.length) {
+    const grouped = await (prisma as any).token.groupBy({
+      by: ['batchId', 'prizeId'],
+      where: { batchId: { in: recentIds } },
+      _count: { _all: true },
+    });
+    const prizeMap = new Map(enriched.map(p => [p.id, p]));
+    const batchMeta = new Map(recentBatches.map(b => [b.id, b]));
+    const perBatch: Record<string, any[]> = {};
+    for (const row of grouped) {
+      if (!perBatch[row.batchId]) perBatch[row.batchId] = [];
+      const p = prizeMap.get(row.prizeId);
+      perBatch[row.batchId].push({
+        prizeId: row.prizeId,
+        label: p?.label || row.prizeId,
+        color: p?.color || null,
+        count: row._count._all,
+      });
+    }
+    batchPrizeStats = recentBatches.map(b => ({
+      batchId: b.id,
+      description: b.description || b.id,
+      createdAt: b.createdAt,
+      prizes: (perBatch[b.id] || []).sort((a,b)=> a.label.localeCompare(b.label)),
+    }));
+  }
+
+  return { prizes: enriched, lastBatch, batchPrizeStats } as any;
 }
 
 export default async function PrizesPage() {
-  const { prizes, lastBatch } = await getPrizesWithLastBatch();
-  return <PrizesClient initialPrizes={prizes} lastBatch={lastBatch} />;
+  const { prizes, lastBatch, batchPrizeStats } = await getPrizesWithLastBatch();
+  return <PrizesClient initialPrizes={prizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />;
 }

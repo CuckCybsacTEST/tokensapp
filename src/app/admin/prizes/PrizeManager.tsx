@@ -50,10 +50,12 @@ export default function PrizeManager({
   initialPrizes,
   onPrizesUpdated,
   lastBatch,
+  batchPrizeStats = [],
 }: {
   initialPrizes: any[];
   onPrizesUpdated?: (prizes: any[]) => void;
   lastBatch?: Record<string, { id: string; name: string; createdAt: Date } | undefined>;
+  batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; count: number }> }>;
 }) {
   const [prizes, setPrizes] = useState(initialPrizes);
   function updatePrizes(updater: (prev: any[]) => any[]) {
@@ -283,6 +285,16 @@ export default function PrizeManager({
           return String(a.label || "").localeCompare(String(b.label || ""));
         });
         const emitted = sorted.filter((p) => p.stock === 0 && (p.emittedTotal ?? 0) > 0);
+        // Tabs por batches recientes para ver emitidos segmentados. Usamos batchPrizeStats
+        const [activeBatch, setActiveBatch] = useState<string | 'ALL'>('ALL');
+        const batches = batchPrizeStats.map(b => ({ id: b.batchId, label: b.description || b.batchId }));
+        const countsByPrizePerBatch: Record<string, Record<string, number>> = {};
+        for (const b of batchPrizeStats) {
+          const map: Record<string, number> = {};
+            for (const p of b.prizes) map[p.prizeId] = p.count;
+            countsByPrizePerBatch[b.batchId] = map;
+        }
+        const emittedFiltered = activeBatch==='ALL' ? emitted : emitted.filter(p => (countsByPrizePerBatch[activeBatch]||{})[p.id]);
         const pending = sorted.filter(
           (p) => p.stock == null || (typeof p.stock === "number" && p.stock > 0)
         );
@@ -437,7 +449,32 @@ export default function PrizeManager({
         return (
           <div className="space-y-6">
             {renderTable(pending, "Pendientes / Disponibles", "No hay premios con stock disponible", true, true)}
-            {renderTable(emitted, "Emitidos (stock consumido)", "No hay premios emitidos todavía", false, false)}
+            {(() => {
+              if (emitted.length === 0) return renderTable([], "Emitidos (stock consumido)", "No hay premios emitidos todavía", false, false);
+              return (
+                <div className="space-y-3">
+                  {batches.length > 0 && (
+                    <div className="flex flex-wrap gap-2 px-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveBatch('ALL')}
+                        className={`text-xs px-3 py-1 rounded border transition ${activeBatch==='ALL' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                      >Todos</button>
+                      {batches.map(b => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setActiveBatch(b.id)}
+                          title={b.id}
+                          className={`text-xs px-3 py-1 rounded border transition ${activeBatch===b.id ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                        >{b.label.length>18? b.label.slice(0,18)+'…': b.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  {renderTable(emittedFiltered, activeBatch==='ALL'?"Emitidos (stock consumido)":"Emitidos para batch seleccionado", "Sin emisiones para este batch", false, false)}
+                </div>
+              );
+            })()}
             {neverUsed.length > 0 &&
               renderTable(
                 neverUsed,

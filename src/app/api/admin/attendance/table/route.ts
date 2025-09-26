@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
 import { rangeBusinessDays } from '@/lib/date';
 import { prisma as _p } from '@/lib/prisma';
 import type { Period } from '@/types/metrics';
@@ -21,10 +22,14 @@ export async function GET(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const roleCheck = requireRole(session, ['ADMIN', 'STAFF']);
-    if (!roleCheck.ok) {
-      return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+    let authorized = false;
+    if (session && requireRole(session, ['ADMIN', 'STAFF']).ok) authorized = true;
+    if (!authorized) {
+      const uRaw = getUserCookie(req);
+      const uSession = await verifyUserSessionCookie(uRaw);
+      if (uSession?.role === 'STAFF') authorized = true;
     }
+    if (!authorized) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const url = new URL(req.url);
     const periodParam = (url.searchParams.get('period') || 'today').toLowerCase() as Period;

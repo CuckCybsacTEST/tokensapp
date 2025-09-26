@@ -445,86 +445,18 @@ Resumen selección:
 - Pocas operaciones / simplicidad -> VPS.
 - Necesidad multi región / escalado lectura -> Turso.
 
-## Métricas de Asistencia (Admin)
+## Asistencia
 
-Endpoint (protegido ADMIN/STAFF):
-- `GET /api/admin/attendance/metrics`
+La vista de asistencia ahora se limita a una tabla por persona/día (IN, OUT, duración y progreso de tareas). Se retiraron las métricas agregadas históricas para reducir complejidad y evitar datos confusos mientras el modelo de jornadas evoluciona.
 
-Autenticación
-- Requiere sesión válida en cookie; la página `/admin/attendance` la consume directamente en el navegador.
+Endpoint activo:
+`GET /api/admin/attendance/table` (ADMIN y STAFF; STAFF también vía `user_session`).
 
-Parámetros (query)
-- `period`: `today | yesterday | this_week | last_week | this_month | last_month | custom` (default `today`).
-- `startDate` y `endDate`: obligatorios si `period=custom`. Formato `YYYY-MM-DD` (UTC) e inclusivos.
-- `area` (opcional): filtra por `Person.area` (match exacto).
-- `person` (opcional): filtra por persona; acepta `code` exacto o `id:<uuid>`.
+Parámetros principales: `period` (today|yesterday|this_week|...), filtros opcionales `area`, `person`, paginación `page`, `pageSize`.
 
-Descripción de KPIs (payload)
-- `attendance.uniquePersons`: cantidad de personas con al menos un `IN` en el rango.
-- `attendance.totals.{IN,OUT}`: total de scans de tipo IN/OUT en el rango.
-- `attendance.completedDaysPct`: porcentaje de jornadas (persona/día UTC) que tuvieron IN y OUT.
-- `attendance.avgDurationMin`: promedio de duración (min) por jornada con IN y OUT en el mismo día UTC. `null` si no hay suficientes datos.
-- `attendance.heatmapByHour[]`: buckets UTC por hora `{ hour, in, out }`.
-- `attendance.byArea[]`: por área `{ area, present, completedPct }` donde `present` es personas con IN y `completedPct` es % de jornadas con IN y OUT.
-- `tasks.completionRatePct`: `sum(done) / sum(total)` en `PersonTaskStatus` dentro del rango.
-- `tasks.fullyCompletedPct`: % de jornadas (persona/día) con 100% de tareas hechas.
-- `tasks.topIncompleteTasks[]` (máx 5): `{ taskId, label, missingCount }` ordenado por más omitidas.
-- `tasks.timeToFirstTaskMin | timeToLastTaskMin`: minutos promedio desde el primer IN del día hasta la primera/última tarea marcada como hecha; `null` si no aplica.
-- `series.byDay[]`: por día UTC `{ day, in, out, uniquePersons, avgDurationMin, completionRatePct }` rellenado para todos los días del rango (si faltan datos, los conteos serán 0 y el promedio `null`).
+Respuesta: filas con `day`, `personCode`, `personName`, `firstIn`, `lastOut`, `durationMin`, conteo de tareas hechas y total.
 
-Ejemplos
-
-1) Esta semana filtrando por área
-```
-GET /api/admin/attendance/metrics?period=this_week&area=Barra
-```
-
-Respuesta (resumen):
-```json
-{
-	"ok": true,
-	"period": { "name": "this_week", "startDate": "2025-09-08", "endDate": "2025-09-14" },
-	"attendance": {
-		"uniquePersons": 7,
-		"totals": { "IN": 24, "OUT": 22 },
-		"completedDaysPct": 78.57,
-		"avgDurationMin": 312.5,
-		"heatmapByHour": [ { "hour": 8, "in": 5, "out": 0 }, { "hour": 17, "in": 0, "out": 6 } ],
-		"byArea": [ { "area": "Barra", "present": 6, "completedPct": 80 } ]
-	},
-	"tasks": {
-		"completionRatePct": 66.67,
-		"fullyCompletedPct": 42.86,
-		"topIncompleteTasks": [
-			{ "taskId": "t1", "label": "Cerrar caja", "missingCount": 8 },
-			{ "taskId": "t2", "label": "Limpieza final", "missingCount": 6 }
-		],
-		"timeToFirstTaskMin": 25.0,
-		"timeToLastTaskMin": 340.0
-	},
-	"series": {
-		"byDay": [
-			{ "day": "2025-09-08", "in": 4, "out": 3, "uniquePersons": 4, "avgDurationMin": 320, "completionRatePct": 60 },
-			{ "day": "2025-09-09", "in": 5, "out": 4, "uniquePersons": 5, "avgDurationMin": 305, "completionRatePct": 75 }
-		]
-	}
-}
-```
-
-2) Rango custom por persona específica
-```
-GET /api/admin/attendance/metrics?period=custom&startDate=2025-09-10&endDate=2025-09-12&person=id:5a2c...9f
-```
-
-Notas de UTC y consistencia
-- Todos los días y horas se computan en UTC. El corte de jornada es 00:00–24:00 UTC.
-- La serie diaria (`series.byDay`) y el heatmap (`heatmapByHour`) usan UTC, lo que evita ambigüedades por timezone.
-- La duración promedio calcula desde el primer IN al último OUT del mismo día UTC; si un OUT cruza de día, ese OUT no cuenta para el día anterior.
-- Las métricas de tareas usan `PersonTaskStatus.day` (UTC) y son consistentes con el flujo de checklist BYOD.
-- Manejo de nulos: los conteos se normalizan a 0; promedios y tiempos permanecen `null` cuando no es posible calcularlos (p. ej., falta OUT o no hay tareas hechas).
-
-Performance
-- Las agregaciones están optimizadas para minimizar consultas (CTEs por bloque) y el top de tareas se limita a 5.
+Razonamiento del cambio: las métricas previas (heatmap, series, KPIs) mostraban ceros inconsistentes; se decidió eliminarlas completamente hasta definir requisitos estables.
 
 
 ## Checklist previo a producción

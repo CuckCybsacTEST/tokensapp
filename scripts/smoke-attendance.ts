@@ -1,5 +1,5 @@
-// Smoke test for /api/admin/attendance/metrics
-// Usage: tsx scripts/smoke-attendance.ts
+// Smoke test para /api/admin/attendance/table (endpoint de métricas eliminado)
+// Uso: tsx scripts/smoke-attendance.ts
 
 async function main() {
   const base = process.env.BASE_URL || 'http://localhost:3000';
@@ -21,30 +21,18 @@ async function main() {
   const setCookie = r.headers.get('set-cookie') || '';
   const cookie = setCookie.split(';')[0];
 
-  // Call metrics endpoint
-  const url = base + '/api/admin/attendance/metrics?period=today';
-  const m = await fetch(url, { headers: { cookie } });
-  const j = await m.json().catch(() => null);
-  if (!m.ok || !j?.ok) {
-    console.error('METRICS FAIL', m.status, j);
+  // Call table endpoint
+  const url = base + '/api/admin/attendance/table?period=today&page=1&pageSize=5';
+  const resp = await fetch(url, { headers: { cookie } });
+  const j = await resp.json().catch(() => null);
+  if (!resp.ok || !j?.ok) {
+    console.error('TABLE FAIL', resp.status, j);
     process.exit(1);
   }
-
-  const unique = j.attendance?.uniquePersons;
-  const totals = j.attendance?.totals;
-  const series = j.series?.byDay || [];
-  const seriesLen = series.length;
-  const completedDaysPct = j.attendance?.completedDaysPct;
-  const heat = j.attendance?.heatmapByHour || [];
-  const nonZeroHours = heat.filter((h: any) => (h.in || 0) + (h.out || 0) > 0).map((h: any) => h.hour);
-  console.log('uniquePersons =', unique);
-  console.log('totals =', totals);
-  console.log('completedDaysPct =', completedDaysPct);
-  console.log('series.byDay.length =', seriesLen);
-  if (seriesLen) {
-    console.log('series first/last day =', series[0].day, '/', series[seriesLen-1].day);
+  console.log('Filas recibidas:', j.rows?.length, 'Total:', j.total);
+  if (j.rows?.length) {
+    console.log('Primera fila ejemplo:', j.rows[0]);
   }
-  console.log('heatmap non-zero hours (UTC) =', nonZeroHours);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

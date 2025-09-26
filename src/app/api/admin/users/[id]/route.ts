@@ -50,16 +50,38 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const id = params.id;
     if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
-    const body = await req.json().catch(() => null) as { personName?: string } | null;
-    const personName = String(body?.personName || '').trim();
-    if (!personName || personName.length < 2 || personName.length > 120) {
-      return NextResponse.json({ ok: false, code: 'INVALID_NAME' }, { status: 400 });
+    const body = await req.json().catch(() => null) as { personName?: string; role?: string } | null;
+    if (!body || (!body.personName && !body.role)) {
+      return NextResponse.json({ ok: false, code: 'NO_FIELDS' }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, personId: true } });
-    if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
-    await prisma.person.update({ where: { id: user.personId }, data: { name: personName } });
-    return NextResponse.json({ ok: true });
+    const updates: { personNameChanged?: boolean; roleChanged?: boolean } = {};
+
+    // Role update (optional)
+    if (body.role != null) {
+      const role = body.role === 'STAFF' ? 'STAFF' : (body.role === 'COLLAB' ? 'COLLAB' : null);
+      if (!role) return NextResponse.json({ ok: false, code: 'INVALID_ROLE' }, { status: 400 });
+      const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+      if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+      if (user.role !== role) {
+        await prisma.user.update({ where: { id }, data: { role } });
+        updates.roleChanged = true;
+  await audit('ADMIN_USER_ROLE_CHANGE', undefined, { id, from: user.role, to: role, actorRole: session?.role });
+      }
+    }
+
+    if (body.personName != null) {
+      const personName = String(body.personName || '').trim();
+      if (!personName || personName.length < 2 || personName.length > 120) {
+        return NextResponse.json({ ok: false, code: 'INVALID_NAME' }, { status: 400 });
+      }
+      const user = await prisma.user.findUnique({ where: { id }, select: { id: true, personId: true } });
+      if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+      await prisma.person.update({ where: { id: user.personId }, data: { name: personName } });
+      updates.personNameChanged = true;
+    }
+
+    return NextResponse.json({ ok: true, updates });
   } catch (e: any) {
     console.error('admin patch user error', e);
     return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });

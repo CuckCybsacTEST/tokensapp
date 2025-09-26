@@ -55,7 +55,14 @@ export async function middleware(req: NextRequest) {
     const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
     const adminSession = await verifySessionCookie(adminRaw);
     const uRaw = getUserCookieEdge(req as unknown as Request);
-    const uSession = await verifyUserCookieEdge(uRaw);
+    let uSession = await verifyUserCookieEdge(uRaw);
+    if (!uSession && uRaw) {
+      // Fallback: if edge crypto not available, use server-side verifier
+      try {
+        const { verifyUserSessionCookie } = await import('@/lib/auth-user');
+        uSession = await verifyUserSessionCookie(uRaw) as any;
+      } catch {}
+    }
     const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN']).ok;
     const allowedByUser = !!uSession; // any valid collaborator
     if (!allowedByAdmin && !allowedByUser) {
@@ -107,13 +114,29 @@ export async function middleware(req: NextRequest) {
     // Role-based authorization
     // 1) Admin panel: default only ADMIN; allow STAFF for specific pages
     if (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") {
-      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens' || pathname === '/admin/day-brief';
-      const roles = isStaffAllowedPath ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
-      const r = requireRoleEdge(session, roles as any);
-      if (!r.ok) {
-        const loginUrl = new URL('/admin/login', req.nextUrl.origin);
-        loginUrl.searchParams.set('next', pathname);
-        return NextResponse.redirect(loginUrl);
+      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens' || pathname === '/admin/day-brief' || pathname === '/admin/users';
+      if (isStaffAllowedPath && !session) {
+        // Permitir user_session STAFF sin admin_session solo para /admin/attendance (y paths staffAllowed)
+        const uRaw2 = getUserCookieEdge(req as unknown as Request);
+        let uSession2 = await verifyUserCookieEdge(uRaw2);
+        if (!uSession2 && uRaw2) {
+          try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession2 = await verifyUserSessionCookie(uRaw2) as any; } catch {}
+        }
+        if (uSession2 && uSession2.role === 'STAFF') {
+          // continuar sin redirigir
+        } else {
+          const loginUrl = new URL('/admin/login', req.nextUrl.origin);
+          loginUrl.searchParams.set('next', pathname);
+          return NextResponse.redirect(loginUrl);
+        }
+      } else {
+        const roles = isStaffAllowedPath ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
+        const r = requireRoleEdge(session, roles as any);
+        if (!r.ok) {
+          const loginUrl = new URL('/admin/login', req.nextUrl.origin);
+          loginUrl.searchParams.set('next', pathname);
+          return NextResponse.redirect(loginUrl);
+        }
       }
     }
     // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session (e.g., Caja)
@@ -158,18 +181,35 @@ export async function middleware(req: NextRequest) {
     }
     // 1b) Admin API: require ADMIN or STAFF depending on endpoint; default ADMIN-only for safety, but allow STAFF for subtrees we know safe.
     if (pathname.startsWith(ADMIN_API_PREFIX)) {
-      // By default require ADMIN; allow STAFF for specific endpoints.
+      // By default require ADMIN; allow STAFF for specific endpoints (including via user_session for attendance only)
       const staffAllowed = (
         (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/password-otp')) ||
-        pathname.startsWith('/api/admin/day-brief')
+        pathname.startsWith('/api/admin/day-brief') ||
+        pathname.startsWith('/api/admin/attendance') ||
+        pathname === '/api/admin/users'
       );
-      const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
-      const r = requireRoleEdge(session, roles as any);
-      if (!r.ok) {
-        return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        });
+      if (pathname.startsWith('/api/admin/attendance') && !session) {
+        // Allow user_session STAFF for attendance endpoints even without admin_session
+  const uRaw2 = getUserCookieEdge(req as unknown as Request);
+  let uSession2 = await verifyUserCookieEdge(uRaw2);
+  if (!uSession2 && uRaw2) { try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession2 = await verifyUserSessionCookie(uRaw2) as any; } catch {} }
+        if (uSession2 && uSession2.role === 'STAFF') {
+          // allow
+        } else {
+          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
+        const r = requireRoleEdge(session, roles as any);
+        if (!r.ok) {
+          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
       }
     }
     // 2) Scanner page: allow ADMIN/STAFF via admin_session OR any user_session (COLLAB/STAFF)

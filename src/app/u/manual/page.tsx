@@ -26,6 +26,7 @@ export default function ManualAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ variant: "success" | "error"; text: string } | null>(null);
+  const [flash, setFlash] = useState<{ mode: Mode; ts: number } | null>(null);
   const [holdMs, setHoldMs] = useState(0);
   const holdTimerRef = useRef<number | null>(null);
   // Category tab: QR or MANUAL
@@ -75,6 +76,7 @@ export default function ManualAttendancePage() {
       const json: any = await res.json().catch(() => ({}));
       if (res.ok && json?.ok) {
         setMsg({ variant: 'success', text: `${mode === 'IN' ? 'Entrada' : 'Salida'} registrada correctamente.` });
+        setFlash({ mode, ts: Date.now() });
         // redirigir como el escáner
         const day = (json && typeof json.businessDay === 'string' && json.businessDay) || ymdUtc(new Date());
         setTimeout(() => {
@@ -148,6 +150,7 @@ export default function ManualAttendancePage() {
       const json = await res.json().catch(() => ({}));
       if (res.ok && json?.ok) {
         setMsg({ variant: 'success', text: `${m === 'IN' ? 'Entrada' : 'Salida'} registrada correctamente.` });
+        setFlash({ mode: m, ts: Date.now() });
         const day = ymdUtc(new Date());
         setTimeout(() => {
           if (m === 'IN') window.location.href = `/u/checklist?day=${day}&mode=IN`;
@@ -217,7 +220,7 @@ export default function ManualAttendancePage() {
         </div>
 
         {msg && (
-          <div className={"mb-4 rounded-md border p-3 text-sm " + (msg.variant === 'success' ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800')}>{msg.text}</div>
+          <div className={"mb-4 rounded-md border p-3 text-sm transition-all duration-500 " + (msg.variant === 'success' ? 'border-green-300 bg-green-50 text-green-800' : 'border-red-300 bg-red-50 text-red-800')}>{msg.text}</div>
         )}
 
         <div className="mb-3 flex items-center gap-2">
@@ -312,6 +315,29 @@ export default function ManualAttendancePage() {
           Para asegurar la trazabilidad, se registra la hora actual y tu usuario. Se aplican las mismas reglas (una entrada y una salida por día, y salida solo después de entrada).
         </div>
       </div>
+      {/* Flash overlay + toast */}
+        {flash && Date.now() - flash.ts < 1400 && (
+          <div className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center">
+            <div className={"h-28 w-28 rounded-full flex items-center justify-center shadow-xl ring-4 animate-pop " + (flash.mode === 'IN' ? 'bg-green-500/90 ring-green-300' : 'bg-orange-500/90 ring-orange-300')}>
+              <svg className="h-14 w-14 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {flash.mode === 'IN' ? <path d="M5 13l4 4L19 7" /> : <><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></>}
+              </svg>
+            </div>
+          </div>
+        )}
+        {flash && Date.now() - flash.ts < 1800 && (
+          <div className="fixed inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none flex justify-center z-40">
+            <div className={"px-6 py-4 rounded-2xl font-semibold tracking-wide shadow-xl backdrop-blur-md text-white text-lg animate-scale-fade " + (flash.mode === 'IN' ? 'bg-green-600/90' : 'bg-orange-600/90')}>
+              {flash.mode === 'IN' ? 'Entrada registrada' : 'Salida registrada'}
+            </div>
+          </div>
+        )}
+      <style jsx global>{`
+        @keyframes popInManual { 0% { transform: scale(.6); opacity:0;} 40%{transform:scale(1.05);opacity:1;} 70%{transform:scale(.97);} 100%{transform:scale(1);opacity:1;} }
+        @keyframes scaleFadeManual { 0%{transform:scale(.85);opacity:0;} 30%{transform:scale(1);opacity:1;} 80%{transform:scale(1);opacity:1;} 100%{transform:scale(.98);opacity:0;} }
+        .animate-pop { animation: popInManual 450ms cubic-bezier(.16,.8,.3,1); }
+        .animate-scale-fade { animation: scaleFadeManual 1600ms cubic-bezier(.16,.8,.3,1); }
+      `}</style>
     </div>
   );
 }

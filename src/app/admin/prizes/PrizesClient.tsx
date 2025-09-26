@@ -6,9 +6,11 @@ import InlineAutoBatchPanel from "./InlineAutoBatchPanel";
 export default function PrizesClient({
   initialPrizes,
   lastBatch,
+  batchPrizeStats = [], // se usa solo para tabs en la tabla de Emitidos
 }: {
   initialPrizes: any[];
   lastBatch: Record<string, { id: string; name: string; createdAt: Date }>;
+  batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; label: string; color: string|null; count: number }> }>;
 }) {
   const [prizes, setPrizes] = useState(initialPrizes);
   const hasPrizes = prizes && prizes.length > 0;
@@ -28,10 +30,11 @@ export default function PrizesClient({
       )}
 
   {/* Primero: gestión/creación de premios */}
-  <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} />
+  <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
 
   {/* Luego: generación de tokens (si hay premios) */}
   {hasPrizes && <InlineAutoBatchPanel prizes={prizes} />}
+
     </div>
   );
 }

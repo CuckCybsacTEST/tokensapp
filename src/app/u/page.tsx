@@ -17,14 +17,14 @@ export default async function UHome() {
     redirect(`/u/login?next=${encodeURIComponent('/u')}`);
   }
 
-  // Cargar perfil para decidir visibilidad de "Control de Tokens (Caja)"
+  // Determinar si mostrar tarjetas especiales (Caja)
   let isCaja = false;
-  if (session?.role === 'STAFF') {
-    try {
+  try {
+    if (session?.role === 'STAFF') {
       const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
       isCaja = u?.person?.area === 'Caja';
-    } catch {}
-  }
+    }
+  } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
   const cutoff = getConfiguredCutoffHour();
@@ -68,10 +68,17 @@ export default async function UHome() {
             <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver tareas →</div>
           </Link>
           {isCaja && (
-            <Link href="/u/caja" className="block rounded-lg border border-emerald-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800 sm:col-span-2">
-              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Control de Tokens (Caja)</div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Activá o desactivá los tokens del sistema y revisá métricas básicas.</p>
+            <Link href="/u/tokens" className="block rounded-lg border border-emerald-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800 sm:col-span-2">
+              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Control de Tokens</div>
+              <p className="text-sm text-gray-600 dark:text-slate-300">Encender o pausar el sistema de tokens y revisar conteos básicos.</p>
               <div className="mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm">Abrir control →</div>
+            </Link>
+          )}
+          {session.role === 'STAFF' && (
+            <Link href="/u/attendance" className="block rounded-lg border border-indigo-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-indigo-800/60 dark:bg-slate-800 sm:col-span-2">
+              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Control de Asistencia</div>
+              <p className="text-sm text-gray-600 dark:text-slate-300">Consulta la tabla de asistencia en tiempo real (solo lectura).</p>
+              <div className="mt-4 inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-sm">Abrir asistencia →</div>
             </Link>
           )}
         </div>

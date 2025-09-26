@@ -91,6 +91,7 @@ export default function UserScannerPage() {
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ variant: "success" | "error"; message: string } | null>(null);
+  const [flash, setFlash] = useState<{ mode: Mode; ts: number } | null>(null); // full-screen confirmation flash
   const [mode, setMode] = useState<Mode | null>(null);
   const [me, setMe] = useState<{ personName?: string; dni?: string } | null>(null);
   const [recent, setRecent] = useState<Recent>(null);
@@ -113,7 +114,9 @@ export default function UserScannerPage() {
         const same = json.alerts?.includes('same_direction');
         const extraAlready = already ? ` · Ya estaba registrada hoy${json.alreadyMarkedAt ? ` (${new Date(json.alreadyMarkedAt).toLocaleTimeString()})` : ''}` : '';
         const extraSame = !already && same ? ` · Nota: misma dirección que tu última marca${json.lastSameAt ? ` (${new Date(json.lastSameAt).toLocaleTimeString()})` : ''}` : '';
-        setBanner({ variant: "success", message: `${m === 'IN' ? 'Entrada' : 'Salida'} registrada${extraAlready}${extraSame}` });
+  const msgText = `${m === 'IN' ? 'Entrada' : 'Salida'} registrada${extraAlready}${extraSame}`;
+  setBanner({ variant: "success", message: msgText });
+  setFlash({ mode: m, ts: Date.now() });
         beep(880, 120, "sine");
         vibrate(60);
         setCooldownUntil(Date.now() + 1000);
@@ -246,7 +249,7 @@ export default function UserScannerPage() {
         </div>
       </div>
       {banner && (
-        <div className={"mb-4 rounded-md border p-3 text-sm " + (banner.variant === "success" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800")}>{banner.message}</div>
+        <div className={"mb-4 rounded-md border p-3 text-sm transition-all duration-500 " + (banner.variant === "success" ? "border-green-300 bg-green-50 text-green-800 shadow-green-200/50" : "border-red-300 bg-red-50 text-red-800 shadow-red-200/50")}>{banner.message}</div>
       )}
 
       {/* Suggested next action */}
@@ -261,7 +264,7 @@ export default function UserScannerPage() {
         )}
       </div>
 
-      <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border border-slate-300 bg-black shadow-md">
+  <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border border-slate-300 bg-black shadow-md">
         <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
         {/* Stylized overlay with corners */}
         <div className="pointer-events-none absolute inset-0">
@@ -272,8 +275,8 @@ export default function UserScannerPage() {
           <div className="absolute bottom-6 right-6 h-6 w-6 border-b-4 border-r-4 border-[var(--color-accent,#f59e0b)]" />
         </div>
         {mode && (
-          <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-3">
-            <span className={"rounded px-2 py-1 text-xs font-medium " + (mode === 'IN' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white')}>{mode === 'IN' ? 'Entrada' : 'Salida'}</span>
+          <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-3 animate-fade-in">
+            <span className={"rounded px-2 py-1 text-xs font-medium shadow " + (mode === 'IN' ? 'bg-green-600 text-white' : 'bg-orange-600 text-white')}>{mode === 'IN' ? 'Entrada' : 'Salida'}</span>
           </div>
         )}
         {cameraError && (
@@ -284,7 +287,36 @@ export default function UserScannerPage() {
             </div>
           </div>
         )}
+        {/* Flash overlay after success */}
+        {flash && Date.now() - flash.ts < 1200 && (
+          <div className={"pointer-events-none absolute inset-0 flex items-center justify-center animate-pop scale-100"}>
+            <div className={"text-center"}>
+              <div className={"mx-auto mb-3 h-24 w-24 rounded-full flex items-center justify-center shadow-lg ring-4 " + (flash.mode === 'IN' ? 'bg-green-500/90 ring-green-300' : 'bg-orange-500/90 ring-orange-300')}>
+                <svg className="h-12 w-12 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {flash.mode === 'IN' ? (
+                    <path d="M5 13l4 4L19 7" />
+                  ) : (
+                    <>
+                      <path d="M5 12h14" />
+                      <path d="M12 5l7 7-7 7" />
+                    </>
+                  )}
+                </svg>
+              </div>
+              <p className="text-white font-semibold text-xl drop-shadow">{flash.mode === 'IN' ? 'ENTRADA OK' : 'SALIDA OK'}</p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Toast style fixed notification (extra clarity) */}
+      {flash && Date.now() - flash.ts < 1800 && (
+        <div className="fixed inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none flex justify-center z-40">
+          <div className={"px-6 py-4 rounded-2xl font-semibold tracking-wide shadow-xl backdrop-blur-md text-white text-lg animate-scale-fade " + (flash.mode === 'IN' ? 'bg-green-600/90' : 'bg-orange-600/90')}>
+            {flash.mode === 'IN' ? 'Entrada registrada' : 'Salida registrada'}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col gap-3">
   <p className="text-sm text-gray-600">Consejo: si vas a empezar tu turno, escanea el póster de <span className="font-medium">Entrada</span>. Al finalizar, escanea el de <span className="font-medium">Salida</span>.</p>
@@ -293,6 +325,24 @@ export default function UserScannerPage() {
           <a href="/u/manual" className="btn inline-block">Abrir formulario manual</a>
         </div>
       </div>
+      <style jsx global>{`
+        @keyframes popIn {
+          0% { transform: scale(0.6); opacity: 0; }
+          40% { transform: scale(1.05); opacity: 1; }
+          70% { transform: scale(0.98); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleFade {
+          0% { transform: scale(0.85); opacity: 0; }
+          30% { transform: scale(1); opacity: 1; }
+          80% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(0.98); opacity: 0; }
+        }
+        .animate-pop { animation: popIn 450ms cubic-bezier(.16,.8,.3,1); }
+        .animate-fade-in { animation: fadeIn 350ms ease-out; }
+        .animate-scale-fade { animation: scaleFade 1600ms cubic-bezier(.16,.8,.3,1); }
+      `}</style>
     </div>
   );
 }
