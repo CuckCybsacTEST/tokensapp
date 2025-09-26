@@ -125,6 +125,17 @@ export async function middleware(req: NextRequest) {
           return NextResponse.next();
         }
       }
+      // Para delete-scheduled exigir ADMIN explícito (sin bypass por cron)
+      if (pathname === '/api/system/tokens/delete-scheduled') {
+        const r = requireRoleEdge(session, ['ADMIN']);
+        if (!r.ok) {
+          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return NextResponse.next();
+      }
       const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
       const userOk = !!uSession && (uSession.role === 'STAFF');
       if (!adminOk && !userOk) {

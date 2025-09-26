@@ -18,8 +18,14 @@ export async function POST(req: Request) {
     // Continuamos sin bloquear.
   }
 
-  const body = await req.json().catch(() => null) as { day?: string } | null;
-  let day = (body?.day || '').trim();
+  // Permitir pasar parámetros también por querystring (fallback cuando un caller no envía body correctamente)
+  const url = new URL(req.url);
+  const qpDay = url.searchParams.get('day');
+  const qpDry = url.searchParams.get('dryRun');
+
+  const body = await req.json().catch(() => null) as { day?: string; dryRun?: boolean } | null;
+  let day = (body?.day ?? qpDay ?? '').trim();
+  const dryRun = typeof body?.dryRun === 'boolean' ? body!.dryRun : (qpDry === '1' || qpDry === 'true');
   if (!isValidDay(day)) {
     // Si no se envía día válido, usar “hoy” (yyyy-MM-dd) en Lima
     const nowLimaIso = DateTime.now().setZone('America/Lima').toISO();
@@ -31,12 +37,16 @@ export async function POST(req: Request) {
   const end = DateTime.fromISO(day, { zone: 'America/Lima' }).endOf('day');
 
   // Habilitar tokens que fueron generados para este día y quedaron disabled=true (modo singleDay futuro)
-  const res = await prisma.token.updateMany({
-    where: {
-      disabled: true,
-  expiresAt: { gte: start.toJSDate(), lte: end.toJSDate() },
-    },
-    data: { disabled: false },
-  });
+  const where = {
+    disabled: true,
+    expiresAt: { gte: start.toJSDate(), lte: end.toJSDate() },
+  } as const;
+
+  if (dryRun) {
+    const count = await prisma.token.count({ where });
+    return NextResponse.json({ ok: true, dryRun: true, wouldUpdate: count });
+  }
+
+  const res = await prisma.token.updateMany({ where, data: { disabled: false } });
   return NextResponse.json({ ok: true, updated: res.count });
 }
