@@ -136,6 +136,17 @@ export async function middleware(req: NextRequest) {
         }
         return NextResponse.next();
       }
+      // Purgar batches manual: sólo ADMIN
+      if (pathname === '/api/system/tokens/purge-batches') {
+        const r = requireRoleEdge(session, ['ADMIN']);
+        if (!r.ok) {
+          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return NextResponse.next();
+      }
       const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
       const userOk = !!uSession && (uSession.role === 'STAFF');
       if (!adminOk && !userOk) {
