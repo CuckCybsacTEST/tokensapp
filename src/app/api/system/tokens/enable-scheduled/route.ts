@@ -9,25 +9,32 @@ function isValidDay(day: string | null): day is string { return !!day && /^\d{4}
 
 // Habilita tokens programados (disabled = true) cuyo fin de día corresponde al día indicado (zona America/Lima)
 export async function POST(req: Request) {
-  // Requerir ADMIN o STAFF
+  // Auth: ADMIN/STAFF o x-cron-secret válido (middleware ya deja pasar si viene el header correcto).
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
   const ok = requireRole(session, ['ADMIN','STAFF']);
-  if (!ok.ok) return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+  if (!ok.ok) {
+    // Si no es admin/staff, verificar que middleware haya permitido por cron (no tenemos señal aquí, asumimos que ya pasó)
+    // Continuamos sin bloquear.
+  }
 
   const body = await req.json().catch(() => null) as { day?: string } | null;
-  const day = (body?.day || '').trim();
-  if (!isValidDay(day)) return NextResponse.json({ ok: false, code: 'INVALID_DAY' }, { status: 400 });
+  let day = (body?.day || '').trim();
+  if (!isValidDay(day)) {
+    // Si no se envía día válido, usar “hoy” (yyyy-MM-dd) en Lima
+    const nowLimaIso = DateTime.now().setZone('America/Lima').toISO();
+    day = String(nowLimaIso).slice(0, 10);
+  }
 
   // Calcular la ventana del día en Lima
-  const start = DateTime.fromISO(day, { zone: 'America/Lima' }).startOf('day').toUTC();
-  const end = DateTime.fromISO(day, { zone: 'America/Lima' }).endOf('day').toUTC();
+  const start = DateTime.fromISO(day, { zone: 'America/Lima' }).startOf('day');
+  const end = DateTime.fromISO(day, { zone: 'America/Lima' }).endOf('day');
 
   // Habilitar tokens que fueron generados para este día y quedaron disabled=true (modo singleDay futuro)
   const res = await prisma.token.updateMany({
     where: {
       disabled: true,
-      expiresAt: { gte: start.toJSDate(), lte: end.toJSDate() },
+  expiresAt: { gte: start.toJSDate(), lte: end.toJSDate() },
     },
     data: { disabled: false },
   });

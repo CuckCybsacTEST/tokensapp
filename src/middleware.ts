@@ -111,6 +111,13 @@ export async function middleware(req: NextRequest) {
     }
     // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session (e.g., Caja)
     if (pathname.startsWith('/api/system')) {
+      // Cron bypass: permitir acceso con header secreto únicamente para el endpoint de habilitación programada
+      if (pathname === '/api/system/tokens/enable-scheduled') {
+        const cronSecret = req.headers.get('x-cron-secret') || '';
+        if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
+          return NextResponse.next();
+        }
+      }
       const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
       const userOk = !!uSession && (uSession.role === 'STAFF');
       if (!adminOk && !userOk) {

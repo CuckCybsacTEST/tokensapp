@@ -34,6 +34,8 @@
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
   "verify:postgres": "tsx scripts/verify-postgres.ts",
   "pg:baseline": "tsx scripts/pgBaseline.ts --push",
+    "cron:enable-tokens": "tsx scripts/enable-scheduled.ts",
+    "cron:enable-tokens:today": "node -e \"fetch(require('node:process').env.CRON_BASE_URL+'/api/system/tokens/enable-scheduled',{method:'POST',headers:{'x-cron-secret':require('node:process').env.CRON_SECRET,'Content-Type':'application/json'},body:'{}'}).then(r=>r.text()).then(t=>console.log(t)).catch(e=>console.error(e))\"",
     "postinstall": "prisma generate"
   },
   "engines": {
