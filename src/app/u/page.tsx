@@ -5,7 +5,7 @@ import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import CommitmentModal from './CommitmentModal';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
-import MarkAttendanceCard from './MarkAttendanceCard';
+import AutoAttendanceCard from './AutoAttendanceCard';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -24,7 +24,8 @@ export default async function UHome() {
   // Calcular próxima acción para hoy según última marca real (día laboral)
   const cutoff = getConfiguredCutoffHour();
   const todayBD = computeBusinessDayFromUtc(new Date(), cutoff);
-  let nextAction: 'IN' | 'OUT' = 'IN';
+  // Vamos a pasar solo el último tipo detectado al componente inteligente; éste derivará la acción.
+  let lastType: 'IN' | 'OUT' | null = null;
   let personName: string | undefined;
   let commitmentAcceptedVersion = 0;
   const REQUIRED_COMMITMENT_VERSION = 1;
@@ -36,9 +37,8 @@ export default async function UHome() {
     const scans = me?.person?.scans || [];
     personName = me?.person?.name || undefined;
     commitmentAcceptedVersion = me?.commitmentVersionAccepted || 0;
-  const hasInToday = scans.some((s: any) => s.type === 'IN');
-  const hasOutToday = scans.some((s: any) => s.type === 'OUT');
-    nextAction = hasInToday && !hasOutToday ? 'OUT' : 'IN';
+    const last = scans[0];
+    if(last && (last.type === 'IN' || last.type === 'OUT')) lastType = last.type;
   } catch {}
   return (
     // Página de selección de acciones: Acción principal (IN/OUT) / Ver lista de tareas / Control Caja (si aplica)
@@ -48,7 +48,7 @@ export default async function UHome() {
         <div className="space-y-8">
           {/* Bloque inicial: acciones personales en una sola columna para mejor lectura */}
           <div className="grid grid-cols-1 gap-4">
-            <MarkAttendanceCard nextAction={nextAction} />
+            <AutoAttendanceCard initialLastType={lastType} />
             <Link href="/u/checklist" className="block rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800">
               <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Ver mi lista de tareas</div>
               <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
