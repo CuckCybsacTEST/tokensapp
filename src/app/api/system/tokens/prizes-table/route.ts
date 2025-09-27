@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 
+// Usa cookies/headers para auth -> impedir prerender
+export const dynamic = 'force-dynamic';
+
 function err(code: string, message: string, status = 400) {
   return NextResponse.json({ ok: false, code, message }, { status });
 }

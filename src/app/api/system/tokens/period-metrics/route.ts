@@ -4,6 +4,9 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { rangeBusinessDays, type Period } from '@/lib/date';
 
+// Esta ruta usa encabezados/cookies para auth dual -> forzar dinámica para evitar intento de prerender
+export const dynamic = 'force-dynamic';
+
 /*
 GET /api/system/tokens/period-metrics?period=today|yesterday|this_week|last_week|this_month|last_month
 Optional custom: &period=custom&start=YYYY-MM-DD&end=YYYY-MM-DD (ADMIN/STAF only)  // not exposed in UI yet

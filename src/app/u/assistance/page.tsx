@@ -1,12 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 
 interface Detection { raw: string; ts: number; mode: 'IN'|'OUT'; }
 
 export default function AssistanceScannerPage(){
-  const searchParams = useSearchParams();
   const videoRef = useRef<HTMLVideoElement|null>(null);
   // Comienza activo para que el escaneo arranque automáticamente sin requerir clic del usuario
   const [active, setActive] = useState(true);
@@ -27,11 +25,14 @@ export default function AssistanceScannerPage(){
   const [entryRegistered, setEntryRegistered] = useState<null | { person: { id:string; name:string; code:string }; businessDay?: string; at: Date }>(null);
   const expectedRef = useRef<'IN'|'OUT'|null>(null);
 
-  // Capturar override inicial de expected (ej: ?expected=OUT)
+  // Capturar override inicial de expected (ej: ?expected=OUT) solo en cliente sin useSearchParams para evitar warning de Suspense
   useEffect(()=>{
-    const exp = (searchParams?.get('expected')||'').toUpperCase();
-    if(exp==='IN' || exp==='OUT') expectedRef.current = exp as 'IN'|'OUT';
-  }, [searchParams]);
+    try {
+      const usp = new URL(window.location.href).searchParams;
+      const exp = (usp.get('expected')||'').toUpperCase();
+      if(exp==='IN' || exp==='OUT') expectedRef.current = exp as 'IN'|'OUT';
+    } catch {}
+  }, []);
 
   const fetchRecent = useCallback(()=>{
     setLoadingRecent(true);
