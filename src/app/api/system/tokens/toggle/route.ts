@@ -11,7 +11,7 @@ console.log("Toggle route module loaded successfully!");
 
 export async function POST(req: Request) {
   try {
-    // Authenticate: accept either admin_session (ADMIN) or user_session (STAFF Caja)
+  // Authenticate: accept either admin_session (ADMIN or STAFF) or user_session (STAFF)
     const rawCookie = getSessionCookieFromRequest(req as any);
     const session = await verifySessionCookie(rawCookie);
     try {
@@ -22,32 +22,26 @@ export async function POST(req: Request) {
     }
     // Determine permission
     let allowed = false;
-    let actor: { kind: 'admin' | 'staff-caja' | 'unknown'; userId?: string } = { kind: 'unknown' };
+    let actor: { kind: 'admin' | 'staff' | 'unknown'; userId?: string } = { kind: 'unknown' };
 
-    // Path A: Admin session with ADMIN role
-    const adminAuth = requireRole(session, ['ADMIN']);
-    if (adminAuth.ok && session?.role === 'ADMIN') {
+    // Path A: Admin session with ADMIN or STAFF role (both can toggle now)
+    const adminAuth = requireRole(session, ['ADMIN','STAFF']);
+    if (adminAuth.ok && (session?.role === 'ADMIN' || session?.role === 'STAFF')) {
       allowed = true;
-      actor = { kind: 'admin' };
+      actor = { kind: session.role === 'ADMIN' ? 'admin' : 'staff' };
     }
 
-    // Path B: BYOD user session with STAFF in Caja (no admin session required)
+    // Path B: Standalone user_session with STAFF role
     if (!allowed) {
       const userRaw = getUserCookie(req as any);
       const userSession = await verifyUserSessionCookie(userRaw);
       if (userSession?.role === 'STAFF') {
-        try {
-          const u = await prisma.user.findUnique({ where: { id: userSession.userId }, include: { person: true } });
-          if (u?.person?.area === 'Caja') {
-            allowed = true;
-            actor = { kind: 'staff-caja', userId: u.id };
-          }
-        } catch {}
+        allowed = true;
+        actor = { kind: 'staff', userId: userSession.userId };
       }
     }
-    if (!allowed) {
-      return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
-    }
+
+    if (!allowed) return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     if (typeof body.enabled !== 'boolean') {
@@ -77,9 +71,9 @@ export async function POST(req: Request) {
     // Leer la configuración actualizada
   const updated = await prisma.systemConfig.findUnique({ where: { id: 1 } }).catch(() => null);
 
-    // Auditar el cambio (actor ADMIN o STAFF Caja)
+    // Auditar el cambio (actor ADMIN o STAFF)
     try {
-      const by = actor.kind === 'admin' ? 'admin' : (actor.kind === 'staff-caja' ? 'staff:caja' : 'unknown');
+      const by = actor.kind === 'admin' ? 'admin' : (actor.kind === 'staff' ? 'staff' : 'unknown');
       const from = prev || null;
       const to = updated || null;
       await audit('tokens.toggle', by, { from, to, enabled, actor });

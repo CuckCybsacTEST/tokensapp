@@ -147,7 +147,7 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
 
   async function toggle() {
     if (!canToggleState) {
-      setError('Requiere permisos de Caja o Admin');
+      setError('Permiso insuficiente');
       return;
     }
     if (enabled === null) return; // aún cargando
@@ -214,14 +214,8 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
             </svg>
             <div>
-              <p className="font-medium">Permiso requerido para activar/desactivar</p>
-              <p className="mt-1 opacity-90">
-                Para que CAJA pueda controlar los tokens, necesitas dos sesiones en el mismo navegador y origen:
-              </p>
-              <ol className="mt-2 list-decimal ml-5 space-y-1 opacity-90">
-                <li>Inicia sesión en el panel <a href="/admin" className="underline">Admin</a> con rol Admin o Staff.</li>
-                <li>En otra pestaña, inicia sesión en <a href="/u" className="underline">/u</a> con un usuario colaborador del área <span className="font-mono">Caja</span>.</li>
-              </ol>
+              <p className="font-medium">Permiso requerido</p>
+              <p className="mt-1 opacity-90">Tu sesión no tiene privilegios para cambiar el estado.</p>
             </div>
           </div>
         </div>
@@ -243,7 +237,7 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
               }
               ${(isPending || loading || !canToggleState) ? "opacity-70 cursor-not-allowed" : ""}
             `}
-            title={!canToggleState ? 'Requiere permisos de Caja o Admin' : undefined}
+            title={!canToggleState ? 'Permiso insuficiente' : undefined}
           >
             {loading ? (
               <span className="flex items-center">

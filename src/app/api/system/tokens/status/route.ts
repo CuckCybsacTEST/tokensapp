@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const session = await verifySessionCookie(raw);
     const ok = requireRole(session, ['ADMIN', 'STAFF']);
     if (!ok.ok) {
-      // Allow BYOD STAFF (e.g., Caja) to read status without admin_session
+      // Permitir STAFF con solo user_session (cualquier área ahora) a leer el status
       const uRaw = getUserCookie(req as any);
       const uSession = await verifyUserSessionCookie(uRaw);
       if (!(uSession && uSession.role === 'STAFF')) {

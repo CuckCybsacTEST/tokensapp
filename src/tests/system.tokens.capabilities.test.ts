@@ -55,7 +55,7 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
     expect(json.canToggle).toBe(true);
   });
 
-  it('STAFF (no user_session) → canView=true, canToggle=false', async () => {
+  it('STAFF (solo admin_session) → canView=true, canToggle=true', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tokens_caps';
     const { createSessionCookie } = await import('@/lib/auth');
     const staff = await createSessionCookie('STAFF');
@@ -64,10 +64,9 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
     expect(r.status).toBe(200);
     const json = await r.json();
     expect(json.canView).toBe(true);
-    expect(json.canToggle).toBe(false);
+    expect(json.canToggle).toBe(true);
   });
-
-  it('STAFF + user_session STAFF (Caja) → canToggle=true', async () => {
+  it('STAFF solo user_session → canView=true, canToggle=true', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tokens_caps';
     const prisma: any = (global as any)._prisma;
     const nowIso = new Date().toISOString();
@@ -75,26 +74,23 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
     const userId = 'u1';
     await prisma.$executeRawUnsafe(
       `INSERT INTO Person (id, code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-       VALUES ('${personId}', '99990001', 'Martin Vizcarra', NULL, '99990001', 'Caja', 1, '${nowIso}', '${nowIso}')`
+       VALUES ('${personId}', '99990001', 'Staff User', NULL, '99990001', 'General', 1, '${nowIso}', '${nowIso}')`
     );
     await prisma.$executeRawUnsafe(
       `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
-       VALUES ('${userId}', 'martin', 'x', 'STAFF', '${personId}', '${nowIso}', '${nowIso}')`
+       VALUES ('${userId}', 'staffer', 'x', 'STAFF', '${personId}', '${nowIso}', '${nowIso}')`
     );
-
-    const { createSessionCookie } = await import('@/lib/auth');
     const { createUserSessionCookie } = await import('@/lib/auth-user');
-    const staff = await createSessionCookie('STAFF');
     const userCookie = await createUserSessionCookie(userId, 'STAFF');
     const { GET: caps } = await import('@/app/api/system/tokens/capabilities/route');
-    const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { adminCookie: staff, userCookie }) as any);
+    const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { userCookie }) as any);
     expect(r.status).toBe(200);
     const json = await r.json();
     expect(json.canView).toBe(true);
     expect(json.canToggle).toBe(true);
   });
 
-  it('STAFF + user_session COLLAB or non-Caja → canToggle=false', async () => {
+  it('COLLAB solo user_session → 403', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tokens_caps';
     const prisma: any = (global as any)._prisma;
     const nowIso = new Date().toISOString();
@@ -102,29 +98,16 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
     const userId = 'u2';
     await prisma.$executeRawUnsafe(
       `INSERT INTO Person (id, code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-       VALUES ('${personId}', '99990002', 'Otro User', NULL, '99990002', 'Mozos', 1, '${nowIso}', '${nowIso}')`
+       VALUES ('${personId}', '99990002', 'Collab User', NULL, '99990002', 'General', 1, '${nowIso}', '${nowIso}')`
     );
     await prisma.$executeRawUnsafe(
       `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
-       VALUES ('${userId}', 'otro', 'x', 'COLLAB', '${personId}', '${nowIso}', '${nowIso}')`
+       VALUES ('${userId}', 'colab', 'x', 'COLLAB', '${personId}', '${nowIso}', '${nowIso}')`
     );
-
-    const { createSessionCookie } = await import('@/lib/auth');
     const { createUserSessionCookie } = await import('@/lib/auth-user');
-    const staff = await createSessionCookie('STAFF');
     const userCookie = await createUserSessionCookie(userId, 'COLLAB');
     const { GET: caps } = await import('@/app/api/system/tokens/capabilities/route');
-    const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { adminCookie: staff, userCookie }) as any);
-    expect(r.status).toBe(200);
-    const json = await r.json();
-    expect(json.canView).toBe(true);
-    expect(json.canToggle).toBe(false);
-  });
-
-  it('user_session only (sin admin_session) → 403', async () => {
-    process.env.TOKEN_SECRET = 'test_secret_tokens_caps';
-    const { GET: caps } = await import('@/app/api/system/tokens/capabilities/route');
-    const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { userCookie: 'whatever' }) as any);
+    const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { userCookie }) as any);
     expect(r.status).toBe(403);
   });
 });

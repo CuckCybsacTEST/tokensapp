@@ -69,7 +69,7 @@ describe('System tokens API: status/toggle auth matrix', () => {
     expect(r2.status).toBe(200);
   });
 
-  it('STAFF (no Caja) → GET /status 200; POST /toggle 403', async () => {
+  it('STAFF → GET /status 200; POST /toggle 200', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tokens_api';
     const { createSessionCookie } = await import('@/lib/auth');
     const staff = await createSessionCookie('STAFF');
@@ -79,36 +79,9 @@ describe('System tokens API: status/toggle auth matrix', () => {
 
     const { POST: toggle } = await import('@/app/api/system/tokens/toggle/route');
     const rt = await toggle(makeReq('http://test/api/system/tokens/toggle', { method: 'POST', adminCookie: staff, body: { enabled: false } }) as any);
-    expect(rt.status).toBe(403);
-  });
-
-  it('STAFF (Caja) with user_session → POST /toggle 200', async () => {
-    process.env.TOKEN_SECRET = 'test_secret_tokens_api';
-    const prisma: any = (global as any)._prisma;
-    // Seed a Caja user
-    const nowIso = new Date().toISOString();
-    const personId = 'p1';
-    const userId = 'u1';
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Person (id, code, name, jobTitle, dni, area, active, createdAt, updatedAt)
-       VALUES ('${personId}', '33000111', 'Caja User', NULL, '33000111', 'Caja', 1, '${nowIso}', '${nowIso}')`
-    );
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
-       VALUES ('${userId}', 'caja', 'x', 'STAFF', '${personId}', '${nowIso}', '${nowIso}')`
-    );
-
-    const { createSessionCookie } = await import('@/lib/auth');
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
-    const adminStaff = await createSessionCookie('STAFF');
-    const userCookie = await createUserSessionCookie(userId, 'STAFF');
-
-    const { POST: toggle } = await import('@/app/api/system/tokens/toggle/route');
-    const rt = await toggle(
-      makeReq('http://test/api/system/tokens/toggle', { method: 'POST', adminCookie: adminStaff, userCookie, body: { enabled: true } }) as any
-    );
     expect(rt.status).toBe(200);
   });
+  // Caja-specific scenario removed: now cualquier STAFF puede togglear sin depender de area
 
   it('COLLAB only (user_session) → GET /status 401', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tokens_api';
