@@ -12,30 +12,14 @@ const secret = "redeem_test_secret";
 beforeAll(async () => {
   process.env.TOKEN_SECRET = secret;
   prisma = await initTestDb("test_redeem_valid.db");
-  // Ensure API route modules reuse this Prisma instance (must set before importing route)
   (global as any)._prisma = prisma;
-  // Seed system config + prize + batch + token
-  await prisma.$executeRawUnsafe(`DELETE FROM SystemConfig;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Prize;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Batch;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Token;`);
-  await prisma.$executeRawUnsafe(`INSERT INTO SystemConfig (id,tokensEnabled) VALUES (1,1);`);
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO Prize (id,key,label,active) VALUES ('pr1','premio1','Prize 1',1);`
-  );
-  await prisma.$executeRawUnsafe(`INSERT INTO Batch (id,description) VALUES ('b1','test batch');`);
+  // Seed usando Prisma API
+  await prisma.prize.create({ data: { id: 'pr1', key: 'premio1', label: 'Prize 1', active: true, emittedTotal: 0 } });
+  await prisma.batch.create({ data: { id: 'b1', description: 'test batch' } });
   tokenId = "tok_valid_1";
   const expiresAt = new Date(Date.now() + 60_000); // +1 min
-  const signature = signToken(secret, tokenId, "pr1", expiresAt, CURRENT_SIGNATURE_VERSION);
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO Token (id,prizeId,batchId,expiresAt,signature,signatureVersion,disabled) VALUES (?,?,?,?,?,?,0);`,
-    tokenId,
-    "pr1",
-    "b1",
-    expiresAt.toISOString(),
-    signature,
-    CURRENT_SIGNATURE_VERSION
-  );
+  const signature = signToken(secret, tokenId, 'pr1', expiresAt, CURRENT_SIGNATURE_VERSION);
+  await prisma.token.create({ data: { id: tokenId, prizeId: 'pr1', batchId: 'b1', expiresAt, signature, signatureVersion: CURRENT_SIGNATURE_VERSION, disabled: false } });
   ({ POST: redeemHandler } = await import("./[tokenId]/route"));
 });
 

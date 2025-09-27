@@ -11,15 +11,25 @@ let prisma: PrismaClient;
 let serverUrl = 'http://localhost:3000';
 
 async function seedBatchWithTokens(batchId: string, count: number) {
-  await prisma.$executeRawUnsafe(`DELETE FROM Prize;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Batch;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Token;`);
-  await prisma.$executeRawUnsafe(`INSERT INTO Batch (id, description) VALUES (?, 'test');`, batchId);
-  const expiresAt = new Date(Date.now() + 60_000).toISOString();
-  await prisma.$executeRawUnsafe(`INSERT INTO Prize (id,key,label,active,emittedTotal) VALUES (?,?,?,1,0);`, 'p1', 'p1', 'P1');
-  for (let i = 0; i < count; i++) {
-    const tokenId = `p1_tok${i}`;
-    await prisma.$executeRawUnsafe(`INSERT INTO Token (id,prizeId,batchId,expiresAt,signature,signatureVersion,disabled) VALUES (?,?,?,?,?,?,0);`, tokenId, 'p1', batchId, expiresAt, 'sig', 1);
+  // Limpieza específica (ya se truncó pero por claridad)
+  await prisma.token.deleteMany({});
+  await prisma.batch.deleteMany({});
+  await prisma.prize.deleteMany({});
+  const batch = await prisma.batch.create({ data: { id: batchId, description: 'test' } });
+  await prisma.prize.create({ data: { id: 'p1', key: 'p1', label: 'P1', active: true, emittedTotal: 0 } });
+  const expiresAt = new Date(Date.now() + 60_000);
+  const data = Array.from({ length: count }).map((_, i) => ({
+    id: `p1_tok${i}`,
+    prizeId: 'p1',
+    batchId: batch.id,
+    expiresAt,
+    signature: 'sig',
+    signatureVersion: 1,
+    disabled: false,
+  }));
+  // createMany para velocidad
+  if (data.length) {
+    await prisma.token.createMany({ data });
   }
 }
 
@@ -43,11 +53,12 @@ beforeAll(async () => {
     fs.writeFileSync(defaultPngPath, new Uint8Array(Buffer.from(tinyPngBase64, 'base64')));
   }
   // create a PrintTemplate DB record to mimic admin upload flow
-  try {
-    await prisma.$executeRawUnsafe(`INSERT OR IGNORE INTO PrintTemplate (id,name,filePath,meta) VALUES (?,?,?,?);`, 'test-default', 'default', 'public/templates/default.png', JSON.stringify({ dpi: 300, cols: 2, rows: 4, qr: { xMm: 150, yMm: 230, widthMm: 30 } }));
-  } catch (e) {
-    // ignore
-  }
+  // Crear / asegurar plantilla de impresión
+  await prisma.printTemplate.upsert({
+    where: { id: 'test-default' },
+    update: { name: 'default', filePath: 'public/templates/default.png', meta: JSON.stringify({ dpi: 300, cols: 2, rows: 4, qr: { xMm: 150, yMm: 230, widthMm: 30 } }) },
+    create: { id: 'test-default', name: 'default', filePath: 'public/templates/default.png', meta: JSON.stringify({ dpi: 300, cols: 2, rows: 4, qr: { xMm: 150, yMm: 230, widthMm: 30 } }) }
+  });
 });
 
 afterAll(async () => {

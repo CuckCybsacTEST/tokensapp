@@ -1,25 +1,42 @@
 version: "3.9"
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: qrprizes_postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432" # expose on 5433 to avoid clashing with any local 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: qrprizes
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
     image: qr-prizes-app:local
+    depends_on:
+      - postgres
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PUBLIC_BASE_URL=http://localhost:3000
       - TOKEN_SECRET=dev_only_change_me
-      # Use a relative sqlite URL which the entrypoint will remap to /data/db/prod.db
-      - DATABASE_URL=file:./prisma/dev.db
+      # Production container now points to Postgres; adjust if deploying elsewhere
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/qrprizes?schema=public
       - TWO_PHASE_REDEMPTION=false
     volumes:
-      # Persist database and generated assets across container restarts
+      # Persist generated assets (images, etc.) across container restarts
       - app_data:/data
       # Optional: keep prisma schema editable live (not required for prod)
       - ./prisma:/app/prisma
 
 volumes:
   app_data:
+    driver: local
+  pg_data:
     driver: local

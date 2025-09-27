@@ -49,10 +49,19 @@ export function getFeatureFlagsSnapshot() {
     birthdaysPublic: isBirthdaysEnabledPublic(),
     birthdaysAdmin: isBirthdaysEnabledAdmin(),
     allowClientDeliver: parseBool(process.env.ALLOW_CLIENT_DELIVER),
+    showsEnabled: isShowsFeatureEnabled(),
   };
 }
 
 /** Entrega sin autenticación (temporal) controlada por env */
 export function isClientDeliverAllowed(): boolean {
   return parseBool(process.env.ALLOW_CLIENT_DELIVER);
+}
+
+/** Shows / Flyers feature master flag (env SHOWS_ENABLED). Default ON si no se define. */
+export function isShowsFeatureEnabled(): boolean {
+  // Si la variable existe, se parsea. Si no existe, se asume habilitado (retrocompatible).
+  const v = process.env.SHOWS_ENABLED;
+  if (v === undefined || v === null || v === '') return true;
+  return parseBool(v);
 }

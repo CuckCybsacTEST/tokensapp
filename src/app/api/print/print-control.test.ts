@@ -11,18 +11,22 @@ let prisma: PrismaClient;
 let serverUrl = 'http://localhost:3000';
 
 async function seedBatchWithTokens(batchId: string, count: number) {
-  await prisma.$executeRawUnsafe(`DELETE FROM Prize;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Batch;`);
-  await prisma.$executeRawUnsafe(`DELETE FROM Token;`);
-  await prisma.$executeRawUnsafe(`INSERT INTO Batch (id, description) VALUES (?, 'test');`, batchId);
-  const expiresAt = new Date(Date.now() + 60_000).toISOString();
-  await prisma.$executeRawUnsafe(`INSERT INTO Prize (id,key,label,active,emittedTotal) VALUES (?,?,?,1,0);`, 'p1', 'p1', 'P1');
-  for (let i = 0; i < count; i++) {
-    const tokenId = `t${i + 1}`;
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO Token (id,prizeId,batchId,expiresAt,signature,signatureVersion) VALUES (?,?,?,?,?,1);`,
-      tokenId, 'p1', batchId, expiresAt, 'sig'
-    );
+  await prisma.token.deleteMany({});
+  await prisma.batch.deleteMany({});
+  await prisma.prize.deleteMany({});
+  await prisma.batch.create({ data: { id: batchId, description: 'test' } });
+  await prisma.prize.create({ data: { id: 'p1', key: 'p1', label: 'P1', active: true, emittedTotal: 0 } });
+  const expiresAt = new Date(Date.now() + 60_000);
+  if (count > 0) {
+    await prisma.token.createMany({ data: Array.from({ length: count }).map((_, i) => ({
+      id: `t${i + 1}`,
+      prizeId: 'p1',
+      batchId,
+      expiresAt,
+      signature: 'sig',
+      signatureVersion: 1,
+      disabled: false,
+    })) });
   }
 }
 

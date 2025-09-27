@@ -82,6 +82,7 @@ La documentación técnica completa está disponible en la carpeta `docs/`:
 - [Registro de colaboradores](./docs/collaborators.md) - Alta de personas/usuarios, seguridad y ejemplos curl/PowerShell
 - [Roles y permisos](./docs/roles.md) - Diferencias entre `COLLAB`/`STAFF` (BYOD) y `ADMIN`/`STAFF` (panel), rutas habilitadas y buenas prácticas
 - [Troubleshooting local](./docs/troubleshooting.md) - Errores comunes (`DATABASE_URL`, EPERM Windows, regeneración Prisma)
+- [Shows / Flyers](./docs/shows.md) - Modelo, reglas y endpoints del subsistema de shows
 
 > Nota importante (colaboradores): desde ahora, el “código” de Persona es el DNI normalizado (solo dígitos) y ya no se ingresa manualmente. El formulario usa un select de `Área` con opciones fijas. Ver detalles y ejemplos en [Registro de colaboradores](./docs/collaborators.md).
 

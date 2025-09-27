@@ -346,3 +346,36 @@ model DayBrief {
 
   @@index([day])
 }
+
+// =============================================
+// Marketing / Shows (flyers públicos)
+// =============================================
+
+enum ShowStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Show {
+  id               String      @id @default(cuid())
+  title            String      @db.VarChar(120)
+  slug             String      @unique @db.VarChar(140)
+  status           ShowStatus  @default(DRAFT)
+  startsAt         DateTime
+  endsAt           DateTime?
+  slot             Int?        @db.SmallInt // 1..4 (validado vía lógica / CHECK)
+  imageOriginalPath String
+  imageWebpPath      String
+  imageBlurData      String
+  width              Int
+  height             Int
+  bytesOriginal      Int
+  bytesOptimized     Int
+  publishedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  @@index([status, startsAt(sort: Desc)])
+  // Nota: restricciones adicionales (máx 4 publicados, unicidad condicional de slot, no solapamiento) se aplican en lógica y migración SQL raw.
+}
