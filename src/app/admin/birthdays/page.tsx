@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, memo } from "react";
 
 type Reservation = {
   id: string;
@@ -15,6 +15,72 @@ type Reservation = {
   tokensGeneratedAt: string | null;
   createdAt: string;
 };
+
+type AdminReservationCardProps = {
+  r: Reservation;
+  busy: boolean;
+  onApprove: (id:string)=>void;
+  onGenTokens: (id:string)=>void;
+  onDownload: (id:string)=>void;
+};
+
+const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenTokens, onDownload }: AdminReservationCardProps){
+  const isApproved = r.status === 'approved' || r.status === 'completed';
+  const isAlert = r.status === 'pending_review' || r.status === 'canceled';
+  const cardBorder = isApproved ? 'border-emerald-700' : isAlert ? 'border-rose-700' : 'border-slate-700';
+  const cardBg = isApproved ? 'bg-emerald-950/30' : isAlert ? 'bg-rose-950/30' : 'bg-slate-900';
+  const mutedText = isApproved ? 'text-emerald-300' : isAlert ? 'text-rose-300' : 'text-slate-400';
+  const badgeCls = isApproved
+    ? 'border-emerald-700 bg-emerald-600/20 text-emerald-300'
+    : isAlert
+      ? 'border-rose-700 bg-rose-600/20 text-rose-300'
+      : 'border-slate-700 bg-slate-600/20 text-slate-300';
+  const scrollRef = useRef<HTMLDivElement|null>(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+  const [hint, setHint] = useState(true);
+  useEffect(()=>{
+    const el = scrollRef.current; if(!el) return;
+    const update = ()=>{ const {scrollLeft, scrollWidth, clientWidth}=el; setShowLeft(scrollLeft>0); setShowRight(scrollLeft+clientWidth < scrollWidth-1); };
+    update();
+    const h=()=>{ update(); if(hint) setHint(false); };
+    el.addEventListener('scroll', h, { passive:true });
+    window.addEventListener('resize', update);
+    return ()=>{ el.removeEventListener('scroll', h); window.removeEventListener('resize', update); };
+  }, [hint]);
+  return (
+    <div className={`rounded border p-3 ${cardBorder} ${cardBg}`}>
+      <div className="flex flex-wrap justify-between gap-2">
+        <div>
+          <div className="font-medium flex items-center gap-2">
+            <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="hover:underline">
+              {r.celebrantName}
+            </a>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeCls}`}>{r.status}</span>
+            <span className="text-xs text-slate-400">({r.documento})</span>
+          </div>
+          <div className={`text-xs ${mutedText}`}>{r.date} {r.timeSlot} • Pack: {r.pack?.name}</div>
+          <div className={`text-xs ${mutedText}`}>
+            Estado: {r.status}{r.tokensGeneratedAt ? ` • Tokens: ${r.tokensGeneratedAt}` : ''}
+          </div>
+        </div>
+        <div className="relative max-w-full">
+          <div ref={scrollRef} className="flex gap-2 overflow-x-auto max-w-full pr-1 -mr-1 flex-nowrap scrollbar-thin scrollbar-thumb-slate-700/50 scroll-smooth" style={{scrollbarGutter:'stable'}}>
+            {r.status === 'pending_review' && (
+              <button className="btn shrink-0" disabled={busy} onClick={()=>onApprove(r.id)}>Aprobar</button>
+            )}
+            <button className="btn shrink-0" disabled={busy} onClick={()=>onGenTokens(r.id)}>Generar tokens</button>
+            <button className="btn shrink-0" onClick={()=>onDownload(r.id)}>Descargar tarjetas</button>
+            <a className="btn shrink-0" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
+          </div>
+          {showLeft && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[rgba(15,23,42,0.9)] to-transparent rounded-l" />}
+          {showRight && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[rgba(15,23,42,0.9)] to-transparent rounded-r" />}
+          {showRight && hint && <div className="absolute -top-4 right-2 text-[10px] text-slate-400 animate-pulse select-none">Desliza →</div>}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default function AdminBirthdaysPage() {
   const [loading, setLoading] = useState(false);
@@ -51,40 +117,22 @@ export default function AdminBirthdaysPage() {
       const url = `/api/admin/birthdays?${q.toString()}`;
       const res = await fetch(url);
       let j: any = null;
-      try {
-        const txt = await res.text();
-        if (txt && txt.trim()) {
-          try { j = JSON.parse(txt); } catch(parseErr) {
-            throw new Error(`RESP_PARSE_ERROR ${res.status} (${(parseErr as any).message}) bodySnippet="${txt.slice(0,120)}"`);
-          }
-        } else {
-          j = {};
+      const txt = await res.text();
+      if (txt && txt.trim()) {
+        try { j = JSON.parse(txt); } catch(parseErr:any) {
+          throw new Error(`RESP_PARSE_ERROR ${res.status} (${parseErr.message}) bodySnippet="${txt.slice(0,120)}"`);
         }
-      } catch(readErr:any) {
-        throw new Error(`READ_ERROR ${(readErr && readErr.message) || readErr}`);
-      }
+      } else j = {};
       if (!res.ok) throw new Error(j?.code || j?.message || `HTTP_${res.status}`);
-      // Expect structure { items, total? }
-      if (!j.items && !Array.isArray(j.items)) {
-        // Fallback: maybe whole object list
-        if (Array.isArray(j)) j = { items: j };
-      }
+      if (!j.items && Array.isArray(j)) j = { items: j };
       setItems(j.items || []);
-    } catch (e: any) {
-      setErr(String(e?.message || e));
-    } finally {
-      setLoading(false);
-    }
+    } catch(e:any) {
+      setErr(String(e?.message||e));
+    } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [page, pageSize]);
-  useEffect(() => { (async ()=>{
-    try {
-      const res = await fetch('/api/birthdays/packs');
-      const j = await res.json().catch(()=>({}));
-      if (res.ok && j?.packs) setPacks(j.packs);
-    } catch {}
-  })(); }, []);
+  useEffect(()=>{ load(); }, [page, pageSize]);
+  useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
 
   async function restorePacks() {
     try {
@@ -92,31 +140,11 @@ export default function AdminBirthdaysPage() {
       const j = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(j?.code || j?.message || 'RESTORE_ERROR');
       if (j?.packs) setPacks(j.packs);
-    } catch (e:any) {
-      setErr(String(e?.message || e));
-    }
+    } catch(e:any){ setErr(String(e?.message||e)); }
   }
-
-  function startEdit(pId: string) {
-    const p = packs.find(x=>x.id===pId); if (!p) return;
-    setEditingPack(pId);
-    setPackEdits(prev=>({ ...prev, [pId]: { name: p.name, qrCount: p.qrCount, bottle: p.bottle||'', perksText: (p.perks||[]).join('\n') } }));
-  }
-  function cancelEdit() { setEditingPack(null); }
-  async function savePack(pId: string) {
-    const e = packEdits[pId]; if (!e) return;
-    try {
-      const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean);
-      const body = { name: e.name, qrCount: e.qrCount, bottle: e.bottle, perks };
-      const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      const j = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(j?.code||j?.message||res.status);
-      // refresh packs list
-      const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
-      if (list?.packs) setPacks(list.packs);
-      setEditingPack(null);
-    } catch(e:any) { setErr(String(e?.message||e)); }
-  }
+  function startEdit(pId:string){ const p = packs.find(x=>x.id===pId); if(!p) return; setEditingPack(pId); setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n') }})); }
+  function cancelEdit(){ setEditingPack(null); }
+  async function savePack(pId:string){ const e = packEdits[pId]; if(!e) return; try { const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean); const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks }; const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); const j=await res.json().catch(()=>({})); if(!res.ok) throw new Error(j?.code||j?.message||res.status); const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null); if(list?.packs) setPacks(list.packs); setEditingPack(null); } catch(e:any){ setErr(String(e?.message||e)); } }
 
   async function approve(id: string) {
     setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
@@ -321,45 +349,16 @@ export default function AdminBirthdaysPage() {
       {empty && <div className="text-sm text-gray-400">No hay reservas</div>}
 
       <div className="grid gap-2">
-        {items.map(r => {
-          const isApproved = r.status === 'approved' || r.status === 'completed';
-          const isAlert = r.status === 'pending_review' || r.status === 'canceled';
-          const cardBorder = isApproved ? 'border-emerald-700' : isAlert ? 'border-rose-700' : 'border-slate-700';
-          const cardBg = isApproved ? 'bg-emerald-950/30' : isAlert ? 'bg-rose-950/30' : 'bg-slate-900';
-          const mutedText = isApproved ? 'text-emerald-300' : isAlert ? 'text-rose-300' : 'text-slate-400';
-          const badgeCls = isApproved
-            ? 'border-emerald-700 bg-emerald-600/20 text-emerald-300'
-            : isAlert
-              ? 'border-rose-700 bg-rose-600/20 text-rose-300'
-              : 'border-slate-700 bg-slate-600/20 text-slate-300';
-          return (
-            <div key={r.id} className={`rounded border p-3 ${cardBorder} ${cardBg}`}>
-              <div className="flex flex-wrap justify-between gap-2">
-                <div>
-                  <div className="font-medium flex items-center gap-2">
-                    <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="hover:underline">
-                      {r.celebrantName}
-                    </a>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeCls}`}>{r.status}</span>
-                    <span className="text-xs text-slate-400">({r.documento})</span>
-                  </div>
-                  <div className={`text-xs ${mutedText}`}>{r.date} {r.timeSlot} • Pack: {r.pack?.name}</div>
-                  <div className={`text-xs ${mutedText}`}>
-                    Estado: {r.status}{r.tokensGeneratedAt ? ` • Tokens: ${r.tokensGeneratedAt}` : ''}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {r.status === 'pending_review' && (
-                    <button className="btn" disabled={busy[r.id]} onClick={()=>approve(r.id)}>Aprobar</button>
-                  )}
-                  <button className="btn" disabled={busy[r.id]} onClick={()=>genTokens(r.id)}>Generar tokens</button>
-                  <button className="btn" onClick={()=>downloadCards(r.id)}>Descargar tarjetas</button>
-                  <a className="btn" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {items.map(r => (
+          <AdminReservationCard
+            key={r.id}
+            r={r}
+            busy={!!busy[r.id]}
+            onApprove={approve}
+            onGenTokens={genTokens}
+            onDownload={downloadCards}
+          />
+        ))}
       </div>
 
       <div className="flex items-center gap-2">

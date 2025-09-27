@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { ALLOWED_AREAS } from '@/lib/areas';
+import { MONTHS_ES, buildBirthdaySubmission } from '@/lib/birthday';
 
 // Full admin CRUD users management component (original functionality)
 export default function FullAdminUsers() {
@@ -9,6 +10,9 @@ export default function FullAdminUsers() {
   const [name, setName] = useState("");
   const [dni, setDni] = useState("");
   const [area, setArea] = useState<string>(ALLOWED_AREAS[0]);
+  const [whatsapp, setWhatsapp] = useState("");
+  const [birthdayDay, setBirthdayDay] = useState("01");
+  const [birthdayMonth, setBirthdayMonth] = useState("01");
   const [role, setRole] = useState("COLLAB");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -101,15 +105,17 @@ export default function FullAdminUsers() {
     if (!username || username.trim().length < 3) { setErr('Username inválido'); return; }
     if (!password || password.length < 8) { setErr('Password mínimo 8 caracteres'); return; }
     if (!name || name.trim().length < 2) { setErr('Nombre es obligatorio'); return; }
-    if (!dni || dni.trim().length < 3) { setErr('DNI es obligatorio'); return; }
+  if (!dni || dni.trim().length < 3) { setErr('DNI es obligatorio'); return; }
+  if (!whatsapp || whatsapp.replace(/\D+/g,'').length < 8) { setErr('WhatsApp inválido'); return; }
+  const birthday = buildBirthdaySubmission(birthdayDay, birthdayMonth); // "D Mes"
     if (!(ALLOWED_AREAS as readonly string[]).includes(area as any)) { setErr('Área inválida'); return; }
     try {
-      const payload = { username: username.trim(), password, role, person: { name: name.trim(), dni: dni.trim(), area } };
+  const payload = { username: username.trim(), password, role, person: { name: name.trim(), dni: dni.trim(), area, whatsapp, birthday } };
       const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await res.json().catch(()=>({}));
       if (res.ok && j?.ok) {
         setMsg(`Usuario creado: ${j.user.username} → ${j.person.code}`);
-        setUsername(''); setPassword(''); setName(''); setDni(''); setArea(ALLOWED_AREAS[0]); setRole('COLLAB');
+  setUsername(''); setPassword(''); setName(''); setDni(''); setArea(ALLOWED_AREAS[0]); setRole('COLLAB'); setWhatsapp(''); setBirthdayMonth('01'); setBirthdayDay('01');
         loadUsers();
       } else {
         const back = j?.code || j?.message || res.status;
@@ -160,6 +166,23 @@ export default function FullAdminUsers() {
         </div>
         <div className="flex gap-4">
           <div className="grid gap-2">
+            <label className="text-sm text-gray-700">WhatsApp</label>
+            <input value={whatsapp} onChange={e=> setWhatsapp(e.target.value.replace(/[^0-9+]/g,''))} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" placeholder="999888777" />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm text-gray-700">Cumpleaños (día y mes)</label>
+            <div className="flex gap-2">
+              <select value={birthdayDay} onChange={e=> setBirthdayDay(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+                {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select value={birthdayMonth} onChange={e=> setBirthdayMonth(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+                {MONTHS_ES.map((m,idx) => <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div className="grid gap-2">
             <label className="text-sm text-gray-700">Área</label>
             <select value={area} onChange={e=> setArea(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
               {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -180,7 +203,7 @@ export default function FullAdminUsers() {
       <div className="border rounded p-4">
         <h2 className="text-lg font-medium mb-4">Usuarios existentes</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-[1200px] w-full text-sm">
+          <table className="min-w-[1400px] w-full text-sm">
             <thead>
               <tr className="text-left border-b">
                 <th className="py-2 pr-4">Código</th>
@@ -188,8 +211,10 @@ export default function FullAdminUsers() {
                 <th className="py-2 pr-4">DNI</th>
                 <th className="py-2 pr-4">Área</th>
                 <th className="py-2 pr-4">Username</th>
-                <th className="py-2 pr-4">Rol</th>
-                <th className="py-2 pr-4">Credenciales</th>
+                 <th className="py-2 pr-4">Rol</th>
+                 <th className="py-2 pr-4">WhatsApp</th>
+                 <th className="py-2 pr-4">Cumpleaños</th>
+                 <th className="py-2 pr-4">Credenciales</th>
               </tr>
             </thead>
             <tbody>
@@ -278,6 +303,8 @@ export default function FullAdminUsers() {
                       >Cambiar</button>
                     </div>
                   </td>
+                  <td className="py-2 pr-4">{u.whatsapp || '-'}</td>
+                  <td className="py-2 pr-4">{u.birthday || '-'}</td>
                   <td className="py-2 pr-4">
                     <div className="flex flex-col gap-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -327,7 +354,7 @@ export default function FullAdminUsers() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td className="py-3 text-gray-500" colSpan={7}>Sin usuarios</td></tr>
+                <tr><td className="py-3 text-gray-500" colSpan={9}>Sin usuarios</td></tr>
               )}
             </tbody>
           </table>

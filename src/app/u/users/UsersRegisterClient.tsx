@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ALLOWED_AREAS, type Area } from '@/lib/areas';
+import { MONTHS_ES, buildBirthdaySubmission } from '@/lib/birthday';
 
-interface UserRow { id: string; username: string; role: string; personCode: string|null; personName: string|null; dni: string|null; area: string|null; }
+interface UserRow { id: string; username: string; role: string; personCode: string|null; personName: string|null; dni: string|null; area: string|null; whatsapp?: string|null; birthday?: string|null; }
 
 export default function UsersRegisterClient() {
   const [name, setName] = useState('');
@@ -10,6 +11,9 @@ export default function UsersRegisterClient() {
   const [area, setArea] = useState<Area>(ALLOWED_AREAS[0]);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [birthdayDay, setBirthdayDay] = useState('01');
+  const [birthdayMonth, setBirthdayMonth] = useState('01');
   const [msg, setMsg] = useState<string|null>(null);
   const [err, setErr] = useState<string|null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +23,7 @@ export default function UsersRegisterClient() {
   async function loadUsers() {
     setLoadingUsers(true);
     try {
-      const r = await fetch('/api/admin/users');
+  const r = await fetch('/api/staff/users');
       const j = await r.json().catch(()=>({}));
       if (r.ok && j?.ok) setUsers(j.users || []);
     } finally { setLoadingUsers(false); }
@@ -39,14 +43,17 @@ export default function UsersRegisterClient() {
     if (!password || password.length < 8) { setErr('Password mínimo 8 caracteres'); return; }
     if (password !== confirm) { setErr('Las contraseñas no coinciden'); return; }
     const username = d; // username = DNI normalizado
-    const payload = { username, password, role: 'COLLAB', person: { name: n, dni: d, area } };
+    const whatsappDigits = (whatsapp||'').replace(/\D+/g,'');
+    if (!whatsappDigits || whatsappDigits.length < 8) { setErr('WhatsApp inválido'); return; }
+    const birthday = buildBirthdaySubmission(birthdayDay, birthdayMonth);
+    const payload = { name: n, dni: d, area, password, whatsapp: whatsappDigits, birthday };
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch('/api/staff/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const j = await res.json().catch(()=>({}));
       if (res.ok && j?.ok) {
         setMsg(`Colaborador creado: ${j.person.name} (${j.person.dni})`);
-        setName(''); setDni(''); setArea(ALLOWED_AREAS[0]); setPassword(''); setConfirm('');
+        setName(''); setDni(''); setArea(ALLOWED_AREAS[0]); setPassword(''); setConfirm(''); setWhatsapp(''); setBirthdayDay('01'); setBirthdayMonth('01');
         loadUsers();
       } else {
         const code = j?.code || j?.message || res.status;
@@ -58,6 +65,8 @@ export default function UsersRegisterClient() {
           INVALID_AREA: 'Área inválida',
           INVALID_NAME: 'Nombre inválido',
           USERNAME_TAKEN: 'El DNI ya está registrado',
+          INVALID_WHATSAPP: 'WhatsApp inválido',
+          INVALID_BIRTHDAY: 'Cumpleaños inválido',
         };
         setErr(map[String(code)] || `Error: ${code}`);
       }
@@ -108,6 +117,24 @@ export default function UsersRegisterClient() {
               {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">WhatsApp</label>
+              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="9XXXXXXXX" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Día</label>
+              <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d=> <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Mes</label>
+              <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                {MONTHS_ES.map((m,idx)=> <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Password</label>
@@ -138,6 +165,8 @@ export default function UsersRegisterClient() {
                   <th className="py-2 pr-4">Área</th>
                   <th className="py-2 pr-4">Username</th>
                   <th className="py-2 pr-4">Rol</th>
+                  <th className="py-2 pr-4">WhatsApp</th>
+                  <th className="py-2 pr-4">Cumpleaños</th>
                   <th className="py-2 pr-4">Acciones</th>
                 </tr>
               </thead>
@@ -150,6 +179,8 @@ export default function UsersRegisterClient() {
                     <td className="py-2 pr-4">{u.area || '-'}</td>
                     <td className="py-2 pr-4">{u.username}</td>
                     <td className="py-2 pr-4"><span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[11px] font-mono">{u.role}</span></td>
+                    <td className="py-2 pr-4">{u.whatsapp || '-'}</td>
+                    <td className="py-2 pr-4">{u.birthday || '-'}</td>
                     <td className="py-2 pr-4">
                       {u.role === 'COLLAB' ? (
                         <button onClick={()=>onDelete(u.id, u.username)} className="text-red-600 dark:text-red-400 hover:underline disabled:opacity-50" disabled={loadingUsers}>Eliminar</button>
@@ -160,10 +191,10 @@ export default function UsersRegisterClient() {
                   </tr>
                 ))}
                 {users.length===0 && !loadingUsers && (
-                  <tr><td colSpan={7} className="py-4 text-slate-500 text-sm">Sin usuarios</td></tr>
+                  <tr><td colSpan={9} className="py-4 text-slate-500 text-sm">Sin usuarios</td></tr>
                 )}
                 {loadingUsers && (
-                  <tr><td colSpan={7} className="py-4 text-slate-500 text-sm animate-pulse">Cargando…</td></tr>
+                  <tr><td colSpan={9} className="py-4 text-slate-500 text-sm animate-pulse">Cargando…</td></tr>
                 )}
               </tbody>
             </table>

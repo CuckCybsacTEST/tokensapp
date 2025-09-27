@@ -127,6 +127,8 @@ model Person {
   dni              String?            @unique
   area             String?
   jobTitle         String?
+  whatsapp         String?            @db.Text
+  birthday         DateTime?          // solo fecha (almacenada UTC) para recordatorios / métricas de cumpleaños
   PersonTaskStatus PersonTaskStatus[]
   scans            Scan[]
   user             User?

@@ -35,7 +35,7 @@ export function UsersClient({ role }: UsersClientProps) {
       <div className="border rounded p-4">
         <h2 className="text-lg font-medium mb-4">Usuarios existentes</h2>
         <div className="overflow-x-auto">
-          <table className="min-w-[1000px] w-full text-sm">
+          <table className="min-w-[1200px] w-full text-sm">
             <thead>
               <tr className="text-left border-b">
                 <th className="py-2 pr-4">Código</th>
@@ -44,6 +44,8 @@ export function UsersClient({ role }: UsersClientProps) {
                 <th className="py-2 pr-4">Área</th>
                 <th className="py-2 pr-4">Username</th>
                 <th className="py-2 pr-4">Rol</th>
+                <th className="py-2 pr-4">WhatsApp</th>
+                <th className="py-2 pr-4">Cumpleaños</th>
               </tr>
             </thead>
             <tbody>
@@ -55,10 +57,12 @@ export function UsersClient({ role }: UsersClientProps) {
                   <td className="py-2 pr-4">{u.area || '-'}</td>
                   <td className="py-2 pr-4">{u.username}</td>
                   <td className="py-2 pr-4"><span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-700/60">{u.role}</span></td>
+                  <td className="py-2 pr-4">{u.whatsapp || '-'}</td>
+                  <td className="py-2 pr-4">{u.birthday || '-'}</td>
                 </tr>
               ))}
               {users.length===0 && !loading && (
-                <tr><td className="py-3 text-gray-500" colSpan={6}>Sin usuarios</td></tr>
+                <tr><td className="py-3 text-gray-500" colSpan={8}>Sin usuarios</td></tr>
               )}
             </tbody>
           </table>

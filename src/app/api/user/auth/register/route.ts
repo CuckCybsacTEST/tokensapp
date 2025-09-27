@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { isValidArea } from '@/lib/areas';
 import { createUserSessionCookie, buildSetUserCookie } from '@/lib/auth-user';
+import { parseBirthdayInput } from '@/lib/birthday';
 
 const esc = (s: string) => s.replace(/'/g, "''");
 const normalizeDni = (s: string) => String(s || '').replace(/\D+/g, '');
@@ -18,6 +19,15 @@ function isValidName(n: string) {
   return parts.every(p => /^(?=.{2,})([A-Za-zÁÉÍÓÚÜÑáéíóúüñ'-])+$/u.test(p));
 }
 function isValidPassword(pw: string) { return typeof pw === 'string' && pw.length >= 8; }
+function normalizeWhatsapp(raw: string) {
+  return String(raw || '').replace(/\D+/g, '');
+}
+function isValidWhatsapp(raw: string) {
+  const n = normalizeWhatsapp(raw);
+  // Perú: 9 dígitos móviles típicos que empiezan en 9; permitir 8-15 genéricamente
+  return n.length >= 8 && n.length <= 15; // se puede refinar luego
+}
+// Se usa parseBirthdayInput del util
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +36,8 @@ export async function POST(req: Request) {
     const dniRaw = typeof body?.dni === 'string' ? body.dni.trim() : '';
     const area = typeof body?.area === 'string' ? body.area.trim() : '';
     const password = typeof body?.password === 'string' ? body.password : '';
+    const whatsappRaw = typeof body?.whatsapp === 'string' ? body.whatsapp.trim() : '';
+    const birthdayRaw = typeof body?.birthday === 'string' ? body.birthday.trim() : '';
 
     if (!isValidName(name)) {
       return NextResponse.json({ ok: false, code: 'INVALID_NAME' }, { status: 400 });
@@ -37,9 +49,10 @@ export async function POST(req: Request) {
     if (!isValidArea(area)) {
       return NextResponse.json({ ok: false, code: 'INVALID_AREA' }, { status: 400 });
     }
-    if (!isValidPassword(password)) {
-      return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD' }, { status: 400 });
-    }
+    if (!isValidPassword(password)) return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD' }, { status: 400 });
+    if (!isValidWhatsapp(whatsappRaw)) return NextResponse.json({ ok: false, code: 'INVALID_WHATSAPP' }, { status: 400 });
+  const birthdayDate = parseBirthdayInput(birthdayRaw);
+  if (!birthdayDate) return NextResponse.json({ ok: false, code: 'INVALID_BIRTHDAY' }, { status: 400 });
 
     // Username y code = DNI normalizado; role fijo COLLAB
     const username = dni;
@@ -60,7 +73,7 @@ export async function POST(req: Request) {
 
     const created = await prisma.$transaction(async (tx) => {
       const person = await tx.person.create({
-        data: { code, name, dni, area, active: true },
+        data: { code, name, dni, area, active: true, whatsapp: normalizeWhatsapp(whatsappRaw), birthday: birthdayDate },
       });
       const user = await tx.user.create({
         data: { username, passwordHash, role: 'COLLAB', personId: person.id },

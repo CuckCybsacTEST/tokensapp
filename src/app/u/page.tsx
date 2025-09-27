@@ -54,6 +54,13 @@ export default async function UHome() {
               <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
               <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver mis tareas →</div>
             </Link>
+            {session.role === 'STAFF' && (
+              <Link href="/u/scanner" className="block rounded-lg border border-teal-300/70 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-teal-700 dark:bg-slate-800">
+                <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Escáner QR</div>
+                <p className="text-sm text-gray-600 dark:text-slate-300">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
+                <div className="mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm">Abrir escáner →</div>
+              </Link>
+            )}
           </div>
           {/* Separador / título de controles */}
           {(isStaff || session.role === 'STAFF') && (
@@ -86,6 +93,17 @@ export default async function UHome() {
                 <Link href="/u/users" className="block rounded-lg border border-amber-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800 text-center">
                   <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Control de Colaboradores</div>
                 </Link>
+              )}
+              {session.role === 'STAFF' && (
+                <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800 text-center">
+                  <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Gestión de Cumpleaños</div>
+                </Link>
+              )}
+              {session.role === 'STAFF' && (
+                <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
+                  <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">La Carta (próximamente)</div>
+                  <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Muy pronto disponible</div>
+                </div>
               )}
             </div>
           )}

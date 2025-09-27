@@ -4,6 +4,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { ALLOWED_AREAS as AREAS_ALLOWED, isValidArea } from '@/lib/areas';
+import { parseBirthdayInput, formatBirthdayLabel } from '@/lib/birthday';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
         username: true,
         role: true,
         createdAt: true,
-        person: { select: { code: true, name: true, dni: true, area: true, jobTitle: true } },
+        person: { select: { code: true, name: true, dni: true, area: true, jobTitle: true, whatsapp: true, birthday: true } },
       },
     });
     const rows = users.map(u => ({
@@ -37,6 +38,8 @@ export async function GET(req: Request) {
       dni: u.person?.dni ?? null,
       area: u.person?.area ?? null,
       jobTitle: u.person?.jobTitle ?? null,
+      whatsapp: u.person?.whatsapp ?? null,
+  birthday: u.person?.birthday ? formatBirthdayLabel(u.person?.birthday) : null,
     }));
     return NextResponse.json({ ok: true, users: rows });
   } catch (e: any) {
@@ -66,6 +69,15 @@ function isValidCode(c: string) {
   const t = c.trim();
   return t.length >= 3 && t.length <= 40 && /^[A-Za-z0-9_.\-]+$/.test(t);
 }
+
+function normalizeWhatsapp(raw: string) {
+  return String(raw || '').replace(/\D+/g, '');
+}
+function isValidWhatsapp(raw: string) {
+  const n = normalizeWhatsapp(raw);
+  return n.length >= 8 && n.length <= 15; // rango genérico
+}
+// parseBirthday reemplazado por util parseBirthdayInput
 
 async function generateNextPersonCode(): Promise<string> {
   // Default prefix EMP- and 4-digit padding
@@ -182,9 +194,11 @@ export async function POST(req: Request) {
     // Create Person + User transactionally (mandatory path)
     const personInput = body.person || {};
     const name = typeof personInput.name === 'string' ? personInput.name.trim() : '';
-  const dniRaw = typeof personInput.dni === 'string' ? personInput.dni.trim() : '';
-  const dni = normalizeDni(dniRaw);
-  const area = typeof personInput.area === 'string' ? personInput.area.trim() : null;
+    const dniRaw = typeof personInput.dni === 'string' ? personInput.dni.trim() : '';
+    const dni = normalizeDni(dniRaw);
+    const area = typeof personInput.area === 'string' ? personInput.area.trim() : null;
+    const whatsappRaw = typeof personInput.whatsapp === 'string' ? personInput.whatsapp.trim() : '';
+    const birthdayRaw = typeof personInput.birthday === 'string' ? personInput.birthday.trim() : '';
   // Ignore incoming jobTitle and code per new rules
   let code: string | null = null;
 
@@ -196,6 +210,13 @@ export async function POST(req: Request) {
     }
     if (!area || !isValidArea(area)) {
       return NextResponse.json({ ok: false, code: 'INVALID_AREA' }, { status: 400 });
+    }
+    if (!isValidWhatsapp(whatsappRaw)) {
+      return NextResponse.json({ ok: false, code: 'INVALID_WHATSAPP' }, { status: 400 });
+    }
+  const birthdayDate = parseBirthdayInput(birthdayRaw);
+    if (!birthdayDate) {
+      return NextResponse.json({ ok: false, code: 'INVALID_BIRTHDAY' }, { status: 400 });
     }
     // Force code = normalized DNI
     code = dni.toUpperCase();
@@ -220,7 +241,7 @@ export async function POST(req: Request) {
     const passwordHash = bcrypt.hashSync(password, salt);
 
     const created = await prisma.$transaction(async (tx) => {
-      const createdPerson = await tx.person.create({ data: { code: code!, name, dni, area, active: true } });
+      const createdPerson = await tx.person.create({ data: { code: code!, name, dni, area, active: true, whatsapp: normalizeWhatsapp(whatsappRaw), birthday: birthdayDate } });
       const createdUser = await tx.user.create({ data: { username, passwordHash, role, personId: createdPerson.id } });
       return { personId: createdPerson.id, userId: createdUser.id };
     });

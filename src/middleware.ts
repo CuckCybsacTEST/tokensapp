@@ -43,11 +43,26 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/user/auth/")) return NextResponse.next();
   if (pathname === "/admin/login") return NextResponse.next();
   if (pathname === "/u/login") return NextResponse.next();
-  if (pathname === "/u/register") return NextResponse.next();
+  if (pathname === "/u/register") {
+    // Si ya existe una sesión (admin o colaborador) no permitir registrar otro usuario sin cerrar sesión
+    try {
+      const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
+      const adminSession = await verifySessionCookie(adminRaw);
+      const uRaw = getUserCookieEdge(req as unknown as Request);
+      let uSession = await verifyUserCookieEdge(uRaw);
+      if (!uSession && uRaw) {
+        try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession = await verifyUserSessionCookie(uRaw) as any; } catch {}
+      }
+      if (adminSession || uSession) {
+        return NextResponse.redirect(new URL('/u', req.url));
+      }
+    } catch {}
+    return NextResponse.next();
+  }
   if (pathname === "/u/reset-password") return NextResponse.next();
 
   // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin ADMIN
-  if (pathname === "/u" || pathname.startsWith("/u/")) {
+  if ((pathname === "/u" || pathname.startsWith("/u/")) && pathname !== '/u/register') {
     // Allow unauthenticated access for the public reset page
     if (pathname === '/u/reset-password') {
       return NextResponse.next();
