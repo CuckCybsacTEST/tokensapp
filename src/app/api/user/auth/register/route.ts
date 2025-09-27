@@ -8,7 +8,15 @@ import { createUserSessionCookie, buildSetUserCookie } from '@/lib/auth-user';
 const esc = (s: string) => s.replace(/'/g, "''");
 const normalizeDni = (s: string) => String(s || '').replace(/\D+/g, '');
 
-function isValidName(n: string) { return typeof n === 'string' && n.trim().length >= 2; }
+function isValidName(n: string) {
+  if (typeof n !== 'string') return false;
+  const cleaned = n.trim().replace(/\s+/g, ' ');
+  if (cleaned.length < 5) return false; // ej: "Ana Li" mínimo 5 con espacio
+  const parts = cleaned.split(' ');
+  if (parts.length < 2) return false; // requiere al menos nombre + apellido
+  // Cada parte >=2 caracteres alfabéticos (permitimos acentos, ñ, apóstrofe y guion)
+  return parts.every(p => /^(?=.{2,})([A-Za-zÁÉÍÓÚÜÑáéíóúüñ'-])+$/u.test(p));
+}
 function isValidPassword(pw: string) { return typeof pw === 'string' && pw.length >= 8; }
 
 export async function POST(req: Request) {

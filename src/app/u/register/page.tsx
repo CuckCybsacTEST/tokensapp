@@ -12,10 +12,27 @@ export default function RegisterPage() {
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
 
+  function isNombreApellidoValid(raw: string) {
+    if (!raw || typeof raw !== 'string') return false;
+    const cleaned = raw.trim().replace(/\s+/g, ' ');
+    const parts = cleaned.split(' ');
+    if (parts.length < 2) return false; // requiere al menos nombre y un apellido
+    // Cada parte al menos 2 caracteres alfabéticos (permitimos acentos, ñ, apóstrofe y guion)
+    return parts.every(p => /^(?=.{2,})([A-Za-zÁÉÍÓÚÜÑáéíóúüñ'-])+$/u.test(p));
+  }
+
+  function normalizeNombre(raw: string) {
+    return raw.trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name || name.trim().length < 2) { setError("Nombre inválido"); return; }
+    if (!isNombreApellidoValid(name)) { setError("Ingresa nombre y apellido (mínimo dos palabras)"); return; }
     if (!dni || dni.trim().length < 3) { setError("DNI inválido"); return; }
     if (!ALLOWED_AREAS.includes(area as any)) { setError("Área inválida"); return; }
     if (!password || password.length < 8) { setError("La contraseña debe tener al menos 8 caracteres"); return; }
@@ -25,7 +42,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/user/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), dni: dni.trim(), area, password })
+        body: JSON.stringify({ name: normalizeNombre(name), dni: dni.trim(), area, password })
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.ok) {
@@ -63,8 +80,8 @@ export default function RegisterPage() {
         ) : (
           <form onSubmit={submit} className="space-y-3">
             <div>
-              <label className="block text-sm mb-1">Nombre y apellido</label>
-              <input value={name} onChange={e=>setName(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Tu nombre" />
+              <label className="block text-sm mb-1">Nombre y apellido <span className="text-red-600">*</span></label>
+              <input value={name} onChange={e=>setName(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Ej: Juan Pérez" />
             </div>
             <div>
               <label className="block text-sm mb-1">DNI</label>
