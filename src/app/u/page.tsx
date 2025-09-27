@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
+import CommitmentModal from './CommitmentModal';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
 import MarkAttendanceCard from './MarkAttendanceCard';
 
@@ -25,28 +26,18 @@ export default async function UHome() {
   const todayBD = computeBusinessDayFromUtc(new Date(), cutoff);
   let nextAction: 'IN' | 'OUT' = 'IN';
   let personName: string | undefined;
+  let commitmentAcceptedVersion = 0;
+  const REQUIRED_COMMITMENT_VERSION = 1;
   try {
-    const me = await prisma.user.findUnique({
+    const me: any = await prisma.user.findUnique({
       where: { id: session.userId },
-      select: {
-        personId: true,
-        person: {
-          select: {
-            name: true,
-            scans: {
-              where: { businessDay: todayBD },
-              select: { type: true, scannedAt: true },
-              orderBy: { scannedAt: 'desc' },
-              take: 5,
-            },
-          },
-        },
-      },
+      include: { person: { select: { name: true, scans: { where: { businessDay: todayBD }, select: { type: true, scannedAt: true }, orderBy: { scannedAt: 'desc' }, take: 5 } } } }
     });
     const scans = me?.person?.scans || [];
     personName = me?.person?.name || undefined;
-    const hasInToday = scans.some(s => s.type === 'IN');
-    const hasOutToday = scans.some(s => s.type === 'OUT');
+    commitmentAcceptedVersion = me?.commitmentVersionAccepted || 0;
+  const hasInToday = scans.some((s: any) => s.type === 'IN');
+  const hasOutToday = scans.some((s: any) => s.type === 'OUT');
     nextAction = hasInToday && !hasOutToday ? 'OUT' : 'IN';
   } catch {}
   return (
@@ -100,6 +91,7 @@ export default async function UHome() {
           )}
         </div>
       </div>
+      <CommitmentModal userId={session.userId} initialAcceptedVersion={commitmentAcceptedVersion} requiredVersion={REQUIRED_COMMITMENT_VERSION} />
     </div>
   );
 }

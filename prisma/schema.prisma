@@ -162,6 +162,9 @@ model User {
   personId            String             @unique
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
+  // Compromiso de bienvenida / responsabilidad (versionable para futuros cambios)
+  commitmentVersionAccepted Int              @default(0)
+  commitmentAcceptedAt      DateTime?
   updatedTaskStatuses PersonTaskStatus[] @relation("TaskStatusUpdatedBy")
   person              Person             @relation(fields: [personId], references: [id])
   passwordResetOtps   PasswordResetOtp[]
