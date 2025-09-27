@@ -183,7 +183,7 @@ export default function ManualAttendancePage() {
                   <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
                 )}
               </button>
-              <Link href="/u/scanner" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400" prefetch={false}>Usar escáner (QR)</Link>
+              <Link href="/u/assistance" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400" prefetch={false}>Usar escáner IN/OUT</Link>
             </div>
           </div>
         </div>
