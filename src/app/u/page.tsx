@@ -17,14 +17,8 @@ export default async function UHome() {
     redirect(`/u/login?next=${encodeURIComponent('/u')}`);
   }
 
-  // Determinar si mostrar tarjetas especiales (Caja)
-  let isCaja = false;
-  try {
-    if (session?.role === 'STAFF') {
-      const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
-      isCaja = u?.person?.area === 'Caja';
-    }
-  } catch {}
+  // Mostrar control de tokens a cualquier STAFF (antes solo Caja)
+  const isStaff = session.role === 'STAFF';
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
   const cutoff = getConfiguredCutoffHour();
@@ -67,7 +61,7 @@ export default async function UHome() {
             <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
             <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver tareas →</div>
           </Link>
-          {isCaja && (
+          {isStaff && (
             <Link href="/u/tokens" className="block rounded-lg border border-emerald-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800 sm:col-span-2">
               <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Control de Tokens</div>
               <p className="text-sm text-gray-600 dark:text-slate-300">Encender o pausar el sistema de tokens y revisar conteos básicos.</p>

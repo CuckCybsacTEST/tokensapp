@@ -6,12 +6,12 @@ import { TokensToggle } from '@/app/admin/TokensToggle';
 
 export const dynamic = 'force-dynamic';
 
-async function ensureCajaStaff() {
+async function ensureStaff() {
   const raw = cookies().get('user_session')?.value;
   const session = await verifyUserSessionCookie(raw);
   if (!session || session.role !== 'STAFF') return null;
   const user = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
-  if (!user?.person || user.person.area !== 'Caja') return null;
+  if (!user?.person) return null;
   return { session, user };
 }
 
@@ -33,8 +33,8 @@ async function loadMetrics() {
   };
 }
 
-export default async function TokensCajaPage() {
-  const me = await ensureCajaStaff();
+export default async function TokensStaffPage() {
+  const me = await ensureStaff();
   if (!me) redirect('/u');
   const metrics = await loadMetrics();
   const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
