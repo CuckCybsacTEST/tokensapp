@@ -69,8 +69,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md border rounded-lg p-6 bg-white text-gray-900">
+    <div className="min-h-[100dvh] flex flex-col justify-center px-4 py-10 sm:py-4 bg-gradient-to-b from-slate-50 to-slate-100">
+      <div className="w-full max-w-md border rounded-xl p-6 bg-white text-gray-900 shadow-sm mx-auto">
         <h1 className="text-xl font-semibold mb-4">Registro de colaborador</h1>
         {error && (
           <div className="mb-3 border border-red-600 bg-red-50 text-red-700 rounded p-2 text-sm">{error}</div>
@@ -101,7 +101,7 @@ export default function RegisterPage() {
               <label className="block text-sm mb-1">Confirmar contraseña</label>
               <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full border rounded px-3 py-2" />
             </div>
-            <button disabled={pending} className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded py-2 disabled:opacity-50">
+            <button disabled={pending} className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded py-2 font-medium tracking-wide disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               {pending ? "Registrando…" : "Crear cuenta"}
             </button>
             <p className="text-xs text-gray-500">El usuario se creará con tu DNI; el inicio de sesión es con DNI y contraseña.</p>
