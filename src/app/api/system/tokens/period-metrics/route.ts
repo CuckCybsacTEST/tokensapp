@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
     if (!adminOk && !userOk) return error('FORBIDDEN', 'Forbidden', 403);
 
     const url = req.nextUrl;
-    const periodParam = (url.searchParams.get('period') || 'today') as Period;
+  const periodParam = (url.searchParams.get('period') || 'today') as Period;
+  const batchId = url.searchParams.get('batchId') || undefined;
     const start = url.searchParams.get('start') || undefined;
     const end = url.searchParams.get('end') || undefined;
     const allowed: Period[] = ['today','yesterday','this_week','last_week','this_month','last_month','custom'];
@@ -38,17 +39,18 @@ export async function GET(req: NextRequest) {
   const { start: rangeStart, end: rangeEnd, startDay, endDay, name } = rangeBusinessDays(periodParam, start, end);
 
     // Queries constrained by createdAt for tokens; expiration and redemption inside window
+    const tokenBatchFilter = batchId ? { batchId } : {};
     const [total, redeemed, delivered, revealed, disabled, expired, spins] = await Promise.all([
-      prisma.token.count({ where: { createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { deliveredAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { revealedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { disabled: true, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { expiresAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.rouletteSpin.count({ where: { createdAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, deliveredAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, revealedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, disabled: true, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...tokenBatchFilter, expiresAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.rouletteSpin.count({ where: { createdAt: { gte: rangeStart, lt: rangeEnd }, ...(batchId ? { session: { batchId } } : {}) } }),
     ]);
     const active = Math.max(0, total - redeemed - expired);
-    return NextResponse.json({ ok: true, period: name, startDay, endDay, totals: { total, redeemed, expired, active, delivered, revealed, disabled }, spins });
+  return NextResponse.json({ ok: true, period: name, startDay, endDay, totals: { total, redeemed, expired, active, delivered, revealed, disabled }, spins, batchId: batchId || null });
   } catch (e: any) {
     console.error('period-metrics error', e);
     return error('INTERNAL', e?.message || 'internal error', 500);

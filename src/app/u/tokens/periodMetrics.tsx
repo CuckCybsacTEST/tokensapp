@@ -16,16 +16,16 @@ interface PeriodMetricsData {
   spins: number;            // giros ruleta
 }
 
-export default function PeriodMetrics() {
+export default function PeriodMetrics({ batchId }: { batchId?: string }) {
   const [period, setPeriod] = useState<Period>('today');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PeriodMetricsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(p = period) {
+  async function load(p = period, b = batchId) {
     setLoading(true); setError(null);
     try {
-      const r = await fetch(`/api/system/tokens/period-metrics?period=${p}`, { cache: 'no-store' });
+  const r = await fetch(`/api/system/tokens/period-metrics?period=${p}${b && b!=='ALL'?`&batchId=${encodeURIComponent(b)}`:''}` , { cache: 'no-store' });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error');
       setData(j);
@@ -36,14 +36,14 @@ export default function PeriodMetrics() {
     }
   }
 
-  useEffect(()=>{ load('today'); // initial
+  useEffect(()=>{ load('today', batchId); // initial
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [batchId]);
 
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const p = e.target.value as Period;
     setPeriod(p);
-    load(p);
+    load(p, batchId);
   }
 
   const totals = data?.totals;

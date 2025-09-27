@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import { TokensToggle } from '@/app/admin/TokensToggle';
-import PeriodMetrics from './periodMetrics';
-import PrizesTableClient from './prizesTableClient';
+import TokensClientWrapper from './tokensClientWrapper';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,10 +43,7 @@ export default async function TokensStaffPage() {
         </div>
         <TokensToggle initialEnabled={toggle.tokensEnabled} loginPath="/u/login" />
       </div>
-      <div>
-        <PrizesTableClient />
-      </div>
-      <PeriodMetrics />
+      <TokensClientWrapper />
     </div>
   );
 }

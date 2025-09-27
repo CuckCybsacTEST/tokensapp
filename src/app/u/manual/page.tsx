@@ -68,6 +68,7 @@ export default function ManualAttendancePage() {
       if (res.ok && json?.ok) {
         setMsg({ variant: 'success', text: `${mode === 'IN' ? 'Entrada' : 'Salida'} registrada correctamente.` });
         setFlash({ mode, ts: Date.now() });
+        try { playTone(mode); } catch {}
         // redirigir como el escáner
         const day = (json && typeof json.businessDay === 'string' && json.businessDay) || ymdUtc(new Date());
         setTimeout(() => {
@@ -99,6 +100,19 @@ export default function ManualAttendancePage() {
   };
 
   // QR scanning removed for manual-only page (sin cámara)
+  function playTone(m: Mode) {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = m === 'IN' ? 880 : 600; // IN más agudo
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -169,13 +183,13 @@ export default function ManualAttendancePage() {
                   <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
                 )}
               </button>
-              <Link href="/u/scanner" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400">Usar escáner (otra página)</Link>
+              <Link href="/u/scanner" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400" prefetch={false}>Usar escáner (QR)</Link>
             </div>
           </div>
         </div>
 
         <div className="mt-4 text-xs text-slate-500">
-          Para asegurar la trazabilidad, se registra la hora actual y tu usuario. Se aplican las mismas reglas (una entrada y una salida por día, y salida solo después de entrada).
+          Para asegurar la trazabilidad, se registra la hora actual y tu usuario. Se aplican las mismas reglas (una entrada y una salida por día, y salida solo después de entrada). Esta es la interfaz manual; el escáner QR sigue disponible si prefieres usar códigos.
         </div>
       </div>
       {/* Flash overlay + toast */}

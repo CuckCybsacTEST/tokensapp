@@ -20,11 +20,11 @@ interface ApiResponse {
   prizes: PrizeRow[];
 }
 
-export default function PrizesTableClient() {
+export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (batchId:string)=>void }) {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeBatch, setActiveBatch] = useState<string>('ALL');
+  const [activeBatch, setActiveBatch] = useState<string>('ALL'); // se ajustará al último batch tras la carga inicial
 
   useEffect(()=>{ load(); },[]);
 
@@ -35,6 +35,14 @@ export default function PrizesTableClient() {
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error');
       setData(j);
+      // Seleccionar por defecto el último batch disponible (en vez de 'Todos') la primera vez
+      if (j.batches && j.batches.length > 0) {
+        const last = j.batches[j.batches.length - 1];
+        setActiveBatch(last.batchId);
+        onBatchChange?.(last.batchId);
+      } else {
+        onBatchChange?.('ALL');
+      }
     } catch (e: any) { setError(e.message || String(e)); }
     finally { setLoading(false); }
   }
@@ -111,9 +119,9 @@ export default function PrizesTableClient() {
       <div className="space-y-3">
         {emitted.length>0 && (
           <div className="flex flex-wrap gap-2">
-            <button onClick={()=>setActiveBatch('ALL')} className={`text-[10px] px-3 py-1 rounded border ${activeBatch==='ALL'? 'bg-indigo-600 text-white border-indigo-600':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Todos</button>
+            <button onClick={()=>{ setActiveBatch('ALL'); onBatchChange?.('ALL'); }} className={`text-[10px] px-3 py-1 rounded border ${activeBatch==='ALL'? 'bg-indigo-600 text-white border-indigo-600':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Todos</button>
             {data.batches.map(b=> (
-              <button key={b.batchId} onClick={()=>setActiveBatch(b.batchId)} title={b.batchId} className={`text-[10px] px-3 py-1 rounded border ${activeBatch===b.batchId? 'bg-indigo-600 text-white border-indigo-600':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{(b.description||b.batchId).slice(0,18)}{(b.description||b.batchId).length>18?'…':''}</button>
+              <button key={b.batchId} onClick={()=>{ setActiveBatch(b.batchId); onBatchChange?.(b.batchId); }} title={b.batchId} className={`text-[10px] px-3 py-1 rounded border ${activeBatch===b.batchId? 'bg-indigo-600 text-white border-indigo-600':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{(b.description||b.batchId).slice(0,18)}{(b.description||b.batchId).length>18?'…':''}</button>
             ))}
           </div>
         )}

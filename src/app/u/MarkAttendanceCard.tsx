@@ -12,12 +12,15 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
   const [msg] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
 
+  const goToManual = () => {
+    window.location.href = '/u/manual';
+  };
   const goToScanner = () => {
-    window.location.href = '/u/scanner?from=home';
+    window.location.href = '/u/assistance';
   };
 
   const startHoldIfOut = () => {
-  if (nextAction !== 'OUT') { goToScanner(); return; }
+    if (nextAction !== 'OUT') { goToScanner(); return; }
     if (loading) return;
     setHoldMs(0);
     const start = Date.now();
@@ -27,8 +30,8 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
       if (ms >= 2000) {
         window.clearInterval(id);
         timerRef.current = null;
-        setHoldMs(0);
-        goToScanner();
+    setHoldMs(0);
+    goToManual();
       }
     }, 50);
     timerRef.current = id as unknown as number;
@@ -57,14 +60,14 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
           onPointerLeave={clearHold}
           onPointerCancel={clearHold}
         >
-          {loading ? 'Enviando…' : (nextAction === 'IN' ? 'Registrar entrada' : (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Registrar salida'))}
+          {loading ? 'Enviando…' : (nextAction === 'IN' ? 'Registrar entrada (QR)' : (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Registrar salida (Manual)'))}
           {nextAction === 'OUT' && holdMs > 0 && (
             <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
           )}
         </button>
       </div>
       {nextAction === 'OUT' && (
-        <div className="mt-2 text-xs text-slate-500">Mantén presionado 2s para confirmar la salida.</div>
+        <div className="mt-2 text-xs text-slate-500">Mantén presionado 2s para confirmar la salida manual.</div>
       )}
     </div>
   );

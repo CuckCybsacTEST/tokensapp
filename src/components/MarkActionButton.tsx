@@ -37,8 +37,8 @@ export default function MarkActionButton({ action, className }: Props) {
   };
 
   const navigate = () => {
-  // Ir al escáner; este flujo ya aplica cooldown y requiere QR
-    window.location.href = '/u/scanner?from=home';
+    // Volver a la UI manual de asistencia (antes de cambio a escáner)
+    window.location.href = '/u/manual';
   };
 
   return (
