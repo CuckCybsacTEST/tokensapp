@@ -21,8 +21,8 @@ export default function AssistanceScannerPage(){
   const [recent, setRecent] = useState<any|null>(null); // shape { ok, recent: { id, scannedAt, type, businessDay, code, name } }
   const recentRef = useRef<any|null>(null);
   const [loadingRecent, setLoadingRecent] = useState(false);
-  // Estado de confirmación cuando se registra una ENTRADA (se detiene el escáner y se muestra resumen)
-  const [entryRegistered, setEntryRegistered] = useState<null | { person: { id:string; name:string; code:string }; businessDay?: string; at: Date }>(null);
+  // Estado de confirmación cuando se registra la SALIDA (se detiene el escáner y se muestra resumen)
+  const [exitRegistered, setExitRegistered] = useState<null | { person: { id:string; name:string; code:string }; businessDay?: string; at: Date }>(null);
   const expectedRef = useRef<'IN'|'OUT'|null>(null);
 
   // Capturar override inicial de expected (ej: ?expected=OUT) solo en cliente sin useSearchParams para evitar warning de Suspense
@@ -169,9 +169,14 @@ export default function AssistanceScannerPage(){
         setMessage(`✓ ${mode === 'IN' ? 'Entrada' : 'Salida'} registrada`);
         fetchRecent();
         if(mode === 'IN'){
-          // Mostrar pantalla de confirmación y detener el escaneo
+          const day = (j.businessDay || j.utcDay || new Date().toISOString().slice(0,10));
+          // Redirigir directamente a la lista de tareas tras registrar entrada
+          window.location.href = `/u/checklist?day=${encodeURIComponent(day)}&mode=IN`;
+          return;
+        } else if(mode === 'OUT') {
+          // Mostrar confirmación de salida y detener escaneo
           setActive(false);
-          setEntryRegistered({ person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() });
+          setExitRegistered({ person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() });
         }
       }
     } catch { audioWarnRef.current?.play().catch(()=>{}); setMessage('Error de red.'); }
@@ -197,7 +202,7 @@ export default function AssistanceScannerPage(){
       <div className="max-w-md mx-auto space-y-4">
         <h1 className="text-2xl font-semibold text-slate-100">Escáner de Asistencia</h1>
         <p className="text-sm text-slate-300">Escanea únicamente los códigos IN / OUT oficiales. Este escáner registra tu entrada o salida directamente.</p>
-        {!entryRegistered && (
+        {!exitRegistered && (
           <>
             <div className="rounded border border-slate-600 p-3 bg-slate-900">
               <video ref={videoRef} className="w-full aspect-square object-cover rounded bg-black" muted playsInline />
@@ -222,20 +227,19 @@ export default function AssistanceScannerPage(){
             )}
           </>
         )}
-        {entryRegistered && (
-          <div className="rounded border border-emerald-600 bg-emerald-900/20 p-4 space-y-3">
-            <div className="text-emerald-300 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
-            <div className="text-sm text-emerald-200 space-y-1">
-              <div><span className="text-emerald-400/80">Nombre:</span> {entryRegistered.person.name}</div>
-              <div><span className="text-emerald-400/80">Código:</span> {entryRegistered.person.code}</div>
-              <div><span className="text-emerald-400/80">Hora local:</span> {entryRegistered.at.toLocaleTimeString()}</div>
-              <div><span className="text-emerald-400/80">Fecha:</span> {entryRegistered.at.toLocaleDateString()}</div>
-              {entryRegistered.businessDay && <div><span className="text-emerald-400/80">Business Day:</span> {entryRegistered.businessDay}</div>}
+        {exitRegistered && (
+          <div className="rounded border border-indigo-500 bg-indigo-900/30 p-4 space-y-3">
+            <div className="text-indigo-200 font-semibold flex items-center gap-2">✓ Salida registrada</div>
+            <div className="text-sm text-indigo-100 space-y-1">
+              <div><span className="text-indigo-300/80">Nombre:</span> {exitRegistered.person.name}</div>
+              <div><span className="text-indigo-300/80">Código:</span> {exitRegistered.person.code}</div>
+              <div><span className="text-indigo-300/80">Hora local:</span> {exitRegistered.at.toLocaleTimeString()}</div>
+              <div><span className="text-indigo-300/80">Fecha:</span> {exitRegistered.at.toLocaleDateString()}</div>
+              {exitRegistered.businessDay && <div><span className="text-indigo-300/80">Business Day:</span> {exitRegistered.businessDay}</div>}
             </div>
-            <div className="text-xs text-emerald-200/80">Recuerda registrar tu salida usando el póster OUT al finalizar tu jornada.</div>
-            <div className="flex gap-2 pt-2">
-              <a href="/u" className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-sm font-medium text-slate-900">Volver al panel</a>
-              <button onClick={()=>{ setEntryRegistered(null); setActive(true); setMessage(null); }} className="text-xs text-emerald-300 underline ml-auto">Seguir escaneando</button>
+            <div className="text-xs text-indigo-200/80">¡Buen trabajo hoy! Descansa y nos vemos en tu próxima jornada.</div>
+            <div className="pt-2">
+              <a href="/u" className="block w-full text-center px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-400 text-sm font-semibold text-slate-900 shadow focus:outline-none focus:ring-2 focus:ring-indigo-300">Volver al panel</a>
             </div>
           </div>
         )}
