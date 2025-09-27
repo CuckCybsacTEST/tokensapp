@@ -134,14 +134,15 @@ export default function ManualAttendancePage() {
               <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">Acción</label>
               <div className="flex items-center gap-6 text-sm">
                 <label className="inline-flex items-center gap-2">
-                  <input type="radio" name="mode" checked={mode === 'IN'} onChange={() => setMode('IN')} />
-                  <span>Entrada</span>
+                  <input type="radio" name="mode" checked={mode === 'IN'} disabled={recent?.type === 'IN'} onChange={() => setMode('IN')} />
+                  <span className={recent?.type==='IN' ? 'opacity-50' : ''}>Entrada</span>
                 </label>
                 <label className="inline-flex items-center gap-2">
-                  <input type="radio" name="mode" checked={mode === 'OUT'} onChange={() => setMode('OUT')} />
-                  <span>Salida</span>
+                  <input type="radio" name="mode" checked={mode === 'OUT'} disabled={recent?.type === 'OUT'} onChange={() => setMode('OUT')} />
+                  <span className={recent?.type==='OUT' ? 'opacity-50' : ''}>Salida</span>
                 </label>
               </div>
+              {recent?.type && <p className="mt-1 text-[11px] text-slate-500">No puedes repetir consecutivamente la misma acción ({recent.type}).</p>}
               {!loading && recent?.scannedAt && (
                 <p className="mt-1 text-xs text-slate-500">Tu última marca: {new Date(recent.scannedAt!).toLocaleString()} ({recent.type === 'IN' ? 'Entrada' : 'Salida'})</p>
               )}

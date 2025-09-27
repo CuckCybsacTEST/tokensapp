@@ -117,6 +117,14 @@ export default function AssistanceScannerPage(){
       const mode = parseInOut(raw); if(!mode) return; // ignorar otros códigos
       const nextExpected = deriveNextMode();
       const override = expectedRef.current;
+      const lastType = recentRef.current?.recent?.type as ('IN'|'OUT'|undefined);
+      // Evitar enviar mismo tipo consecutivo para feedback inmediato (backend igual lo bloquea)
+      if(lastType && lastType === mode){
+        audioWarnRef.current?.play().catch(()=>{});
+        setMessage(`Ya registraste ${mode === 'IN' ? 'entrada' : 'salida'} hoy.`);
+        setTimeout(()=>{ setMessage(m=> m && m.startsWith('Ya registraste') ? null : m); }, 3000);
+        return;
+      }
       if(mode !== nextExpected && !(override && mode === override)){
         audioWarnRef.current?.play().catch(()=>{});
         setMessage(`Se esperaba un código de ${override || nextExpected}. Escaneaste ${mode}.`);
