@@ -62,7 +62,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       for (const t of tokens) {
         if (qrMap[t.id]) continue;
         try {
-          const redeemUrl = `${location.origin}/r/${encodeURIComponent(t.code)}`;
+          const redeemUrl = `${location.origin}/b/${encodeURIComponent(t.code)}`;
           const dataUrl = await generateQrPngDataUrl(redeemUrl);
           if (!cancelled) entries.push([t.id, dataUrl]);
         } catch {}

@@ -239,6 +239,9 @@ model BirthdayReservation {
   guestsPlanned     Int
   status            String             @default("draft")
   tokensGeneratedAt DateTime?
+  // Arrival / attendance tracking
+  hostArrivedAt     DateTime?          // timestamp when host validated
+  guestArrivals     Int                @default(0) // cached count of guest entries (derived from multi-use token redemptions)
   createdBy         String?
   updatedBy         String?
   createdAt         DateTime           @default(now())
@@ -252,6 +255,7 @@ model BirthdayReservation {
   @@index([packId])
   @@index([date, timeSlot])
   @@index([status])
+  @@index([hostArrivedAt])
 }
 
 model InviteToken {
