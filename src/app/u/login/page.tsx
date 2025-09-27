@@ -16,7 +16,6 @@ function LoginClient() {
   const [redirecting, setRedirecting] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   // AVISO TEMPORAL: Modal de mantenimiento post incidente de datos
-  const [showMaintNotice, setShowMaintNotice] = useState(true);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,29 +49,6 @@ function LoginClient() {
   return (
     <html lang="es" className="h-full">
       <body className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
-        {showMaintNotice && !redirecting && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div role="dialog" aria-modal="true" aria-labelledby="maint-title" className="w-full max-w-md rounded-lg shadow-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150">
-              <div className="p-5 space-y-4">
-                <h2 id="maint-title" className="text-lg font-semibold tracking-tight">Sistema en actualización</h2>
-                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                  Estamos realizando una actualización y tareas de restauración de información. Tus <strong>registros de entrada y salida ya fueron guardados</strong> correctamente. Algunas vistas pueden mostrar datos parciales temporalmente.
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Gracias por tu comprensión mientras estabilizamos el sistema. Si notas alguna inconsistencia reporta a soporte interno.
-                </p>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMaintNotice(false)}
-                    className="btn text-sm px-4 py-2"
-                    aria-label="Cerrar aviso de mantenimiento"
-                  >Entendido</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         {redirecting ? (
           <div className="flex items-center justify-center min-h-screen">
             <div className="text-center space-y-4">
