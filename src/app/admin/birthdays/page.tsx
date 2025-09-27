@@ -37,6 +37,8 @@ export default function AdminBirthdaysPage() {
   const [cGuests, setCGuests] = useState(5);
   const [creating, setCreating] = useState(false);
   const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[] }[]>([]);
+  const [editingPack, setEditingPack] = useState<string|null>(null);
+  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string }>>({});
 
   async function load() {
     setLoading(true); setErr(null);
@@ -65,6 +67,38 @@ export default function AdminBirthdaysPage() {
       if (res.ok && j?.packs) setPacks(j.packs);
     } catch {}
   })(); }, []);
+
+  async function restorePacks() {
+    try {
+      const res = await fetch('/api/admin/birthdays/packs/restore', { method: 'POST' });
+      const j = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(j?.code || j?.message || 'RESTORE_ERROR');
+      if (j?.packs) setPacks(j.packs);
+    } catch (e:any) {
+      setErr(String(e?.message || e));
+    }
+  }
+
+  function startEdit(pId: string) {
+    const p = packs.find(x=>x.id===pId); if (!p) return;
+    setEditingPack(pId);
+    setPackEdits(prev=>({ ...prev, [pId]: { name: p.name, qrCount: p.qrCount, bottle: p.bottle||'', perksText: (p.perks||[]).join('\n') } }));
+  }
+  function cancelEdit() { setEditingPack(null); }
+  async function savePack(pId: string) {
+    const e = packEdits[pId]; if (!e) return;
+    try {
+      const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+      const body = { name: e.name, qrCount: e.qrCount, bottle: e.bottle, perks };
+      const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const j = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(j?.code||j?.message||res.status);
+      // refresh packs list
+      const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
+      if (list?.packs) setPacks(list.packs);
+      setEditingPack(null);
+    } catch(e:any) { setErr(String(e?.message||e)); }
+  }
 
   async function approve(id: string) {
     setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
@@ -192,6 +226,60 @@ export default function AdminBirthdaysPage() {
             </div>
           );
         })()}
+        {packs.length === 0 && (
+          <div className="mt-4 text-xs text-amber-300 flex items-center gap-3">
+            <span>No hay packs activos cargados.</span>
+            <button type="button" onClick={restorePacks} className="px-2 py-1 rounded border border-amber-500 text-amber-200 hover:bg-amber-500/10">Recrear packs por defecto</button>
+          </div>
+        )}
+      </div>
+
+      {/* Gestión de Packs */}
+      <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="font-medium">Packs de cumpleaños</div>
+          <button onClick={async()=>{
+            // refrescar packs explicitamente
+            const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
+            if (list?.packs) setPacks(list.packs);
+          }} className="text-xs px-2 py-1 rounded bg-slate-800 border border-slate-600 hover:bg-slate-700">Refrescar</button>
+        </div>
+        {packs.length===0 && (
+          <div className="text-xs text-amber-300">No hay packs. Usa "Recrear packs por defecto" arriba.</div>
+        )}
+        <div className="grid md:grid-cols-3 gap-4">
+          {packs.map(p => {
+            const isEditing = editingPack === p.id;
+            const edit = packEdits[p.id];
+            return (
+              <div key={p.id} className="rounded border border-slate-600 p-3 bg-slate-800/60 flex flex-col gap-2">
+                {!isEditing && (
+                  <>
+                    <div className="font-semibold text-sm">{p.name}</div>
+                    <div className="text-xs text-slate-400">Invitados (QRs): {p.qrCount}</div>
+                    {p.bottle && <div className="text-xs">Botella: {p.bottle}</div>}
+                    <ul className="text-[11px] list-disc ml-4 space-y-0.5">
+                      {(p.perks||[]).map(per=> <li key={per}>{per}</li>)}
+                    </ul>
+                    <button onClick={()=>startEdit(p.id)} className="mt-1 text-xs px-2 py-1 rounded bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/30">Editar</button>
+                  </>
+                )}
+                {isEditing && edit && (
+                  <div className="space-y-2">
+                    <input className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.name} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}}))} placeholder="Nombre" />
+                    <input type="number" className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
+                    <input className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
+                    <textarea className="w-full h-28 text-xs px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
+                    <div className="flex gap-2 text-xs">
+                      <button onClick={()=>savePack(p.id)} className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30">Guardar</button>
+                      <button onClick={cancelEdit} className="px-2 py-1 rounded bg-slate-700 border border-slate-500 hover:bg-slate-600">Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1">

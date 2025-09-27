@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth-user';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +18,9 @@ export async function POST(req: Request) {
     if (!body || (body.mode !== 'IN' && body.mode !== 'OUT')) {
       return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
     }
-  const mode = body.mode as Mode;
-  const deviceId: string | undefined = typeof body.deviceId === 'string' ? body.deviceId : undefined;
+    const mode = body.mode as Mode;
+    const deviceId: string | undefined = typeof body.deviceId === 'string' ? body.deviceId : undefined;
+    const password: string | null = typeof body.password === 'string' ? body.password : null;
 
     // Auth: require collaborator user session
     const raw = getUserCookie(req);
@@ -32,9 +34,18 @@ export async function POST(req: Request) {
     if (!rlUser.ok) return NextResponse.json({ ok: false, code: 'RATE_LIMIT' }, { status: 429, headers: { 'Retry-After': String(rlUser.retryAfterSeconds) } });
 
     // Load user -> personId (Prisma)
-    const user = await prisma.user.findUnique({ where: { id: uSession.userId }, select: { id: true, personId: true } });
+    const user = await prisma.user.findUnique({ where: { id: uSession.userId }, select: { id: true, personId: true, passwordHash: true } });
     if (!user || !user.personId) return NextResponse.json({ ok: false, code: 'USER_NOT_FOUND' }, { status: 404 });
     const personId: string = user.personId;
+
+    // If password provided (manual flow), validate it; enforce requirement when no deviceId (i.e., manual form context)
+    if (!deviceId && !password) {
+      return NextResponse.json({ ok: false, code: 'PASSWORD_REQUIRED' }, { status: 400 });
+    }
+    if (password) {
+      const okPwd = !!user.passwordHash && await bcrypt.compare(password, user.passwordHash);
+      if (!okPwd) return NextResponse.json({ ok: false, code: 'BAD_PASSWORD' }, { status: 401 });
+    }
 
     // Check person is active and get code/name (Prisma)
     const person = await prisma.person.findUnique({ where: { id: personId }, select: { id: true, code: true, name: true, active: true } });

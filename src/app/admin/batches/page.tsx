@@ -59,9 +59,12 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
   const batches = await getBatches();
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-lg font-semibold">Batches</h1>
-        <Link href="/admin/print" className="btn-outline !px-3 !py-1.5 text-sm">Control de Impresión</Link>
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/admin/batches/purge" className="btn-outline !px-3 !py-1.5 text-sm" title="Eliminar batches">Purgar</Link>
+          <Link href="/admin/print" className="btn-outline !px-3 !py-1.5 text-sm">Control de Impresión</Link>
+        </div>
       </div>
       <div className="grid gap-4">
         {batches.map((b) => {

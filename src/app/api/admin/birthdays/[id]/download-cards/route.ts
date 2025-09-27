@@ -87,7 +87,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       const baseUrl = getBirthdayQrBaseUrl(req.url);
       if (host && guest) {
         // 1 host card
-        const hostUrl = `${baseUrl}/r/${encodeURIComponent(host.code)}`;
+  const hostUrl = `${baseUrl}/b/${encodeURIComponent(host.code)}`;
         const hostDataUrl = await generateQrPngDataUrl(hostUrl);
         const hostBuf = dataUrlToBuffer(hostDataUrl);
         const hostPng = await composeTemplateWithQr({ templatePath, qrBuffer: hostBuf, qrMetadata: qrMeta, dpi });
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         // N guest copies (limited by 'limit')
         const maxCopies = Math.min(limit, (guest as any).maxUses || reservation.pack.qrCount || 1);
         for (let i = 1; i <= maxCopies; i++) {
-          const guestUrl = `${baseUrl}/r/${encodeURIComponent(guest.code)}`;
+          const guestUrl = `${baseUrl}/b/${encodeURIComponent(guest.code)}`;
           const guestDataUrl = await generateQrPngDataUrl(guestUrl);
           const guestBuf = dataUrlToBuffer(guestDataUrl);
           const guestPng = await composeTemplateWithQr({ templatePath, qrBuffer: guestBuf, qrMetadata: qrMeta, dpi });
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         // Legacy fallback: print all tokens individually
         const tokensSlice = tokens.slice(0, limit);
         for (const t of tokensSlice) {
-          const redeemUrl = `${baseUrl}/r/${encodeURIComponent(t.code)}`;
+          const redeemUrl = `${baseUrl}/b/${encodeURIComponent(t.code)}`;
           const dataUrl = await generateQrPngDataUrl(redeemUrl);
           const qrBuf = dataUrlToBuffer(dataUrl);
           const composed = await composeTemplateWithQr({ templatePath, qrBuffer: qrBuf, qrMetadata: qrMeta, dpi });

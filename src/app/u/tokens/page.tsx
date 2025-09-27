@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import { TokensToggle } from '@/app/admin/TokensToggle';
+import PeriodMetrics from './periodMetrics';
+import PrizesTableClient from './prizesTableClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,28 +17,15 @@ async function ensureStaff() {
   return { session, user };
 }
 
-async function loadMetrics() {
-  const now = new Date();
-  const [totalTokens, totalRedeemed, totalExpired, config] = await Promise.all([
-    prisma.token.count(),
-    prisma.token.count({ where: { redeemedAt: { not: null } } }),
-    prisma.token.count({ where: { expiresAt: { lt: now } } }),
-    prisma.systemConfig.findUnique({ where: { id: 1 } }),
-  ]);
-  const activeTokens = totalTokens - totalRedeemed - totalExpired;
-  return {
-    total: totalTokens,
-    redeemed: totalRedeemed,
-    expired: totalExpired,
-    active: activeTokens < 0 ? 0 : activeTokens,
-    tokensEnabled: config?.tokensEnabled ?? false,
-  };
+async function loadToggle() {
+  const config = await prisma.systemConfig.findUnique({ where: { id: 1 } });
+  return { tokensEnabled: config?.tokensEnabled ?? false };
 }
 
 export default async function TokensStaffPage() {
   const me = await ensureStaff();
   if (!me) redirect('/u');
-  const metrics = await loadMetrics();
+  const toggle = await loadToggle();
   const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
   return (
     <div className="space-y-8">
@@ -53,30 +42,12 @@ export default async function TokensStaffPage() {
           </div>
           <div className="text-xs opacity-70">Zona horaria: {tz}</div>
         </div>
-        <TokensToggle initialEnabled={metrics.tokensEnabled} loginPath="/u/login" />
+        <TokensToggle initialEnabled={toggle.tokensEnabled} loginPath="/u/login" />
       </div>
-
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700">
-        <h3 className="text-lg font-semibold mb-4">Métricas rápidas</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-lg border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600">
-            <div className="text-xs text-slate-500">Total Tokens</div>
-            <div className="text-2xl font-bold">{metrics.total.toLocaleString()}</div>
-          </div>
-          <div className="p-4 rounded-lg border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600">
-            <div className="text-xs text-slate-500">Canjeados</div>
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{metrics.redeemed.toLocaleString()}</div>
-          </div>
-          <div className="p-4 rounded-lg border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600">
-            <div className="text-xs text-slate-500">Expirados</div>
-            <div className="text-2xl font-bold text-amber-600">{metrics.expired.toLocaleString()}</div>
-          </div>
-          <div className="p-4 rounded-lg border bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600">
-            <div className="text-xs text-slate-500">Activos</div>
-            <div className="text-2xl font-bold">{metrics.active.toLocaleString()}</div>
-          </div>
-        </div>
+      <div>
+        <PrizesTableClient />
       </div>
+      <PeriodMetrics />
     </div>
   );
 }

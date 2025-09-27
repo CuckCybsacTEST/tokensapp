@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { brand } from '../styles/brand';
@@ -9,37 +9,54 @@ import { useRouter } from 'next/navigation';
 export function BirthdaySection() {
   const router = useRouter();
 
-  // Packs de cumpleaños (con botella de cortesía y jerarquía visual)
-  const packs = [
-    {
-      key: 'basic',
-      name: 'Pack Chispa',
-      bottle: 'Russkaya',
-      level: 'Básico',
-      highlight: '5 invitados',
-  perks: ['Botella de cortesía: Russkaya', 'Fotos', 'Collares neón'],
-      accent: '#3BA7F0',
-    },
-    {
-      key: 'plus',
-      name: 'Pack Fuego',
-      bottle: 'Old Times',
-      level: 'Recomendado',
-      highlight: '10 invitados',
-  perks: ['Botella de cortesía: Old Times', 'Foto grupal impresa', 'Collares neón'],
-      accent: '#F39C2D',
-    },
-    {
-      key: 'elite',
-      name: 'Pack Estrella',
-      bottle: 'Red Label',
-      level: 'Premium',
-      highlight: '20 invitados',
-  perks: ['Botella de cortesía: Red Label', '3 fotos impresas', 'Stickers VIP adhesivos', 'Collares neón'],
-      accent: '#E24A3A',
-      featured: true,
-    },
-  ];
+  // Backend-driven packs
+  type Pack = { id: string; name: string; qrCount: number; bottle?: string | null; featured?: boolean; perks?: string[] };
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setError(null);
+      try {
+        const res = await fetch('/api/birthdays/packs', { cache: 'no-store' });
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok || !j?.packs) throw new Error(j?.code || j?.message || 'PACKS_LOAD_ERROR');
+        if (!cancelled) setPacks(j.packs);
+      } catch (e:any) {
+        if (!cancelled) setError('No se pudieron cargar los Packs');
+      } finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Decorate packs with UI metadata (accent color, level label, key for tests) deterministically
+  const decorated = useMemo(() => {
+    const palette = ['#3BA7F0', '#F39C2D', '#E24A3A', brand.primary, brand.secondary];
+    return packs.map((p, idx) => {
+      // Map known names to stable colors for branding consistency
+      let accent = palette[idx % palette.length];
+      const nameLower = p.name.toLowerCase();
+      if (nameLower.includes('chispa')) accent = '#3BA7F0';
+      else if (nameLower.includes('fuego')) accent = '#F39C2D';
+      else if (nameLower.includes('estrella')) accent = '#E24A3A';
+
+      const level = idx === 0 ? 'Básico' : idx === 1 ? 'Recomendado' : idx === 2 ? 'Premium' : 'Pack';
+      const key = idx === 0 ? 'basic' : idx === 1 ? 'plus' : idx === 2 ? 'elite' : `p${idx}`;
+      return {
+        key,
+        accent,
+        level,
+        highlight: `${p.qrCount} invitad${p.qrCount === 1 ? 'o' : 'os'}`,
+        perks: p.perks || [],
+        featured: p.featured,
+        bottle: p.bottle || null,
+        id: p.id,
+        name: p.name,
+      };
+    });
+  }, [packs]);
 
   const incluidos = [
     { emoji: '🎂', label: 'Torta' },
@@ -70,7 +87,10 @@ export function BirthdaySection() {
         {/* Contenido principal: combos + servicios + CTAs (sin póster) */}
         <div className="mt-10 flex flex-col gap-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-              {packs.map((c, i) => (
+              {(loading && packs.length === 0) && [0,1,2].map(i => (
+                <div key={`skeleton-${i}`} className="rounded-xl p-4 md:p-5 flex flex-col h-full border border-white/10 bg-white/5 animate-pulse" />
+              ))}
+              {!loading && decorated.map((c, i) => (
                 <motion.div
                   key={c.key}
                   initial={{ opacity: 0, y: 14 }}
@@ -113,7 +133,7 @@ export function BirthdaySection() {
                     <button
                       data-testid={`birthday-pack-cta-${c.key}`}
                       type="button"
-                      onClick={() => router.push(`/marketing/birthdays/reservar?packId=${encodeURIComponent(c.key)}#form`)}
+                      onClick={() => router.push(`/marketing/birthdays/reservar?packId=${encodeURIComponent(c.id)}#form`)}
                       className="inline-block rounded-full px-4 py-2 text-xs font-semibold mr-2"
                       style={{
                         background: `${c.accent}22`,
@@ -127,6 +147,11 @@ export function BirthdaySection() {
                 </motion.div>
               ))}
             </div>
+            {error && (
+              <div className="text-xs text-amber-300">
+                {error} — mostrando versión estática.
+              </div>
+            )}
 
             {/* Servicios incluidos */}
             <div className="mt-2">

@@ -41,7 +41,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Marcar asistencia</div>
+  <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Marcar mi asistencia</div>
       <p className="text-sm text-gray-600 dark:text-slate-300">
         {nextAction === 'IN' ? 'Comienza tu turno registrando tu Entrada.' : 'Finaliza tu turno registrando tu Salida.'}
       </p>

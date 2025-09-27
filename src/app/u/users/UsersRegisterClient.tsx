@@ -1,0 +1,175 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { ALLOWED_AREAS, type Area } from '@/lib/areas';
+
+interface UserRow { id: string; username: string; role: string; personCode: string|null; personName: string|null; dni: string|null; area: string|null; }
+
+export default function UsersRegisterClient() {
+  const [name, setName] = useState('');
+  const [dni, setDni] = useState('');
+  const [area, setArea] = useState<Area>(ALLOWED_AREAS[0]);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [msg, setMsg] = useState<string|null>(null);
+  const [err, setErr] = useState<string|null>(null);
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  async function loadUsers() {
+    setLoadingUsers(true);
+    try {
+      const r = await fetch('/api/admin/users');
+      const j = await r.json().catch(()=>({}));
+      if (r.ok && j?.ok) setUsers(j.users || []);
+    } finally { setLoadingUsers(false); }
+  }
+  useEffect(()=>{ loadUsers(); }, []);
+
+  function normalizeDni(v: string) { return v.replace(/\D+/g,''); }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null); setErr(null);
+    const n = name.trim();
+    const d = normalizeDni(dni.trim());
+    if (n.length < 2) { setErr('Nombre inválido'); return; }
+    if (!d) { setErr('DNI inválido'); return; }
+    if (!ALLOWED_AREAS.includes(area)) { setErr('Área inválida'); return; }
+    if (!password || password.length < 8) { setErr('Password mínimo 8 caracteres'); return; }
+    if (password !== confirm) { setErr('Las contraseñas no coinciden'); return; }
+    const username = d; // username = DNI normalizado
+    const payload = { username, password, role: 'COLLAB', person: { name: n, dni: d, area } };
+    try {
+      setLoading(true);
+      const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const j = await res.json().catch(()=>({}));
+      if (res.ok && j?.ok) {
+        setMsg(`Colaborador creado: ${j.person.name} (${j.person.dni})`);
+        setName(''); setDni(''); setArea(ALLOWED_AREAS[0]); setPassword(''); setConfirm('');
+        loadUsers();
+      } else {
+        const code = j?.code || j?.message || res.status;
+        const map: Record<string,string> = {
+          INVALID_PASSWORD: 'Password mínimo 8 caracteres',
+          INVALID_DNI: 'DNI inválido o ya existe',
+          DNI_TAKEN: 'DNI ya existe',
+          CODE_TAKEN: 'Código ya existe',
+          INVALID_AREA: 'Área inválida',
+          INVALID_NAME: 'Nombre inválido',
+          USERNAME_TAKEN: 'El DNI ya está registrado',
+        };
+        setErr(map[String(code)] || `Error: ${code}`);
+      }
+    } catch (e: any) {
+      setErr(`Error de red: ${String(e?.message || e)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onDelete(id: string, username: string) {
+    const sure = window.confirm(`¿Eliminar colaborador ${username}? Esta acción elimina también su persona y registros asociados.`);
+    if (!sure) return;
+    try {
+      const r = await fetch(`/api/staff/users/${id}`, { method: 'DELETE' });
+      const j = await r.json().catch(()=>({}));
+      if (r.ok && j?.ok) {
+        setMsg(`Eliminado usuario ${username}`);
+        setErr(null);
+        loadUsers();
+      } else {
+        setErr(`No se pudo eliminar (${j?.code||r.status})`);
+      }
+    } catch(e: any) {
+      setErr(`Error al eliminar: ${String(e?.message||e)}`);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
+  <div className="mx-auto max-w-5xl">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Control de Colaboradores</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-prose">Registrar nuevos colaboradores (rol fijo COLLAB). El nombre y DNI se usarán para crear la persona y el usuario. El username interno = DNI normalizado.</p>
+        {msg && <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{msg}</div>}
+        {err && <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">{err}</div>}
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nombre</label>
+            <input value={name} onChange={e=>setName(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Nombre completo" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">DNI</label>
+            <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Solo números" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Área</label>
+            <select value={area} onChange={e=>setArea(e.target.value as Area)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+              {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Password</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Confirmar</label>
+              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <button disabled={loading} className="btn">{loading ? 'Creando…' : 'Crear colaborador'}</button>
+        </form>
+        <div className="mt-8 text-xs text-slate-500 dark:text-slate-400">
+          El usuario podrá iniciar sesión con su DNI normalizado como username y la contraseña definida.
+        </div>
+        <div className="mt-8 text-xs">
+          <a href="/u" className="text-blue-600 dark:text-blue-400 hover:underline">← Volver</a>
+        </div>
+        <div className="mt-12 border rounded border-slate-300 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
+          <h2 className="text-lg font-medium mb-4 text-slate-900 dark:text-slate-100">Usuarios existentes</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-[900px] w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-slate-200 dark:border-slate-700">
+                  <th className="py-2 pr-4">Código</th>
+                  <th className="py-2 pr-4">Nombre</th>
+                  <th className="py-2 pr-4">DNI</th>
+                  <th className="py-2 pr-4">Área</th>
+                  <th className="py-2 pr-4">Username</th>
+                  <th className="py-2 pr-4">Rol</th>
+                  <th className="py-2 pr-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id} className="border-b last:border-0 border-slate-100 dark:border-slate-800">
+                    <td className="py-2 pr-4 font-mono text-xs">{u.personCode}</td>
+                    <td className="py-2 pr-4">{u.personName}</td>
+                    <td className="py-2 pr-4">{u.dni || '-'}</td>
+                    <td className="py-2 pr-4">{u.area || '-'}</td>
+                    <td className="py-2 pr-4">{u.username}</td>
+                    <td className="py-2 pr-4"><span className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[11px] font-mono">{u.role}</span></td>
+                    <td className="py-2 pr-4">
+                      {u.role === 'COLLAB' ? (
+                        <button onClick={()=>onDelete(u.id, u.username)} className="text-red-600 dark:text-red-400 hover:underline disabled:opacity-50" disabled={loadingUsers}>Eliminar</button>
+                      ) : (
+                        <span className="text-xs text-slate-500">No permitido</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {users.length===0 && !loadingUsers && (
+                  <tr><td colSpan={7} className="py-4 text-slate-500 text-sm">Sin usuarios</td></tr>
+                )}
+                {loadingUsers && (
+                  <tr><td colSpan={7} className="py-4 text-slate-500 text-sm animate-pulse">Cargando…</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

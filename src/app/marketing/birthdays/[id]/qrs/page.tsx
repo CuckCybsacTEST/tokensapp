@@ -50,7 +50,8 @@ export default function QRsFinalesPage() {
     (async () => {
       const entries: Record<string, string> = {};
       for (const t of tokens) {
-        const url = typeof window !== 'undefined' ? `${location.origin}/r/${t.code}` : `/r/${t.code}`;
+  // Use dedicated birthday invite path (/b/) separate from roulette tokens
+  const url = typeof window !== 'undefined' ? `${location.origin}/b/${t.code}` : `/b/${t.code}`;
         try {
           entries[t.id] = await generateQrPngDataUrl(url);
         } catch {
@@ -62,7 +63,7 @@ export default function QRsFinalesPage() {
   }, [tokens]);
 
   function copyLink(code: string) {
-    const url = typeof window !== 'undefined' ? `${location.origin}/r/${code}` : `/r/${code}`;
+  const url = typeof window !== 'undefined' ? `${location.origin}/b/${code}` : `/b/${code}`;
     navigator.clipboard.writeText(url).catch(() => {});
   }
 

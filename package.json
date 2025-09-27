@@ -30,6 +30,7 @@
     "backup:batches": "tsx scripts/backup-batches.ts",
     "restore:zip": "tsx scripts/restore-batches-from-zip.ts",
   "verify:restore": "tsx scripts/verify-restore.ts",
+  "purge:batches": "tsx scripts/purge-batches.ts",
   "tasks:clear": "set CONFIRM=YES && tsx scripts/clearTasks.ts",
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
   "verify:postgres": "tsx scripts/verify-postgres.ts",

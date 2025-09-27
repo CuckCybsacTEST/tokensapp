@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 
 async function getMetrics() {
   const now = new Date();
-  const [totalTokens, totalRedeemed, totalExpired, config, prizes] = await Promise.all([
+  const [totalTokens, totalRedeemed, totalExpired, totalRevealed, config, prizes] = await Promise.all([
     prisma.token.count(),
     prisma.token.count({ where: { redeemedAt: { not: null } } }),
     prisma.token.count({ where: { expiresAt: { lt: now } } }),
+    prisma.token.count({ where: { revealedAt: { not: null } } }),
     prisma.systemConfig.findUnique({ where: { id: 1 } }),
     prisma.prize.findMany({ where: { active: true } }),
   ]);
@@ -41,6 +42,7 @@ async function getMetrics() {
     total: totalTokens,
     redeemed: totalRedeemed,
     expired: totalExpired,
+    revealed: totalRevealed,
     active: activeTokens < 0 ? 0 : activeTokens,
     pending,
     emittedAggregate,
