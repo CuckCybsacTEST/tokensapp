@@ -13,7 +13,6 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
   const timerRef = useRef<number | null>(null);
   const longPressRef = useRef(false);
 
-  const goToManual = () => { window.location.href = '/u/manual'; };
   const goToScanner = () => { window.location.href = nextAction === 'OUT' ? '/u/assistance?expected=OUT' : '/u/assistance'; };
 
   function onPointerDown(e: React.PointerEvent) {
@@ -30,7 +29,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
           timerRef.current = null;
           longPressRef.current = true;
           setHoldMs(0);
-          goToManual(); // activa modo manual sólo tras mantener 2s
+          goToScanner(); // ahora long-press abre el escáner OUT
         }
       }, 50);
       timerRef.current = id as unknown as number;
@@ -43,12 +42,10 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
     longPressRef.current = false;
     const ms = holdMs; // snapshot
     setHoldMs(0);
-    if (nextAction === 'OUT') {
-      // Si no llegó a long-press => navegación a escáner QR (método predeterminado)
-      if (!wasLong && ms < 2000) goToScanner();
-    } else {
+    if (nextAction === 'IN') {
       goToScanner();
     }
+    // OUT: si no llegó a long-press no hace nada
   }
 
   return (
@@ -74,8 +71,8 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
             nextAction === 'IN'
               ? 'Registrar entrada (QR)'
               : holdMs > 0
-                ? `Mantén para modo manual… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s`
-                : 'Registrar salida (QR)'
+                ? `Mantén… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s`
+                : 'Mantén 2s para registrar salida (QR)'
           )}
           {nextAction === 'OUT' && holdMs > 0 && (
             <span className="absolute left-0 bottom-0 h-1 bg-orange-500 rounded-b" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
@@ -83,7 +80,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
         </button>
       </div>
       {nextAction === 'OUT' && (
-        <div className="mt-2 text-xs text-slate-500">Pulsa para salida con QR. Mantén 2s para modo manual.</div>
+        <div className="mt-2 text-xs text-slate-500">Mantén presionado 2s para abrir el escáner y registrar tu salida.</div>
       )}
     </div>
   );

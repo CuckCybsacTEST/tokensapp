@@ -16,14 +16,22 @@ export default function AssistanceScannerPage(){
   const zxingReaderRef = useRef<BrowserMultiFormatReader|null>(null);
   const audioOkRef = useRef<HTMLAudioElement|null>(null);
   const audioWarnRef = useRef<HTMLAudioElement|null>(null);
+  const flashRef = useRef<{ ts:number; kind:'OK'|'WARN' }|null>(null);
+  const [, forceFlashRerender] = useState(0);
   const [registering, setRegistering] = useState(false);
   const [message, setMessage] = useState<string|null>(null);
   const [recent, setRecent] = useState<any|null>(null); // shape { ok, recent: { id, scannedAt, type, businessDay, code, name } }
   const recentRef = useRef<any|null>(null);
   const [loadingRecent, setLoadingRecent] = useState(false);
-  // Estado de confirmación cuando se registra la SALIDA (se detiene el escáner y se muestra resumen)
+  // Estado de confirmación cuando se registra ENTRADA o SALIDA (se detiene el escáner y se muestra resumen temporal)
+  interface AttConfirm { person:{id:string; name:string; code:string}; businessDay?:string; at:Date }
+  const [entryRegistered, setEntryRegistered] = useState<AttConfirm | null>(null);
   const [exitRegistered, setExitRegistered] = useState<null | { person: { id:string; name:string; code:string }; businessDay?: string; at: Date }>(null);
   const expectedRef = useRef<'IN'|'OUT'|null>(null);
+  function triggerFlash(kind:'OK'|'WARN'){
+    flashRef.current = { ts: Date.now(), kind };
+    forceFlashRerender(v=>v+1);
+  }
 
   // Capturar override inicial de expected (ej: ?expected=OUT) solo en cliente sin useSearchParams para evitar warning de Suspense
   useEffect(()=>{
@@ -114,6 +122,11 @@ export default function AssistanceScannerPage(){
         }
       }catch{}
     }
+    // triggerFlash definido afuera para poder usarlo también desde doRegister
+    function triggerFlash(kind:'OK'|'WARN'){
+      flashRef.current = { ts: Date.now(), kind };
+      forceFlashRerender(v=>v+1);
+    }
     function handleRawCandidate(raw: string){
       const mode = parseInOut(raw); if(!mode) return; // ignorar otros códigos
       const nextExpected = deriveNextMode();
@@ -122,12 +135,14 @@ export default function AssistanceScannerPage(){
       // Evitar enviar mismo tipo consecutivo para feedback inmediato (backend igual lo bloquea)
       if(lastType && lastType === mode){
         audioWarnRef.current?.play().catch(()=>{});
+          triggerFlash('WARN');
         setMessage(`Ya registraste ${mode === 'IN' ? 'entrada' : 'salida'} hoy.`);
         setTimeout(()=>{ setMessage(m=> m && m.startsWith('Ya registraste') ? null : m); }, 3000);
         return;
       }
       if(mode !== nextExpected && !(override && mode === override)){
         audioWarnRef.current?.play().catch(()=>{});
+          triggerFlash('WARN');
         setMessage(`Se esperaba un código de ${override || nextExpected}. Escaneaste ${mode}.`);
         setTimeout(()=>{ setMessage(m=> m && m.startsWith('Se esperaba') ? null : m); }, 3500);
         return;
@@ -165,14 +180,17 @@ export default function AssistanceScannerPage(){
         setMessage(friendly);
       }
       else {
-        audioOkRef.current?.play().catch(()=>{});
+  audioOkRef.current?.play().catch(()=>{}); triggerFlash('OK');
         setMessage(`✓ ${mode === 'IN' ? 'Entrada' : 'Salida'} registrada`);
         fetchRecent();
         if(mode === 'IN'){
+          // Mostrar confirmación rápida y redirigir después de un instante
+          setActive(false);
           const day = (j.businessDay || j.utcDay || new Date().toISOString().slice(0,10));
-          // Redirigir directamente a la lista de tareas tras registrar entrada
-          window.location.href = `/u/checklist?day=${encodeURIComponent(day)}&mode=IN`;
-          return;
+          const info = { person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() };
+          setEntryRegistered(info);
+          setTimeout(()=>{ window.location.href = `/u/checklist?day=${encodeURIComponent(day)}&mode=IN`; }, 1700);
+          return; // no continuar
         } else if(mode === 'OUT') {
           // Mostrar confirmación de salida y detener escaneo
           setActive(false);
@@ -199,10 +217,34 @@ export default function AssistanceScannerPage(){
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
       <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
       <audio ref={audioWarnRef} src="/sounds/scan-warn.mp3" preload="auto" />
+      {flashRef.current && Date.now()-flashRef.current.ts < 650 && (
+        <div className={`pointer-events-none fixed inset-0 z-40 flex items-center justify-center ${flashRef.current.kind==='OK' ? 'bg-emerald-500/10' : 'bg-amber-600/10'}`}>
+          <div className={`rounded-full h-28 w-28 flex items-center justify-center ring-4 ${flashRef.current.kind==='OK' ? 'bg-emerald-500/80 ring-emerald-300' : 'bg-amber-600/80 ring-amber-300'} animate-attpulse`}> 
+            {flashRef.current.kind==='OK' ? (
+              <svg viewBox="0 0 24 24" className="h-14 w-14 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-14 w-14 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><circle cx="12" cy="12" r="10" /></svg>
+            )}
+          </div>
+        </div>
+      )}
       <div className="max-w-md mx-auto space-y-4">
         <h1 className="text-2xl font-semibold text-slate-100">Escáner de Asistencia</h1>
         <p className="text-sm text-slate-300">Escanea únicamente los códigos IN / OUT oficiales. Este escáner registra tu entrada o salida directamente.</p>
-        {!exitRegistered && (
+        {entryRegistered && (
+          <div className="rounded border border-emerald-500 bg-emerald-900/30 p-4 space-y-3 animate-fadeIn">
+            <div className="text-emerald-200 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
+            <div className="text-sm text-emerald-100 space-y-1">
+              <div><span className="text-emerald-300/80">Nombre:</span> {entryRegistered?.person?.name}</div>
+              <div><span className="text-emerald-300/80">Código:</span> {entryRegistered?.person?.code}</div>
+              <div><span className="text-emerald-300/80">Hora local:</span> {entryRegistered?.at?.toLocaleTimeString()}</div>
+              <div><span className="text-emerald-300/80">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
+              {entryRegistered?.businessDay && <div><span className="text-emerald-300/80">Business Day:</span> {entryRegistered?.businessDay}</div>}
+            </div>
+            <div className="text-xs text-emerald-200/80">Redirigiéndote a tus tareas…</div>
+          </div>
+        )}
+        {!entryRegistered && !exitRegistered && (
           <>
             <div className="rounded border border-slate-600 p-3 bg-slate-900">
               <video ref={videoRef} className="w-full aspect-square object-cover rounded bg-black" muted playsInline />
@@ -216,6 +258,7 @@ export default function AssistanceScannerPage(){
             <div className="rounded border border-slate-600 bg-slate-900 px-3 py-2 text-sm flex items-center justify-between">
               <div>
                 <div className="text-slate-300">Siguiente esperado:</div>
+        
                 <div className="font-semibold text-indigo-300 tracking-wide text-lg">{nextExpected}</div>
               </div>
               <div className="text-xs text-slate-500 max-w-[150px] text-right">Apunta la cámara al póster oficial {nextExpected === 'IN' ? 'IN' : 'OUT'}.</div>
@@ -247,6 +290,10 @@ export default function AssistanceScannerPage(){
           <a href="/u" className="text-blue-500 text-sm hover:underline">← Volver</a>
         </div>
       </div>
+      <style jsx global>{`
+        @keyframes attpulse { 0%{ transform:scale(.6); opacity:0;} 40%{transform:scale(1.05); opacity:1;} 70%{transform:scale(.97);} 100%{transform:scale(1); opacity:0;} }
+        .animate-attpulse { animation: attpulse 650ms cubic-bezier(.16,.8,.3,1); }
+      `}</style>
     </div>
   );
 }

@@ -13,7 +13,6 @@ export default function MarkActionButton({ action, className }: Props) {
   const longRef = useRef(false);
 
   const goScanner = () => { window.location.href = action==='OUT' ? '/u/assistance?expected=OUT' : '/u/assistance'; };
-  const goManual = () => { window.location.href = '/u/manual'; };
 
   function onPointerDown(){
     longRef.current = false;
@@ -24,7 +23,7 @@ export default function MarkActionButton({ action, className }: Props) {
         const ms = Date.now()-start;
         setHoldMs(ms);
         if(ms>=2000){
-          window.clearInterval(id); timerRef.current=null; longRef.current=true; setHoldMs(0); goManual();
+          window.clearInterval(id); timerRef.current=null; longRef.current=true; setHoldMs(0); goScanner();
         }
       },50);
       timerRef.current = id as unknown as number;
@@ -34,9 +33,7 @@ export default function MarkActionButton({ action, className }: Props) {
     if(timerRef.current) window.clearInterval(timerRef.current);
     timerRef.current=null;
     const wasLong = longRef.current; const ms=holdMs; setHoldMs(0); longRef.current=false;
-    if(action==='OUT'){
-      if(!wasLong && ms<2000) goScanner();
-    } else {
+    if(action!=='OUT'){
       goScanner();
     }
   }
@@ -51,7 +48,7 @@ export default function MarkActionButton({ action, className }: Props) {
       onPointerCancel={endPress}
     >
       {action === 'OUT'
-        ? (holdMs>0 ? `Mantén para manual… ${Math.ceil(Math.max(0,2000-holdMs)/1000)}s` : 'Registrar salida (QR)')
+        ? (holdMs>0 ? `Mantén… ${Math.ceil(Math.max(0,2000-holdMs)/1000)}s` : 'Mantén 2s para registrar salida (QR)')
         : 'Registrar entrada (QR)'}
       {action==='OUT' && holdMs>0 && (
         <span className="absolute left-0 bottom-0 h-1 bg-orange-500 rounded-b" style={{ width: `${Math.min(100,(holdMs/2000)*100)}%` }} />

@@ -11,6 +11,9 @@ export default function ScannerClient() {
   const [notice, setNotice] = useState<string | null>(null);
   const lastNoticeTsRef = useRef<number>(0);
   const detectorRef = useRef<any>(null);
+  const audioOkRef = useRef<HTMLAudioElement|null>(null);
+  const flashRef = useRef<{ ts:number }|null>(null);
+  const [, force] = useState(0);
   const frameRef = useRef<number>();
 
   useEffect(()=>{
@@ -86,6 +89,8 @@ export default function ScannerClient() {
             }
             if (raw && !results.some(r=>r.text===raw)) {
               setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
+              try { audioOkRef.current?.play().catch(()=>{}); } catch {}
+              flashRef.current = { ts: Date.now() }; force(v=>v+1);
             }
           }
         }
@@ -106,7 +111,8 @@ export default function ScannerClient() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
       <div className="max-w-xl mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold text-slate-100 mb-2">Escáner QR</h1>
+  <h1 className="text-2xl font-semibold text-slate-100 mb-2">Escáner QR</h1>
+  <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
         <p className="text-sm text-slate-300">Escanea códigos operativos (invitaciones, tokens, cortesías). <strong className="text-teal-300 font-semibold">No</strong> registra entradas/salidas.</p>
         {notice && <div className="rounded border border-amber-600 bg-amber-900/30 text-amber-200 text-xs px-3 py-2">{notice}</div>}
         <div className="rounded border border-slate-600 p-3 bg-slate-900">
@@ -133,6 +139,17 @@ export default function ScannerClient() {
           <a href="/u" className="text-blue-500 text-sm hover:underline">← Volver</a>
         </div>
       </div>
+      {flashRef.current && Date.now()-flashRef.current.ts < 550 && (
+        <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
+          <div className="h-24 w-24 rounded-full bg-teal-500/80 ring-4 ring-teal-300 flex items-center justify-center animate-scanpop">
+            <svg viewBox="0 0 24 24" className="h-14 w-14 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+          </div>
+        </div>
+      )}
+      <style jsx global>{`
+        @keyframes scanpop { 0%{ transform:scale(.6); opacity:0;} 40%{transform:scale(1.05); opacity:1;} 70%{transform:scale(.95);} 100%{transform:scale(1); opacity:0;} }
+        .animate-scanpop { animation: scanpop 550ms cubic-bezier(.16,.8,.3,1); }
+      `}</style>
     </div>
   );
 }
