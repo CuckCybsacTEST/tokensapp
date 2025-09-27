@@ -48,9 +48,27 @@ export default function AdminBirthdaysPage() {
       if (search) q.set('search', search);
       q.set('page', String(page));
       q.set('pageSize', String(pageSize));
-      const res = await fetch(`/api/admin/birthdays?${q.toString()}`);
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.code || j?.message || res.status);
+      const url = `/api/admin/birthdays?${q.toString()}`;
+      const res = await fetch(url);
+      let j: any = null;
+      try {
+        const txt = await res.text();
+        if (txt && txt.trim()) {
+          try { j = JSON.parse(txt); } catch(parseErr) {
+            throw new Error(`RESP_PARSE_ERROR ${res.status} (${(parseErr as any).message}) bodySnippet="${txt.slice(0,120)}"`);
+          }
+        } else {
+          j = {};
+        }
+      } catch(readErr:any) {
+        throw new Error(`READ_ERROR ${(readErr && readErr.message) || readErr}`);
+      }
+      if (!res.ok) throw new Error(j?.code || j?.message || `HTTP_${res.status}`);
+      // Expect structure { items, total? }
+      if (!j.items && !Array.isArray(j.items)) {
+        // Fallback: maybe whole object list
+        if (Array.isArray(j)) j = { items: j };
+      }
       setItems(j.items || []);
     } catch (e: any) {
       setErr(String(e?.message || e));
