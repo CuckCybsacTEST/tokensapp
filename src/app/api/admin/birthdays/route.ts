@@ -16,32 +16,44 @@ const ListSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const cookie = getSessionCookieFromRequest(req as unknown as Request);
-  const session = await verifySessionCookie(cookie);
-  const authz = requireRole(session, ['ADMIN', 'STAFF']);
-  if (!authz.ok) return apiError(authz.error!, undefined, undefined, authz.error === 'UNAUTHORIZED' ? 401 : 403);
+  try {
+    const cookie = getSessionCookieFromRequest(req as unknown as Request);
+    const session = await verifySessionCookie(cookie);
+    const authz = requireRole(session, ['ADMIN', 'STAFF']);
+    if (!authz.ok) return apiError(authz.error!, undefined, undefined, authz.error === 'UNAUTHORIZED' ? 401 : 403);
 
-  const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown';
-  const rl = checkRateLimit(`admin:birthdays:list:${ip}`);
-  if (!rl.ok) return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { 'Retry-After': String(rl.retryAfterSeconds) });
+    const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
+    const rl = checkRateLimit(`admin:birthdays:list:${ip}`);
+    if (!rl.ok) return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { 'Retry-After': String(rl.retryAfterSeconds) });
 
-  const { searchParams } = new URL(req.url);
-  const parsed = ListSchema.safeParse({
-    status: searchParams.get('status') || undefined,
-    packId: searchParams.get('packId') || undefined,
-    dateFrom: searchParams.get('dateFrom') || undefined,
-    dateTo: searchParams.get('dateTo') || undefined,
-    search: searchParams.get('search') || undefined,
-    page: searchParams.get('page') || undefined,
-    pageSize: searchParams.get('pageSize') || undefined,
-  });
-  if (!parsed.success) return apiError('INVALID_QUERY', 'Validation failed', parsed.error.flatten(), 400);
+    const { searchParams } = new URL(req.url);
+    const parsed = ListSchema.safeParse({
+      status: searchParams.get('status') || undefined,
+      packId: searchParams.get('packId') || undefined,
+      dateFrom: searchParams.get('dateFrom') || undefined,
+      dateTo: searchParams.get('dateTo') || undefined,
+      search: searchParams.get('search') || undefined,
+      page: searchParams.get('page') || undefined,
+      pageSize: searchParams.get('pageSize') || undefined,
+    });
+    if (!parsed.success) return apiError('INVALID_QUERY', 'Validation failed', parsed.error.flatten(), 400);
 
-  const f = parsed.data;
-  const dateFrom = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00.000Z') : undefined;
-  const dateTo = f.dateTo ? new Date(f.dateTo + 'T23:59:59.999Z') : undefined;
-  const res = await listReservations({ status: f.status, packId: f.packId, dateFrom, dateTo, search: f.search }, { page: f.page, pageSize: f.pageSize });
-  return apiOk(res);
+    const f = parsed.data;
+    const dateFrom = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00.000Z') : undefined;
+    const dateTo = f.dateTo ? new Date(f.dateTo + 'T23:59:59.999Z') : undefined;
+    const res = await listReservations({ status: f.status, packId: f.packId, dateFrom, dateTo, search: f.search }, { page: f.page, pageSize: f.pageSize });
+    return apiOk(res);
+  } catch (e: any) {
+    const msg = String(e?.message || e);
+    // Detect common production mismatch: new columns not migrated yet
+    if (/column .* does not exist/i.test(msg) || /no such column/i.test(msg)) {
+      return apiError('DB_SCHEMA_MISMATCH', 'Faltan migraciones en la base de datos (ejecuta prisma migrate deploy).', { raw: msg }, 500);
+    }
+    if (/P2021/.test(msg) || /P2022/.test(msg)) {
+      return apiError('DB_SCHEMA_MISMATCH', 'Inconsistencia de esquema Prisma. Ejecuta migraciones.', { raw: msg }, 500);
+    }
+    return apiError('INTERNAL', 'Error interno al listar reservas', { raw: msg }, 500);
+  }
 }
 
 const CreateSchema = z.object({
