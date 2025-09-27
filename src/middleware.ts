@@ -139,7 +139,7 @@ export async function middleware(req: NextRequest) {
         }
       }
     }
-    // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session (e.g., Caja)
+  // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session
     if (pathname.startsWith('/api/system')) {
       // Cron bypass: permitir acceso con header secreto únicamente para el endpoint de habilitación programada
       if (pathname === '/api/system/tokens/enable-scheduled') {

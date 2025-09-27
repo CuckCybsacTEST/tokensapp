@@ -206,7 +206,7 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Aviso de permisos cuando no puede togglear (p. ej., STAFF sin sesión Caja activa) */}
+  {/* Aviso de permisos cuando no puede togglear (rol insuficiente) */}
       {capabilitiesLoaded && !canToggleState && (
         <div className="w-full p-3 rounded-md border text-sm bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-900/30 dark:text-amber-200">
           <div className="flex items-start gap-2">
