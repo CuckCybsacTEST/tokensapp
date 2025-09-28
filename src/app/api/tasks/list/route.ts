@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from "@/lib/auth-user";
+import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,19 +18,19 @@ export async function GET(req: NextRequest) {
   const raw = getUserCookie(req as unknown as Request);
   const session = await verifyUserCookie(raw);
   if (!session) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+    return apiError('UNAUTHORIZED', 'No autenticado', undefined, 401);
   }
 
   const { searchParams } = new URL(req.url);
   const day = searchParams.get("day");
   if (!isValidDay(day)) {
-    return new Response(JSON.stringify({ error: "invalid_day" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('INVALID_DAY', 'Día inválido', { day }, 400);
   }
 
   // Resolve personId for this user (Prisma)
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, personId: true } });
   if (!user || !user.personId) {
-    return new Response(JSON.stringify({ error: "user_without_person" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('USER_WITHOUT_PERSON', 'Usuario sin persona asociada', undefined, 400);
   }
 
   // Obtener área de la persona
@@ -102,5 +103,5 @@ export async function GET(req: NextRequest) {
     updatedByUsername: s.user?.username ?? null,
   }));
 
-  return new Response(JSON.stringify({ tasks, statuses }), { headers: { "content-type": "application/json" } });
+  return apiOk({ tasks, statuses });
 }

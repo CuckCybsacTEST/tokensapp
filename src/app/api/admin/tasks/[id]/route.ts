@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { isValidArea } from '@/lib/areas';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { emitTaskUpdated } from '@/server/events';
+import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,14 +28,14 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const session = await verifySessionCookie(raw);
   const r = requireRole(session, ['ADMIN']);
   if (!r.ok) {
-    return NextResponse.json({ error: r.error || 'UNAUTHORIZED' }, { status: r.error === 'FORBIDDEN' ? 403 : 401 });
+    return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
 
   const id = String(params.id || '').trim();
-  if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
+  if (!id) return apiError('INVALID_ID','ID inválido',undefined,400);
 
   let body: any;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: 'INVALID_JSON' }, { status: 400 }); }
+  try { body = await req.json(); } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400); }
 
   await ensureTaskSchedulingColumns();
 
@@ -42,7 +43,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   const data: any = {};
   if (typeof body.label === 'string') {
     const label = body.label.trim();
-    if (!label || label.length > 200) return NextResponse.json({ error: 'INVALID_LABEL' }, { status: 400 });
+  if (!label || label.length > 200) return apiError('INVALID_LABEL','Etiqueta inválida',undefined,400);
     data.label = label;
   }
   if (body.completed !== undefined) {
@@ -64,7 +65,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (body.area !== undefined) {
     const v = typeof body.area === 'string' ? body.area.trim() : '';
     let area: string | null = null;
-    if (v === '') area = null; else if (!isValidArea(v)) return NextResponse.json({ error: 'INVALID_AREA' }, { status: 400 });
+  if (v === '') area = null; else if (!isValidArea(v)) return apiError('INVALID_AREA','Área inválida',undefined,400);
     else area = v;
     data.area = area;
   }
@@ -72,34 +73,34 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     data.sortOrder = Math.max(0, Math.floor(Number(body.sortOrder)) || 0);
   }
   if (body.measureEnabled !== undefined) {
-    if (typeof body.measureEnabled !== 'boolean') return NextResponse.json({ error: 'INVALID_MEASURE_ENABLED' }, { status: 400 });
+  if (typeof body.measureEnabled !== 'boolean') return apiError('INVALID_MEASURE_ENABLED','measureEnabled inválido',undefined,400);
     data.measureEnabled = !!body.measureEnabled;
   }
   if (body.targetValue !== undefined) {
     if (body.targetValue === null) data.targetValue = null;
     else {
       const n = Math.floor(Number(body.targetValue));
-      if (!Number.isFinite(n) || n < 0) return NextResponse.json({ error: 'INVALID_TARGET_VALUE' }, { status: 400 });
+  if (!Number.isFinite(n) || n < 0) return apiError('INVALID_TARGET_VALUE','targetValue inválido',undefined,400);
       data.targetValue = n;
     }
   }
   if (body.unitLabel !== undefined) {
     if (body.unitLabel === null || body.unitLabel === undefined) data.unitLabel = null;
-    else if (typeof body.unitLabel !== 'string') return NextResponse.json({ error: 'INVALID_UNIT_LABEL' }, { status: 400 });
+  else if (typeof body.unitLabel !== 'string') return apiError('INVALID_UNIT_LABEL','unitLabel inválido',undefined,400);
     else {
       const s = body.unitLabel.trim();
       if (s.length === 0) data.unitLabel = null;
-      else if (s.length > 30) return NextResponse.json({ error: 'UNIT_LABEL_TOO_LONG' }, { status: 400 });
+  else if (s.length > 30) return apiError('UNIT_LABEL_TOO_LONG','unitLabel demasiado largo',undefined,400);
       else data.unitLabel = s;
     }
   }
-  if (Object.keys(data).length === 0) return NextResponse.json({ error: 'NO_CHANGES' }, { status: 400 });
+  if (Object.keys(data).length === 0) return apiError('NO_CHANGES','Sin cambios',undefined,400);
 
   let updated;
   try {
     updated = await prisma.task.update({ where: { id }, data });
   } catch {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    return apiError('NOT_FOUND','Tarea no encontrada',undefined,404);
   }
   // Notify listeners in case completed status changed from admin side
   if (updated) {
@@ -109,7 +110,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       source: 'admin',
     });
   }
-  return NextResponse.json({ ok: true, task: updated ? {
+  return apiOk({ ok: true, task: updated ? {
     id: String(updated.id),
     label: String(updated.label),
     completed: !!updated.completed,
@@ -131,17 +132,17 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await verifySessionCookie(raw);
   const r = requireRole(session, ['ADMIN']);
   if (!r.ok) {
-    return NextResponse.json({ error: r.error || 'UNAUTHORIZED' }, { status: r.error === 'FORBIDDEN' ? 403 : 401 });
+    return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
   const id = String(params.id || '').trim();
-  if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
+  if (!id) return apiError('INVALID_ID','ID inválido',undefined,400);
 
   // Delete dependent rows first to respect FK constraints
   await prisma.personTaskStatus.deleteMany({ where: { taskId: id } });
   try {
     await prisma.task.delete({ where: { id } });
   } catch {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    return apiError('NOT_FOUND','Tarea no encontrada',undefined,404);
   }
-  return NextResponse.json({ ok: true });
+  return apiOk({ ok: true });
 }

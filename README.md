@@ -84,6 +84,13 @@ La documentación técnica completa está disponible en la carpeta `docs/`:
 - [Troubleshooting local](./docs/troubleshooting.md) - Errores comunes (`DATABASE_URL`, EPERM Windows, regeneración Prisma)
 - [Shows / Flyers](./docs/shows.md) - Modelo, reglas y endpoints del subsistema de shows
 
+### Formato de Errores (API)
+Las respuestas de error siguen formato unificado:
+```json
+{ "code": "STRING_CODE", "message": "Mensaje legible", "details": {"opcional": "..."} }
+```
+Lista completa de códigos y convenciones en [`docs/errors.md`](./docs/errors.md). Evita depender de campos legacy como `error` que están en proceso de eliminación.
+
 > Nota importante (colaboradores): desde ahora, el “código” de Persona es el DNI normalizado (solo dígitos) y ya no se ingresa manualmente. El formulario usa un select de `Área` con opciones fijas. Ver detalles y ejemplos en [Registro de colaboradores](./docs/collaborators.md).
 
 ## Tareas medibles (resumen)
@@ -113,6 +120,7 @@ Soporte end-to-end para tareas con metas numéricas por persona/día. Detalle co
 | POST | `/api/system/tokens/toggle` | Activa/desactiva canje global (con auditoría) | `enabled:boolean` | 200 | 401/403/400 |
 | GET | `/api/system/tokens/capabilities` | Capacidades del usuario actual `{ canView, canToggle }` | - | 200 | 401/403 |
 | GET | `/api/admin/health` | Health check autenticado | Header `Authorization` (Bearer o Basic) | 200 / 503 | 401 (UNAUTHORIZED) |
+| GET | `/api/system/signing/versions` | Versiones de firma cargadas (diagnóstico) | - | 200 | 401/403 |
 
 Notas:
 - `lazyQr=true` en generación: no se incluyen PNG en el ZIP inicial; se generan al descargar con `qr=1`.

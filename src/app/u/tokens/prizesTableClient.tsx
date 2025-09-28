@@ -66,7 +66,7 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
 
   function table(list: PrizeRow[], label: string, empty: string) {
     return (
-      <div className="border rounded-lg overflow-hidden">
+  <div className="border rounded-lg overflow-hidden w-full">
         <div className="px-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
           <span>{label}</span>
           <span className="text-[10px] opacity-60">{list.length} premios</span>
@@ -74,49 +74,57 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
         {list.length === 0 ? (
           <div className="p-4 text-[11px] text-slate-500">{empty}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[760px] w-full text-[11px]">
+          <>
+          {/* Desktop / >= sm */}
+          <div className="overflow-x-auto hidden sm:block">
+            <table className="w-full text-[11px] table-fixed">
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300">
                 <tr>
-                  <th className="text-left p-2">Key</th>
-                  <th className="text-left p-2">Label</th>
-                  <th className="text-left p-2">Color</th>
-                  <th className="text-left p-2">Lote</th>
-                  <th className="text-left p-2">Emitidos</th>
-                  <th className="text-left p-2">Revelados</th>
-                  <th className="text-left p-2">Consumidos</th>
-                  <th className="text-left p-2">Activo</th>
+                  <th className="text-left px-2 py-1 w-[38%]">Label</th>
+                  <th className="text-left px-2 py-1 w-[32%]">Lote</th>
+                  <th className="text-right px-2 py-1 w-[15%]">Emitidos</th>
+                  <th className="text-right px-2 py-1 w-[15%]">Consumidos</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map(p=>{
                   return (
                     <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="font-mono p-2">{p.key}</td>
-                      <td className="p-2 font-semibold uppercase tracking-wide">{p.label}</td>
-                      <td className="p-2">{p.color && (
-                        <span className="inline-flex items-center gap-1"><span className="h-3 w-3 rounded border" style={{background:p.color}} /> <span className="text-[10px] text-slate-500">{p.color}</span></span>
-                      )}</td>
-                      <td className="p-2 text-[10px] font-mono">{p.lastBatch ? (p.lastBatch.name.length>14? p.lastBatch.name.slice(0,14)+'…': p.lastBatch.name): '—'}</td>
-                      <td className="p-2"><span className="badge-small bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">{p.emittedTotal}</span></td>
-                      <td className="p-2"><span className="badge-small bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">{p.revealedCount}</span></td>
-                      <td className="p-2"><span className="badge-small bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{p.deliveredCount}</span></td>
-                      <td className="p-2"><span className={`badge-small ${p.active? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200':'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200'}`}>{p.active? 'Sí':'No'}</span></td>
+                      <td className="px-2 py-1 font-semibold uppercase tracking-wide truncate" title={p.label}>{p.label}</td>
+                      <td className="px-2 py-1 text-[10px] font-mono truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</td>
+                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-emerald-600 dark:text-emerald-400 font-semibold">{p.emittedTotal}</span></td>
+                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-rose-600 dark:text-rose-400 font-semibold">{p.deliveredCount}</span></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          {/* Mobile / < sm: list style */}
+          <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-700/60 text-[11px]">
+            {list.map(p => (
+              <div key={p.id} className="py-2 px-2 flex flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-semibold uppercase tracking-wide leading-tight max-w-[60%] truncate" title={p.label}>{p.label}</div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.emittedTotal}</span>
+                    <span className="text-rose-600 dark:text-rose-400 font-semibold">{p.deliveredCount}</span>
+                  </div>
+                </div>
+                <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 mt-2">
+  <div className="space-y-6 mt-2 md:flex md:flex-col md:items-stretch w-full">
       {pending.length>0 && table(pending, 'Pendientes / Disponibles', 'No hay premios disponibles')}
-      <div className="space-y-3">
+  <div className="space-y-3 md:flex md:flex-col md:items-stretch w-full">
         {emitted.length>0 && (
           <div className="flex flex-wrap gap-2">
             <button onClick={()=>{ setActiveBatch('ALL'); onBatchChange?.('ALL'); }} className={`text-[10px] px-3 py-1 rounded border ${activeBatch==='ALL'? 'bg-indigo-600 text-white border-indigo-600':'border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Todos</button>

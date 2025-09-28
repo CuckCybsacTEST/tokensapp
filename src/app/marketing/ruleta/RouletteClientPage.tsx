@@ -88,16 +88,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     let abort = false;
     (async () => {
       try {
-        const res = await fetch('/api/admin/metrics?period=today', { cache: 'no-store' });
-        if (!res.ok) return; // silencioso
-        const data = await res.json();
-        if (!abort && data?.period?.rouletteSpins != null) {
-          // Ajustamos el contador visible: base + giros del día (antes de este spin)
-          setSpinCounter(SPIN_BASE_OFFSET + Number(data.period.rouletteSpins));
-        }
-      } catch {
-        /* ignorar errores de métrica */
-      }
+        const today = new Date();
+        const y=today.getFullYear(), m=String(today.getMonth()+1).padStart(2,'0'), d=String(today.getDate()).padStart(2,'0');
+        // A falta de conteo de giros centralizado en nuevo modelo, inicializamos sólo con base fija.
+        const res = await fetch(`/api/admin/daily-tokens?day=${y}-${m}-${d}`, { cache: 'no-store' });
+        if(!res.ok) { setSpinCounter(SPIN_BASE_OFFSET); return; }
+        // El endpoint diario todavía no expone spins; dejamos base sola.
+        if(!abort) setSpinCounter(SPIN_BASE_OFFSET);
+      } catch { if(!abort) setSpinCounter(SPIN_BASE_OFFSET); }
     })();
     return () => { abort = true; };
   }, []);

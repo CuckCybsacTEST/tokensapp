@@ -24,6 +24,17 @@
 import { prisma } from '@/lib/prisma';
 import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from './tokensMode';
+import { logInfo, logWarn, logError, logJson } from '@/lib/stdout';
+
+// Simple log level gate. Levels: error < warn < info < debug
+type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+function shouldLog(level: LogLevel): boolean {
+  const raw = (process.env.LOG_LEVEL || 'info').toLowerCase();
+  const order: Record<LogLevel, number> = { error: 0, warn: 1, info: 2, debug: 3 };
+  const normalized: LogLevel = (raw === 'error' || raw === 'warn' || raw === 'info' || raw === 'debug') ? raw : 'info';
+  const current = order[normalized];
+  return order[level] <= current;
+}
 
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
@@ -60,12 +71,12 @@ export async function reconcileOnce() {
   const desired = computed.enabled;
   const current = Boolean(cfg?.tokensEnabled);
   // Reconcilia solo informativo (no cambia valor fuera de boundaries)
-  console.log(`[scheduler] reconcile (current=${current}, scheduled=${desired}, reason=${computed.reason})`);
+  if (shouldLog('info')) logInfo('scheduler.reconcile', 'reconcile', { current, scheduled: desired, reason: computed.reason });
   // Ensure readers are fresh
     try { invalidateSystemConfigCache(); } catch { /* ignore */ }
     return { ok: true, computed };
   } catch (e) {
-    console.error('[scheduler] reconcileOnce error', e);
+  if (shouldLog('error')) logError('scheduler.reconcile.error', 'reconcileOnce error', { error: String(e) });
     return { ok: false, error: String(e) };
   }
 }
@@ -76,68 +87,70 @@ export function startScheduler() {
     return;
   }
   if (!cron) {
-    console.warn('[scheduler] node-cron not installed — running single reconcile only');
+  if (shouldLog('warn')) logWarn('scheduler.cron.missing', 'node-cron not installed; running single reconcile');
     // run a single reconcile and return
-    reconcileOnce().catch((e) => console.error('[scheduler] reconcile failed', e));
+  reconcileOnce().catch((e) => shouldLog('error') && logError('scheduler.reconcile.fail', 'reconcile failed', { error: String(e) }));
     // Also run a single birthdays expiration pass (best-effort)
-    expireBirthdayTokensOnce().catch((e) => console.error('[scheduler] expireBirthdayTokensOnce failed', e));
+  expireBirthdayTokensOnce().catch((e) => shouldLog('error') && logError('scheduler.birthdays.fail', 'expireBirthdayTokensOnce failed', { error: String(e) }));
     return;
   }
 
   // run immediate reconciliation
-  reconcileOnce().catch((e) => console.error('[scheduler] reconcile failed', e));
+  reconcileOnce().catch((e) => shouldLog('error') && logError('scheduler.reconcile.fail', 'reconcile failed', { error: String(e) }));
 
   // Boundary enforcement jobs (Option B)
   // 18:00 -> FORZAR ON
   const job18 = cron.schedule('0 18 * * *', async () => {
     try {
-      await setTokensEnabled(true);
-      console.log('[scheduler][18:00] enforced ON');
+  await setTokensEnabled(true);
+  if (shouldLog('info')) logInfo('scheduler.enforce.on', 'boundary 18:00 enforce ON');
     } catch (e) {
-      console.error('[scheduler][18:00] enforcement failed', e);
+  if (shouldLog('error')) logError('scheduler.enforce.on.error', 'boundary 18:00 enforce failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   // 00:00 -> FORZAR OFF
   const job00 = cron.schedule('0 0 * * *', async () => {
     try {
-      await setTokensEnabled(false);
-      console.log('[scheduler][00:00] enforced OFF');
+  await setTokensEnabled(false);
+  if (shouldLog('info')) logInfo('scheduler.enforce.off', 'boundary 00:00 enforce OFF');
     } catch (e) {
-      console.error('[scheduler][00:00] enforcement failed', e);
+  if (shouldLog('error')) logError('scheduler.enforce.off.error', 'boundary 00:00 enforce failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   // Every minute: no enforcement; only log state for observability
   const jobMinute = cron.schedule('* * * * *', async () => {
     try {
-      const cfg = await readConfig();
-      const current = Boolean(cfg?.tokensEnabled);
-      const scheduled = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ }).enabled;
-      console.log(`[scheduler][minute] heartbeat current=${current} scheduled=${scheduled}`);
+      if (shouldLog('debug')) {
+        const cfg = await readConfig();
+        const current = Boolean(cfg?.tokensEnabled);
+        const scheduled = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ }).enabled;
+        logJson('debug', 'scheduler.heartbeat', undefined, { current, scheduled });
+      }
     } catch (e) {
-      console.error('[scheduler][minute] job failed', e);
+  if (shouldLog('error')) logError('scheduler.heartbeat.error', 'minute job failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   // Birthdays: expire invite tokens periodically and emit minimal logs
   const jobBday = cron.schedule('*/10 * * * *', async () => {
     try {
-      await expireBirthdayTokensOnce();
+  await expireBirthdayTokensOnce();
     } catch (e) {
-      console.error('[scheduler][birthdays] job failed', e);
+  if (shouldLog('error')) logError('scheduler.birthdays.error', 'birthdays job failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   jobs = [job18, job00, jobBday, jobMinute];
-  console.log('[scheduler] started jobs (boundary flips @18:00 ON @00:00 OFF; birthdays */10m expire; heartbeat */1m)');
+  if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 00:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m' });
   started = true;
 }
 
 export function stopScheduler() {
   jobs.forEach((j) => { try { j.stop(); } catch (_) {} });
   jobs = [];
-  console.log('[scheduler] stopped');
+  if (shouldLog('info')) logInfo('scheduler.stopped', 'stopped all jobs');
   started = false;
 }
 
@@ -160,7 +173,7 @@ export async function expireBirthdayTokensOnce(nowRef: Date = new Date()) {
       data: { status: 'expired' },
     });
     if (res.count && res.count > 0) {
-      console.log(`[scheduler][birthdays] expired ${res.count} invite tokens`);
+  if (shouldLog('info')) logInfo('scheduler.birthdays.expire', `expired ${res.count} invite tokens`);
     }
 
     // Optional: notify old pending reservations
@@ -171,13 +184,13 @@ export async function expireBirthdayTokensOnce(nowRef: Date = new Date()) {
         where: { status: 'pending_review', createdAt: { lt: cutoff as any } },
       });
       if (pendingCount > 0) {
-        console.log(`[scheduler][birthdays] ${pendingCount} reservations pending_review > ${hours}h`);
+  if (shouldLog('info')) logInfo('scheduler.birthdays.pending', 'pending reservations older than threshold', { count: pendingCount, hours });
       }
     }
 
     return { ok: true as const, expired: res.count };
   } catch (e) {
-    console.error('[scheduler][birthdays] expire pass error', e);
+  if (shouldLog('error')) logError('scheduler.birthdays.expire.error', 'expire pass error', { error: String(e) });
     return { ok: false as const, error: String(e) };
   }
 }

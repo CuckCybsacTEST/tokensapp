@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isValidArea, ALLOWED_AREAS } from '@/lib/areas';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 
@@ -50,12 +51,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const id = params.id;
     if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
-    const body = await req.json().catch(() => null) as { personName?: string; role?: string } | null;
-    if (!body || (!body.personName && !body.role)) {
+    const body = await req.json().catch(() => null) as { personName?: string; role?: string; area?: string; whatsapp?: string } | null;
+    if (!body || (!body.personName && !body.role && !body.area && !body.whatsapp)) {
       return NextResponse.json({ ok: false, code: 'NO_FIELDS' }, { status: 400 });
     }
 
-    const updates: { personNameChanged?: boolean; roleChanged?: boolean } = {};
+    const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean } = {};
 
     // Role update (optional)
     if (body.role != null) {
@@ -79,6 +80,33 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
       await prisma.person.update({ where: { id: user.personId }, data: { name: personName } });
       updates.personNameChanged = true;
+    }
+
+    if (body.area != null) {
+      const areaRaw = String(body.area || '').trim();
+      if (!isValidArea(areaRaw)) {
+        return NextResponse.json({ ok: false, code: 'INVALID_AREA' }, { status: 400 });
+      }
+      const user = await prisma.user.findUnique({ where: { id }, select: { id: true, personId: true, person: { select: { area: true } } } });
+      if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+      if (user.person?.area !== areaRaw) {
+        await prisma.person.update({ where: { id: user.personId }, data: { area: areaRaw } });
+        updates.areaChanged = true;
+      }
+    }
+
+    if (body.whatsapp != null) {
+      const raw = String(body.whatsapp || '').trim();
+      const digits = raw.replace(/\D+/g, '');
+      if (digits.length < 8 || digits.length > 15) {
+        return NextResponse.json({ ok: false, code: 'INVALID_WHATSAPP' }, { status: 400 });
+      }
+      const user = await prisma.user.findUnique({ where: { id }, select: { id: true, personId: true, person: { select: { whatsapp: true } } } });
+      if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+      if (user.person?.whatsapp !== digits) {
+        await prisma.person.update({ where: { id: user.personId }, data: { whatsapp: digits } });
+        updates.whatsappChanged = true;
+      }
     }
 
     return NextResponse.json({ ok: true, updates });

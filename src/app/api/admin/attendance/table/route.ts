@@ -5,6 +5,7 @@ import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCook
 import { rangeBusinessDays } from '@/lib/date';
 import { prisma as _p } from '@/lib/prisma';
 import type { Period } from '@/types/metrics';
+import { currentBusinessDay } from '@/lib/attendanceDay';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,23 +155,38 @@ export async function GET(req: Request) {
     const total = Number(countRows?.[0]?.total || 0);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+    const todayBusinessDay = currentBusinessDay();
     const mapped = (rows || []).map(r => {
       const done = Number(r.doneCount || 0);
       const tot = Number(r.totalCount || 0);
       const completionPct = tot > 0 ? (100 * done) / tot : 0;
-      const status = (r.firstIn && r.lastOut) ? (completionPct >= 100 ? 'Completa' : 'Con faltantes') : (tot > 0 && completionPct >= 100 ? 'Completa' : 'Con faltantes');
+      const firstIn = r.firstIn ? (r.firstIn instanceof Date ? r.firstIn.toISOString() : String(r.firstIn)) : null;
+      const lastOut = r.lastOut ? (r.lastOut instanceof Date ? r.lastOut.toISOString() : String(r.lastOut)) : null;
+      const day = String(r.day);
+      // Jornada incompleta: hubo entrada pero no salida y el día ya pasó (estrictamente menor al business day actual)
+      const incomplete = !!firstIn && !lastOut && day < todayBusinessDay;
+      let status: string;
+      if (incomplete) {
+        status = 'Incompleta';
+      } else if (firstIn && lastOut) {
+        status = completionPct >= 100 ? 'Completa' : 'Con faltantes';
+      } else {
+        // Día actual en curso o sin OUT todavía
+        status = completionPct >= 100 ? 'Con faltantes' : 'Con faltantes';
+      }
       return {
-        day: String(r.day),
+        day,
         personCode: String(r.personCode),
         personName: String(r.personName),
         area: r.area ? String(r.area) : null,
-        firstIn: r.firstIn ? (r.firstIn instanceof Date ? r.firstIn.toISOString() : String(r.firstIn)) : null,
-        lastOut: r.lastOut ? (r.lastOut instanceof Date ? r.lastOut.toISOString() : String(r.lastOut)) : null,
+        firstIn,
+        lastOut,
         durationMin: r.durationMin != null ? Number(r.durationMin) : null,
         doneCount: done,
         totalCount: tot,
         completionPct,
         status,
+        incomplete,
       };
     });
 

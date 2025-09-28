@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { logEvent } from "@/lib/log";
 import { createUserSessionCookie, buildSetUserCookie } from "@/lib/auth-user";
 import bcrypt from "bcryptjs";
+import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
 
     if ((!username && !dniRaw) || !password) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: credenciales incompletas", { ok: false });
-      return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
+      return apiError('INVALID_CREDENTIALS', 'Credenciales incompletas', undefined, 401);
     }
 
     const normDni = (s: string | undefined | null) => String(s || '').replace(/\D+/g, '');
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
     // Si no se encontró usuario
     if (!user) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: usuario no encontrado", { username: username || null, dni: normDni(dniRaw || username) || null });
-      return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
+      return apiError('INVALID_CREDENTIALS', 'Credenciales inválidas', undefined, 401);
     }
 
     let ok = false;
@@ -53,26 +54,19 @@ export async function POST(req: Request) {
     }
     if (!ok) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: contraseña inválida", { username });
-      return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
+      return apiError('INVALID_CREDENTIALS', 'Credenciales inválidas', undefined, 401);
     }
 
-    // Optional: if the linked person is inactive, you may block login.
-    // const person = await prisma.person.findUnique({ where: { id: user.personId } });
-    // if (person && !person.active) {
-    //   return new Response(JSON.stringify({ error: "PERSON_INACTIVE" }), { status: 403 });
-    // }
+  // Optional check persona inactiva podría devolver apiError('PERSON_INACTIVE', ...) si se habilita en el futuro.
 
     const role = (user.role === "STAFF" ? "STAFF" : "COLLAB") as "STAFF" | "COLLAB";
     const token = await createUserSessionCookie(user.id, role);
 
     await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", { username, role });
 
-    return new Response(
-      JSON.stringify({ ok: true, role, userId: user.id, personId: user.personId }),
-      { status: 200, headers: { "Set-Cookie": buildSetUserCookie(token) } }
-    );
+    return apiOk({ ok: true, role, userId: user.id, personId: user.personId }, 200, { 'Set-Cookie': buildSetUserCookie(token) });
   } catch (e: any) {
     await logEvent("USER_AUTH_ERROR", "Login colaborador error", { message: String(e?.message || e) });
-    return new Response(JSON.stringify({ error: "INTERNAL" }), { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500);
   }
 }

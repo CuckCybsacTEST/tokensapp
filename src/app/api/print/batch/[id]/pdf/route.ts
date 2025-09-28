@@ -7,6 +7,7 @@ import composePdfFromPagePngs from '@/lib/print/pdf';
 import fs from 'fs';
 import path from 'path';
 import { audit } from '@/lib/audit';
+import { apiError } from '@/lib/apiError';
 
 // Optional: try to import Prisma client if present for fallback
 // Do not require prisma at module load time; tests set global._prisma after import.
@@ -23,9 +24,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   try {
   const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
   const batchId = params.id;
 
@@ -67,7 +68,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       const idxToken = header.indexOf('token_id');
       const idxUrl = header.indexOf('redeem_url');
       if (idxToken === -1 || idxUrl === -1) {
-        return NextResponse.json({ error: 'INVALID_TOKENS_CSV' }, { status: 500 });
+        return apiError('INVALID_TOKENS_CSV','CSV de tokens inválido',undefined,500);
       }
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',');
@@ -84,7 +85,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     if (!tokens || tokens.length === 0) {
-      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+      return apiError('NOT_FOUND','No se encontraron tokens',undefined,404);
     }
 
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.
@@ -129,7 +130,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     if (!fs.existsSync(templatePath)) {
-      return NextResponse.json({ error: 'TEMPLATE_MISSING' }, { status: 500 });
+      return apiError('TEMPLATE_MISSING','Plantilla no encontrada',{ path: templatePath },500);
     }
 
   // Process tokens in chunks to keep memory usage bounded.
@@ -241,7 +242,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
   } catch (err: any) {
     console.error('print batch error', err);
-    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }
 

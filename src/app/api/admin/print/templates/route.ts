@@ -4,14 +4,15 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { prisma } from '@/lib/prisma';
 import fs from 'fs/promises';
 import path from 'path';
+import { apiError, apiOk } from '@/lib/apiError';
 
 export async function GET(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Obtener solo las plantillas recientes (últimas 24 horas)
     const oneDayAgo = new Date();
@@ -71,17 +72,13 @@ export async function GET(req: Request) {
     });
 
     // Responder con cabeceras anti-caché
-    return new NextResponse(JSON.stringify(templates), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+    return apiOk(templates,200,{
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
   } catch (err: any) {
     console.error('Error al obtener plantillas:', err);
-    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

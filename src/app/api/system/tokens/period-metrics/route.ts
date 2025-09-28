@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   const batchId = url.searchParams.get('batchId') || undefined;
     const start = url.searchParams.get('start') || undefined;
     const end = url.searchParams.get('end') || undefined;
-    const allowed: Period[] = ['today','yesterday','this_week','last_week','this_month','last_month','custom'];
+  const allowed: Period[] = ['today','yesterday','day_before_yesterday','this_week','last_week','this_month','last_month','custom'];
     if (!allowed.includes(periodParam)) return error('INVALID_PERIOD', 'Invalid period');
     if (periodParam === 'custom' && (!start || !end)) return error('INVALID_CUSTOM', 'Custom period requires start & end');
 
@@ -46,13 +46,23 @@ export async function GET(req: NextRequest) {
     // Nota: Para periodos 'today'/'yesterday' ya adaptamos el rango usando business day.
     // Ajuste: cuando se filtra por batchId queremos que 'total' refleje tokens de ese batch dentro del rango.
     // (Lógica actual ya lo hace). Se añade protección por si en algún entorno hay tokens con fecha fuera del rango pero businessDay dentro.
+    const periodIsDaily = ['today','yesterday','day_before_yesterday'].includes(periodParam);
+    // Conteo basado en functionalDate para daily: tokens cuyo batch.functionalDate está en rango
+    // o tokens creados en rango cuyo batch.functionalDate es null.
+    const functionalWhere = periodIsDaily ? {
+      OR: [
+        { batch: { functionalDate: { gte: rangeStart, lt: rangeEnd } } },
+        { AND: [ { createdAt: { gte: rangeStart, lt: rangeEnd } }, { batch: { functionalDate: null } } ] }
+      ]
+    } : { createdAt: { gte: rangeStart, lt: rangeEnd } };
+    const baseFilter = { ...tokenBatchFilter } as any;
     const [total, redeemed, delivered, revealed, disabled, expired, spins] = await Promise.all([
-      prisma.token.count({ where: { ...tokenBatchFilter, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...tokenBatchFilter, redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...tokenBatchFilter, deliveredAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...tokenBatchFilter, revealedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...tokenBatchFilter, disabled: true, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...tokenBatchFilter, expiresAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...baseFilter, ...functionalWhere } }),
+      prisma.token.count({ where: { ...baseFilter, redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...baseFilter, deliveredAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...baseFilter, revealedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...baseFilter, disabled: true, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
+      prisma.token.count({ where: { ...baseFilter, expiresAt: { gte: rangeStart, lt: rangeEnd } } }),
       prisma.rouletteSpin.count({ where: { createdAt: { gte: rangeStart, lt: rangeEnd }, ...(batchId ? { session: { batchId } } : {}) } }),
     ]);
     const active = Math.max(0, total - redeemed - expired);

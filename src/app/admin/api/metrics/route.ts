@@ -23,6 +23,11 @@ function getDateRangeForPeriod(period: string, startDate?: string, endDate?: str
       // Fin: final del día anterior
       end.setDate(end.getDate() - 1);
       break;
+    case 'day_before_yesterday':
+      start.setDate(start.getDate() - 2);
+      start.setHours(0,0,0,0);
+      end.setDate(end.getDate() - 2);
+      break;
       
     case 'this_week':
       // Inicio: inicio de la semana actual (lunes)
@@ -84,6 +89,7 @@ export async function GET(request: Request) {
   const period = url.searchParams.get('period') || 'this_week';
   const startDate = url.searchParams.get('startDate') || undefined;
   const endDate = url.searchParams.get('endDate') || undefined;
+  const countBasis = (url.searchParams.get('countBasis') || 'auto').toLowerCase();
 
   const now = new Date();
   const { start, end } = getDateRangeForPeriod(period, startDate || undefined, endDate || undefined);
@@ -98,13 +104,28 @@ export async function GET(request: Request) {
   ]);
   
   // Métricas filtradas por período
-  const [periodTokens, periodRedeemed, periodRouletteSpins, periodRouletteSessions] = await Promise.all([
+  const [periodTokensByIngested, periodTokensByCreated, periodRedeemed, periodRouletteSpins, periodAvailableByExpires] = await Promise.all([
+    (prisma as any).token.count({ where: { ingestedAt: { gte: start, lte: end } } }),
     prisma.token.count({ where: { createdAt: { gte: start, lte: end } } }),
     prisma.token.count({ where: { redeemedAt: { gte: start, lte: end } } }),
     // Contar giros por tokens revelados (cubre ruleta admin two-phase y flujo marketing)
     prisma.token.count({ where: { revealedAt: { gte: start, lte: end } } }),
-    (prisma as any).rouletteSession.count({ where: { createdAt: { gte: start, lte: end } } }),
+    prisma.token.count({ where: { expiresAt: { gte: start, lte: end } } }),
   ]);
+  let periodTokensBasis: 'ingested' | 'created' = 'ingested';
+  let periodTokens: number;
+  const periodIsDaily = period === 'today' || period === 'yesterday' || period === 'day_before_yesterday';
+  if (countBasis === 'created') { periodTokens = periodTokensByCreated; periodTokensBasis = 'created'; }
+  else if (countBasis === 'ingested') { periodTokens = periodTokensByIngested; periodTokensBasis = 'ingested'; }
+  else { // auto
+    if (periodIsDaily) {
+      periodTokens = periodTokensByCreated > 0 ? periodTokensByCreated : periodTokensByIngested;
+      periodTokensBasis = periodTokensByCreated > 0 ? 'created' : 'ingested';
+    } else {
+      periodTokens = periodTokensByIngested > 0 ? periodTokensByIngested : periodTokensByCreated;
+      periodTokensBasis = periodTokensByIngested > 0 ? 'ingested' : 'created';
+    }
+  }
   
   // Cálculo de tokens activos (global)
   const activeTokens = totalTokens - totalRedeemed - totalExpired;
@@ -130,10 +151,11 @@ export async function GET(request: Request) {
       name: period,
       startDate: start.toISOString(),
       endDate: end.toISOString(),
-      tokens: periodTokens,
+  tokens: periodTokens,
+  tokensBasis: periodTokensBasis,
       redeemed: periodRedeemed,
-      rouletteSessions: periodRouletteSessions,
       rouletteSpins: periodRouletteSpins,
+      available: periodAvailableByExpires,
     }
   });
 }

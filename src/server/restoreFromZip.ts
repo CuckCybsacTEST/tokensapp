@@ -68,6 +68,41 @@ function parseCsv(text: string): TokenCsv[] {
   return out;
 }
 
+// Lima timezone helper: we store functionalDate as 05:00 UTC (local 00:00 Lima -5h offset)
+function limaMidnightUtc(y: number, m: number, d: number) {
+  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0, 0));
+}
+
+const datePatterns: RegExp[] = [
+  /(\d{2})[.\/-](\d{2})[.\/-](\d{4})/,      // DD.MM.YYYY or DD-MM-YYYY or DD/MM/YYYY
+  /(\d{2})(\d{2})(\d{4})/,                   // DDMMYYYY
+  /(\d{2})[.\/-](\d{2})[.\/-](\d{2})/       // DD.MM.YY
+];
+
+function deriveFunctionalDate(description: string | null | undefined, createdAt: Date): { fDate: Date, source: 'parsed' | 'derived' } {
+  let y: number | undefined, m: number | undefined, d: number | undefined;
+  if (description) {
+    for (const rg of datePatterns) {
+      const mt = description.match(rg);
+      if (mt) {
+        if (mt[0].length === 8 && /\d{8}/.test(mt[0])) { // DDMMYYYY
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = parseInt(mt[3], 10);
+        } else if (mt[3] && mt[3].length === 2) { // YY
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = 2000 + parseInt(mt[3], 10);
+        } else {
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = parseInt(mt[3], 10);
+        }
+        break;
+      }
+    }
+  }
+  if (y && m && d) return { fDate: limaMidnightUtc(y, m, d), source: 'parsed' };
+  // derive from createdAt shifting to Lima
+  const createdLocal = new Date(createdAt.getTime() - 5 * 3600 * 1000);
+  y = createdLocal.getUTCFullYear(); m = createdLocal.getUTCMonth() + 1; d = createdLocal.getUTCDate();
+  return { fDate: limaMidnightUtc(y, m, d), source: 'derived' };
+}
+
 export async function restoreFromZipBuffer(buf: Buffer): Promise<RestoreResult> {
   const zip = await JSZip.loadAsync(new Uint8Array(buf));
   const manifestEntry = zip.file('manifest.json');
@@ -80,10 +115,18 @@ export async function restoreFromZipBuffer(buf: Buffer): Promise<RestoreResult> 
   // Upsert Batch
   const batchId = manifest.batchId;
   const createdAt = new Date(manifest.createdAt);
+  // Compute functionalDate (parsed or derived) so restored batches participate in daily metrics
+  const { fDate } = deriveFunctionalDate(manifest.description, createdAt);
+
+  const existing = await prisma.batch.findUnique({ where: { id: batchId }, select: { functionalDate: true } });
   await prisma.batch.upsert({
     where: { id: batchId },
-    update: { description: manifest.description ?? undefined },
-    create: { id: batchId, description: manifest.description, createdAt },
+    update: {
+      description: manifest.description ?? undefined,
+      // Only set functionalDate if it's currently null (avoid overwriting manual adjustments)
+      functionalDate: existing?.functionalDate ? undefined : fDate,
+    },
+    create: { id: batchId, description: manifest.description, createdAt, functionalDate: fDate },
   });
 
   // Asegurar Prizes por manifest (id/key/label)
@@ -102,6 +145,7 @@ export async function restoreFromZipBuffer(buf: Buffer): Promise<RestoreResult> 
   // Insertar tokens (idempotente)
   let created = 0, skipped = 0, updatedPrizeColors = 0;
   const colorByPrize: Record<string, string | undefined> = {};
+  const ingestNow = new Date();
   for (const row of tokens) {
     const prizeId = row.prize_id;
     if (colorByPrize[prizeId] === undefined) colorByPrize[prizeId] = row.prize_color || undefined;
@@ -120,6 +164,7 @@ export async function restoreFromZipBuffer(buf: Buffer): Promise<RestoreResult> 
           prizeId,
           expiresAt,
           createdAt: createdAt, // aproximamos al createdAt del batch
+          ingestedAt: ingestNow, // fecha real de importación
           redeemedAt: redeemedAt || undefined,
           disabled,
           signature,

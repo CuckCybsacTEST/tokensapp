@@ -28,8 +28,12 @@ model Batch {
   description      String?
   createdBy        String?
   createdAt        DateTime          @default(now())
+  // Fecha funcional (día de uso) en zona horaria Lima (almacenada como 00:00 local => 05:00 UTC)
+  functionalDate   DateTime?
   rouletteSessions RouletteSession[]
   tokens           Token[]
+
+  @@index([functionalDate])
 }
 
 model Token {
@@ -38,6 +42,8 @@ model Token {
   batchId           String
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
+  // Marca de inserción real en el sistema. Para tokens restaurados preservamos createdAt histórico
+  ingestedAt        DateTime  @default(now())
   redeemedAt        DateTime?
   signature         String
   signatureVersion  Int       @default(1)
@@ -58,6 +64,7 @@ model Token {
   @@index([revealedAt])
   @@index([deliveredAt])
   @@index([batchId, deliveredAt])
+  @@index([ingestedAt])
 }
 
 model SystemConfig {
@@ -127,8 +134,8 @@ model Person {
   dni              String?            @unique
   area             String?
   jobTitle         String?
-  whatsapp         String?            @db.Text
-  birthday         DateTime?          // solo fecha (almacenada UTC) para recordatorios / métricas de cumpleaños
+  whatsapp         String?
+  birthday         DateTime?          @db.Timestamp(6)
   PersonTaskStatus PersonTaskStatus[]
   scans            Scan[]
   user             User?
@@ -137,17 +144,16 @@ model Person {
 }
 
 model Scan {
-  id        String   @id @default(cuid())
-  personId  String
-  scannedAt DateTime @default(now())
-  type      String   @default("IN")
-  deviceId  String?
-  byUser    String?
-  meta      String?
-  createdAt DateTime @default(now())
-  // Día de trabajo desplazado (business day) calculado según cutoff horario (ej. 10:00 America/Lima) - NOT NULL
+  id          String   @id @default(cuid())
+  personId    String
+  scannedAt   DateTime @default(now())
+  type        String   @default("IN")
+  deviceId    String?
+  byUser      String?
+  meta        String?
+  createdAt   DateTime @default(now())
   businessDay String
-  person    Person   @relation(fields: [personId], references: [id])
+  person      Person   @relation(fields: [personId], references: [id])
 
   @@index([personId])
   @@index([scannedAt])
@@ -157,57 +163,58 @@ model Scan {
 }
 
 model User {
-  id                  String             @id @default(cuid())
-  username            String             @unique
-  passwordHash        String
-  role                String             @default("COLLAB")
-  personId            String             @unique
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  // Compromiso de bienvenida / responsabilidad (versionable para futuros cambios)
-  commitmentVersionAccepted Int              @default(0)
-  commitmentAcceptedAt      DateTime?
-  updatedTaskStatuses PersonTaskStatus[] @relation("TaskStatusUpdatedBy")
-  person              Person             @relation(fields: [personId], references: [id])
-  passwordResetOtps   PasswordResetOtp[]
+  id                        String                 @id @default(cuid())
+  username                  String                 @unique
+  passwordHash              String
+  role                      String                 @default("COLLAB")
+  personId                  String                 @unique
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+  commitmentVersionAccepted Int                    @default(0)
+  commitmentAcceptedAt      DateTime?              @db.Timestamp(6)
+  ChecklistComment          ChecklistComment[]
+  ChecklistTaskComment      ChecklistTaskComment[]
+  passwordResetOtps         PasswordResetOtp[]
+  updatedTaskStatuses       PersonTaskStatus[]     @relation("TaskStatusUpdatedBy")
+  TaskComment               TaskComment[]
+  person                    Person                 @relation(fields: [personId], references: [id])
+
+  @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
 
 model Task {
-  id        String             @id @default(cuid())
-  label     String
-  active    Boolean            @default(true)
-  sortOrder Int                @default(0)
-  priority  Int                @default(0)
-  // When true la tarea ya no se muestra como pendiente (administrativamente completada)
-  completed Boolean            @default(false)
-  // Measurement fields: allow tasks to be "measurable" (user enters a numeric value)
-  measureEnabled Boolean       @default(false)
+  id             String             @id @default(cuid())
+  label          String
+  active         Boolean            @default(true)
+  sortOrder      Int                @default(0)
+  priority       Int                @default(0)
+  completed      Boolean            @default(false)
+  measureEnabled Boolean            @default(false)
   targetValue    Int?
   unitLabel      String?
-  // Optional scheduling window for visibility in checklist (YYYY-MM-DD strings)
-  startDay  String?
-  endDay    String?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  area      String?
-  statuses  PersonTaskStatus[]
+  startDay       String?
+  endDay         String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  area           String?
+  statuses       PersonTaskStatus[]
+  TaskComment    TaskComment[]
 
   @@index([area])
 }
 
 model PersonTaskStatus {
-  id        String   @id @default(cuid())
-  personId  String
-  taskId    String
-  day       String
-  done      Boolean  @default(false)
-  // For measurable tasks, captures the user's numeric progress for the day
-  measureValue Int    @default(0)
-  updatedBy String?
-  updatedAt DateTime @updatedAt
-  user      User?    @relation("TaskStatusUpdatedBy", fields: [updatedBy], references: [id])
-  task      Task     @relation(fields: [taskId], references: [id])
-  person    Person   @relation(fields: [personId], references: [id])
+  id           String   @id @default(cuid())
+  personId     String
+  taskId       String
+  day          String
+  done         Boolean  @default(false)
+  measureValue Int      @default(0)
+  updatedBy    String?
+  updatedAt    DateTime @updatedAt
+  person       Person   @relation(fields: [personId], references: [id])
+  task         Task     @relation(fields: [taskId], references: [id])
+  user         User?    @relation("TaskStatusUpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([personId, taskId, day])
   @@index([personId])
@@ -241,13 +248,12 @@ model BirthdayReservation {
   guestsPlanned     Int
   status            String             @default("draft")
   tokensGeneratedAt DateTime?
-  // Arrival / attendance tracking
-  hostArrivedAt     DateTime?          // timestamp when host validated
-  guestArrivals     Int                @default(0) // cached count of guest entries (derived from multi-use token redemptions)
   createdBy         String?
   updatedBy         String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  hostArrivedAt     DateTime?          @db.Timestamp(6)
+  guestArrivals     Int                @default(0)
   pack              BirthdayPack       @relation(fields: [packId], references: [id])
   courtesyItems     CourtesyItem[]
   inviteTokens      InviteToken[]
@@ -269,7 +275,6 @@ model InviteToken {
   expiresAt     DateTime
   claim         String
   metadata      String?
-  // Multi-use support
   usedCount     Int                 @default(0)
   maxUses       Int?
   createdAt     DateTime            @default(now())
@@ -326,22 +331,20 @@ model PhotoDeliverable {
   @@index([status])
 }
 
-// OTP efímero para recuperación/cambio de contraseña de colaboradores
 model PasswordResetOtp {
-  id         String   @id @default(cuid())
-  userId     String
-  code       String
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id])
+  id        String    @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([code])
   @@index([expiresAt])
 }
 
-// Resumen del día para colaboradores (show, promos, notas)
 model DayBrief {
   id        String   @id @default(cuid())
   day       String   @unique
@@ -356,35 +359,81 @@ model DayBrief {
   @@index([day])
 }
 
-// =============================================
-// Marketing / Shows (flyers públicos)
-// =============================================
+model Show {
+  id                String     @id @default(cuid())
+  title             String     @db.VarChar(120)
+  slug              String     @unique @db.VarChar(140)
+  status            ShowStatus @default(DRAFT)
+  startsAt          DateTime
+  endsAt            DateTime?
+  slot              Int?       @db.SmallInt
+  imageOriginalPath String
+  imageWebpPath     String
+  imageBlurData     String
+  width             Int
+  height            Int
+  bytesOriginal     Int
+  bytesOptimized    Int
+  publishedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([status, startsAt(sort: Desc)])
+}
+
+model ChecklistComment {
+  id        String   @id
+  userId    String
+  day       String
+  text      String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([day])
+  @@index([userId])
+}
+
+model ChecklistTaskComment {
+  id        String   @id
+  userId    String
+  taskId    String
+  day       String
+  text      String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([day])
+  @@index([taskId], map: "ChecklistTaskComment_task_idx")
+  @@index([userId])
+}
+
+model TaskComment {
+  id        String   @id
+  userId    String
+  taskId    String
+  day       String
+  text      String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  Task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([day])
+  @@index([taskId, day])
+  @@index([userId])
+}
+
+model birthdaypack {
+  id       String  @id
+  name     String? @unique
+  qrcount  Int
+  bottle   String
+  perks    String
+  active   Int     @default(1)
+  featured Int     @default(0)
+}
 
 enum ShowStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
-}
-
-model Show {
-  id               String      @id @default(cuid())
-  title            String      @db.VarChar(120)
-  slug             String      @unique @db.VarChar(140)
-  status           ShowStatus  @default(DRAFT)
-  startsAt         DateTime
-  endsAt           DateTime?
-  slot             Int?        @db.SmallInt // 1..4 (validado vía lógica / CHECK)
-  imageOriginalPath String
-  imageWebpPath      String
-  imageBlurData      String
-  width              Int
-  height             Int
-  bytesOriginal      Int
-  bytesOptimized     Int
-  publishedAt        DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-
-  @@index([status, startsAt(sort: Desc)])
-  // Nota: restricciones adicionales (máx 4 publicados, unicidad condicional de slot, no solapamiento) se aplican en lógica y migración SQL raw.
 }

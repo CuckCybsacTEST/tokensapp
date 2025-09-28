@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logEvent } from "@/lib/log";
 import { NextRequest } from "next/server";
+import { apiError, apiOk } from '@/lib/apiError';
 
 // Simple zod-free validation for now (single field)
 interface Body { batchId: string }
@@ -10,16 +11,16 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "BAD_JSON" }), { status: 400 });
+    return apiError('BAD_REQUEST', 'JSON inválido', { reason: 'BAD_JSON' }, 400);
   }
   if (!body || typeof body.batchId !== "string" || body.batchId.length === 0) {
-    return new Response(JSON.stringify({ error: "BATCH_ID_REQUIRED" }), { status: 400 });
+    return apiError('BATCH_ID_REQUIRED', 'batchId requerido', undefined, 400);
   }
 
   // 1. Verificar batch
   const batch = await prisma.batch.findUnique({ where: { id: body.batchId } });
   if (!batch) {
-    return new Response(JSON.stringify({ error: "BATCH_NOT_FOUND" }), { status: 404 });
+    return apiError('BATCH_NOT_FOUND', 'Batch no encontrado', undefined, 404);
   }
 
   // 2. Comprobar si ya existe sesión activa para el batch
@@ -28,10 +29,7 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
   if (existing) {
-    return new Response(
-      JSON.stringify({ error: "ALREADY_EXISTS", sessionId: existing.id }),
-      { status: 409 }
-    );
+    return apiError('ALREADY_EXISTS', 'Ya existe sesión activa', { sessionId: existing.id }, 409);
   }
 
   // 3. Leer query param para modo
@@ -44,21 +42,21 @@ export async function POST(req: NextRequest) {
     select: { id: true, prizeId: true, prize: { select: { label: true, color: true } } },
   });
   if (!tokensRaw.length) {
-    return new Response(JSON.stringify({ error: "NO_TOKENS" }), { status: 400 });
+    return apiError('NO_TOKENS', 'No hay tokens disponibles', undefined, 400);
   }
 
   // BY_TOKEN si solicitado y total tokens <= 12
   if (requestedMode === "token") {
     if (tokensRaw.length > 12) {
-      return new Response(JSON.stringify({ error: "NOT_ELIGIBLE", reason: "TOO_MANY_TOKENS", totalTokens: tokensRaw.length }), { status: 400 });
+      return apiError('NOT_ELIGIBLE', 'Demasiados tokens para modo BY_TOKEN', { reason: 'TOO_MANY_TOKENS', totalTokens: tokensRaw.length }, 400);
     }
     // Necesitamos >=2 tokens distintos en total (ya garantizado length>0, verificamos >1)
     if (tokensRaw.length < 2) {
-      return new Response(JSON.stringify({ error: "NOT_ELIGIBLE", reason: "NEED_AT_LEAST_2_TOKENS" }), { status: 400 });
+      return apiError('NOT_ELIGIBLE', 'Se requieren al menos 2 tokens', { reason: 'NEED_AT_LEAST_2_TOKENS' }, 400);
     }
     const prizesDistinct = new Set(tokensRaw.map(t => t.prizeId));
     if (prizesDistinct.size < 1) {
-      return new Response(JSON.stringify({ error: "NOT_ELIGIBLE", reason: "NO_PRIZES" }), { status: 400 });
+      return apiError('NOT_ELIGIBLE', 'No hay premios elegibles', { reason: 'NO_PRIZES' }, 400);
     }
     const snapshot = {
       mode: "BY_TOKEN" as const,
@@ -83,10 +81,7 @@ export async function POST(req: NextRequest) {
       totalTokens: tokensRaw.length,
       mode: "BY_TOKEN",
     });
-    return new Response(
-      JSON.stringify({ sessionId: session.id, elements: snapshot.tokens, mode: "BY_TOKEN", maxSpins: tokensRaw.length }),
-      { status: 201 }
-    );
+    return apiOk({ sessionId: session.id, elements: snapshot.tokens, mode: 'BY_TOKEN', maxSpins: tokensRaw.length }, 201);
   }
 
   // Default: BY_PRIZE
@@ -130,7 +125,7 @@ export async function POST(req: NextRequest) {
         { status: 201 }
       );
     }
-    return new Response(JSON.stringify({ error: "NOT_ELIGIBLE", prizes: elements.length }), { status: 400 });
+    return apiError('NOT_ELIGIBLE', 'Número de premios no elegible', { prizes: elements.length }, 400);
   }
   const maxSpins = elements.reduce((a, e) => a + e.count, 0);
   const snapshot = { mode: "BY_PRIZE" as const, prizes: elements, createdAt: new Date().toISOString() };
@@ -145,5 +140,5 @@ export async function POST(req: NextRequest) {
     totalTokens: maxSpins,
     mode: "BY_PRIZE",
   });
-  return new Response(JSON.stringify({ sessionId: session.id, elements, mode: "BY_PRIZE", maxSpins }), { status: 201 });
+  return apiOk({ sessionId: session.id, elements, mode: 'BY_PRIZE', maxSpins }, 201);
 }

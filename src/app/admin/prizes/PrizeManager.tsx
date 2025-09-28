@@ -329,7 +329,7 @@ export default function PrizeManager({
                         <th>Emitidos</th>
                         <th>Revelados</th>
                         <th>Consumidos</th>
-                        <th>Activo</th>
+                        <th>Expirado</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -394,13 +394,10 @@ export default function PrizeManager({
                           </td>
                           <td>
                             <span
-                              className={`badge ${
-                                p.active
-                                  ? "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-800 dark:text-emerald-200"
-                                  : "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-200"
-                              }`}
+                              className={"badge border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-200"}
+                              title={p.active ? "Se marcaba como activo anteriormente" : "Premio inactivo"}
                             >
-                              {p.active ? "Sí" : "No"}
+                              Sí
                             </span>
                           </td>
                           <td className="text-right space-x-2">

@@ -10,6 +10,7 @@ import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/audit';
 import { getPublicBaseUrl } from '@/lib/config';
+import { apiError } from '@/lib/apiError';
 
 // Helper to convert dataURL to Buffer
 function dataUrlToBuffer(dataUrl: string): Buffer {
@@ -22,9 +23,9 @@ export async function GET(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Obtener parámetros de la URL
     const url = new URL(req.url);
@@ -32,11 +33,11 @@ export async function GET(req: Request) {
     const templateId = url.searchParams.get('templateId');
     
     if (!batchId) {
-      return NextResponse.json({ error: 'MISSING_BATCH_ID' }, { status: 400 });
+      return apiError('MISSING_BATCH_ID','Falta batchId',undefined,400);
     }
 
     if (!templateId) {
-      return NextResponse.json({ error: 'MISSING_TEMPLATE_ID' }, { status: 400 });
+      return apiError('MISSING_TEMPLATE_ID','Falta templateId',undefined,400);
     }
 
     // maxTokens: hard cap to avoid OOM (default 2000)
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
     });
 
     if (!tokens || tokens.length === 0) {
-      return NextResponse.json({ error: 'NO_TOKENS_FOUND' }, { status: 404 });
+      return apiError('NO_TOKENS_FOUND','No hay tokens para imprimir',undefined,404);
     }
 
     // Preparar los tokens en el formato esperado
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'TEMPLATE_NOT_FOUND' }, { status: 404 });
+      return apiError('TEMPLATE_NOT_FOUND','Plantilla no encontrada',undefined,404);
     }
 
     // Configurar la ruta de la plantilla y metadatos
@@ -97,7 +98,7 @@ export async function GET(req: Request) {
     }
 
     if (!fs.existsSync(templatePath)) {
-      return NextResponse.json({ error: 'TEMPLATE_FILE_MISSING' }, { status: 500 });
+      return apiError('TEMPLATE_FILE_MISSING','Archivo de plantilla faltante',{ path: templatePath },500);
     }
 
     // Procesar tokens en chunks para mantener el uso de memoria limitado
@@ -201,6 +202,6 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error('print control error', err);
-    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

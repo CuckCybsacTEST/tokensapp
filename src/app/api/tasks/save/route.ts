@@ -4,6 +4,7 @@ import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCook
 import { checkRateLimitCustom } from "@/lib/rateLimit";
 import { audit } from "@/lib/audit";
 import { emitTaskUpdated } from '@/server/events';
+import { apiError, apiOk } from '@/lib/apiError';
 
 function isValidDay(day: string | null): day is string {
   if (!day) return false;
@@ -23,40 +24,40 @@ export async function POST(req: NextRequest) {
   const raw = getUserCookie(req as unknown as Request);
   const session = await verifyUserCookie(raw);
   if (!session) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+    return apiError('UNAUTHORIZED', 'No autenticado', undefined, 401);
   }
 
   // Gentle rate limit: 10 req / 10s per user
   const rl = checkRateLimitCustom(`tasks_save:${session.userId}`, 10, 10_000);
   if (!rl.ok) {
-    return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429, headers: { "content-type": "application/json", "retry-after": String(rl.retryAfterSeconds) } });
+    return apiError('RATE_LIMIT', 'Rate limited', { retryAfterSeconds: rl.retryAfterSeconds }, 429, { 'retry-after': String(rl.retryAfterSeconds) });
   }
 
   let body: SaveBody;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: "invalid_json" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('BAD_REQUEST', 'JSON inválido', { reason: 'INVALID_JSON' }, 400);
   }
   const day = body.day ?? null;
   const items = Array.isArray(body.items) ? body.items : [];
   if (!isValidDay(day)) {
-    return new Response(JSON.stringify({ error: "invalid_day" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('INVALID_DAY', 'Día inválido', { day }, 400);
   }
   if (items.length > 100) {
-    return new Response(JSON.stringify({ error: "invalid_items_length" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('INVALID_ITEMS_LENGTH', 'Exceso de items', { length: items.length }, 400);
   }
 
   // Resolve personId (Prisma)
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { id: true, personId: true } });
   if (!user || !user.personId) {
-    return new Response(JSON.stringify({ error: "user_without_person" }), { status: 400, headers: { "content-type": "application/json" } });
+    return apiError('USER_WITHOUT_PERSON', 'Usuario sin persona asociada', undefined, 400);
   }
 
   // Validate that tasks exist and are pending (not completed)
   const taskIds = Array.from(new Set(items.map(i => String(i.taskId)).filter(Boolean)));
   if (taskIds.length === 0) {
-    return new Response(JSON.stringify({ ok: true, saved: 0 }), { headers: { "content-type": "application/json" } });
+    return apiOk({ ok: true, saved: 0 });
   }
   // Schema Prisma garantiza columnas; filtrar activas y no completadas
   const hasCompleted = true;
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, saved }), { headers: { "content-type": "application/json" } });
+  return apiOk({ ok: true, saved });
 }
 
 export const dynamic = "force-dynamic";

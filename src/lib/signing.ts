@@ -1,7 +1,46 @@
 import { createHmac } from "crypto";
+// Use require to avoid TS type mismatch issues with Buffer vs ArrayBufferView in some ambient typings.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { timingSafeEqual } = require('crypto') as { timingSafeEqual: (a: Buffer, b: Buffer) => boolean };
 
-// Current active signature version
-export const CURRENT_SIGNATURE_VERSION = 1;
+// Current active signature version (bump when rotating secrets for new tokens)
+export const CURRENT_SIGNATURE_VERSION = Number(process.env.CURRENT_SIGNATURE_VERSION || 1);
+
+// Map multi-version secrets. Supports variables in either form:
+//   TOKEN_SECRET_V1, TOKEN_SECRET_V2 ... (preferred) OR TOKEN_SECRET_1, TOKEN_SECRET_2
+// Falls back to legacy TOKEN_SECRET if no versioned var is present for CURRENT_SIGNATURE_VERSION.
+// In production you should always provide versioned env vars to enable safe rotation.
+const buildSecretMap = (): Record<number, string> => {
+  const map: Record<number, string> = {};
+  for (let v = 1; v <= 8; v++) { // support up to 8 historical versions without code change
+    const val = process.env[`TOKEN_SECRET_V${v}`] || process.env[`TOKEN_SECRET_${v}`];
+    if (val && val.trim()) map[v] = val.trim();
+  }
+  // Backward compatibility: if no explicit V1 provided but legacy TOKEN_SECRET exists, bind it to version 1
+  if (!map[1] && process.env.TOKEN_SECRET) {
+    map[1] = process.env.TOKEN_SECRET;
+  }
+  return map;
+};
+
+export const SECRET_MAP: Record<number, string> = buildSecretMap();
+
+function getSecretForVersion(version: number): string | null {
+  return SECRET_MAP[version] || null;
+}
+
+// Fail fast (once) if current version secret is missing. We purposely do this at import time to avoid
+// issuing tokens with an undefined secret (security hardening). In test/dev fallback to 'dev_secret'.
+if (process.env.NODE_ENV !== 'test') {
+  const curSecret = getSecretForVersion(CURRENT_SIGNATURE_VERSION) || (process.env.NODE_ENV === 'development' ? 'dev_secret' : null);
+  if (!curSecret) {
+    // eslint-disable-next-line no-console
+    console.error(`[signing] Missing secret for CURRENT_SIGNATURE_VERSION=${CURRENT_SIGNATURE_VERSION}. Define TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION}.`);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Missing signing secret for active signature version');
+    }
+  }
+}
 
 function buildMessage(version: number, tokenId: string, prizeId: string, expiresAt: Date): string {
   // version|token|prize|expUnix
@@ -29,11 +68,16 @@ export function verifyTokenSignature(
 ) {
   const expected = signToken(secret, tokenId, prizeId, expiresAt, version);
   if (expected.length !== signature.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  try {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length) return false; // already checked, defensive
+  return timingSafeEqual(a, b);
+  } catch {
+    let diff = 0; // fallback manual XOR
+    for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+    return diff === 0;
   }
-  return diff === 0;
 }
 
 // --- Person QR helpers ------------------------------------------------------
@@ -69,9 +113,15 @@ export function verifyPersonPayload(
   const msg = buildPersonMessage(version, payload.pid, payload.ts);
   const expected = createHmac("sha256", secret).update(msg).digest("base64url");
   if (expected.length !== payload.sig.length) return { ok: false, code: "INVALID_SIGNATURE" };
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ payload.sig.charCodeAt(i);
-  if (diff !== 0) return { ok: false, code: "INVALID_SIGNATURE" };
+  try {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(payload.sig);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, code: "INVALID_SIGNATURE" } as const;
+  } catch {
+    let diff = 0; // manual fallback
+    for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ payload.sig.charCodeAt(i);
+    if (diff !== 0) return { ok: false, code: "INVALID_SIGNATURE" } as const;
+  }
 
   // Optional time window checks to mitigate replay
   if (opts?.maxSkewSec) {

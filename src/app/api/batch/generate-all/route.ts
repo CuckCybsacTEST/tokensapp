@@ -10,6 +10,7 @@ import {
 import { logEvent } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { apiError } from '@/lib/apiError';
 
 const ALLOWED_EXPIRATION = new Set([1, 3, 5, 7, 15, 30]);
 import { generateQrPngDataUrl } from "@/lib/qr";
@@ -63,22 +64,18 @@ export async function POST(req: Request) {
       reason: "RATE_LIMIT",
       retryAfterSeconds: rl.retryAfterSeconds,
     });
-    return new Response(
-      JSON.stringify({ error: "RATE_LIMIT", retryAfterSeconds: rl.retryAfterSeconds }),
-      { status: 429, headers: { "Retry-After": rl.retryAfterSeconds.toString() } }
-    );
+    return apiError('RATE_LIMIT', 'Rate limit exceeded', { retryAfterSeconds: rl.retryAfterSeconds }, 429, { 'Retry-After': rl.retryAfterSeconds.toString() });
   }
   const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     const flat = parsed.error.flatten();
-    // Preserve legacy-specific error mapping for expirationDays
     if ((flat.fieldErrors as any)?.expirationDays) {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "INVALID_EXPIRATION" });
-      return new Response(JSON.stringify({ error: "INVALID_EXPIRATION" }), { status: 400 });
+      return apiError('INVALID_EXPIRATION', 'Expiración inválida', undefined, 400);
     }
     await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "BAD_REQUEST" });
-    return new Response(JSON.stringify({ error: "BAD_REQUEST", details: flat }), { status: 400 });
+    return apiError('BAD_REQUEST', 'Solicitud inválida', { details: flat }, 400);
   }
 
   // Normalize inputs for downstream logic, keeping legacy behavior intact.
@@ -106,7 +103,7 @@ export async function POST(req: Request) {
   const dt = DateTime.fromISO(parsed.data.singleDayDate, { zone: "America/Lima" });
       if (!dt.isValid) {
         await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "BAD_REQUEST" });
-        return new Response(JSON.stringify({ error: "BAD_REQUEST", details: "INVALID_DATE" }), { status: 400 });
+        return apiError('BAD_REQUEST', 'Fecha inválida', { details: 'INVALID_DATE' }, 400);
       }
       singleDayStart = dt.startOf("day");
       singleDayEnd = dt.endOf("day");
@@ -129,7 +126,7 @@ export async function POST(req: Request) {
   });
   if (!prizes.length) {
     await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "NO_ACTIVE_PRIZES" });
-    return new Response(JSON.stringify({ error: "NO_ACTIVE_PRIZES" }), { status: 400 });
+    return apiError('NO_ACTIVE_PRIZES', 'No hay premios activos', undefined, 400);
   }
 
   // Validate each prize stock (integer > 0); if any invalid, return immediately
@@ -139,9 +136,7 @@ export async function POST(req: Request) {
         reason: "INVALID_STOCK",
         prizeId: p.id,
       });
-      return new Response(JSON.stringify({ error: "INVALID_STOCK", prizeId: p.id }), {
-        status: 400,
-      });
+      return apiError('INVALID_STOCK', 'Stock inválido', { prizeId: p.id }, 400);
     }
   }
 
@@ -161,10 +156,7 @@ export async function POST(req: Request) {
       requested: totalTokensRequested,
       max,
     });
-    return new Response(
-      JSON.stringify({ error: "LIMIT_EXCEEDED", requested: totalTokensRequested, max }),
-      { status: 400 }
-    );
+    return apiError('LIMIT_EXCEEDED', 'Límite excedido', { requested: totalTokensRequested, max }, 400);
   }
 
   let batch, tokens, meta, prizeEmittedTotals;
@@ -182,32 +174,30 @@ export async function POST(req: Request) {
   } catch (e: any) {
     if (e.message === "NO_PRIZES") {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "NO_PRIZES" });
-      return new Response(JSON.stringify({ error: "NO_PRIZES" }), { status: 400 });
+      return apiError('NO_PRIZES', 'Sin premios', undefined, 400);
     }
     if (e.message?.startsWith("INVALID_EXPIRATION_DAYS:")) {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "INVALID_EXPIRATION" });
-      return new Response(JSON.stringify({ error: "INVALID_EXPIRATION" }), { status: 400 });
+      return apiError('INVALID_EXPIRATION', 'Expiración inválida', undefined, 400);
     }
     if (e instanceof InsufficientStockError || e.message === "INSUFFICIENT_STOCK") {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "INVALID_STOCK" });
-      return new Response(JSON.stringify({ error: "INVALID_STOCK" }), { status: 400 });
+      return apiError('INVALID_STOCK', 'Stock inválido', undefined, 400);
     }
     if (e instanceof RaceConditionError || e.message === "RACE_CONDITION") {
       await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", {
         reason: "RACE_CONDITION",
         prizeId: e.prizeId,
       });
-      // Segundo log explícito con solo la razón, si se requiere auditoría mínima.
       await logEvent("BATCH_AUTO_FAIL", undefined, { reason: "RACE_CONDITION" });
-      return new Response(JSON.stringify({ code: "RACE_CONDITION" }), { status: 409 });
+      return apiError('RACE_CONDITION', 'Condición de carrera', { prizeId: e.prizeId }, 409);
     }
-    // eslint-disable-next-line no-console
     console.error("[AUTO_BATCH_ERROR]", e);
     await logEvent("BATCH_AUTO_ERROR", "Fallo batch auto", { message: e?.message });
     await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "AUTO_BATCH_FAILED" });
-    const payload: any = { error: "AUTO_BATCH_FAILED" };
-    if (process.env.NODE_ENV !== "production") payload.debug = e?.message;
-    return new Response(JSON.stringify(payload), { status: 500 });
+    const details: any = {};
+    if (process.env.NODE_ENV !== 'production') details.debug = e?.message;
+    return apiError('AUTO_BATCH_FAILED', 'Fallo al generar lote automático', details, 500);
   }
 
   // Post-process for single-day mode: adjust expiresAt to endOfDay and toggle disabled for future dates.

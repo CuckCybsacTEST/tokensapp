@@ -6,7 +6,7 @@ import { computeTokensEnabled } from "@/lib/tokensMode";
 import { logEvent } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { verifyTokenSignature } from "@/lib/signing";
+import { verifyTokenSignature, SECRET_MAP } from "@/lib/signing";
 
 export async function POST(_req: Request, { params }: { params: { tokenId: string } }) {
   const { tokenId } = params;
@@ -38,7 +38,7 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
   // Transacción: validación + update condicional para evitar doble redención
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const token = await tx.token.findUnique({ where: { id: tokenId }, include: { prize: true } });
+  const token = await tx.token.findUnique({ where: { id: tokenId }, include: { prize: true } });
       if (!token) {
         await logEvent("REDEEM_NOT_FOUND", "Token no encontrado", { tokenId }, tx as any);
         return {
@@ -69,14 +69,24 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
       }
 
       // Verificación de firma
-      const secret = process.env.TOKEN_SECRET || "dev_secret";
+  const version = (token as any).signatureVersion || 1;
+      const secret = SECRET_MAP[version];
+      if (!secret) {
+        await logEvent(
+          'REDEEM_UNKNOWN_SIG_VERSION',
+          'Versión firma desconocida',
+          { tokenId, prizeId: token.prizeId, version },
+          tx as any
+        );
+        return { status: 409, body: { code: 'UNKNOWN_SIGNATURE_VERSION', message: 'Versión de firma no soportada' } } as const;
+      }
       const sigOk = verifyTokenSignature(
         secret,
         token.id,
         token.prizeId,
         token.expiresAt,
         token.signature,
-        (token as any).signatureVersion || 1
+        version
       );
       if (!sigOk) {
         await tx.token.update({ where: { id: token.id }, data: { disabled: true } });
@@ -106,11 +116,11 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
       }
       return {
         status: 200,
-        body: { ok: true, prize: token.prize, redeemedAt: now },
+        body: { ok: true, prize: token.prize, redeemedAt: now, signatureVersion: version },
       } as const;
     });
     if (result.status === 200) {
-      await logEvent("REDEEM_OK", "Token redimido", { tokenId });
+      await logEvent("REDEEM_OK", "Token redimido", { tokenId, signatureVersion: (result as any)?.body?.signatureVersion });
     }
     if (result.status === 200) return apiOk(result.body, 200);
     return apiError(result.body.code, result.body.message, { tokenId }, result.status);

@@ -1,70 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import { TokensToggle } from "@/app/admin/TokensToggle";
-import MetricsDashboard from "../MetricsDashboard";
-import { Suspense } from "react";
-import { cookies } from "next/headers";
-import { verifySessionCookie } from "@/lib/auth";
+import DailyTokenMetricsClient from "../DailyTokenMetricsClient";
 
 export const dynamic = "force-dynamic";
-
-async function getMetrics() {
-  const now = new Date();
-  const [totalTokens, totalRedeemed, totalExpired, totalRevealed, config, prizes] = await Promise.all([
-    prisma.token.count(),
-    prisma.token.count({ where: { redeemedAt: { not: null } } }),
-    prisma.token.count({ where: { expiresAt: { lt: now } } }),
-    prisma.token.count({ where: { revealedAt: { not: null } } }),
-    prisma.systemConfig.findUnique({ where: { id: 1 } }),
-    prisma.prize.findMany({ where: { active: true } }),
-  ]);
-
-  const startOfWeek = new Date();
-  const dayOfWeek = startOfWeek.getDay() || 7;
-  startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek + 1);
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date();
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  const [periodTokens, periodRedeemed, periodRouletteSpins, periodRouletteSessions] = await Promise.all([
-    prisma.token.count({ where: { createdAt: { gte: startOfWeek, lte: endOfWeek } } }),
-    prisma.token.count({ where: { redeemedAt: { gte: startOfWeek, lte: endOfWeek } } }),
-    // Contar giros por tokens revelados (cubre ruleta admin two-phase y flujo marketing)
-    prisma.token.count({ where: { revealedAt: { gte: startOfWeek, lte: endOfWeek } } }),
-    (prisma as any).rouletteSession.count({ where: { createdAt: { gte: startOfWeek, lte: endOfWeek } } }),
-  ]);
-
-  const activeTokens = totalTokens - totalRedeemed - totalExpired;
-  const pending = prizes.reduce((acc: number, p: any) => (typeof p.stock === "number" && p.stock > 0 ? acc + p.stock : acc), 0);
-  const emittedAggregate = prizes.reduce((acc: number, p: any) => acc + (p.emittedTotal || 0), 0);
-
-  return {
-    total: totalTokens,
-    redeemed: totalRedeemed,
-    expired: totalExpired,
-    revealed: totalRevealed,
-    active: activeTokens < 0 ? 0 : activeTokens,
-    pending,
-    emittedAggregate,
-  tokensEnabled: config?.tokensEnabled ?? false,
-    period: {
-      name: "this_week",
-      startDate: startOfWeek.toISOString(),
-      endDate: endOfWeek.toISOString(),
-      tokens: periodTokens,
-      redeemed: periodRedeemed,
-      rouletteSessions: periodRouletteSessions,
-      rouletteSpins: periodRouletteSpins,
-    },
-  };
-}
-
+// Página simplificada: toda la carga de métricas se hace vía componentes cliente (Toggle + DailyTokenMetricsClient).
+// Eliminamos getMetrics() que recargaba todos los tokens/batches duplicando trabajo del endpoint diario.
 export default async function TokensPanelPage() {
-  const m = await getMetrics();
-  // Determinar permisos de toggle: ADMIN puede, STAFF por defecto no
-  const cookie = cookies().get("admin_session")?.value;
-  const session = await verifySessionCookie(cookie);
-  const canToggle = session?.role === 'ADMIN';
   const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
   return (
     <div className="space-y-8">
@@ -79,62 +19,9 @@ export default async function TokensPanelPage() {
           <h2 className="text-xl font-bold">Control del Sistema</h2>
         </div>
         <div className="text-sm opacity-70 mb-2">Zona horaria programada: {tz} (activación 18:00, desactivación 00:00)</div>
-        <TokensToggle initialEnabled={m.tokensEnabled} canToggle={canToggle} />
+        <TokensToggle />
       </div>
-
-      {session?.role === 'STAFF' && (
-        <div className="grid md:grid-cols-3 gap-6">
-          <a href="/admin/users" className="group block bg-white dark:bg-slate-800 p-6 rounded-xl shadow border border-slate-100 dark:border-slate-700 hover:border-blue-400 hover:shadow-blue-200/40 transition">
-            <div className="flex items-center mb-4">
-              <div className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold">Usuarios</h3>
-            </div>
-            <p className="text-sm opacity-70 leading-relaxed mb-3">Ver listado de colaboradores (sólo lectura). Roles, áreas, nombres y credenciales básicas.</p>
-            <span className="inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline">
-              Abrir listado
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </span>
-          </a>
-          <a href="/admin/attendance" className="group block bg-white dark:bg-slate-800 p-6 rounded-xl shadow border border-slate-100 dark:border-slate-700 hover:border-emerald-400 hover:shadow-emerald-200/40 transition">
-            <div className="flex items-center mb-4">
-              <div className="mr-3 p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold">Asistencia</h3>
-            </div>
-            <p className="text-sm opacity-70 leading-relaxed mb-3">Tabla de asistencia (presente / in-out) y métricas básicas de jornada.</p>
-            <span className="inline-flex items-center text-sm font-medium text-emerald-600 dark:text-emerald-400 group-hover:underline">
-              Ver asistencia
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </span>
-          </a>
-        </div>
-      )}
-
-      <Suspense fallback={
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg animate-pulse h-80 border border-slate-100 dark:border-slate-700">
-          <div className="flex items-center mb-8">
-            <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-lg mr-4"></div>
-            <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
-          </div>
-          <div className="space-y-4">
-            <div className="h-24 bg-slate-100 dark:bg-slate-700/50 rounded-lg"></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="h-32 bg-slate-100 dark:bg-slate-700/50 rounded-lg"></div>
-              <div className="h-32 bg-slate-100 dark:bg-slate-700/50 rounded-lg"></div>
-              <div className="h-32 bg-slate-100 dark:bg-slate-700/50 rounded-lg"></div>
-            </div>
-          </div>
-        </div>
-      }>
-        <MetricsDashboard initialMetrics={m} />
-      </Suspense>
+      <DailyTokenMetricsClient />
     </div>
   );
 }

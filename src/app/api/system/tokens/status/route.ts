@@ -4,6 +4,7 @@ import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from '@/lib/tokensMode';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { apiError } from '@/lib/apiError';
 // Prefer Lima timezone by default; allow override via env
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';
 
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
       const uSession = await verifyUserSessionCookie(uRaw);
       if (!(uSession && uSession.role === 'STAFF')) {
         const status = ok.error === 'UNAUTHORIZED' ? 401 : 403;
-        return NextResponse.json({ error: ok.error || 'FORBIDDEN' }, { status });
+        return apiError(ok.error || 'FORBIDDEN', ok.error || 'FORBIDDEN', undefined, status);
       }
     }
 
@@ -43,12 +44,12 @@ export async function GET(req: Request) {
     const deactivationTime = computed.nextToggleIso || now.toISOString();
 
     const res = NextResponse.json({
-  tokensEnabled: Boolean(cfg.tokensEnabled), // actual DB state (may be manual override)
-  scheduledEnabled,
+      ok: true,
+      tokensEnabled: Boolean(cfg.tokensEnabled),
+      scheduledEnabled,
       serverTimeIso: now.toISOString(),
       timezone: TOKENS_TZ,
       nextSchedule: computed.nextToggleIso || now.toISOString(),
-      // Información adicional para temporizadores en TZ fija
       activationTime: String(activationTime),
       deactivationTime: String(deactivationTime),
       systemTime: now.toISOString(),
@@ -60,6 +61,6 @@ export async function GET(req: Request) {
     return res;
   } catch (e: any) {
     console.error('status endpoint error', e);
-    return NextResponse.json({ error: 'internal_server_error', message: String(e?.message || e) }, { status: 500 });
+    return apiError('INTERNAL', 'Error interno', { message: String(e?.message || e) }, 500);
   }
 }

@@ -18,6 +18,7 @@ type TableRow = {
   totalCount: number;
   completionPct: number;
   status: string;
+  incomplete?: boolean;
 };
 
 type TableResp = { ok: boolean; rows: TableRow[]; page: number; pageSize: number; total: number; totalPages: number };
@@ -134,6 +135,85 @@ export default function AdminAttendancePage() {
     }
   };
 
+  // ================== Métricas derivadas (cliente) ==================
+  const metrics = useMemo(() => {
+    const rows = table?.rows || [];
+    if (!rows.length) return null;
+    // Convertir a minutos del día en zona horaria Lima para reflejar horario local real
+    const tz = 'America/Lima';
+    const toMinutesOfDayLocal = (iso: string): number | null => {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      try {
+        const parts = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).formatToParts(d);
+        const hh = Number(parts.find(p=>p.type==='hour')?.value || '0');
+        const mm = Number(parts.find(p=>p.type==='minute')?.value || '0');
+        return hh*60 + mm;
+      } catch {
+        // Fallback simple estimando offset local del runtime (menos preciso si server en otra TZ)
+        return d.getHours()*60 + d.getMinutes();
+      }
+    };
+    let sumFirstIn = 0, countFirstIn = 0;
+    let sumLastOut = 0, countLastOut = 0;
+    let sumDuration = 0, countDuration = 0;
+    let incompleteCount = 0;
+    let totalEntradas = 0; // número de jornadas con al menos una entrada
+    let totalSalidas = 0;  // número de jornadas con al menos una salida
+    for (const r of rows) {
+      if (r.firstIn) {
+        const m = toMinutesOfDayLocal(r.firstIn);
+        if (m != null) { sumFirstIn += m; countFirstIn++; }
+        totalEntradas++;
+      }
+      if (r.lastOut) {
+        const m2 = toMinutesOfDayLocal(r.lastOut);
+        if (m2 != null) { sumLastOut += m2; countLastOut++; }
+        totalSalidas++;
+      }
+      if (typeof r.durationMin === 'number') { sumDuration += r.durationMin; countDuration++; }
+      if (r.incomplete) incompleteCount++;
+    }
+    const avgArrMin = countFirstIn ? sumFirstIn / countFirstIn : null;
+    const avgOutMin = countLastOut ? sumLastOut / countLastOut : null;
+    const avgDur = countDuration ? sumDuration / countDuration : null;
+    const formatAvgClock = (minutesOfDay: number | null) => {
+      if (minutesOfDay == null) return '-';
+      // Redondeamos a minuto más cercano y manejamos rollover (mm == 60)
+      let total = Math.round(minutesOfDay);
+      let hh = Math.floor(total / 60);
+      let mm = total - hh * 60;
+      if (mm === 60) { hh += 1; mm = 0; }
+      if (hh >= 24) hh = hh % 24; // seguridad por si promedio cruza medianoche
+      return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    };
+    return {
+      totalRows: rows.length,
+      incompleteCount,
+      incompletePct: rows.length ? (100*incompleteCount)/rows.length : 0,
+      avgFirstIn: formatAvgClock(avgArrMin),
+      avgLastOut: formatAvgClock(avgOutMin),
+      avgDurationMin: avgDur,
+      totalEntradas,
+      totalSalidas,
+    };
+  }, [table]);
+
+  const DurationCard = ({ label, value }: { label: string; value: number | null | undefined }) => (
+    <div className="p-4 rounded-lg border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 flex flex-col gap-1">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-xl font-bold text-slate-800 dark:text-slate-100">{value != null ? formatMinutes(value) : '—'}</div>
+    </div>
+  );
+  const SimpleCard = ({ label, value, suffix, color }: { label: string; value: string | number; suffix?: string; color?: string }) => (
+    <div className="p-4 rounded-lg border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 flex flex-col gap-1">
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={`text-xl font-bold ${color || 'text-slate-900 dark:text-slate-100'}`}>{value}{suffix||''}</div>
+    </div>
+  );
+
+  // ================== /Métricas derivadas ==================
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -195,6 +275,27 @@ export default function AdminAttendancePage() {
         <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200 dark:border-rose-900">Error: {error}</div>
       )}
 
+      {/* MÉTRICAS (derivadas en cliente) */}
+      {metrics && !loading && !error && (
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">Métricas del período (derivadas)</h2>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">Basado en {metrics.totalRows} fila{metrics.totalRows===1?'':'s'} visibles en la tabla</div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
+            <SimpleCard label="Registros" value={metrics.totalRows} />
+            <SimpleCard label="Incompletas" value={metrics.incompleteCount} />
+            <SimpleCard label="% Incompletas" value={metrics.incompletePct.toFixed(1)} suffix="%" color="text-rose-600 dark:text-rose-400" />
+            <SimpleCard label="Entradas" value={metrics.totalEntradas} />
+            <SimpleCard label="Salidas" value={metrics.totalSalidas} />
+            <SimpleCard label="Prom. Llegada" value={metrics.avgFirstIn} />
+            <SimpleCard label="Prom. Salida" value={metrics.avgLastOut} />
+            <DurationCard label="Prom. Duración" value={metrics.avgDurationMin ?? null} />
+          </div>
+          {/* Gráficos eliminados (distribución de llegadas / incompletas por área) para simplificar y corregir foco en promedios */}
+        </div>
+      )}
+
     <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="p-4 flex items-center justify-between">
               <div className="text-sm font-semibold">Resumen por persona / día</div>
@@ -218,25 +319,31 @@ export default function AdminAttendancePage() {
                     <th className="py-2 px-3">IN</th>
                     <th className="py-2 px-3">OUT</th>
                     <th className="py-2 px-3">Duración</th>
+                    <th className="py-2 px-3">Estado</th>
                     <th className="py-2 px-3">Tareas</th>
                     <th className="py-2 px-3">% Cumpl.</th>
-                    <th className="py-2 px-3">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(table?.rows || []).map((r, i) => (
-                    <tr key={`${r.day}-${r.personCode}-${i}`} className="border-b border-slate-100 dark:border-slate-800">
+                    <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
                       <td className="py-2 px-3 whitespace-nowrap">{r.day}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.area || '-'}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.firstIn)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.lastOut)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        {r.incomplete ? (
+                          <span title="Jornada no completada (sin salida registrada)" className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+                            <span className="font-bold">!</span> Falta salida
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
+                      </td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{pct(r.completionPct)}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${r.status === 'Completa' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
-                      </td>
                     </tr>
                   ))}
                   {table && table.rows.length === 0 && (

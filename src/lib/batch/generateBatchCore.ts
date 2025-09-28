@@ -98,6 +98,38 @@ function buildPrizeTokens(args: BuildPrizeTokensArgs) {
   return { rows, tokens };
 }
 
+// --- functionalDate derivation (duplicated logic similar to restore & backfill) ---
+function limaMidnightUtc(y: number, m: number, d: number) {
+  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0, 0));
+}
+const datePatterns: RegExp[] = [
+  /(\d{2})[.\/-](\d{2})[.\/-](\d{4})/,
+  /(\d{2})(\d{2})(\d{4})/,
+  /(\d{2})[.\/-](\d{2})[.\/-](\d{2})/,
+];
+function deriveFunctionalDate(description: string | null | undefined, createdAt: Date) {
+  let y: number | undefined, m: number | undefined, d: number | undefined;
+  if (description) {
+    for (const rg of datePatterns) {
+      const mt = description.match(rg);
+      if (mt) {
+        if (mt[0].length === 8 && /\d{8}/.test(mt[0])) {
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = parseInt(mt[3], 10);
+        } else if (mt[3] && mt[3].length === 2) {
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = 2000 + parseInt(mt[3], 10);
+        } else {
+          d = parseInt(mt[1], 10); m = parseInt(mt[2], 10); y = parseInt(mt[3], 10);
+        }
+        break;
+      }
+    }
+  }
+  if (y && m && d) return limaMidnightUtc(y, m, d);
+  const createdLocal = new Date(createdAt.getTime() - 5 * 3600 * 1000);
+  y = createdLocal.getUTCFullYear(); m = createdLocal.getUTCMonth() + 1; d = createdLocal.getUTCDate();
+  return limaMidnightUtc(y, m, d);
+}
+
 /**
  * Core batch generation logic. Performs validation, stock decrement, batch + token creation.
  * Leaves side-effects like logging & ZIP/manifest assembly to the caller.
@@ -127,6 +159,14 @@ export async function generateBatchCore(
   try {
     await prisma.$transaction(async (tx) => {
       const b = await tx.batch.create({ data: { description: options.description } });
+      // Derivar functionalDate inmediato para que métricas diarias lo vean (evita fallback createdAt)
+      try {
+        const fDate = deriveFunctionalDate(options.description, b.createdAt);
+        const anyTx: any = tx;
+        await anyTx.batch.update({ where: { id: b.id }, data: { functionalDate: fDate } });
+      } catch (e) {
+        // swallow derivation errors, fallback metrics may still work
+      }
       batchRecord = { id: b.id, createdAt: b.createdAt, description: b.description };
 
       // Postgres baseline includes signatureVersion column; avoid PRAGMA during tx

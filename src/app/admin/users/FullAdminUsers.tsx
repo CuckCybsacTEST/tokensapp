@@ -21,6 +21,8 @@ export default function FullAdminUsers() {
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [otp, setOtp] = useState<Record<string, { code: string; expiresAt: string; generating?: boolean }>>({});
   const [nameEdit, setNameEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
+  const [areaEdit, setAreaEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
+  const [waEdit, setWaEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
 
   async function loadUsers() {
     try {
@@ -272,7 +274,54 @@ export default function FullAdminUsers() {
                     )}
                   </td>
                   <td className="py-2 pr-4">{u.dni || '-'}</td>
-                  <td className="py-2 pr-4">{u.area || '-'}</td>
+                  <td className="py-2 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span>{u.area || '-'}</span>
+                      <button
+                        className="text-[11px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600"
+                        onClick={() => setAreaEdit(prev => ({ ...prev, [u.id]: { open: !prev[u.id]?.open, value: prev[u.id]?.value ?? (u.area || ALLOWED_AREAS[0]) } }))}
+                      >Editar</button>
+                    </div>
+                    {areaEdit[u.id]?.open && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <select
+                          value={areaEdit[u.id]?.value || ''}
+                          onChange={e=> setAreaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value } }))}
+                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs"
+                        >
+                          {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"
+                          disabled={!areaEdit[u.id]?.value || areaEdit[u.id]?.saving}
+                          onClick={async () => {
+                            try {
+                              setAreaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: true } }));
+                              const res = await fetch(`/api/admin/users/${encodeURIComponent(u.id)}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ area: areaEdit[u.id]?.value })
+                              });
+                              const j = await res.json().catch(()=>({}));
+                              if (res.ok && j?.ok) {
+                                setUsers(prev => prev.map(x => x.id === u.id ? { ...x, area: areaEdit[u.id]?.value } : x));
+                                setMsg('Área actualizada'); setErr(null);
+                                setAreaEdit(prev => ({ ...prev, [u.id]: { open: false, value: '', saving: false } }));
+                              } else {
+                                const back = j?.code || j?.message || res.status;
+                                setErr(`Error al actualizar área: ${back}`);
+                                setAreaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                              }
+                            } catch (e: any) {
+                              setErr(`Error de red: ${String(e?.message || e)}`);
+                              setAreaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                            }
+                          }}
+                        >{areaEdit[u.id]?.saving ? 'Guardando…' : 'Guardar'}</button>
+                        <button className="text-xs px-2 py-1 rounded bg-slate-600" onClick={() => setAreaEdit(prev => ({ ...prev, [u.id]: { open: false, value: '' } }))}>Cancelar</button>
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">{u.username}</td>
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-2">
@@ -303,7 +352,53 @@ export default function FullAdminUsers() {
                       >Cambiar</button>
                     </div>
                   </td>
-                  <td className="py-2 pr-4">{u.whatsapp || '-'}</td>
+                  <td className="py-2 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span>{u.whatsapp || '-'}</span>
+                      <button
+                        className="text-[11px] px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600"
+                        onClick={() => setWaEdit(prev => ({ ...prev, [u.id]: { open: !prev[u.id]?.open, value: prev[u.id]?.value ?? (u.whatsapp || '') } }))}
+                      >Editar</button>
+                    </div>
+                    {waEdit[u.id]?.open && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={waEdit[u.id]?.value || ''}
+                          onChange={e=> setWaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value.replace(/[^0-9+]/g,'') } }))}
+                          placeholder="WhatsApp"
+                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs w-[140px]"
+                        />
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"
+                          disabled={!waEdit[u.id]?.value || (waEdit[u.id]?.value||'').replace(/\D+/g,'').length < 8 || waEdit[u.id]?.saving}
+                          onClick={async () => {
+                            try {
+                              setWaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: true } }));
+                              const res = await fetch(`/api/admin/users/${encodeURIComponent(u.id)}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ whatsapp: waEdit[u.id]?.value })
+                              });
+                              const j = await res.json().catch(()=>({}));
+                              if (res.ok && j?.ok) {
+                                setUsers(prev => prev.map(x => x.id === u.id ? { ...x, whatsapp: waEdit[u.id]?.value.replace(/\D+/g,'') } : x));
+                                setMsg('WhatsApp actualizado'); setErr(null);
+                                setWaEdit(prev => ({ ...prev, [u.id]: { open: false, value: '', saving: false } }));
+                              } else {
+                                const back = j?.code || j?.message || res.status;
+                                setErr(`Error al actualizar WhatsApp: ${back}`);
+                                setWaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                              }
+                            } catch (e: any) {
+                              setErr(`Error de red: ${String(e?.message || e)}`);
+                              setWaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], saving: false } }));
+                            }
+                          }}
+                        >{waEdit[u.id]?.saving ? 'Guardando…' : 'Guardar'}</button>
+                        <button className="text-xs px-2 py-1 rounded bg-slate-600" onClick={() => setWaEdit(prev => ({ ...prev, [u.id]: { open: false, value: '' } }))}>Cancelar</button>
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">{u.birthday || '-'}</td>
                   <td className="py-2 pr-4">
                     <div className="flex flex-col gap-2">

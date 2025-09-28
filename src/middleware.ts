@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { edgeApiError } from '@/lib/edgeApiError';
 
 import { getSessionCookieFromRequest, verifySessionCookieEdge as verifySessionCookie, requireRoleEdge } from "@/lib/auth-edge";
 import { getUserSessionCookieFromRequest as getUserCookieEdge, verifyUserSessionCookieEdge as verifyUserCookieEdge } from "@/lib/auth-user-edge";
@@ -87,10 +88,7 @@ export async function middleware(req: NextRequest) {
         loginUrl.searchParams.set('next', pathname);
         return NextResponse.redirect(loginUrl);
       }
-      return new NextResponse(JSON.stringify({ error: 'UNAUTHORIZED' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return edgeApiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     }
   }
   const needsAuth =
@@ -120,10 +118,7 @@ export async function middleware(req: NextRequest) {
         loginUrl.searchParams.set('next', pathname);
         return NextResponse.redirect(loginUrl);
       }
-      return new NextResponse(JSON.stringify({ error: 'UNAUTHORIZED' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return edgeApiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     }
 
     // Role-based authorization
@@ -167,10 +162,7 @@ export async function middleware(req: NextRequest) {
       if (pathname === '/api/system/tokens/delete-scheduled') {
         const r = requireRoleEdge(session, ['ADMIN']);
         if (!r.ok) {
-          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
         }
         return NextResponse.next();
       }
@@ -178,20 +170,14 @@ export async function middleware(req: NextRequest) {
       if (pathname === '/api/system/tokens/purge-batches') {
         const r = requireRoleEdge(session, ['ADMIN']);
         if (!r.ok) {
-          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
         }
         return NextResponse.next();
       }
       const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
       const userOk = !!uSession && (uSession.role === 'STAFF');
       if (!adminOk && !userOk) {
-        return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
       }
     }
     // 1b) Admin API: require ADMIN or STAFF depending on endpoint; default ADMIN-only for safety, but allow STAFF for subtrees we know safe.
@@ -211,19 +197,13 @@ export async function middleware(req: NextRequest) {
         if (uSession2 && uSession2.role === 'STAFF') {
           // allow
         } else {
-          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
         }
       } else {
         const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
         const r = requireRoleEdge(session, roles as any);
         if (!r.ok) {
-          return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
         }
       }
     }
@@ -241,10 +221,7 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith('/api/scanner/metrics') || pathname.startsWith('/api/scanner/recent') || pathname.startsWith('/api/scanner/events')) {
       const r = requireRoleEdge(session, ['ADMIN']);
       if (!r.ok) {
-        return new NextResponse(JSON.stringify({ error: 'FORBIDDEN' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
       }
     }
   }

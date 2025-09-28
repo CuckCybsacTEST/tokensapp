@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getPublicBaseUrl } from "@/lib/config";
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@/lib/auth";
 import { Readable } from "stream";
+import { apiError } from '@/lib/apiError';
 
 // GET /api/batch/:id/export
 // Returns a text/csv stream with token details for the batch
@@ -11,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const session = await verifySessionCookie(raw);
   const ok = requireRole(session, ["ADMIN"]);
   if (!ok.ok) {
-    return new Response(JSON.stringify({ error: "FORBIDDEN" }), { status: 403 });
+    return apiError('FORBIDDEN', 'Forbidden', undefined, 403);
   }
   const batchId = params.id;
 
@@ -22,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     },
   });
   if (!batch) {
-    return new Response(JSON.stringify({ error: "NOT_FOUND" }), { status: 404 });
+    return apiError('NOT_FOUND', 'Batch no encontrado', undefined, 404);
   }
 
   const baseUrl = getPublicBaseUrl(req.url);

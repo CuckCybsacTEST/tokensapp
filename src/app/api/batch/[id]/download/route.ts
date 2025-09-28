@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { generateQrPngDataUrl } from "@/lib/qr";
 import { createZipStream } from "@/lib/zip";
 import { getPublicBaseUrl } from "@/lib/config";
+import { apiError } from '@/lib/apiError';
 
 // GET /api/batch/:id/download?qr=1 (qr=1 => incluye PNGs)
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -17,7 +18,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     include: { tokens: { include: { prize: true } } },
   });
   if (!batch) {
-    return new Response(JSON.stringify({ error: "NOT_FOUND" }), { status: 404 });
+    return apiError('NOT_FOUND', 'Batch no encontrado', undefined, 404);
   }
 
   const { archive, stream } = createZipStream();

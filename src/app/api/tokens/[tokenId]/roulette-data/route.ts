@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSystemConfig } from '@/lib/config';
 import { computeTokensEnabled } from '@/lib/tokensMode';
-import { apiError } from '@/lib/apiError';
+import { apiError, apiOk } from '@/lib/apiError';
 import { DateTime } from 'luxon';
 
 export async function GET(
@@ -22,11 +22,7 @@ export async function GET(
   // Option B: Si el interruptor está ON, permitimos aunque estemos fuera del horario (override manual temporal)
   if (!allowedBySwitch) {
     console.log(`[roulette-data] Rechazando token ${tokenId}: system OFF (override not active)`);
-    return NextResponse.json({
-      error: 'Sistema desactivado',
-      message: 'El sistema de tokens está desactivado temporalmente.',
-      status: 'disabled'
-    }, { status: 403 });
+    return apiError('SYSTEM_OFF','El sistema de tokens está desactivado temporalmente.',{ status: 'disabled' },403);
   }
   // allowedBySwitch === true: se permite aunque scheduled.enabled sea false; añadimos log informativo
   if (!allowedBySchedule) {
@@ -40,29 +36,20 @@ export async function GET(
     });
     
     if (!token) {
-      return NextResponse.json({ error: 'Token no encontrado' }, { status: 404 });
+      return apiError('NOT_FOUND','Token no encontrado',undefined,404);
     }
     
     // Verificar si el token ya fue utilizado, expirado o está deshabilitado
     if (token.redeemedAt) {
-      return NextResponse.json({ 
-        token: serializeToken(token),
-        message: 'Token ya canjeado'
-      });
+      return apiOk({ token: serializeToken(token), message: 'Token ya canjeado' });
     }
     
     if (token.disabled || !token.prize.active) {
-      return NextResponse.json({
-        token: serializeToken(token),
-        message: 'Token inactivo'
-      });
+      return apiOk({ token: serializeToken(token), message: 'Token inactivo' });
     }
     
     if (Date.now() > token.expiresAt.getTime()) {
-      return NextResponse.json({
-        token: serializeToken(token),
-        message: 'Token expirado'
-      });
+      return apiOk({ token: serializeToken(token), message: 'Token expirado' });
     }
     
     // Obtener premios disponibles en este batch
@@ -97,21 +84,12 @@ export async function GET(
     
     // Reglas: la ruleta sólo es válida con 2 o más elementos
     if (elements.length < 2) {
-      return NextResponse.json({
-        token: serializeToken(token),
-        elements,
-        status: 'not-enough-elements',
-        message: 'La ruleta requiere al menos 2 premios disponibles.',
-      }, { status: 400 });
+      return apiError('NOT_ENOUGH_ELEMENTS','La ruleta requiere al menos 2 premios disponibles.',{ token: serializeToken(token), elements, status: 'not-enough-elements' },400);
     }
-
-    return NextResponse.json({
-      token: serializeToken(token),
-      elements,
-    });
+    return apiOk({ token: serializeToken(token), elements });
   } catch (error) {
     console.error("API error:", error);
-    return apiError('internal_error', 'Error procesando la solicitud', null, 500);
+    return apiError('INTERNAL_ERROR', 'Error procesando la solicitud', null, 500);
   }
 }
 

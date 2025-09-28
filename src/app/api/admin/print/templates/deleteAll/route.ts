@@ -5,14 +5,15 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
+import { apiError, apiOk } from '@/lib/apiError';
 
 export async function DELETE(request: Request) {
   try {
     const raw = getSessionCookieFromRequest(request);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
     
     // Buscar todas las plantillas
     const templates = await prisma.printTemplate.findMany({
@@ -42,17 +43,13 @@ export async function DELETE(request: Request) {
     await prisma.printTemplate.deleteMany({});
 
     // Responder con cabeceras anti-caché
-    return new NextResponse(JSON.stringify({ success: true, message: "Todas las plantillas eliminadas correctamente", count: templates.length }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
+    return apiOk({ success: true, message: "Todas las plantillas eliminadas correctamente", count: templates.length },200,{
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
   } catch (error: any) {
     console.error("Error al eliminar todas las plantillas:", error);
-    return NextResponse.json({ error: `Error al eliminar plantillas: ${error.message}` }, { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Error al eliminar plantillas', { message: error.message }, 500);
   }
 }

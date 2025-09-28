@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { apiError, apiOk } from '@/lib/apiError';
 
 export async function GET(req: Request) {
   try {
@@ -18,9 +19,9 @@ export async function GET(req: Request) {
     if (!isStaff && userSession?.role === 'STAFF') {
       isStaff = true;
     }
-    if (!isStaff) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-    return NextResponse.json({ canView: true, canToggle: true }, { headers: { 'Cache-Control': 'no-store' } });
+    if (!isStaff) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
+    return apiOk({ canView: true, canToggle: true });
   } catch (e) {
-    return NextResponse.json({ error: 'INTERNAL_ERROR' }, { status: 500 });
+    return apiError('INTERNAL','Error interno', { message: String((e as any)?.message || e) }, 500);
   }
 }

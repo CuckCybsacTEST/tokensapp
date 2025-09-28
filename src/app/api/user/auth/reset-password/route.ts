@@ -4,6 +4,7 @@ import { logEvent } from '@/lib/log';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
 import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,25 +20,25 @@ export async function POST(req: Request) {
     const userRaw = getUserCookie(req);
     const userSession = await verifyUserSessionCookie(userRaw);
     if (adminSession || userSession) {
-      return new Response(JSON.stringify({ error: 'MUST_LOGOUT' }), { status: 400 });
+      return apiError('MUST_LOGOUT', 'Debe cerrar sesión antes de continuar', undefined, 400);
     }
 
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || '0.0.0.0';
     const rl = checkRateLimitCustom(`reset:${ip}`, 5, 10_000);
-    if (!rl.ok) return new Response(JSON.stringify({ error: 'RATE_LIMIT' }), { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } });
+  if (!rl.ok) return apiError('RATE_LIMIT', 'Rate limit', { retryAfterSeconds: rl.retryAfterSeconds }, 429, { 'Retry-After': String(rl.retryAfterSeconds) });
 
     const body = await req.json().catch(() => ({} as any));
     const dni = normDni(body?.dni);
     const code = String(body?.code || '').trim();
     const password = String(body?.password || '');
     if (!dni || !code || password.length < 8) {
-      return new Response(JSON.stringify({ error: 'INVALID_INPUT' }), { status: 400 });
+      return apiError('INVALID_INPUT', 'Entrada inválida', { dni: !!dni, code: !!code, passwordLength: password.length }, 400);
     }
 
     const user = await prisma.user.findFirst({ where: { person: { dni } }, select: { id: true, personId: true } });
     if (!user) {
       await logEvent('USER_RESET_FAIL', 'OTP reset: usuario no encontrado por DNI', { dni });
-      return new Response(JSON.stringify({ error: 'INVALID_DNI_OR_CODE' }), { status: 400 });
+      return apiError('INVALID_DNI_OR_CODE', 'DNI o código inválido', undefined, 400);
     }
 
     const now = new Date();
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     const otp = rows && rows.length ? rows[0] : null;
     if (!otp) {
       await logEvent('USER_RESET_FAIL', 'OTP reset: código inválido o vencido', { userId: user.id });
-      return new Response(JSON.stringify({ error: 'INVALID_DNI_OR_CODE' }), { status: 400 });
+      return apiError('INVALID_DNI_OR_CODE', 'DNI o código inválido', undefined, 400);
     }
 
     // Actualizar password
@@ -63,9 +64,9 @@ export async function POST(req: Request) {
     ]);
 
     await logEvent('USER_RESET_OK', 'OTP reset: contraseña actualizada', { userId: user.id });
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    return apiOk({ ok: true });
   } catch (e: any) {
     await logEvent('USER_RESET_ERROR', 'OTP reset: error', { message: String(e?.message || e) });
-    return new Response(JSON.stringify({ error: 'INTERNAL' }), { status: 500 });
+    return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500);
   }
 }

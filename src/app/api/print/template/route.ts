@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
+import { apiError, apiOk } from '@/lib/apiError';
 
 let prisma: any = null;
 try {
@@ -16,14 +17,14 @@ export async function POST(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Expect a multipart/form-data request with fields: file (image) and meta (JSON string)
     const contentType = req.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
-      return NextResponse.json({ error: 'INVALID_CONTENT_TYPE' }, { status: 400 });
+      return apiError('INVALID_CONTENT_TYPE','Tipo de contenido inválido',undefined,400);
     }
 
     // Use formidable-like parsing is not available here; use a simple approach by
@@ -31,14 +32,14 @@ export async function POST(req: Request) {
     const formData = await (req as any).formData();
     const file = formData.get('file') as any;
     const metaStr = String(formData.get('meta') || '{}');
-    if (!file || !file.stream) return NextResponse.json({ error: 'FILE_REQUIRED' }, { status: 400 });
+  if (!file || !file.stream) return apiError('FILE_REQUIRED','Archivo requerido',undefined,400);
 
     // Validate MIME and size. Use max 5MB.
     const MAX_BYTES = 5 * 1024 * 1024;
     const mime = file.type || '';
-    if (!/image\/(png|jpeg|jpg)/.test(mime)) return NextResponse.json({ error: 'INVALID_IMAGE_TYPE' }, { status: 400 });
+  if (!/image\/(png|jpeg|jpg)/.test(mime)) return apiError('INVALID_IMAGE_TYPE','Tipo de imagen no soportado',undefined,400);
     const contentLength = Number(req.headers.get('content-length') || '0');
-    if (contentLength && contentLength > MAX_BYTES) return NextResponse.json({ error: 'FILE_TOO_LARGE' }, { status: 400 });
+  if (contentLength && contentLength > MAX_BYTES) return apiError('FILE_TOO_LARGE','Archivo demasiado grande', { maxBytes: MAX_BYTES },400);
 
     // Read into array buffer then sanitize with sharp: resize if very large and re-encode as PNG
     const stream = file.stream();
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       if (done) break;
       if (value) {
         received += value.length;
-        if (received > MAX_BYTES) return NextResponse.json({ error: 'FILE_TOO_LARGE' }, { status: 400 });
+  if (received > MAX_BYTES) return apiError('FILE_TOO_LARGE','Archivo demasiado grande', { maxBytes: MAX_BYTES },400);
         chunks.push(value instanceof Uint8Array ? value : new Uint8Array(value));
       }
     }
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
       }
     } catch (e: any) {
       console.error('image sanitize failed', e);
-      return NextResponse.json({ error: 'INVALID_IMAGE' }, { status: 400 });
+  return apiError('INVALID_IMAGE','Imagen inválida',undefined,400);
     }
 
     const filename = `template_${Date.now()}.png`;
@@ -95,10 +96,10 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, templateId: created?.id ?? filename, filePath: `public/templates/${filename}` });
+    return apiOk({ ok: true, templateId: created?.id ?? filename, filePath: `public/templates/${filename}` });
   } catch (e: any) {
     console.error('upload template error', e);
-    return NextResponse.json({ error: 'UPLOAD_FAILED', detail: e?.message }, { status: 500 });
+    return apiError('UPLOAD_FAILED','Fallo al subir plantilla',{ message: e?.message },500);
   }
 }
 

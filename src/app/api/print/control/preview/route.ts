@@ -8,21 +8,22 @@ import qrcode from 'qrcode';
 import os from 'os';
 import { writeFile, unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
+import { apiError } from '@/lib/apiError';
 
 export async function GET(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Obtener parámetros de la URL
     const url = new URL(req.url);
     const templateId = url.searchParams.get('templateId');
     
     if (!templateId) {
-      return NextResponse.json({ error: 'MISSING_TEMPLATE_ID' }, { status: 400 });
+      return apiError('MISSING_TEMPLATE_ID','Falta templateId',undefined,400);
     }
 
     // Cargar la plantilla desde la base de datos
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'TEMPLATE_NOT_FOUND' }, { status: 404 });
+      return apiError('TEMPLATE_NOT_FOUND','Plantilla no encontrada',undefined,404);
     }
 
     // Configurar la ruta de la plantilla y metadatos
@@ -52,7 +53,7 @@ export async function GET(req: Request) {
     const fs = require('fs');
     if (!fs.existsSync(templatePath)) {
       console.error('El archivo de plantilla no existe en la ruta:', templatePath);
-      return NextResponse.json({ error: `TEMPLATE_FILE_NOT_FOUND: ${templatePath}` }, { status: 404 });
+      return apiError('TEMPLATE_FILE_NOT_FOUND','Archivo de plantilla no encontrado',{ path: templatePath },404);
     }
     
     let dpi = 300;
@@ -108,23 +109,17 @@ export async function GET(req: Request) {
       });
     } catch (composeError) {
       console.error('Error al componer la plantilla con QR:', composeError);
-      return NextResponse.json(
-        { 
-          error: 'COMPOSE_ERROR', 
-          detail: composeError instanceof Error ? composeError.message : String(composeError),
-          templatePath,
-          meta: {
-            qr: defaultQrMeta,
-            dpi
-          }
-        }, 
-        { status: 500 }
-      );
+      return apiError('COMPOSE_ERROR','Error componiendo plantilla con QR',{
+        message: composeError instanceof Error ? composeError.message : String(composeError),
+        templatePath,
+        qr: defaultQrMeta,
+        dpi
+      },500);
     }
 
   } catch (err: any) {
     console.error('print preview error', err);
-    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }
 
@@ -135,9 +130,9 @@ export async function POST(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Parse multipart form
     const formData = await req.formData();
@@ -145,10 +140,10 @@ export async function POST(req: NextRequest) {
     const metaStr = (formData.get('meta') as string | null) ?? null;
 
     if (!file) {
-      return NextResponse.json({ error: 'MISSING_FILE' }, { status: 400 });
+      return apiError('MISSING_FILE','Archivo requerido',undefined,400);
     }
     if (!file.type?.startsWith('image/')) {
-      return NextResponse.json({ error: 'INVALID_FILE_TYPE' }, { status: 400 });
+      return apiError('INVALID_FILE_TYPE','Tipo de archivo inválido', { type: file.type },400);
     }
 
     // Defaults; allow override via meta if provided
@@ -208,6 +203,6 @@ export async function POST(req: NextRequest) {
     }
   } catch (err: any) {
     console.error('print preview (upload) error', err);
-    return NextResponse.json({ error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, { status: 500 });
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

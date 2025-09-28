@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { isTwoPhaseRedemptionEnabled } from "@/lib/featureFlags";
 import { logEvent } from "@/lib/log";
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@/lib/auth";
+import { apiError, apiOk } from '@/lib/apiError';
 
 // POST /api/token/[tokenId]/revert-delivery
 // Preconditions: twoPhaseRedemption enabled, token delivered, user is ADMIN (simplified: valid admin session cookie)
@@ -11,23 +12,26 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@
 
 export async function POST(req: NextRequest, { params }: { params: { tokenId: string } }) {
   const { tokenId } = params;
-  if (!tokenId) return new Response(JSON.stringify({ error: 'TOKEN_ID_REQUIRED' }), { status: 400 });
+  if (!tokenId) return apiError('TOKEN_ID_REQUIRED', 'tokenId requerido', undefined, 400);
 
   const twoPhase = isTwoPhaseRedemptionEnabled();
-  if (!twoPhase) return new Response(JSON.stringify({ error: 'TWO_PHASE_DISABLED' }), { status: 409 });
+  if (!twoPhase) return apiError('TWO_PHASE_DISABLED', 'Flujo two-phase desactivado', undefined, 409);
 
   // Simple admin check: presence of valid session cookie
   const rawCookie = getSessionCookieFromRequest(req as any);
   const session = await verifySessionCookie(rawCookie);
   const auth = requireRole(session, ['ADMIN']);
-  if (!auth.ok) return new Response(JSON.stringify({ error: auth.error }), { status: auth.error === 'UNAUTHORIZED' ? 401 : 403 });
+  if (!auth.ok) {
+    const code = auth.error || 'UNAUTHORIZED';
+    return apiError(code, code, undefined, code === 'UNAUTHORIZED' ? 401 : 403);
+  }
 
   try {
     const result = await (prisma as any).$transaction(async (tx: any) => {
       const token = await tx.token.findUnique({ where: { id: tokenId }, select: { id: true, prizeId: true, revealedAt: true, deliveredAt: true, assignedPrizeId: true, redeemedAt: true } });
-      if (!token) return { status: 404, body: { error: 'TOKEN_NOT_FOUND' } } as const;
-      if (!token.revealedAt) return { status: 409, body: { error: 'NOT_REVEALED' } } as const;
-      if (!token.deliveredAt) return { status: 409, body: { error: 'NOT_DELIVERED' } } as const;
+  if (!token) return { status: 404, body: { code: 'TOKEN_NOT_FOUND', message: 'Token no encontrado' } } as const;
+  if (!token.revealedAt) return { status: 409, body: { code: 'NOT_REVEALED', message: 'No revelado' } } as const;
+  if (!token.deliveredAt) return { status: 409, body: { code: 'NOT_DELIVERED', message: 'No entregado' } } as const;
 
       const updated = await tx.token.update({
         where: { id: tokenId },
@@ -52,10 +56,14 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       logEvent(l.type, l.message, l.metadata).catch(() => {});
     }
 
-    return new Response(JSON.stringify(result.body), { status: result.status });
+    if ('code' in result.body || 'error' in result.body) {
+      const code = (result.body as any).code || (result.body as any).error;
+      return apiError(code, (result.body as any).message || code, undefined, result.status);
+    }
+    return apiOk(result.body, result.status);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[TOKEN_REVERT_DELIVERY_ERROR]', e);
-    return new Response(JSON.stringify({ error: 'REVERT_FAILED' }), { status: 500 });
+    return apiError('REVERT_FAILED', 'Reversión fallida', undefined, 500);
   }
 }

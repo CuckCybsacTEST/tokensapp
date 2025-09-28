@@ -1,5 +1,6 @@
 import { buildSetCookie, createSessionCookie, SessionRole } from "@/lib/auth";
 import { logEvent } from "@/lib/log";
+import { apiError, apiOk } from '@/lib/apiError';
 
 // Definición de tipos para los usuarios
 interface User {
@@ -52,14 +53,14 @@ export async function POST(req: Request) {
   // Verificar que se proporcionaron credenciales
   if (!username || !password) {
     await logEvent("AUTH_FAIL", "Login admin fallido: credenciales incompletas", { ok: false });
-    return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
+    return apiError('INVALID_CREDENTIALS', 'Credenciales incompletas', { reason: 'MISSING_FIELDS' }, 401);
   }
   
   // Obtener usuarios válidos
   const users = getDefaultUsers();
   
   if (users.length === 0) {
-    return new Response(JSON.stringify({ error: "ADMIN_CREDENTIALS_NOT_SET" }), { status: 500 });
+    return apiError('ADMIN_CREDENTIALS_NOT_SET', 'Credenciales admin no configuradas', undefined, 500);
   }
   
   // Buscar usuario que coincida con las credenciales
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   
   if (!user) {
     await logEvent("AUTH_FAIL", "Login admin fallido: credenciales inválidas", { ok: false, username });
-    return new Response(JSON.stringify({ error: "INVALID_CREDENTIALS" }), { status: 401 });
+    return apiError('INVALID_CREDENTIALS', 'Credenciales inválidas', { username }, 401);
   }
   
   // Crear token de sesión con el rol correspondiente
@@ -75,8 +76,5 @@ export async function POST(req: Request) {
   
   await logEvent("AUTH_SUCCESS", "Login admin exitoso", { username, role: user.role });
   
-  return new Response(JSON.stringify({ ok: true, role: user.role }), {
-    status: 200,
-    headers: { "Set-Cookie": buildSetCookie(token) },
-  });
+  return apiOk({ ok: true, role: user.role }, 200, { 'Set-Cookie': buildSetCookie(token) });
 }

@@ -1,4 +1,4 @@
-export type Period = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
+export type Period = 'today' | 'yesterday' | 'day_before_yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
 export function ymdUtc(d: Date): string { return d.toISOString().slice(0, 10); }
 export function startOfUtcDay(d: Date): Date { return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); }
@@ -89,13 +89,13 @@ export function rangeFromPeriod(period: Period, startDate?: string, endDate?: st
 export function rangeBusinessDays(period: Period, startDate?: string, endDate?: string) {
   // Para hoy/ayer, usamos el "business day" actual según cutoff (America/Lima)
   // para alinear métricas/tablas con la etiqueta Scan.businessDay.
-  if (period === 'today' || period === 'yesterday') {
+  if (period === 'today' || period === 'yesterday' || period === 'day_before_yesterday') {
     // Import tardío para evitar ciclos si algún consumidor importa date.ts desde attendanceDay.ts
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { currentBusinessDay } = require('./attendanceDay') as { currentBusinessDay: () => string };
     const base = currentBusinessDay(); // YYYY-MM-DD del día de trabajo activo
     const baseDate = new Date(base + 'T00:00:00.000Z');
-    const day = period === 'today' ? base : ymdUtc(addDays(baseDate, -1));
+    const day = period === 'today' ? base : (period === 'yesterday' ? ymdUtc(addDays(baseDate, -1)) : ymdUtc(addDays(baseDate, -2)));
     const start = new Date(day + 'T00:00:00.000Z');
     const end = addDays(start, 1);
     return { name: period, start, end, startIso: start.toISOString(), endIso: end.toISOString(), startDay: day, endDay: day };

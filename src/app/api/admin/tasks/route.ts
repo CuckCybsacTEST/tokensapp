@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { randomBytes } from 'node:crypto';
 import { isValidArea } from '@/lib/areas';
+import { apiError, apiOk } from '@/lib/apiError';
 
 // Evitar prerender en build/export: depende de DB
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   const session = await verifySessionCookie(raw);
   const r = requireRole(session, ['ADMIN']);
   if (!r.ok) {
-    return NextResponse.json({ error: r.error || 'UNAUTHORIZED' }, { status: r.error === 'FORBIDDEN' ? 403 : 401 });
+    return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
 
   await ensureTaskSchedulingColumns();
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
     completedToday: countsByTask.get(String((t as any).id)) || 0,
     sumValueToday: sumValuesByTask.get(String((t as any).id)) || 0,
   }));
-  return NextResponse.json({ ok: true, tasks, day });
+  return apiOk({ ok: true, tasks, day });
 }
 
 export async function POST(req: Request) {
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
   const session = await verifySessionCookie(raw);
   const r = requireRole(session, ['ADMIN']);
   if (!r.ok) {
-    return NextResponse.json({ error: r.error || 'UNAUTHORIZED' }, { status: r.error === 'FORBIDDEN' ? 403 : 401 });
+    return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
 
   await ensureTaskSchedulingColumns();
@@ -112,11 +113,11 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'INVALID_JSON' }, { status: 400 });
+    return apiError('INVALID_JSON','JSON inválido',undefined,400);
   }
   const label = typeof body?.label === 'string' ? body.label.trim() : '';
   if (!label || label.length > 200) {
-    return NextResponse.json({ error: 'INVALID_LABEL' }, { status: 400 });
+    return apiError('INVALID_LABEL','Etiqueta inválida',undefined,400);
   }
   const completed = body?.completed ? 1 : 0;
   const measureEnabled = body?.measureEnabled ? 1 : 0;
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
   if (body?.area !== undefined) {
     const v = typeof body.area === 'string' ? body.area.trim() : '';
     if (v === '') area = null; else if (!isValidArea(v)) {
-      return NextResponse.json({ error: 'INVALID_AREA' }, { status: 400 });
+      return apiError('INVALID_AREA','Área inválida',undefined,400);
     } else area = v;
   }
   // No limit per area
@@ -169,7 +170,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, task: {
+  return apiOk({ ok: true, task: {
     id: created.id,
     label: created.label,
     completed: !!created.completed,

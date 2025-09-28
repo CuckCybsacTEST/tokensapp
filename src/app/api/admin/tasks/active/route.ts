@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@/lib/auth";
+import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -11,10 +12,7 @@ export async function GET(req: NextRequest) {
   const session = await verifySessionCookie(raw);
   const r = requireRole(session, ["ADMIN"]);
   if (!r.ok) {
-    return new Response(JSON.stringify({ error: r.error || "UNAUTHORIZED" }), {
-      status: r.error === "FORBIDDEN" ? 403 : 401,
-      headers: { "content-type": "application/json" },
-    });
+    return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
 
   // Postgres-safe: usamos Prisma; pending tasks = not completed
@@ -24,5 +22,5 @@ export async function GET(req: NextRequest) {
     select: { id: true, label: true, sortOrder: true, area: true },
   });
   const tasks = rows.map((t) => ({ id: String(t.id), label: String(t.label), sortOrder: Number(t.sortOrder), area: (t as any).area ?? null }));
-  return new Response(JSON.stringify({ ok: true, tasks }), { headers: { "content-type": "application/json" } });
+  return apiOk({ ok: true, tasks });
 }

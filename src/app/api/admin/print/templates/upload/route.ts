@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import path from 'path';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
+import { apiError, apiOk } from '@/lib/apiError';
 
 // Helper para sanitizar nombres de archivo
 function sanitizeFileName(name: string): string {
@@ -18,9 +19,9 @@ export async function POST(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    if (!session) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
-    if (!roleCheck.ok) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Procesamiento del formulario multipart
     const formData = await req.formData();
@@ -28,16 +29,16 @@ export async function POST(req: NextRequest) {
     const name = formData.get('name') as string | null;
 
     if (!file) {
-      return NextResponse.json({ error: 'No se proporcionó ningún archivo' }, { status: 400 });
+      return apiError('FILE_REQUIRED','No se proporcionó ningún archivo',undefined,400);
     }
 
     if (!name) {
-      return NextResponse.json({ error: 'No se proporcionó un nombre para la plantilla' }, { status: 400 });
+      return apiError('NAME_REQUIRED','No se proporcionó un nombre para la plantilla',undefined,400);
     }
 
     // Validar que es una imagen
     if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 });
+      return apiError('INVALID_IMAGE_TYPE','El archivo debe ser una imagen',{ type: file.type },400);
     }
 
     // Preparar el directorio para guardar la plantilla
@@ -124,12 +125,9 @@ export async function POST(req: NextRequest) {
     
     console.log('Plantilla registrada en la base de datos:', template);
 
-    return NextResponse.json(template);
+    return apiOk(template);
   } catch (err: any) {
     console.error('Error al subir la plantilla:', err);
-    return NextResponse.json(
-      { error: 'INTERNAL_ERROR', detail: err?.message || String(err) }, 
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 const PERIODS = {
   TODAY: "today",
   YESTERDAY: "yesterday",
+  DAY_BEFORE_YESTERDAY: "day_before_yesterday",
   THIS_WEEK: "this_week",
   LAST_WEEK: "last_week",
   THIS_MONTH: "this_month",
@@ -15,7 +16,7 @@ const PERIODS = {
 
 export default function DateRangePicker({ onPeriodChange }: { onPeriodChange: (period: string, startDate?: string, endDate?: string) => Promise<void> }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [period, setPeriod] = useState(PERIODS.THIS_WEEK);
+  const [period, setPeriod] = useState(PERIODS.TODAY);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   
@@ -39,6 +40,7 @@ export default function DateRangePicker({ onPeriodChange }: { onPeriodChange: (p
     switch (periodKey) {
       case PERIODS.TODAY: return "Hoy";
       case PERIODS.YESTERDAY: return "Ayer";
+  case PERIODS.DAY_BEFORE_YESTERDAY: return "Anteayer";
       case PERIODS.THIS_WEEK: return "Esta semana";
       case PERIODS.LAST_WEEK: return "Semana anterior";
       case PERIODS.THIS_MONTH: return "Este mes";
@@ -109,6 +111,15 @@ export default function DateRangePicker({ onPeriodChange }: { onPeriodChange: (p
                   <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
                 Ayer
+              </button>
+              <button
+                className={`w-full rounded-md p-2.5 text-left text-sm font-medium flex items-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${period === PERIODS.DAY_BEFORE_YESTERDAY ? 'bg-slate-100 dark:bg-slate-700/70 text-purple-600 dark:text-purple-400' : ''}`}
+                onClick={() => handlePeriodSelect(PERIODS.DAY_BEFORE_YESTERDAY)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-purple-500 dark:text-purple-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 8a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+                Anteayer
               </button>
               <button
                 className={`w-full rounded-md p-2.5 text-left text-sm font-medium flex items-center hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${period === PERIODS.THIS_WEEK ? 'bg-slate-100 dark:bg-slate-700/70 text-purple-600 dark:text-purple-400' : ''}`}

@@ -15,6 +15,7 @@ interface TableRow {
   totalCount: number;
   completionPct: number;
   status: string;
+  incomplete?: boolean;
 }
 interface TableResp { ok: boolean; rows: TableRow[]; page: number; pageSize: number; total: number; totalPages: number; }
 
@@ -90,7 +91,7 @@ export default function StaffAttendanceLitePage() {
               </thead>
               <tbody>
                 {(table?.rows || []).map((r,i)=>(
-                  <tr key={`${r.day}-${r.personCode}-${i}`} className="border-b border-slate-100 dark:border-slate-800">
+                  <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
                     <td className="py-1 px-3 whitespace-nowrap">{r.day}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                     <td className="py-1 px-3 whitespace-nowrap">{r.area || '-'}</td>
@@ -100,7 +101,12 @@ export default function StaffAttendanceLitePage() {
                     <td className="py-1 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{Math.round(r.completionPct)}%</td>
                     <td className="py-1 px-3 whitespace-nowrap">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${r.status === 'Completa' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
+                      {r.incomplete && (
+                        <span title="Jornada no completada (sin salida registrada)" className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"><span className="font-bold">!</span> Incompleta</span>
+                      )}
+                      {!r.incomplete && (
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${r.status === 'Completa' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
+                      )}
                     </td>
                   </tr>
                 ))}
