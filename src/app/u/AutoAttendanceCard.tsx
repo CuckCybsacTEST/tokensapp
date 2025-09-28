@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import MarkAttendanceCard from './MarkAttendanceCard';
 
 interface Props {
-  initialLastType: 'IN' | 'OUT' | null; // último tipo conocido por el servidor para el business day
+  initialLastType: 'IN' | 'OUT' | null; // último tipo conocido (puede venir vacío si SSR deshabilitado)
 }
 
 // Componente inteligente: decide la acción a mostrar según el último registro real.
@@ -12,8 +12,9 @@ export default function AutoAttendanceCard({ initialLastType }: Props) {
   const [lastType, setLastType] = useState<'IN'|'OUT'|null>(initialLastType);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  // Jornada cerrada = ya registró OUT (solo se permite 1 ciclo IN/OUT por business day)
-  const dayClosed = lastType === 'OUT';
+  const [completed, setCompleted] = useState<boolean>(false);
+  // Jornada cerrada: completed flag desde backend (IN y OUT presentes en el businessDay actual)
+  const dayClosed = completed || lastType === 'OUT';
   const nextAction: 'IN' | 'OUT' = lastType === 'IN' ? 'OUT' : 'IN';
 
   const refresh = useCallback(async ()=>{
@@ -23,8 +24,9 @@ export default function AutoAttendanceCard({ initialLastType }: Props) {
       if(r.status === 401){ return; }
       const j = await r.json().catch(()=>null);
       const last = j?.recent;
-      if(last && (last.type === 'IN' || last.type === 'OUT')) setLastType(last.type);
-      else setLastType(null);
+      if (j?.completed != null) setCompleted(!!j.completed);
+      else setCompleted(last?.type === 'OUT');
+      if (last && (last.type === 'IN' || last.type === 'OUT')) setLastType(last.type); else setLastType(null);
     } catch(e: any){ setError('No se pudo actualizar'); }
     finally { setLoading(false); }
   },[]);
