@@ -35,11 +35,11 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error');
       setData(j);
-      // Seleccionar por defecto el último batch disponible (en vez de 'Todos') la primera vez
+      // Seleccionar por defecto el batch MÁS RECIENTE (primer elemento recibido en orden desc)
       if (j.batches && j.batches.length > 0) {
-        const last = j.batches[j.batches.length - 1];
-        setActiveBatch(last.batchId);
-        onBatchChange?.(last.batchId);
+        const mostRecent = j.batches[0];
+        setActiveBatch(mostRecent.batchId);
+        onBatchChange?.(mostRecent.batchId);
       } else {
         onBatchChange?.('ALL');
       }

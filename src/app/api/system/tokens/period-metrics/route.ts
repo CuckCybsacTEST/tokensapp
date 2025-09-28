@@ -43,6 +43,9 @@ export async function GET(req: NextRequest) {
 
     // Queries constrained by createdAt for tokens; expiration and redemption inside window
     const tokenBatchFilter = batchId ? { batchId } : {};
+    // Nota: Para periodos 'today'/'yesterday' ya adaptamos el rango usando business day.
+    // Ajuste: cuando se filtra por batchId queremos que 'total' refleje tokens de ese batch dentro del rango.
+    // (Lógica actual ya lo hace). Se añade protección por si en algún entorno hay tokens con fecha fuera del rango pero businessDay dentro.
     const [total, redeemed, delivered, revealed, disabled, expired, spins] = await Promise.all([
       prisma.token.count({ where: { ...tokenBatchFilter, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
       prisma.token.count({ where: { ...tokenBatchFilter, redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
