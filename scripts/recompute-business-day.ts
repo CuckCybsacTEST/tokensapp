@@ -63,7 +63,7 @@ async function main() {
   const whereClause = whereParts.length ? 'WHERE ' + whereParts.join(' AND ') : '';
 
   // Conteo total a procesar
-  const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(1) as c FROM Scan ${whereClause}`);
+  const totalRes: any[] = await prisma.$queryRawUnsafe(`SELECT COUNT(1) as c FROM "Scan" ${whereClause}`);
   const total = Number(totalRes?.[0]?.c || 0);
   console.log(`[recompute-business-day] Total rows a evaluar: ${total}`);
   if (!total) {
@@ -77,25 +77,35 @@ async function main() {
 
   while (processed < total) {
     batchNum++;
-    const rows: { id: string; scannedAt: Date }[] = await prisma.$queryRawUnsafe(
-      `SELECT id, scannedAt FROM Scan ${whereClause} ORDER BY scannedAt ASC LIMIT ${batch} OFFSET ${processed}`
+    const rows: { id: string; scannedAt: Date; businessDay: string }[] = await prisma.$queryRawUnsafe(
+      `SELECT id, "scannedAt", "businessDay" FROM "Scan" ${whereClause} ORDER BY "scannedAt" ASC LIMIT ${batch} OFFSET ${processed}`
     );
     if (!rows.length) break; // terminado
 
     // Calculamos nuevo businessDay
-    const updates = rows.map(r => ({ id: r.id, businessDay: computeBusinessDayFromUtc(r.scannedAt, cutoff) }));
+    const updates = rows.map(r => ({ id: r.id, businessDay: computeBusinessDayFromUtc(r.scannedAt, cutoff), oldBusinessDay: r.businessDay }));
+
+    if (dryRun) {
+      let changed = 0;
+      for (const u of updates) {
+        if (u.oldBusinessDay !== u.businessDay) changed++;
+      }
+      const sample = updates.slice(0, 5).map(u => ({ id: u.id, old: u.oldBusinessDay, new: u.businessDay, diff: u.oldBusinessDay === u.businessDay ? 'same' : 'CHANGED' }));
+      console.log(`[recompute-business-day] Preview lote ${batchNum}: cambios=${changed}/${updates.length}`);
+      if (sample.length) console.log('[recompute-business-day] Sample:', sample);
+    }
 
     if (!dryRun) {
       // Usamos transaction + raw updates por eficiencia
       await prisma.$transaction(async (tx) => {
         for (const u of updates) {
-          await tx.$executeRawUnsafe(`UPDATE Scan SET businessDay='${u.businessDay}' WHERE id='${u.id}'`);
+          await tx.$executeRawUnsafe(`UPDATE "Scan" SET "businessDay"='${u.businessDay}' WHERE id='${u.id}'`);
         }
       });
     }
 
     processed += rows.length;
-    updated += updates.length; // siempre coincidencia 1:1
+  updated += updates.length; // siempre coincidencia 1:1 (en dry-run queda 0 al final)
     console.log(`[recompute-business-day] Lote ${batchNum} rows=${rows.length} acumulado=${processed}/${total}`);
 
     // Evitamos loops largos en dryRun
