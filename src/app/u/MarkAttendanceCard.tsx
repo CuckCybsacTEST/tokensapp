@@ -60,7 +60,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
       <div className="mt-4">
         <button
           type="button"
-          className="btn relative select-none"
+          className="btn relative select-none overflow-hidden"
           disabled={loading}
           onPointerDown={onPointerDown}
           onPointerUp={endPress}
@@ -70,12 +70,21 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
           {loading ? 'Enviando…' : (
             nextAction === 'IN'
               ? 'Registrar entrada (QR)'
-              : holdMs > 0
-                ? `Mantén… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s`
-                : 'Mantén 2s para registrar salida (QR)'
+              : (
+                <>
+                  {/* Reservar ancho estable con el texto completo original */}
+                  <span className="invisible block">Mantén 2s para registrar salida (QR)</span>
+                  {/* Capa visible centrada */}
+                  <span className="absolute inset-0 flex items-center justify-center px-2">
+                    {holdMs > 0
+                      ? `Mantén ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s…`
+                      : 'Mantén 2s para registrar salida (QR)'}
+                  </span>
+                </>
+              )
           )}
           {nextAction === 'OUT' && holdMs > 0 && (
-            <span className="absolute left-0 bottom-0 h-1 bg-orange-500 rounded-b" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+            <span className="absolute left-0 bottom-0 h-1 bg-orange-500/80 transition-[width] duration-75 ease-linear" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
           )}
         </button>
       </div>
