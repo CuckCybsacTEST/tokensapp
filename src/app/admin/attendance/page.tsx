@@ -322,6 +322,7 @@ export default function AdminAttendancePage() {
                     <th className="py-2 px-3">Estado</th>
                     <th className="py-2 px-3">Tareas</th>
                     <th className="py-2 px-3">% Cumpl.</th>
+                    <th className="py-2 px-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -344,10 +345,34 @@ export default function AdminAttendancePage() {
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{pct(r.completionPct)}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <button
+                          onClick={async () => {
+                            const allow = window.confirm(`¿Reiniciar jornada de ${r.personName} (${r.personCode}) del día ${r.day}? Esta acción elimina las marcas IN/OUT de ese businessDay.`);
+                            if (!allow) return;
+                            try {
+                              const resp = await fetch('/api/admin/attendance/reset', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ personCode: r.personCode, day: r.day })
+                              });
+                              const json = await resp.json();
+                              if (!resp.ok || !json?.ok) {
+                                alert(`Error reiniciando: ${(json && (json.message || json.code)) || resp.status}`);
+                                return;
+                              }
+                              setTick(v => v + 1); // refrescar tabla
+                            } catch (e:any) {
+                              alert('Error de red al reiniciar');
+                            }
+                          }}
+                          className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        >Reiniciar</button>
+                      </td>
                     </tr>
                   ))}
                   {table && table.rows.length === 0 && (
-                    <tr><td className="py-3 px-3 text-slate-500" colSpan={9}>Sin datos</td></tr>
+                    <tr><td className="py-3 px-3 text-slate-500" colSpan={10}>Sin datos</td></tr>
                   )}
                 </tbody>
               </table>
