@@ -29,14 +29,33 @@ function getSecretForVersion(version: number): string | null {
   return SECRET_MAP[version] || null;
 }
 
-// Fail fast (once) if current version secret is missing. We purposely do this at import time to avoid
-// issuing tokens with an undefined secret (security hardening). In test/dev fallback to 'dev_secret'.
+// Secret presence enforcement:
+// During an actual runtime in production we want to FAIL FAST if the active version secret is missing.
+// However during `next build` (phase-production-build) secrets often aren't injected. To avoid hard build
+// failures we detect build phase and fallback to an ephemeral secret with a warning. At runtime container
+// start ( when NEXT_PHASE is not phase-production-build ) the absence will still throw.
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+  || process.env.BUILD_PHASE === '1'
+  || process.env.BUILDING === '1'
+  || process.env.__NEXT_PRIVATE_BUILD_PHASE === 'true';
+
 if (process.env.NODE_ENV !== 'test') {
-  const curSecret = getSecretForVersion(CURRENT_SIGNATURE_VERSION) || (process.env.NODE_ENV === 'development' ? 'dev_secret' : null);
+  let curSecret = getSecretForVersion(CURRENT_SIGNATURE_VERSION);
   if (!curSecret) {
-    // eslint-disable-next-line no-console
-    console.error(`[signing] Missing secret for CURRENT_SIGNATURE_VERSION=${CURRENT_SIGNATURE_VERSION}. Define TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION}.`);
-    if (process.env.NODE_ENV === 'production') {
+    if (isBuildPhase) {
+      // eslint-disable-next-line no-console
+      console.warn(`[signing] Missing TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION} during build phase. Using ephemeral build secret. Ensure real secret is set at runtime.`);
+      curSecret = 'build_ephemeral_secret';
+      // Mutate map so subsequent sign operations (if any) are deterministic during build analysis.
+      SECRET_MAP[CURRENT_SIGNATURE_VERSION] = curSecret;
+    } else if (process.env.NODE_ENV === 'development') {
+      curSecret = 'dev_secret';
+      SECRET_MAP[CURRENT_SIGNATURE_VERSION] = curSecret;
+      // eslint-disable-next-line no-console
+      console.warn(`[signing] Using development fallback secret for version ${CURRENT_SIGNATURE_VERSION}.`);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(`[signing] Missing secret for CURRENT_SIGNATURE_VERSION=${CURRENT_SIGNATURE_VERSION}. Define TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION}.`);
       throw new Error('Missing signing secret for active signature version');
     }
   }
