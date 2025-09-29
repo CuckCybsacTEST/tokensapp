@@ -81,6 +81,7 @@ La documentación técnica completa está disponible en la carpeta `docs/`:
 - [Checklist de tareas](./docs/checklist.md) - Modelo, APIs, flujo BYOD y operación
 - [Registro de colaboradores](./docs/collaborators.md) - Alta de personas/usuarios, seguridad y ejemplos curl/PowerShell
 - [Roles y permisos](./docs/roles.md) - Diferencias entre `COLLAB`/`STAFF` (BYOD) y `ADMIN`/`STAFF` (panel), rutas habilitadas y buenas prácticas
+- [Escáner de asistencia](./docs/attendance-scanner.md) - Flujo optimista IN/OUT, parseo de códigos y componente pendiente
 - [Troubleshooting local](./docs/troubleshooting.md) - Errores comunes (`DATABASE_URL`, EPERM Windows, regeneración Prisma)
 - [Shows / Flyers](./docs/shows.md) - Modelo, reglas y endpoints del subsistema de shows
 

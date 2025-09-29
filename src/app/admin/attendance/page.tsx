@@ -154,8 +154,10 @@ export default function AdminAttendancePage() {
         return d.getHours()*60 + d.getMinutes();
       }
     };
-    let sumFirstIn = 0, countFirstIn = 0;
-    let sumLastOut = 0, countLastOut = 0;
+  let sumFirstIn = 0, countFirstIn = 0; // mean (retained if needed)
+  let sumLastOut = 0, countLastOut = 0;
+  const firstInMinutesArr: number[] = [];
+  const lastOutMinutesArr: number[] = [];
     let sumDuration = 0, countDuration = 0;
     let incompleteCount = 0;
     let totalEntradas = 0; // número de jornadas con al menos una entrada
@@ -163,12 +165,12 @@ export default function AdminAttendancePage() {
     for (const r of rows) {
       if (r.firstIn) {
         const m = toMinutesOfDayLocal(r.firstIn);
-        if (m != null) { sumFirstIn += m; countFirstIn++; }
+        if (m != null) { sumFirstIn += m; countFirstIn++; firstInMinutesArr.push(m); }
         totalEntradas++;
       }
       if (r.lastOut) {
         const m2 = toMinutesOfDayLocal(r.lastOut);
-        if (m2 != null) { sumLastOut += m2; countLastOut++; }
+        if (m2 != null) { sumLastOut += m2; countLastOut++; lastOutMinutesArr.push(m2); }
         totalSalidas++;
       }
       if (typeof r.durationMin === 'number') { sumDuration += r.durationMin; countDuration++; }
@@ -176,6 +178,11 @@ export default function AdminAttendancePage() {
     }
     const avgArrMin = countFirstIn ? sumFirstIn / countFirstIn : null;
     const avgOutMin = countLastOut ? sumLastOut / countLastOut : null;
+    const median = (arr: number[]): number | null => {
+      if (!arr.length) return null; const s = [...arr].sort((a,b)=>a-b); const mid = Math.floor(s.length/2); return s.length % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
+    };
+    const medianFirstIn = median(firstInMinutesArr);
+    const medianLastOut = median(lastOutMinutesArr);
     const avgDur = countDuration ? sumDuration / countDuration : null;
     const formatAvgClock = (minutesOfDay: number | null) => {
       if (minutesOfDay == null) return '-';
@@ -193,6 +200,8 @@ export default function AdminAttendancePage() {
       incompletePct: rows.length ? (100*incompleteCount)/rows.length : 0,
       avgFirstIn: formatAvgClock(avgArrMin),
       avgLastOut: formatAvgClock(avgOutMin),
+      medianFirstIn: formatAvgClock(medianFirstIn),
+      medianLastOut: formatAvgClock(medianLastOut),
       avgDurationMin: avgDur,
       totalEntradas,
       totalSalidas,
@@ -277,26 +286,25 @@ export default function AdminAttendancePage() {
 
       {/* MÉTRICAS (derivadas en cliente) */}
       {metrics && !loading && !error && (
-        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-6">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">Métricas del período (derivadas)</h2>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">Basado en {metrics.totalRows} fila{metrics.totalRows===1?'':'s'} visibles en la tabla</div>
+            <h2 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">Métricas (medianas para robustez)</h2>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">{metrics.totalRows} fila{metrics.totalRows===1?'':'s'} · {metrics.incompleteCount} incompletas</div>
           </div>
-          <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-            <SimpleCard label="Registros" value={metrics.totalRows} />
-            <SimpleCard label="Incompletas" value={metrics.incompleteCount} />
-            <SimpleCard label="% Incompletas" value={metrics.incompletePct.toFixed(1)} suffix="%" color="text-rose-600 dark:text-rose-400" />
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
             <SimpleCard label="Entradas" value={metrics.totalEntradas} />
             <SimpleCard label="Salidas" value={metrics.totalSalidas} />
+            <SimpleCard label="Med. Llegada" value={metrics.medianFirstIn} />
+            <SimpleCard label="Med. Salida" value={metrics.medianLastOut} />
             <SimpleCard label="Prom. Llegada" value={metrics.avgFirstIn} />
             <SimpleCard label="Prom. Salida" value={metrics.avgLastOut} />
             <DurationCard label="Prom. Duración" value={metrics.avgDurationMin ?? null} />
           </div>
-          {/* Gráficos eliminados (distribución de llegadas / incompletas por área) para simplificar y corregir foco en promedios */}
         </div>
       )}
 
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+  {/* Desktop table */}
+  <div className="hidden md:block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="p-4 flex items-center justify-between">
               <div className="text-sm font-semibold">Resumen por persona / día</div>
               <div className="flex items-center gap-2 text-xs">
@@ -316,12 +324,10 @@ export default function AdminAttendancePage() {
                     <th className="py-2 px-3">Día</th>
                     <th className="py-2 px-3">Persona</th>
                     <th className="py-2 px-3">Área</th>
-                    <th className="py-2 px-3">IN</th>
-                    <th className="py-2 px-3">OUT</th>
+                    <th className="py-2 px-3">ENTRADA</th>
+                    <th className="py-2 px-3">SALIDA</th>
                     <th className="py-2 px-3">Duración</th>
                     <th className="py-2 px-3">Estado</th>
-                    <th className="py-2 px-3">Tareas</th>
-                    <th className="py-2 px-3">% Cumpl.</th>
                     <th className="py-2 px-3">Acciones</th>
                   </tr>
                 </thead>
@@ -343,8 +349,6 @@ export default function AdminAttendancePage() {
                           <span className="text-slate-400 text-xs">-</span>
                         )}
                       </td>
-                      <td className="py-2 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">{pct(r.completionPct)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         <button
                           onClick={async () => {
@@ -385,7 +389,63 @@ export default function AdminAttendancePage() {
                 <button className="btn px-3 py-1 rounded disabled:opacity-50" disabled={(table?.page || page) >= (table?.totalPages || 1)} onClick={()=> setPage((p)=> (table?.totalPages ? Math.min(table.totalPages, p+1) : p+1))}>Siguiente</button>
               </div>
             </div>
+        </div>
+        {/* Mobile card list mirroring /u/attendance */}
+        <div className="md:hidden space-y-3">
+          <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Resumen por persona / día</div>
+    {(table?.rows || []).map((r,i)=>(
+            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-rose-300 dark:ring-rose-600/50' : ''}`}> 
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{r.personName}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{r.personCode} · {r.day}</div>
+                </div>
+                <div>
+                  {r.incomplete ? (
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">Falta salida</span>
+                  ) : (
+                    <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">OK</span>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                <div><span className="text-slate-500">Área:</span> {r.area || '-'}</div>
+                <div><span className="text-slate-500">Duración:</span> {formatMinutes(r.durationMin)}</div>
+                <div><span className="text-slate-500">ENTRADA:</span> {fmtHHmmLima(r.firstIn)}</div>
+                <div><span className="text-slate-500">SALIDA:</span> {fmtHHmmLima(r.lastOut)}</div>
+              </div>
+              <div>
+                <button
+                  onClick={async () => {
+                    const allow = window.confirm(`¿Reiniciar jornada de ${r.personName} (${r.personCode}) del día ${r.day}? Esta acción elimina las marcas IN/OUT de ese businessDay.`);
+                    if (!allow) return;
+                    try {
+                      const resp = await fetch('/api/admin/attendance/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personCode: r.personCode, day: r.day }) });
+                      const json = await resp.json();
+                      if (!resp.ok || !json?.ok) { alert(`Error reiniciando: ${(json && (json.message || json.code)) || resp.status}`); return; }
+                      setTick(v => v + 1);
+                    } catch { alert('Error de red al reiniciar'); }
+                  }}
+                  className="mt-2 text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >Reiniciar</button>
+              </div>
+            </div>
+          ))}
+          {table && table.rows.length === 0 && (
+            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-xs text-slate-500">Sin datos</div>
+          )}
+          <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
+            <div>Pág. {table?.page || page}/{table?.totalPages || 1}</div>
+            <div className="flex items-center gap-1">
+              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Anterior">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Siguiente">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
           </div>
+        </div>
       </div>
   );
 }

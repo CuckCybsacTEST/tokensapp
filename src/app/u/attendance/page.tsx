@@ -56,24 +56,59 @@ export default function StaffAttendanceLitePage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Control de Asistencia</h1>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <select value={period} onChange={e=>setPeriod(e.target.value as Period)} className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1">
-              <option value="today">Hoy</option>
-              <option value="yesterday">Ayer</option>
-            </select>
-            <input value={area} onChange={e=>setArea(e.target.value)} placeholder="Área..." className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-32" />
-            <input value={person} onChange={e=>setPerson(e.target.value)} placeholder="Código/persona" className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-40" />
+      <div className="mx-auto max-w-6xl px-4 py-6 space-y-5">
+        {/* Header & filters */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">Control de Asistencia</h1>
+            <div className="flex flex-wrap items-center gap-2 text-sm -m-0.5">
+              {/* Day navigation with arrows */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Ver día anterior"
+                  onClick={()=> setPeriod(p=> p==='today' ? 'yesterday':'yesterday')}
+                  disabled={period==='yesterday'}
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <select
+                  value={period}
+                  onChange={e=>setPeriod(e.target.value as Period)}
+                  className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[70px]"
+                >
+                  <option value="today">Hoy</option>
+                  <option value="yesterday">Ayer</option>
+                </select>
+                <button
+                  type="button"
+                  aria-label="Ver día siguiente"
+                  onClick={()=> setPeriod('today')}
+                  disabled={period==='today'}
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input value={area} onChange={e=>setArea(e.target.value)} placeholder="Área" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-28 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <input value={person} onChange={e=>setPerson(e.target.value)} placeholder="Código o persona" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-36 sm:w-44 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+              </div>
+            </div>
           </div>
+          <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Vista ligera solo lectura. Usa filtros arriba. En móviles puedes deslizar la tabla horizontalmente o ver la versión compacta por tarjetas.</div>
         </div>
-  <div className="text-xs text-slate-500 dark:text-slate-400">Tabla en tiempo real (solo lectura) usando el mismo origen que el panel admin. Filtra por período, área o persona.</div>
+
         {loading && <div className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm">Cargando…</div>}
         {error && <div className="rounded border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-sm text-rose-700 dark:text-rose-200">Error: {error}</div>}
-        {/* Métricas eliminadas */}
-        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div className="p-3 text-sm font-semibold">Resumen por persona</div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="p-3 text-sm font-semibold flex items-center justify-between">
+            <span>Resumen por persona</span>
+            <span className="text-[11px] text-slate-500">{table?.total || 0} registros</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-[1000px] w-full text-sm">
               <thead>
@@ -81,11 +116,9 @@ export default function StaffAttendanceLitePage() {
                   <th className="py-2 px-3">Día</th>
                   <th className="py-2 px-3">Persona</th>
                   <th className="py-2 px-3">Área</th>
-                  <th className="py-2 px-3">IN</th>
-                  <th className="py-2 px-3">OUT</th>
+                  <th className="py-2 px-3">ENTRADA</th>
+                  <th className="py-2 px-3">SALIDA</th>
                   <th className="py-2 px-3">Duración</th>
-                  <th className="py-2 px-3">Tareas</th>
-                  <th className="py-2 px-3">% Cumpl.</th>
                   <th className="py-2 px-3">Estado</th>
                 </tr>
               </thead>
@@ -98,20 +131,18 @@ export default function StaffAttendanceLitePage() {
                     <td className="py-1 px-3 whitespace-nowrap">{fmtTime(r.firstIn)}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{fmtTime(r.lastOut)}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
-                    <td className="py-1 px-3 whitespace-nowrap">{r.doneCount}/{r.totalCount}</td>
-                    <td className="py-1 px-3 whitespace-nowrap">{Math.round(r.completionPct)}%</td>
                     <td className="py-1 px-3 whitespace-nowrap">
                       {r.incomplete && (
                         <span title="Jornada no completada (sin salida registrada)" className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"><span className="font-bold">!</span> Incompleta</span>
                       )}
                       {!r.incomplete && (
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${r.status === 'Completa' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
+                        <span className="text-[10px] text-slate-400">—</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {table && table.rows.length === 0 && (
-                  <tr><td className="py-3 px-3 text-slate-500" colSpan={9}>Sin datos</td></tr>
+                  <tr><td className="py-3 px-3 text-slate-500" colSpan={7}>Sin datos</td></tr>
                 )}
               </tbody>
             </table>
@@ -119,8 +150,51 @@ export default function StaffAttendanceLitePage() {
           <div className="p-3 flex items-center justify-between text-xs">
             <div className="text-slate-500">Página {table?.page || page} de {table?.totalPages || 1}</div>
             <div className="flex items-center gap-2">
-              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 disabled:opacity-40">Anterior</button>
-              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="px-2 py-1 rounded bg-slate-800 text-white dark:bg-blue-600 disabled:opacity-40">Siguiente</button>
+              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 px-2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] disabled:opacity-40">Anterior</button>
+              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-7 px-2 rounded bg-slate-800 text-white dark:bg-blue-600 text-[11px] disabled:opacity-40">Siguiente</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile card list */}
+        <div className="md:hidden space-y-3">
+          <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Resumen por persona</div>
+          {(table?.rows || []).map((r,i)=>(
+            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-rose-300 dark:ring-rose-600/50' : ''}`}> 
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{r.personName}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{r.personCode} · {r.day}</div>
+                </div>
+                <div>
+                  {r.incomplete ? (
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">Incompleta</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">—</span>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                <div><span className="text-slate-500">Área:</span> {r.area || '-'}</div>
+                <div><span className="text-slate-500">Duración:</span> {formatMinutes(r.durationMin)}</div>
+                <div><span className="text-slate-500">ENTRADA:</span> {fmtTime(r.firstIn)}</div>
+                <div><span className="text-slate-500">SALIDA:</span> {fmtTime(r.lastOut)}</div>
+              </div>
+            </div>
+          ))}
+          {table && table.rows.length === 0 && (
+            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-xs text-slate-500">Sin datos</div>
+          )}
+          {/* Mobile pagination */}
+          <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
+            <div>Pág. {table?.page || page}/{table?.totalPages || 1}</div>
+            <div className="flex items-center gap-1">
+              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Anterior">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Siguiente">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
             </div>
           </div>
         </div>

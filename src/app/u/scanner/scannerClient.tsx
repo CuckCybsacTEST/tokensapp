@@ -10,7 +10,8 @@ export default function ScannerClient() {
   const [results, setResults] = useState<ScanResult[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const lastNoticeTsRef = useRef<number>(0);
-  const detectorRef = useRef<any>(null);
+  const detectorRef = useRef<any>(null); // Native BarcodeDetector instance
+  const zxingControlsRef = useRef<any>(null); // ZXing controls when using fallback
   const audioOkRef = useRef<HTMLAudioElement|null>(null);
   const flashRef = useRef<{ ts:number }|null>(null);
   const [, force] = useState(0);
@@ -18,31 +19,68 @@ export default function ScannerClient() {
 
   useEffect(()=>{
     if (!active) return;
-    let stream: MediaStream|null = null;
+    let stream: MediaStream|null = null; // Only used for native detector path
     let cancelled = false;
+
     async function init() {
       setErr(null);
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(()=>{});
-        }
+        // Prefer native BarcodeDetector; otherwise fall back to @zxing/browser (same lib as IN/OUT scanner)
         if ('BarcodeDetector' in window) {
+          // Native path
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play().catch(()=>{});
+          }
           const formats = ['qr_code','ean_13','code_128','pdf417','aztec'];
-          detectorRef.current = new (window as any).BarcodeDetector({ formats });
+            // Some browsers might throw if format unsupported; wrap in try
+          try {
+            detectorRef.current = new (window as any).BarcodeDetector({ formats });
+          } catch {
+            detectorRef.current = new (window as any).BarcodeDetector();
+          }
+          loopNative();
         } else {
-          setErr('Tu navegador no soporta BarcodeDetector (usa Chrome/Edge reciente).');
+          // Fallback path using ZXing continuous decode
+          const mod = await import('@zxing/browser');
+          const Reader = (mod as any).BrowserMultiFormatReader;
+          const codeReader = new Reader();
+          // decodeFromVideoDevice opens its own stream; we keep controls so we can stop later
+          zxingControlsRef.current = await codeReader.decodeFromVideoDevice(undefined, videoRef.current!, (result: any, error: any, controls: any) => {
+            if (result) {
+              processRaw(result.getText());
+            }
+            // Ignore NotFound errors (normal when no code in frame)
+          });
         }
-        loop();
       } catch(e:any) {
         setErr(e?.message || 'No se pudo acceder a la cámara');
       }
     }
-    function loop() {
+
+    function loopNative() {
       if (cancelled) return;
-      frameRef.current = requestAnimationFrame(loop);
-      scanOnce();
+      frameRef.current = requestAnimationFrame(loopNative);
+      scanOnceNative();
+    }
+
+    function processRaw(raw: string) {
+      if (!raw) return;
+      if (isGlobalInOutCode(raw)) {
+        const now = Date.now();
+        if (now - lastNoticeTsRef.current > 1500) {
+          lastNoticeTsRef.current = now;
+          setNotice('Este escáner NO registra entradas/salidas. Usa la página de asistencia.');
+          setTimeout(()=>{ setNotice(n => n === 'Este escáner NO registra entradas/salidas. Usa la página de asistencia.' ? null : n); }, 4000);
+        }
+        return;
+      }
+      if (!results.some(r=>r.text===raw)) {
+        setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
+        try { audioOkRef.current?.play().catch(()=>{}); } catch {}
+        flashRef.current = { ts: Date.now() }; force(v=>v+1);
+      }
     }
     function isGlobalInOutCode(raw: string): boolean {
       if (!raw) return false; const text = String(raw).trim();
@@ -69,38 +107,25 @@ export default function ScannerClient() {
       } catch {}
       return false;
     }
-    async function scanOnce() {
+    async function scanOnceNative() {
       const det = detectorRef.current;
       if (!det || !videoRef.current) return;
       try {
         const detections = await det.detect(videoRef.current);
         if (detections && detections.length) {
           for (const d of detections) {
-            const raw = d.rawValue || d.cornerPoints?.toString() || '';
-            if (!raw) continue;
-            if (isGlobalInOutCode(raw)) {
-              const now = Date.now();
-              if (now - lastNoticeTsRef.current > 1500) {
-                lastNoticeTsRef.current = now;
-                setNotice('Este escáner NO registra entradas/salidas. Usa la página de asistencia.');
-                setTimeout(()=>{ setNotice(n => n === 'Este escáner NO registra entradas/salidas. Usa la página de asistencia.' ? null : n); }, 4000);
-              }
-              continue; // ignorar estos códigos
-            }
-            if (raw && !results.some(r=>r.text===raw)) {
-              setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
-              try { audioOkRef.current?.play().catch(()=>{}); } catch {}
-              flashRef.current = { ts: Date.now() }; force(v=>v+1);
-            }
+            const raw = (d as any).rawValue || (d as any).cornerPoints?.toString() || '';
+            processRaw(raw);
           }
         }
-      } catch {}
+      } catch {/* swallow */}
     }
     init();
     return () => {
       cancelled = true;
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
-      if (stream) stream.getTracks().forEach(t=>t.stop());
+      if (stream) stream.getTracks().forEach(t=>t.stop()); // native path
+      try { zxingControlsRef.current?.stop?.(); } catch {}
     };
   }, [active]);
 
@@ -110,33 +135,55 @@ export default function ScannerClient() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
-      <div className="max-w-xl mx-auto space-y-4">
-  <h1 className="text-2xl font-semibold text-slate-100 mb-2">Escáner QR</h1>
-  <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
-        <p className="text-sm text-slate-300">Escanea códigos operativos (invitaciones, tokens, cortesías). <strong className="text-teal-300 font-semibold">No</strong> registra entradas/salidas.</p>
-        {notice && <div className="rounded border border-amber-600 bg-amber-900/30 text-amber-200 text-xs px-3 py-2">{notice}</div>}
-        <div className="rounded border border-slate-600 p-3 bg-slate-900">
-          <video ref={videoRef} className="w-full aspect-video object-cover rounded bg-black" muted playsInline />
-          <div className="mt-3 flex gap-2">
-            <button onClick={()=>setActive(a=>!a)} className="px-3 py-1.5 rounded text-sm font-medium bg-teal-600 hover:bg-teal-500 disabled:opacity-50">{active?'Detener':'Iniciar'}</button>
-            {active && <span className="text-xs text-slate-400 self-center">Escaneando…</span>}
+      <div className="max-w-md mx-auto space-y-5">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Escáner QR</h1>
+        <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
+        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">Escanea códigos operativos (invitaciones, tokens, cortesías). <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">No registra</strong> entradas / salidas; usa el panel de asistencia para eso.</p>
+        {notice && <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 text-[11px] px-3 py-2 flex items-start gap-2"><span className="mt-0.5">⚠</span><span>{notice}</span></div>}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
+          <div className="relative">
+            <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
+            {active && (
+              <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="w-[82%] aspect-square relative">
+                  <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+                  <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-scanline" />
+                </div>
+              </div>
+            )}
           </div>
-          {err && <div className="mt-2 text-xs text-red-400">{err}</div>}
+          <div className="mt-3 flex flex-wrap gap-3 items-center">
+            <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Detener':'Iniciar'}</button>
+            {active && <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />Escaneando…</div>}
+            {!active && <div className="text-[11px] text-slate-500 dark:text-slate-400">Pausado</div>}
+            <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
+          </div>
+          {err && <div className="mt-2 text-xs text-rose-600 dark:text-rose-400 font-medium">{err}</div>}
         </div>
-        <div className="space-y-2">
-          <h2 className="text-lg font-medium text-slate-100">Resultados</h2>
-          {results.length===0 && <div className="text-sm text-slate-400">Sin lecturas todavía.</div>}
-          <ul className="space-y-1 max-h-64 overflow-auto text-sm">
-            {results.map(r => (
-              <li key={r.ts} className="group flex items-center justify-between gap-2 rounded border border-slate-600 px-2 py-1 bg-slate-800/60">
-                <span className="truncate" title={r.text}>{r.text}</span>
-                <button onClick={()=>copy(r.text)} className="opacity-0 group-hover:opacity-100 transition text-xs bg-slate-700 hover:bg-slate-600 rounded px-2 py-0.5">Copiar</button>
-              </li>
-            ))}
-          </ul>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Resultados</h2>
+            {results.length>0 && <span className="text-[11px] text-slate-400 dark:text-slate-500">{results.length}</span>}
+          </div>
+          {results.length===0 && <div className="text-xs text-slate-500 dark:text-slate-400">Sin lecturas todavía.</div>}
+          {results.length>0 && (
+            <ul className="space-y-1 max-h-64 overflow-auto text-[13px] pr-1">
+              {results.map(r => (
+                <li key={r.ts} className="group flex items-center justify-between gap-2 rounded border border-slate-200 dark:border-slate-600 px-2 py-1 bg-slate-50 dark:bg-slate-700/40">
+                  <span className="truncate" title={r.text}>{r.text}</span>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div>
-          <a href="/u" className="text-blue-500 text-sm hover:underline">← Volver</a>
+          <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver</a>
         </div>
       </div>
       {flashRef.current && Date.now()-flashRef.current.ts < 550 && (
@@ -149,6 +196,8 @@ export default function ScannerClient() {
       <style jsx global>{`
         @keyframes scanpop { 0%{ transform:scale(.6); opacity:0;} 40%{transform:scale(1.05); opacity:1;} 70%{transform:scale(.95);} 100%{transform:scale(1); opacity:0;} }
         .animate-scanpop { animation: scanpop 550ms cubic-bezier(.16,.8,.3,1); }
+        @keyframes scanlineMove { 0% { transform: translateY(0); opacity:.15;} 45%{opacity:.9;} 100% { transform: translateY(calc(100% - 2px)); opacity:.15;} }
+        .animate-scanline { animation: scanlineMove 2.6s cubic-bezier(.45,.05,.55,.95) infinite; }
       `}</style>
     </div>
   );

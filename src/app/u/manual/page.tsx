@@ -117,11 +117,8 @@ export default function ManualAttendancePage() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
       <div className="mx-auto max-w-2xl px-4 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">Registrar entrada/salida</h1>
-          {me && (
-            <span className="text-sm text-slate-600">{me.personName || 'Colaborador'}{me?.dni ? ` · DNI: ${me.dni}` : ''}</span>
-          )}
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold tracking-tight">Registrar entrada / salida</h1>
         </div>
 
         {msg && (
@@ -153,44 +150,52 @@ export default function ManualAttendancePage() {
               <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900" placeholder="Tu contraseña de acceso" />
             </div>
 
-            <div className="mt-4">
-              <button
-                className="btn relative"
-                disabled={submitting || mode == null || password.length === 0}
-                onMouseDown={(e) => {
-                  if (mode !== 'OUT') return; // no long-press for IN
-                  setHoldMs(0);
-                  const start = Date.now();
-                  const id = window.setInterval(() => {
-                    const ms = Date.now() - start;
-                    setHoldMs(ms);
-                    if (ms >= 2000) {
-                      window.clearInterval(id);
-                      setHoldMs(0);
-                      handleSubmit();
-                    }
-                  }, 50);
-                  holdTimerRef.current = id as unknown as number;
-                }}
-                onMouseUp={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
-                onMouseLeave={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
-                onClick={(e) => {
-                  if (mode === 'OUT') { e.preventDefault(); return; }
-                  handleSubmit();
-                }}
-              >
-                {submitting ? 'Enviando…' : (mode === 'OUT' ? (holdMs > 0 ? `Mantén presionado… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Registrar Salida') : 'Registrar entrada')}
-                {mode === 'OUT' && holdMs > 0 && (
-                  <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-500" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
-                )}
-              </button>
-              <Link href="/u/assistance" className="ml-3 align-middle text-sm text-blue-600 hover:underline dark:text-blue-400" prefetch={false}>Usar escáner IN/OUT</Link>
+            <div className="mt-4 flex items-stretch gap-3">
+              <div className="flex flex-1 gap-3">
+                <button
+                  className={`relative flex-1 rounded-md px-4 py-3 text-sm font-semibold shadow-sm transition active:scale-[.985] focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed 
+                    ${mode==='OUT'
+                      ? 'bg-orange-600 hover:bg-orange-500 text-white focus:ring-orange-300'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-emerald-300'}`}
+                  disabled={submitting || mode == null || password.length === 0}
+                  onMouseDown={(e) => {
+                    if (mode !== 'OUT') return; // long-press solo para salida
+                    setHoldMs(0);
+                    const start = Date.now();
+                    const id = window.setInterval(() => {
+                      const ms = Date.now() - start;
+                      setHoldMs(ms);
+                      if (ms >= 2000) {
+                        window.clearInterval(id);
+                        setHoldMs(0);
+                        handleSubmit();
+                      }
+                    }, 50);
+                    holdTimerRef.current = id as unknown as number;
+                  }}
+                  onMouseUp={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
+                  onMouseLeave={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
+                  onClick={(e) => { if (mode === 'OUT') { e.preventDefault(); return; } handleSubmit(); }}
+                >
+                  {submitting ? 'Enviando…' : (mode === 'OUT' ? (holdMs > 0 ? `Mantén… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Salida') : 'Registrar Entrada')}
+                  {mode === 'OUT' && holdMs > 0 && (
+                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-400" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+                  )}
+                </button>
+                <Link
+                  href="/u/assistance"
+                  prefetch={false}
+                  className="flex-1 rounded-md px-4 py-3 text-sm font-semibold shadow-sm transition active:scale-[.985] focus:outline-none focus:ring-2 focus:ring-offset-2 bg-sky-600 hover:bg-sky-500 text-white text-center inline-flex items-center justify-center focus:ring-sky-300"
+                >
+                  Escanear QR
+                </Link>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 text-xs text-slate-500">
-          Para asegurar la trazabilidad, se registra la hora actual y tu usuario. Se aplican las mismas reglas (una entrada y una salida por día, y salida solo después de entrada). Esta es la interfaz manual; el escáner QR sigue disponible si prefieres usar códigos.
+        <div className="mt-4 text-[11px] text-slate-500">
+          Interfaz manual. Reglas: una entrada y una salida por día (salida requiere entrada previa). Para flujo más rápido usa el escáner QR.
         </div>
       </div>
       {/* Flash overlay + toast */}

@@ -22,13 +22,21 @@ export default function TokensClientWrapper(){
     <div className="space-y-6">
       {/* Métricas del día */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-100 dark:border-slate-700">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">Métricas del Día
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700">{day}</span>
           </h3>
-          <div className="flex items-center gap-2">
-            <input type="date" value={day} onChange={e=>{setDay(e.target.value);load(e.target.value);}} className="input !h-8 !text-xs" />
-            <button onClick={()=>load()} disabled={loading} className="btn-outline !px-2 !py-1 text-xs">{loading?'...':'Refrescar'}</button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <input type="date" value={day} onChange={e=>{setDay(e.target.value);load(e.target.value);}} className="input !h-8 !text-xs max-w-[140px]" />
+            <button
+              onClick={()=>load()} disabled={loading}
+              aria-label="Refrescar métricas"
+              title="Refrescar métricas"
+              className="inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 h-8 w-8 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className={`h-4 w-4 ${loading ? 'animate-spin':''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9" /><path d="M3 12a9 9 0 0 0 9 9" /><path d="M7 17l-4-5 4-5" /><path d="M17 7l4 5-4 5" /></svg>
+              <span className="sr-only">Refrescar</span>
+            </button>
           </div>
         </div>
         {err && <div className="text-xs text-red-600 mb-2">{err}</div>}
@@ -44,7 +52,15 @@ export default function TokensClientWrapper(){
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">Premios y Batches</h3>
-          <button onClick={()=>load()} disabled={loading} className="btn-outline !px-2 !py-1 text-xs" title="Refrescar métricas (no recarga la tabla)">{loading?'...':'Actualizar métricas'}</button>
+          <button
+            onClick={()=>load()} disabled={loading}
+            aria-label="Actualizar métricas"
+            title="Actualizar métricas"
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 h-8 w-8 text-slate-600 dark:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg className={`h-4 w-4 ${loading ? 'animate-spin':''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9" /><path d="M3 12a9 9 0 0 0 9 9" /><path d="M7 17l-4-5 4-5" /><path d="M17 7l4 5-4 5" /></svg>
+            <span className="sr-only">Actualizar</span>
+          </button>
         </div>
         <PrizesTableClient />
       </div>

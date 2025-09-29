@@ -1,15 +1,36 @@
 "use client";
 import React from 'react';
 
+/**
+ * Tarjeta reutilizable para el estado "pendiente" mientras se confirma una operación de asistencia.
+ *
+ * Características:
+ * - Paleta y textos adaptan según `mode` (IN = verde, OUT = índigo)
+ * - Spinner + barra pulsante comunican progreso continuo
+ * - Cambia a estado extendido (pendingTooLong) después de un umbral (>4s) exponiendo acciones Reintentar / Cancelar
+ * - Totalmente presentacional: no conoce timers ni setTimeout, sólo recibe props y emite callbacks
+ *
+ * Accesibilidad / UX:
+ * - Mantiene contraste adecuado de colores en texto principal y de soporte
+ * - Botones en estado tardío usan tamaños táctiles apropiados (≥ 36px alto con padding)
+ * - No dispara animaciones nuevas al pasar a `pendingTooLong` para reducir salto visual
+ */
 export interface PendingRegistrationCardProps {
+  /** Modo de la marca en proceso */
   mode: 'IN' | 'OUT';
+  /** Indica si la operación excedió el umbral de duración esperado */
   pendingTooLong: boolean;
+  /** Reintentar la operación (se espera que el caller reprograme flujo y reanude escaneo) */
   onRetry: () => void;
+  /** Cancelar la operación (caller limpia estados y habilita nuevo escaneo) */
   onCancel: () => void;
 }
 
-// Reusable card shown while a registration (IN/OUT) is being confirmed with the server.
-// Color & copy adapt based on mode. Includes retry/cancel actions when taking too long.
+/**
+ * Reusable pending feedback card for attendance registration (IN / OUT).
+ * Pure presentational: all logic (timeouts, vibration, abort) stay outside.
+ * Extensible: add new mode palettes without changing consumer contract.
+ */
 export function PendingRegistrationCard({ mode, pendingTooLong, onRetry, onCancel }: PendingRegistrationCardProps){
   const isIn = mode === 'IN';
   const palette = isIn ? {

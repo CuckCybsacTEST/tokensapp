@@ -98,63 +98,16 @@ export default function UsersRegisterClient() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
   <div className="mx-auto max-w-5xl">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Control de Colaboradores</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-prose">Registrar nuevos colaboradores (rol fijo COLLAB). El nombre y DNI se usarán para crear la persona y el usuario. El username interno = DNI normalizado.</p>
-        {msg && <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{msg}</div>}
-        {err && <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">{err}</div>}
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nombre</label>
-            <input value={name} onChange={e=>setName(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Nombre completo" />
+  <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Usuarios existentes</h1>
+  <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-prose">Listado de colaboradores registrados. Solo los de rol COLLAB pueden eliminarse desde aquí.</p>
+        {/* Existing users table FIRST */}
+        <div className="mb-10 border rounded border-slate-300 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Colaboradores</h2>
+            <button onClick={loadUsers} disabled={loadingUsers} type="button" className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50" title="Refrescar">
+              <svg className={`h-4 w-4 ${loadingUsers?'animate-spin':''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9"/><path d="M3 12a9 9 0 0 0 9 9"/><path d="M7 17l-4-5 4-5"/><path d="M17 7l4 5-4 5"/></svg>
+            </button>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">DNI</label>
-            <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Solo números" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Área</label>
-            <select value={area} onChange={e=>setArea(e.target.value as Area)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
-              {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">WhatsApp</label>
-              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="9XXXXXXXX" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Día</label>
-              <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
-                {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d=> <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Mes</label>
-              <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
-                {MONTHS_ES.map((m,idx)=> <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Password</label>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Confirmar</label>
-              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" />
-            </div>
-          </div>
-          <button disabled={loading} className="btn">{loading ? 'Creando…' : 'Crear colaborador'}</button>
-        </form>
-        <div className="mt-8 text-xs text-slate-500 dark:text-slate-400">
-          El usuario podrá iniciar sesión con su DNI normalizado como username y la contraseña definida.
-        </div>
-        <div className="mt-8 text-xs">
-          <a href="/u" className="text-blue-600 dark:text-blue-400 hover:underline">← Volver</a>
-        </div>
-        <div className="mt-12 border rounded border-slate-300 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
-          <h2 className="text-lg font-medium mb-4 text-slate-900 dark:text-slate-100">Usuarios existentes</h2>
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full text-sm">
               <thead>
@@ -200,6 +153,57 @@ export default function UsersRegisterClient() {
             </table>
           </div>
         </div>
+
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Registra un nuevo colaborador</h2>
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-prose">Completa los datos para crear un nuevo colaborador (rol COLLAB). El username será el DNI (solo números) y deberá usar la contraseña definida para iniciar sesión.</p>
+        {msg && <div className="mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">{msg}</div>}
+        {err && <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">{err}</div>}
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nombre</label>
+            <input value={name} onChange={e=>setName(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Nombre completo" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">DNI</label>
+            <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Solo números" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Área</label>
+            <select value={area} onChange={e=>setArea(e.target.value as Area)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+              {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">WhatsApp</label>
+              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="9XXXXXXXX" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Día</label>
+              <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d=> <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Mes</label>
+              <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+                {MONTHS_ES.map((m,idx)=> <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Password</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Confirmar</label>
+              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <button disabled={loading} className="btn">{loading ? 'Creando…' : 'Registrar'}</button>
+        </form>
+        <div className="mt-6 text-xs text-slate-500 dark:text-slate-400">El colaborador podrá iniciar sesión usando su DNI (solo números) como username.</div>
       </div>
     </div>
   );
