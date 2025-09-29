@@ -28,7 +28,6 @@ model Batch {
   description      String?
   createdBy        String?
   createdAt        DateTime          @default(now())
-  // Fecha funcional (día de uso) en zona horaria Lima (almacenada como 00:00 local => 05:00 UTC)
   functionalDate   DateTime?
   rouletteSessions RouletteSession[]
   tokens           Token[]
@@ -42,8 +41,6 @@ model Token {
   batchId           String
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
-  // Marca de inserción real en el sistema. Para tokens restaurados preservamos createdAt histórico
-  ingestedAt        DateTime  @default(now())
   redeemedAt        DateTime?
   signature         String
   signatureVersion  Int       @default(1)
@@ -53,6 +50,8 @@ model Token {
   deliveredAt       DateTime?
   deliveredByUserId String?
   deliveryNote      String?
+  ingestedAt        DateTime  @default(now())
+  validFrom         DateTime?
   assignedPrize     Prize?    @relation("AssignedPrize", fields: [assignedPrizeId], references: [id])
   batch             Batch     @relation(fields: [batchId], references: [id])
   prize             Prize     @relation(fields: [prizeId], references: [id])
@@ -65,6 +64,7 @@ model Token {
   @@index([deliveredAt])
   @@index([batchId, deliveredAt])
   @@index([ingestedAt])
+  @@index([validFrom])
 }
 
 model SystemConfig {
@@ -375,12 +375,11 @@ model Show {
   bytesOriginal     Int
   bytesOptimized    Int
   publishedAt       DateTime?
-  // Campos adicionales de contenido (admin)
-  details          String?    @db.Text
-  specialGuests    String?    @db.Text
-  notes            String?    @db.Text
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
+  details           String?
+  notes             String?
+  specialGuests     String?
 
   @@index([status, startsAt(sort: Desc)])
 }

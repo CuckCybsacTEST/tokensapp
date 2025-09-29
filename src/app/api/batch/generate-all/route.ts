@@ -20,6 +20,7 @@ import { getPublicBaseUrl } from "@/lib/config";
 // Body (legacy): { expirationDays: number, includeQr?: boolean, lazyQr?: boolean, name?: string }
 // Body (new byDays): { mode: 'byDays', expirationDays: number, includeQr?: boolean, lazyQr?: boolean, name?: string }
 // Body (new singleDay): { mode: 'singleDay', singleDayDate: 'YYYY-MM-DD', includeQr?: boolean, lazyQr?: boolean, name?: string }
+// Body (new singleHour): { mode: 'singleHour', date: 'YYYY-MM-DD', hour: 'HH:mm', durationMinutes?: number (5..720), includeQr?: boolean, lazyQr?: boolean, name?: string }
 const legacySchema = z.object({
   expirationDays: z
     .number()
@@ -52,7 +53,17 @@ const singleDaySchema = z.object({
   name: z.string().min(1).max(120).optional(),
 });
 
-const schema = z.union([legacySchema, byDaysSchema, singleDaySchema]);
+const singleHourSchema = z.object({
+  mode: z.literal('singleHour'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  hour: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  durationMinutes: z.number().int().positive().min(5).max(720).optional().default(60),
+  includeQr: z.boolean().optional().default(true),
+  lazyQr: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120).optional(),
+});
+
+const schema = z.union([legacySchema, byDaysSchema, singleDaySchema, singleHourSchema]);
 
 export async function POST(req: Request) {
   // Rate limit per IP (same window/limit as redeem) to prevent abuse of auto generation
@@ -79,13 +90,16 @@ export async function POST(req: Request) {
   }
 
   // Normalize inputs for downstream logic, keeping legacy behavior intact.
-  let mode: "byDays" | "singleDay" = "byDays";
+  let mode: "byDays" | "singleDay" | 'singleHour' = "byDays";
   let expirationDays: number | null = null;
   let includeQr = true;
   let lazyQr = false;
   let providedName: string | undefined;
   let singleDayStart: DateTime | null = null;
   let singleDayEnd: DateTime | null = null;
+  let singleHourWindowStart: Date | null = null;
+  let singleHourWindowEnd: Date | null = null;
+  let singleHourDuration: number | null = null;
 
   if ("mode" in parsed.data) {
     if (parsed.data.mode === "byDays") {
@@ -94,7 +108,7 @@ export async function POST(req: Request) {
       includeQr = parsed.data.includeQr;
       lazyQr = parsed.data.lazyQr;
       providedName = parsed.data.name;
-    } else {
+    } else if (parsed.data.mode === 'singleDay') {
       mode = "singleDay";
       includeQr = parsed.data.includeQr;
       lazyQr = parsed.data.lazyQr;
@@ -108,6 +122,30 @@ export async function POST(req: Request) {
       singleDayStart = dt.startOf("day");
       singleDayEnd = dt.endOf("day");
       // For now, generate with a 1-day expiration; post-processing will adjust to endOfDay.
+      expirationDays = 1;
+    } else {
+      // singleHour
+      mode = 'singleHour';
+      includeQr = parsed.data.includeQr;
+      lazyQr = parsed.data.lazyQr;
+      providedName = parsed.data.name;
+      singleHourDuration = parsed.data.durationMinutes;
+      const base = DateTime.fromISO(parsed.data.date, { zone: 'America/Lima' });
+      if (!base.isValid) {
+        await logEvent('BATCH_AUTO_FAIL', 'Auto batch fallo', { reason: 'BAD_REQUEST' });
+        return apiError('BAD_REQUEST', 'Fecha inválida', { details: 'INVALID_DATE' }, 400);
+      }
+      const [hh, mm] = parsed.data.hour.split(':').map(Number);
+      // Construir hora exacta manualmente (evitando métodos luxon que TS no reconoce en la versión instalada)
+      const jsBase = base.toJSDate();
+      const jsStart = new Date(jsBase.getTime()); // base a medianoche Lima en UTC ajustado por luxon
+      jsStart.setHours(hh, mm, 0, 0); // esto ajusta en la zona local del servidor; aceptamos pequeño desfase si TZ difiere.
+      singleHourWindowStart = jsStart;
+      singleHourWindowEnd = new Date(jsStart.getTime() + singleHourDuration * 60000);
+      if (!singleHourWindowEnd) {
+        return apiError('BAD_REQUEST', 'Ventana inválida', { details: 'INVALID_WINDOW' }, 400);
+      }
+      // Internamente seguimos usando expirationDays=1 para permitir firma coherente; será reemplazado con update.
       expirationDays = 1;
     }
   } else {
@@ -236,6 +274,55 @@ export async function POST(req: Request) {
     }));
   }
 
+  // Post-process for singleHour mode: adjust validFrom + expiresAt window, set disabled if future
+  if (mode === 'singleHour' && batch?.id && singleHourWindowStart && singleHourWindowEnd && singleHourDuration) {
+    const isFutureWindow = singleHourWindowStart.getTime() > Date.now();
+    await prisma.token.updateMany({
+      where: { batchId: batch.id },
+      data: {
+        expiresAt: singleHourWindowEnd,
+        disabled: isFutureWindow,
+      }
+    });
+    // Raw SQL para setear validFrom sin que el tipo del cliente actual (pre-migrate) bloquee
+    try {
+      await prisma.$executeRawUnsafe(`UPDATE \"Token\" SET \"validFrom\" = $1 WHERE \"batchId\" = $2`, singleHourWindowStart as any, batch.id as any);
+    } catch (e) {
+      console.error('[singleHour.validFrom.update.error]', e);
+    }
+    await logEvent('BATCH_SINGLE_HOUR_POST', 'post-proceso singleHour aplicado', {
+      batchId: batch.id,
+      windowStart: singleHourWindowStart.toISOString(),
+      windowEnd: singleHourWindowEnd.toISOString(),
+      durationMinutes: singleHourDuration,
+      isFutureWindow,
+    });
+    const fresh = await prisma.token.findMany({
+      where: { batchId: batch.id },
+      include: { prize: { select: { key: true, label: true, color: true } } },
+      orderBy: { id: 'asc' },
+    });
+    tokens = fresh.map((t: any) => ({
+      id: t.id,
+      prizeId: t.prizeId,
+      prizeKey: t.prize.key,
+      prizeLabel: t.prize.label,
+      prizeColor: t.prize.color ?? null,
+      expiresAt: t.expiresAt,
+      signature: t.signature,
+      signatureVersion: t.signatureVersion,
+      disabled: t.disabled,
+    }));
+    // Adjuntar metadata de la ventana en meta (no destructivo)
+    meta = {
+      ...meta,
+      windowStartIso: singleHourWindowStart.toISOString(),
+      windowEndIso: singleHourWindowEnd.toISOString(),
+      windowDurationMinutes: singleHourDuration,
+      windowMode: 'hour',
+    } as any;
+  }
+
   // Build manifest & ZIP (sustituye implementación previa del endpoint manual)
   const csvColumns = [
     "token_id",
@@ -265,6 +352,7 @@ export async function POST(req: Request) {
     meta,
   };
   // Ensure required meta fields are present (non-destructive merge)
+  const metaAny: any = meta;
   manifest.meta = {
     ...manifest.meta,
     mode: meta.mode,
@@ -273,6 +361,7 @@ export async function POST(req: Request) {
     totalTokens: meta.totalTokens,
     qrMode: meta.qrMode,
     prizeEmittedTotals,
+    ...(metaAny.windowMode ? { windowStartIso: metaAny.windowStartIso, windowEndIso: metaAny.windowEndIso, windowDurationMinutes: metaAny.windowDurationMinutes, windowMode: metaAny.windowMode } : {}),
   };
   const { archive, stream } = createZipStream();
   for (const req of prizeRequests) {

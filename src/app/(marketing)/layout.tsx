@@ -1,5 +1,4 @@
 import React from 'react';
-import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { Inter, Poppins } from 'next/font/google';
 
@@ -16,11 +15,11 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['400','600','800'], varia
 export default function MarketingGroupLayout({ children }: { children: React.ReactNode }) {
   // Aplicamos las variables de fuentes a un contenedor de alto nivel
   return (
-    <ThemeProvider>
+  <>
       <div className={`${inter.variable} ${poppins.variable} min-h-full`} style={{ fontFamily: 'var(--font-text)' }}>
         <div className="p-4 flex justify-end"><ThemeToggle compact /></div>
         {children}
       </div>
-    </ThemeProvider>
+  </>
   );
 }

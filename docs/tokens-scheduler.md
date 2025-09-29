@@ -62,3 +62,43 @@ Requiere dependencias ya listadas en `package.json` (`node-cron`, `luxon`). Si `
 | Heartbeat | Solo `debug` |
 
 El diseño prioriza predecibilidad + flexibilidad controlada.
+
+### Ventanas horarias por lote (singleHour)
+
+Se añadió soporte a generación automática de lotes con una ventana horaria específica (`mode: singleHour` en `/api/batch/generate-all`).
+
+Campos relevantes:
+- `Token.validFrom` (nullable): inicio de la ventana. Si existe y es futuro, el token se crea `disabled=true`.
+- `Token.expiresAt`: fin de la ventana. Expiración tradicional.
+- Manifest meta incluye: `windowStartIso`, `windowEndIso`, `windowDurationMinutes`, `windowMode: 'hour'`.
+
+Flujo:
+1. Generación singleHour calcula `validFrom` y `expiresAt` según `date + hour` y `durationMinutes`.
+2. Si la ventana es futura: tokens quedan `disabled=true`.
+3. Scheduler (job minucioso) habilita automáticamente tokens cuya hora llegó (`validFrom <= now < expiresAt`).
+4. Redeem bloquea canje temprano (`TOO_EARLY`) si `validFrom` no ha llegado.
+
+Endpoint auxiliar manual: `POST /api/system/tokens/enable-hourly` (ADMIN/STAFF) para forzar habilitación inmediata de todos los tokens con `validFrom` alcanzado que sigan `disabled=true`.
+
+Consideraciones:
+- No se requiere `validFrom` para modos legacy; permanece null.
+- Si el servidor corre en timezone distinto a Lima, el cálculo base usa la fecha Lima pero el ajuste final se hace en UTC; ligeras diferencias de segundos no afectan la ventana.
+- Límite de duración: 5 a 720 minutos.
+
+Ejemplo de payload:
+```json
+{ "mode": "singleHour", "date": "2025-10-05", "hour": "21:00", "durationMinutes": 90, "includeQr": true }
+```
+
+Respuesta ZIP manifest (fragmento):
+```jsonc
+{
+	"meta": {
+		"mode": "auto",
+		"windowMode": "hour",
+		"windowStartIso": "2025-10-06T02:00:00.000Z",
+		"windowEndIso": "2025-10-06T03:30:00.000Z",
+		"windowDurationMinutes": 90
+	}
+}
+```

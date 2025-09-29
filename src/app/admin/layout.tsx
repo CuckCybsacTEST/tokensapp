@@ -1,6 +1,5 @@
 import React from "react";
 import LogoutButton from "./components/LogoutButton";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import { verifySessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
@@ -18,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await verifySessionCookie(cookie);
   const role = session?.role || null;
   return (
-    <ThemeProvider>
+  <>
       <header className="border-b border-slate-200 dark:border-slate-700 bg-[var(--color-bg-soft)]/60 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-bg-soft)]/40">
         <div className="app-container flex items-center justify-between py-3">
           <a href="/admin" className="font-semibold tracking-tight">QR Prize Admin</a>
@@ -36,6 +35,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
       <div className="app-container pt-8">{children}</div>
-    </ThemeProvider>
+  </>
   );
 }

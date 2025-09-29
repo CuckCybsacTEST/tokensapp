@@ -58,6 +58,17 @@ export async function POST(_req: Request, { params }: { params: { tokenId: strin
           body: { code: "INACTIVE", message: "Token/Premio inactivo" },
         } as const;
       }
+      // Ventana horaria (validFrom): si existe y aún no se alcanza, bloquear
+      const anyToken: any = token as any;
+      if (anyToken.validFrom && Date.now() < new Date(anyToken.validFrom).getTime()) {
+        await logEvent(
+          'REDEEM_TOO_EARLY',
+          'Intento de redención antes de validFrom',
+          { tokenId, prizeId: token.prizeId, validFrom: anyToken.validFrom },
+          tx as any
+        );
+        return { status: 409, body: { code: 'TOO_EARLY', message: 'Aún no disponible' } } as const;
+      }
       if (Date.now() > token.expiresAt.getTime()) {
         await logEvent(
           "REDEEM_EXPIRED",

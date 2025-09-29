@@ -11,7 +11,8 @@ const EXPIRATION_OPTIONS = [1, 3, 5, 7, 15, 30];
 // Inline type for request payload to /api/batch/generate-all
 type GenerateAllRequest =
   | { expirationDays: number; includeQr: boolean; lazyQr: boolean; name?: string }
-  | { mode: "singleDay"; singleDayDate: string; includeQr: boolean; lazyQr: boolean; name?: string };
+  | { mode: "singleDay"; singleDayDate: string; includeQr: boolean; lazyQr: boolean; name?: string }
+  | { mode: "singleHour"; date: string; hour: string; durationMinutes: number; includeQr: boolean; lazyQr: boolean; name?: string };
 
 export default function InlineAutoBatchPanel({ prizes }: Props) {
   const router = useRouter();
@@ -19,8 +20,12 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
   const [includeQr, setIncludeQr] = useState(true);
   const [lazyQr, setLazyQr] = useState(false); // will be removed logically (always false)
   const [name, setName] = useState("");
-  const [mode, setMode] = useState<"byDays" | "singleDay">("byDays");
+  const [mode, setMode] = useState<"byDays" | "singleDay" | "singleHour">("byDays");
   const [singleDayDate, setSingleDayDate] = useState(""); // YYYY-MM-DD
+  // singleHour specific
+  const [hourDate, setHourDate] = useState(""); // YYYY-MM-DD
+  const [hourTime, setHourTime] = useState(""); // HH:mm
+  const [durationMinutes, setDurationMinutes] = useState(60); // 5..720
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -79,21 +84,32 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
           return;
         }
       }
-      const bodyPayload: GenerateAllRequest =
-        mode === "singleDay"
-          ? (() => {
-              if (!singleDayDate) {
-                throw new Error("Selecciona una fecha específica");
-              }
-              return {
-                mode: "singleDay",
-                singleDayDate,
-                includeQr,
-                lazyQr: false,
-                name: name || undefined,
-              } as const;
-            })()
-          : { expirationDays, includeQr, lazyQr: false, name: name || undefined };
+      let bodyPayload: GenerateAllRequest;
+      if (mode === "singleDay") {
+        if (!singleDayDate) throw new Error("Selecciona una fecha específica");
+        bodyPayload = {
+          mode: "singleDay",
+          singleDayDate,
+          includeQr,
+          lazyQr: false,
+          name: name || undefined,
+        };
+      } else if (mode === 'singleHour') {
+        if (!hourDate) throw new Error('Selecciona fecha de ventana');
+        if (!/^\d{2}:\d{2}$/.test(hourTime)) throw new Error('Hora inválida');
+        if (durationMinutes < 5 || durationMinutes > 720) throw new Error('Duración fuera de rango');
+        bodyPayload = {
+          mode: 'singleHour',
+          date: hourDate,
+          hour: hourTime,
+            durationMinutes,
+          includeQr,
+          lazyQr: false,
+          name: name || undefined,
+        };
+      } else {
+        bodyPayload = { expirationDays, includeQr, lazyQr: false, name: name || undefined };
+      }
 
       const res = await fetch("/api/batch/generate-all", {
         method: "POST",
@@ -250,7 +266,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
         )}
         <div className="form-row md:col-span-3">
           <label className="text-xs font-medium">Modo de generación</label>
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-4 text-xs">
             <label className="inline-flex items-center gap-2">
               <input
                 type="radio"
@@ -260,6 +276,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
                 onChange={() => {
                   setMode("byDays");
                   setSingleDayDate(""); // limpiar campo no usado
+                  setHourDate(""); setHourTime("");
                   setError(null);
                   setSuccess(null);
                 }}
@@ -280,6 +297,20 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
               />
               <span>Fecha específica</span>
             </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="gen-mode"
+                value="singleHour"
+                checked={mode === 'singleHour'}
+                onChange={() => {
+                  setMode('singleHour');
+                  setSingleDayDate("");
+                  setError(null); setSuccess(null);
+                }}
+              />
+              <span>Ventana horaria</span>
+            </label>
           </div>
         </div>
         <div className="form-row">
@@ -288,7 +319,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
             className="input"
             value={expirationDays}
             onChange={(e) => setExpirationDays(Number(e.target.value))}
-            disabled={mode === "singleDay"}
+            disabled={mode === "singleDay" || mode === 'singleHour'}
           >
             {EXPIRATION_OPTIONS.map((d) => (
               <option key={d} value={d}>
@@ -307,6 +338,38 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
               onChange={(e) => setSingleDayDate(e.target.value)}
             />
           </div>
+        )}
+        {mode === 'singleHour' && (
+          <>
+            <div className="form-row">
+              <label className="text-xs font-medium">Fecha ventana</label>
+              <input
+                type="date"
+                className="input"
+                value={hourDate}
+                onChange={(e) => setHourDate(e.target.value)}
+              />
+            </div>
+            <div className="form-row">
+              <label className="text-xs font-medium">Hora inicio (HH:mm)</label>
+              <input
+                type="time"
+                className="input"
+                value={hourTime}
+                onChange={(e) => setHourTime(e.target.value)}
+              />
+            </div>
+            <div className="form-row">
+              <label className="text-xs font-medium">Duración (min)</label>
+              <select
+                className="input"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+              >
+                {[15,30,45,60,90,120,180,240,360].map(m => <option key={m} value={m}>{m} min</option>)}
+              </select>
+            </div>
+          </>
         )}
         <div className="form-row md:col-span-2">
           <label className="text-xs font-medium">Nombre del lote</label>
@@ -335,7 +398,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
             <button
               type="button"
               onClick={generate}
-              disabled={!hasStock || loading || (mode === "singleDay" && !singleDayDate)}
+              disabled={!hasStock || loading || (mode === "singleDay" && !singleDayDate) || (mode === 'singleHour' && (!hourDate || !/^\d{2}:\d{2}$/.test(hourTime)))}
               className="btn text-xs disabled:opacity-40"
               title={!hasStock ? "No hay stock disponible" : undefined}
             >
@@ -346,6 +409,11 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
         {mode === "singleDay" && (
           <p className="col-span-full text-[10px] text-slate-500">
             Expiran a las 23:59:59 del día seleccionado (hora Lima). Si es una fecha futura, se generarán deshabilitados y se habilitan el mismo día.
+          </p>
+        )}
+        {mode === 'singleHour' && (
+          <p className="col-span-full text-[10px] text-slate-500">
+            Ventana horaria: los tokens solo se podrán canjear entre la hora de inicio y la duración indicada. Si la ventana es futura se crean deshabilitados y se habilitan automáticamente al comenzar.
           </p>
         )}
         {(error || success) && (

@@ -392,9 +392,9 @@ export function PrintControlClient() {
   }
 
   return (
-    <div className="bg-slate-800 shadow-md rounded-lg p-6 border border-slate-700">
+  <div className="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6 border border-slate-200 dark:border-slate-700 transition-colors">
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-white">Control de Impresión Centralizado</h2>
+  <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white transition-colors">Control de Impresión Centralizado</h2>
         <p className="text-slate-400 mb-4">
           Este panel permite generar PDFs con códigos QR utilizando una plantilla consistente
           para cualquier lote seleccionado.
@@ -414,7 +414,7 @@ export function PrintControlClient() {
       )}
 
       <div className="mb-6">
-        <label htmlFor="batch" className="block text-sm font-medium text-slate-300 mb-1">
+  <label htmlFor="batch" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 transition-colors">
           Seleccionar Lote
         </label>
         <select
@@ -437,9 +437,9 @@ export function PrintControlClient() {
       </div>
 
       {/* Formulario para subir nueva plantilla */}
-  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm transition-colors">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-medium text-slate-300">Subir nueva plantilla</h3>
+          <h3 className="text-lg font-medium text-slate-800 dark:text-slate-300 transition-colors">Subir nueva plantilla</h3>
           {templates.length > 0 && (
             <button 
               onClick={async () => {
@@ -487,7 +487,7 @@ export function PrintControlClient() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="templateName" className="block text-sm font-medium text-slate-400 mb-1">
+            <label htmlFor="templateName" className="block text-sm font-medium text-slate-700 dark:text-slate-400 mb-1 transition-colors">
               Nombre de la plantilla
             </label>
             <input
@@ -520,7 +520,7 @@ export function PrintControlClient() {
             </button>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
+  <p className="text-xs text-slate-600 dark:text-slate-500 mt-2 transition-colors">
           Sube un archivo de imagen (PNG/JPG) que servirá como plantilla para los códigos QR.
           <br/>Las plantillas son temporales y se eliminarán automáticamente después de 24 horas.
         </p>
@@ -528,9 +528,9 @@ export function PrintControlClient() {
 
       {/* Vista previa de la plantilla con QR */}
       {(templatePreview || selectedTemplateId) && (
-  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm transition-colors">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-medium text-slate-300">Vista previa con QR de ejemplo</h3>
+            <h3 className="text-lg font-medium text-slate-800 dark:text-slate-300 transition-colors">Vista previa con QR de ejemplo</h3>
             {selectedTemplateId && (
               <button 
                 onClick={async () => {
@@ -589,7 +589,7 @@ export function PrintControlClient() {
               </button>
             )}
           </div>
-          <div className="flex justify-center bg-slate-950 p-2 rounded-lg">
+          <div className="flex justify-center bg-slate-100 dark:bg-slate-950 p-2 rounded-lg transition-colors">
             <div className="relative h-64 w-auto">
               {templatePreview ? (
                 <img
@@ -606,7 +606,7 @@ export function PrintControlClient() {
               
               {/* Indicador de carga solo cuando estamos generando explícitamente una vista previa */}
               {previewing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-black/50 transition-colors">
                   <div className="text-white flex flex-col items-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500 mb-2"></div>
                     <span>Generando vista previa con QR...</span>
@@ -616,14 +616,14 @@ export function PrintControlClient() {
               
               {/* Indicador de carga general */}
               {loading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/30 transition-colors">
                   <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-500"></div>
                 </div>
               )}
             </div>
           </div>
           {/* Controles efímeros eliminados para simplificar la UI */}
-          <p className="text-xs text-slate-500 mt-2 text-center">
+          <p className="text-xs text-slate-600 dark:text-slate-500 mt-2 text-center transition-colors">
             La posición del QR en esta vista previa representa la ubicación exacta en la impresión final.
           </p>
         </div>

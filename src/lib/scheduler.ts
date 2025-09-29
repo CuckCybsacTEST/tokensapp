@@ -122,10 +122,20 @@ export function startScheduler() {
   // Every minute: no enforcement; only log state for observability
   const jobMinute = cron.schedule('* * * * *', async () => {
     try {
+      const now = new Date();
+      // Activar tokens con ventana horaria cuyo validFrom ya pasó (raw SQL para evitar dependencia de cliente regenerado)
+      try {
+        const enabled = await prisma.$executeRawUnsafe(`UPDATE "Token" SET "disabled"=false WHERE "disabled"=true AND "validFrom" IS NOT NULL AND "validFrom" <= $1 AND "expiresAt" > $1`, now as any);
+        if (enabled && shouldLog('info') && enabled > 0) {
+          logInfo('scheduler.hourly.enable', 'tokens activados por ventana horaria', { count: enabled });
+        }
+      } catch (e) {
+        if (shouldLog('warn')) logWarn('scheduler.hourly.enable.error', 'fallo enable hourly', { error: String(e) });
+      }
       if (shouldLog('debug')) {
         const cfg = await readConfig();
         const current = Boolean(cfg?.tokensEnabled);
-        const scheduled = computeTokensEnabled({ now: new Date(), tz: TOKENS_TZ }).enabled;
+        const scheduled = computeTokensEnabled({ now, tz: TOKENS_TZ }).enabled;
         logJson('debug', 'scheduler.heartbeat', undefined, { current, scheduled });
       }
     } catch (e) {

@@ -27,14 +27,18 @@ type AdminReservationCardProps = {
 const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenTokens, onDownload }: AdminReservationCardProps){
   const isApproved = r.status === 'approved' || r.status === 'completed';
   const isAlert = r.status === 'pending_review' || r.status === 'canceled';
-  const cardBorder = isApproved ? 'border-emerald-700' : isAlert ? 'border-rose-700' : 'border-slate-700';
-  const cardBg = isApproved ? 'bg-emerald-950/20 dark:bg-emerald-950/30' : isAlert ? 'bg-rose-950/20 dark:bg-rose-950/30' : 'bg-white dark:bg-slate-800';
-  const mutedText = isApproved ? 'text-emerald-300' : isAlert ? 'text-rose-300' : 'text-slate-400';
-  const badgeCls = isApproved
-    ? 'border-emerald-700 bg-emerald-600/20 text-emerald-300'
+  const cardBorder = isApproved ? 'border-emerald-400 dark:border-emerald-700' : isAlert ? 'border-rose-400 dark:border-rose-700' : 'border-slate-200 dark:border-slate-700';
+  const cardBg = isApproved
+    ? 'bg-emerald-50 dark:bg-emerald-950/30'
     : isAlert
-      ? 'border-rose-700 bg-rose-600/20 text-rose-300'
-      : 'border-slate-700 bg-slate-600/20 text-slate-300';
+      ? 'bg-rose-50 dark:bg-rose-950/30'
+      : 'bg-white dark:bg-slate-800';
+  const mutedText = isApproved ? 'text-emerald-700 dark:text-emerald-300' : isAlert ? 'text-rose-700 dark:text-rose-300' : 'text-slate-600 dark:text-slate-400';
+  const badgeCls = isApproved
+    ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-200/60 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300'
+    : isAlert
+      ? 'border-rose-300 dark:border-rose-700 bg-rose-200/60 dark:bg-rose-600/20 text-rose-700 dark:text-rose-300'
+      : 'border-slate-300 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-600/20 text-slate-700 dark:text-slate-300';
   const scrollRef = useRef<HTMLDivElement|null>(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(false);
@@ -196,7 +200,7 @@ export default function AdminBirthdaysPage() {
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
       {/* Crear reserva rápida */}
-  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm transition-colors">
         <div className="font-medium mb-2">Crear reserva</div>
   <div className="grid md:grid-cols-3 gap-2">
           <input className="input-sm" placeholder="Nombre" value={cName} onChange={(e)=>setCName(e.target.value)} />
@@ -246,7 +250,7 @@ export default function AdminBirthdaysPage() {
           const perks = (sel.perks || []).filter(Boolean);
           const hasBottlePerk = perks.some(p => p.toLowerCase().startsWith('botella'));
           return (
-            <div className="mt-3 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 p-3">
+            <div className="mt-3 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 p-3 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="font-semibold">Pack seleccionado: {sel.name}</div>
                 {/* Oculto: cantidad de QRs */}
@@ -260,10 +264,10 @@ export default function AdminBirthdaysPage() {
               )}
               {/* Lista de beneficios */}
               {perks.length > 0 && (
-                <ul className="mt-2 space-y-1.5 text-[13px] text-slate-200">
+                <ul className="mt-2 space-y-1.5 text-[13px] text-slate-700 dark:text-slate-200 transition-colors">
                   {perks.map((p) => (
                     <li key={p} className={`flex items-start gap-2 ${p.toLowerCase().startsWith('botella') ? 'font-semibold' : ''}`}>
-                      <span className="mt-0.5 text-[10px] text-slate-400">●</span>
+                      <span className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-400">●</span>
                       <span>{p}</span>
                     </li>
                   ))}
@@ -281,14 +285,14 @@ export default function AdminBirthdaysPage() {
       </div>
 
       {/* Gestión de Packs */}
-  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-3 shadow-sm">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-3 shadow-sm transition-colors">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="font-medium">Packs de cumpleaños</div>
           <button onClick={async()=>{
             // refrescar packs explicitamente
             const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
             if (list?.packs) setPacks(list.packs);
-          }} className="text-xs px-2 py-1 rounded bg-slate-800 border border-slate-600 hover:bg-slate-700">Refrescar</button>
+          }} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Refrescar</button>
         </div>
         {packs.length===0 && (
           <div className="text-xs text-amber-300">No hay packs. Usa "Recrear packs por defecto" arriba.</div>
@@ -298,16 +302,16 @@ export default function AdminBirthdaysPage() {
             const isEditing = editingPack === p.id;
             const edit = packEdits[p.id];
             return (
-              <div key={p.id} className="rounded border border-slate-600 p-3 bg-slate-800/60 flex flex-col gap-2">
+              <div key={p.id} className="rounded border border-slate-300 dark:border-slate-600 p-3 bg-slate-50 dark:bg-slate-800/60 flex flex-col gap-2 transition-colors">
                 {!isEditing && (
                   <>
                     <div className="font-semibold text-sm">{p.name}</div>
-                    <div className="text-xs text-slate-400">Invitados (QRs): {p.qrCount}</div>
-                    {p.bottle && <div className="text-xs">Botella: {p.bottle}</div>}
-                    <ul className="text-[11px] list-disc ml-4 space-y-0.5">
+                    <div className="text-xs text-slate-600 dark:text-slate-400 transition-colors">Invitados (QRs): {p.qrCount}</div>
+                    {p.bottle && <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Botella: {p.bottle}</div>}
+                    <ul className="text-[11px] list-disc ml-4 space-y-0.5 text-slate-700 dark:text-slate-300 transition-colors">
                       {(p.perks||[]).map(per=> <li key={per}>{per}</li>)}
                     </ul>
-                    <button onClick={()=>startEdit(p.id)} className="mt-1 text-xs px-2 py-1 rounded bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/30">Editar</button>
+                    <button onClick={()=>startEdit(p.id)} className="mt-1 text-xs px-2 py-1 rounded bg-blue-500/10 dark:bg-blue-600/20 border border-blue-400/40 dark:border-blue-500/40 hover:bg-blue-500/20 dark:hover:bg-blue-600/30 transition-colors">Editar</button>
                   </>
                 )}
                 {isEditing && edit && (
