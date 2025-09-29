@@ -9,6 +9,8 @@ export default function AssistanceScannerPage(){
   // Comienza activo para que el escaneo arranque automáticamente sin requerir clic del usuario
   const [active, setActive] = useState(true);
   const [error, setError] = useState<string|null>(null);
+  // Información de usuario para saludo personalizado
+  const [me, setMe] = useState<{ personName?: string; dni?: string } | null>(null);
   // Usar refs para evitar re-render y reinicios del loop por dependencias
   const lastRef = useRef<Detection|null>(null);
   const detectorRef = useRef<any>(null);
@@ -22,11 +24,12 @@ export default function AssistanceScannerPage(){
   const [message, setMessage] = useState<string|null>(null);
   const [recent, setRecent] = useState<any|null>(null); // shape { ok, recent: { id, scannedAt, type, businessDay, code, name } }
   const recentRef = useRef<any|null>(null);
-  const [loadingRecent, setLoadingRecent] = useState(false);
   // Estado de confirmación cuando se registra ENTRADA o SALIDA (se detiene el escáner y se muestra resumen temporal)
   interface AttConfirm { person:{id:string; name:string; code:string}; businessDay?:string; at:Date }
   const [entryRegistered, setEntryRegistered] = useState<AttConfirm | null>(null);
   const [exitRegistered, setExitRegistered] = useState<null | { person: { id:string; name:string; code:string }; businessDay?: string; at: Date }>(null);
+  // Modo pendiente para feedback inmediato (optimista) mientras esperamos respuesta del backend
+  const [pendingMode, setPendingMode] = useState<null | 'IN' | 'OUT'>(null);
   const expectedRef = useRef<'IN'|'OUT'|null>(null);
   function triggerFlash(kind:'OK'|'WARN'){
     flashRef.current = { ts: Date.now(), kind };
@@ -43,13 +46,27 @@ export default function AssistanceScannerPage(){
   }, []);
 
   const fetchRecent = useCallback(()=>{
-    setLoadingRecent(true);
     fetch('/api/attendance/me/recent', { cache: 'no-store' })
       .then(r=>{ if(r.status===401){ window.location.href='/u/login?next='+encodeURIComponent('/u/assistance'); return null; } return r.json(); })
   .then(j=>{ if(j && j.ok){ setRecent(j); recentRef.current = j; } })
       .catch(()=>{})
-      .finally(()=> setLoadingRecent(false));
   },[]);
+
+  // Cargar datos básicos del usuario para el nombre (independiente del historial reciente)
+  useEffect(()=>{
+    let cancelled = false;
+    (async ()=>{
+      try {
+        const r = await fetch('/api/user/me', { cache: 'no-store' });
+        if(r.status===401){ return; }
+        const j = await r.json().catch(()=>({}));
+        if(!cancelled && r.ok && j?.ok && j.user){
+          setMe({ personName: j.user.personName, dni: j.user.dni });
+        }
+      } catch {}
+    })();
+    return ()=>{ cancelled=true; };
+  }, []);
 
   useEffect(()=>{ fetchRecent(); }, [fetchRecent]);
   // Mantener recentRef sincronizado en cada cambio para uso dentro del loop sin re crear efecto
@@ -84,7 +101,7 @@ export default function AssistanceScannerPage(){
   }
 
   useEffect(()=>{
-    if(!active) return; // no iniciar si no está activo
+  if(!active) return;
     let cancelled=false; let stream: MediaStream|null = null;
     async function init(){
       setError(null);
@@ -133,12 +150,9 @@ export default function AssistanceScannerPage(){
       const override = expectedRef.current;
       const lastType = recentRef.current?.recent?.type as ('IN'|'OUT'|undefined);
       // Evitar enviar mismo tipo consecutivo para feedback inmediato (backend igual lo bloquea)
+      // NUEVO: Silenciar duplicados (no flash amarillo, no mensaje). Simplemente ignorar.
       if(lastType && lastType === mode){
-        audioWarnRef.current?.play().catch(()=>{});
-          triggerFlash('WARN');
-        setMessage(`Ya registraste ${mode === 'IN' ? 'entrada' : 'salida'} hoy.`);
-        setTimeout(()=>{ setMessage(m=> m && m.startsWith('Ya registraste') ? null : m); }, 3000);
-        return;
+        return; // ignorar duplicado del mismo tipo
       }
       if(mode !== nextExpected && !(override && mode === override)){
         audioWarnRef.current?.play().catch(()=>{});
@@ -159,7 +173,12 @@ export default function AssistanceScannerPage(){
   }, [active, registering]);
 
   async function doRegister(mode: 'IN'|'OUT', raw: string){
-    setRegistering(true); setMessage(null);
+    setRegistering(true); setMessage(null); setPendingMode(mode);
+    // Feedback inmediato: para IN solo sonido; para OUT sonido + flash
+    try {
+      if(mode==='OUT'){ audioOkRef.current?.play().catch(()=>{}); triggerFlash('OK'); }
+      else { audioOkRef.current?.play().catch(()=>{}); }
+    } catch {}
     try {
       // Enviar deviceId para evitar requerir password (como flujo escáner) y permitir rate-limit por dispositivo
       const deviceId = getOrCreateDeviceId();
@@ -167,12 +186,13 @@ export default function AssistanceScannerPage(){
       if(res.status===401){ window.location.href='/u/login?next='+encodeURIComponent('/u/assistance'); return; }
       const j = await res.json().catch(()=>({}));
       if(!res.ok || !j.ok){
-        audioWarnRef.current?.play().catch(()=>{});
         const code = j?.code;
+        // Silenciar duplicados o ya-hoy (no audio, no mensaje)
+        if(code==='DUPLICATE' || code==='ALREADY_TODAY') return;
+        // Reemplazar feedback optimista por advertencia
+        audioWarnRef.current?.play().catch(()=>{}); triggerFlash('WARN');
         let friendly = 'Error registrando.';
-        if(code==='DUPLICATE') friendly = 'Duplicado muy reciente.';
-        else if(code==='ALREADY_TODAY') friendly = 'Ya marcado hoy.';
-        else if(code==='NO_IN_TODAY') friendly = 'No tienes una ENTRADA previa.';
+        if(code==='NO_IN_TODAY') friendly = 'No tienes una ENTRADA previa.';
         else if(code==='OUT_COOLDOWN') friendly = `Debes esperar unos segundos antes de marcar SALIDA.`;
         else if(code==='PERSON_INACTIVE') friendly = 'Tu usuario está inactivo.';
         else if(code==='RATE_LIMIT') friendly = 'Demasiados intentos, espera un momento.';
@@ -180,25 +200,22 @@ export default function AssistanceScannerPage(){
         setMessage(friendly);
       }
       else {
-  audioOkRef.current?.play().catch(()=>{}); triggerFlash('OK');
-        setMessage(`✓ ${mode === 'IN' ? 'Entrada' : 'Salida'} registrada`);
+        // Ya se mostró feedback optimista; actualizar estado real
         fetchRecent();
         if(mode === 'IN'){
-          // Mostrar confirmación rápida y redirigir después de un instante
+          // Mostrar detalles inmediatamente (sin fase intermedia) para reducir retraso y evitar doble check
           setActive(false);
-          const day = (j.businessDay || j.utcDay || new Date().toISOString().slice(0,10));
           const info = { person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() };
           setEntryRegistered(info);
-          setTimeout(()=>{ window.location.href = `/u/checklist?day=${encodeURIComponent(day)}&mode=IN`; }, 1700);
-          return; // no continuar
+          return; // detener aquí
         } else if(mode === 'OUT') {
           // Mostrar confirmación de salida y detener escaneo
           setActive(false);
           setExitRegistered({ person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() });
         }
       }
-    } catch { audioWarnRef.current?.play().catch(()=>{}); setMessage('Error de red.'); }
-    finally { setRegistering(false); setTimeout(()=>{ setMessage(m=> m && m.startsWith('✓') ? null: m); }, 3000); }
+    } catch { audioWarnRef.current?.play().catch(()=>{}); triggerFlash('WARN'); setMessage('Error de red.'); }
+    finally { setRegistering(false); setTimeout(()=>{ setMessage(m=> m && m.startsWith('✓') ? null: m); }, 3000); setPendingMode(null); }
   }
 
   function manualFallback(){ window.location.href='/u/manual'; }
@@ -213,8 +230,12 @@ export default function AssistanceScannerPage(){
     } catch { return undefined; }
   }
 
+  // Derivar nombre del colaborador para saludo (preferir el del registro reciente o de confirmación)
+  const collaboratorName = entryRegistered?.person?.name || exitRegistered?.person?.name || recent?.recent?.name || me?.personName || '';
+  const firstName = collaboratorName.split(/\s+/)[0] || '';
+
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 px-4 py-6 text-slate-800">
       <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
       <audio ref={audioWarnRef} src="/sounds/scan-warn.mp3" preload="auto" />
       {flashRef.current && Date.now()-flashRef.current.ts < 650 && (
@@ -229,70 +250,128 @@ export default function AssistanceScannerPage(){
         </div>
       )}
       <div className="max-w-md mx-auto space-y-4">
-        <h1 className="text-2xl font-semibold text-slate-100">Escáner de Asistencia</h1>
-        <p className="text-sm text-slate-300">Escanea únicamente los códigos IN / OUT oficiales. Este escáner registra tu entrada o salida directamente.</p>
-        {entryRegistered && (
-          <div className="rounded border border-emerald-500 bg-emerald-900/30 p-4 space-y-3 animate-fadeIn">
-            <div className="text-emerald-200 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
-            <div className="text-sm text-emerald-100 space-y-1">
-              <div><span className="text-emerald-300/80">Nombre:</span> {entryRegistered?.person?.name}</div>
-              <div><span className="text-emerald-300/80">Código:</span> {entryRegistered?.person?.code}</div>
-              <div><span className="text-emerald-300/80">Hora local:</span> {entryRegistered?.at?.toLocaleTimeString()}</div>
-              <div><span className="text-emerald-300/80">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
-              {entryRegistered?.businessDay && <div><span className="text-emerald-300/80">Business Day:</span> {entryRegistered?.businessDay}</div>}
-            </div>
-            <div className="text-xs text-emerald-200/80">Redirigiéndote a tus tareas…</div>
+  {!entryRegistered && !exitRegistered && !pendingMode && (
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {nextExpected === 'IN' ? (
+                <span>
+                  Hola{firstName ? `, ${firstName}` : ''}, este es el escáner de <span className="text-emerald-700 font-semibold">ENTRADA</span>
+                </span>
+              ) : (
+                <span><span className="text-indigo-600">Buen trabajo</span>, registra tu <span className="text-indigo-700">SALIDA</span></span>
+              )}
+            </h1>
+            <p className="text-xs text-slate-500">
+              {nextExpected === 'IN' ? 'Escanea el código IN para registrar.' : 'Escanea el código OUT para cerrar.'}
+            </p>
           </div>
         )}
-        {!entryRegistered && !exitRegistered && (
-          <>
-            <div className="rounded border border-slate-600 p-3 bg-slate-900">
-              <video ref={videoRef} className="w-full aspect-square object-cover rounded bg-black" muted playsInline />
-              <div className="mt-3 flex gap-2 items-center">
-                <button onClick={()=>setActive(a=>!a)} className="px-3 py-1.5 rounded text-sm font-medium bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">{active?'Pausar':'Reanudar'}</button>
-                {active && <span className="text-xs text-slate-400">Escaneando…</span>}
-                <button onClick={manualFallback} className="ml-auto text-xs text-blue-400 hover:underline">Modo manual</button>
+        {pendingMode==='IN' && !entryRegistered && (
+          <div className="rounded-md border border-emerald-300 bg-emerald-50 p-5 space-y-4 animate-fadeIn shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="relative h-10 w-10 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-full border-2 border-emerald-300/60 flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                </div>
               </div>
-              {error && <div className="mt-2 text-xs text-red-400">{error}</div>}
-            </div>
-            <div className="rounded border border-slate-600 bg-slate-900 px-3 py-2 text-sm flex items-center justify-between">
               <div>
-                <div className="text-slate-300">Siguiente esperado:</div>
-        
-                <div className="font-semibold text-indigo-300 tracking-wide text-lg">{nextExpected}</div>
+                <div className="text-emerald-700 font-semibold">Procesando entrada…</div>
+                <div className="text-xs text-emerald-600/80">Confirmando con el servidor…</div>
               </div>
-              <div className="text-xs text-slate-500 max-w-[150px] text-right">Apunta la cámara al póster oficial {nextExpected === 'IN' ? 'IN' : 'OUT'}.</div>
             </div>
-            {message && <div className={`rounded px-3 py-2 text-sm ${message.startsWith('✓')? 'bg-emerald-600/20 border border-emerald-500 text-emerald-200':'bg-amber-700/30 border border-amber-600 text-amber-100'}`}>{message}</div>}
-            <div className="text-xs text-slate-400">Si tienes problemas de lectura, cambia a modo manual.</div>
+            <div className="h-2 w-full bg-emerald-100 rounded overflow-hidden">
+              <div className="h-full w-2/3 bg-emerald-400 animate-pulse" />
+            </div>
+          </div>
+        )}
+        {entryRegistered && (
+          <div className="rounded-md border border-emerald-300 bg-emerald-50 p-4 space-y-3 animate-fadeIn shadow-sm">
+            <div className="text-emerald-700 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
+            <div className="text-sm text-emerald-800 space-y-1">
+              <div><span className="text-emerald-600/90">Nombre:</span> {entryRegistered?.person?.name}</div>
+              <div><span className="text-emerald-600/90">Código:</span> {entryRegistered?.person?.code}</div>
+              <div><span className="text-emerald-600/90">Hora local:</span> {entryRegistered?.at?.toLocaleTimeString()}</div>
+              <div><span className="text-emerald-600/90">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
+              {entryRegistered?.businessDay && <div><span className="text-emerald-600/90">Business Day:</span> {entryRegistered?.businessDay}</div>}
+            </div>
+            <div className="pt-2 flex gap-2">
+              <a href={`/u/checklist?day=${encodeURIComponent(entryRegistered.businessDay || new Date().toISOString().slice(0,10))}&mode=IN`} className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-500 shadow-sm">Ver lista de tareas</a>
+              <a href="/u" className="inline-flex items-center justify-center rounded-md border border-emerald-300 bg-white text-emerald-700 text-sm font-medium px-4 py-2 hover:bg-emerald-50">Panel</a>
+            </div>
+          </div>
+        )}
+        {!entryRegistered && !exitRegistered && !pendingMode && (
+          <>
+            <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
+              <div className="relative">
+                <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
+                {/* Scan frame overlay */}
+                {active && (
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="w-[82%] aspect-square relative">
+                      {/* Corner markers */}
+                      <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]"></div>
+                      <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]"></div>
+                      <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]"></div>
+                      <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-emerald-400 rounded-br-lg drop-shadow-[0_0_4px_rgba(16,185,129,0.8)]"></div>
+                      {/* Animated scan line */}
+                      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-scanline"></div>
+                    </div>
+                  </div>
+                )}
+                {!active && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center rounded-lg">
+                    <span className="text-white text-sm font-medium tracking-wide">Pausado</span>
+                  </div>
+                )}
+              </div>
+                <div className="mt-3 flex flex-wrap gap-2 items-center">
+                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    Escaneando…
+                  </div>
+                </div>
+              {error && <div className="mt-2 text-xs text-red-600 font-medium">{error}</div>}
+              <div className="mt-4">
+                <button onClick={manualFallback} className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 active:scale-[.985] transition shadow-sm">
+                  <span>Modo manual</span>
+                </button>
+              </div>
+            </div>
+            {message && (
+              <div className={`rounded-md px-3 py-2 text-sm border shadow-sm ${message.startsWith('✓') ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>{message}</div>
+            )}
+            <div className="text-xs text-slate-500">{nextExpected==='IN' ? 'Prepárate para comenzar.' : 'Cierra cuando estés listo.'}</div>
             {recent?.recent && (
-              <div className="text-xs text-slate-400">Último: {recent.recent.type} {recent.recent.scannedAt ? '· '+ new Date(recent.recent.scannedAt).toLocaleTimeString() : ''} {recent.recent.businessDay ? '· '+recent.recent.businessDay : ''}</div>
+              <div className="text-xs text-slate-500">Último registro: {recent.recent.type} {recent.recent.scannedAt ? '· '+ new Date(recent.recent.scannedAt).toLocaleTimeString() : ''} {recent.recent.businessDay ? '· '+recent.recent.businessDay : ''}</div>
             )}
           </>
         )}
         {exitRegistered && (
-          <div className="rounded border border-indigo-500 bg-indigo-900/30 p-4 space-y-3">
-            <div className="text-indigo-200 font-semibold flex items-center gap-2">✓ Salida registrada</div>
-            <div className="text-sm text-indigo-100 space-y-1">
-              <div><span className="text-indigo-300/80">Nombre:</span> {exitRegistered.person.name}</div>
-              <div><span className="text-indigo-300/80">Código:</span> {exitRegistered.person.code}</div>
-              <div><span className="text-indigo-300/80">Hora local:</span> {exitRegistered.at.toLocaleTimeString()}</div>
-              <div><span className="text-indigo-300/80">Fecha:</span> {exitRegistered.at.toLocaleDateString()}</div>
-              {exitRegistered.businessDay && <div><span className="text-indigo-300/80">Business Day:</span> {exitRegistered.businessDay}</div>}
+          <div className="rounded-md border border-indigo-300 bg-indigo-50 p-4 space-y-3 shadow-sm">
+            <div className="text-indigo-700 font-semibold flex items-center gap-2">✓ Salida registrada</div>
+            <div className="text-sm text-indigo-800 space-y-1">
+              <div><span className="text-indigo-600/90">Nombre:</span> {exitRegistered.person.name}</div>
+              <div><span className="text-indigo-600/90">Código:</span> {exitRegistered.person.code}</div>
+              <div><span className="text-indigo-600/90">Hora local:</span> {exitRegistered.at.toLocaleTimeString()}</div>
+              <div><span className="text-indigo-600/90">Fecha:</span> {exitRegistered.at.toLocaleDateString()}</div>
+              {exitRegistered.businessDay && <div><span className="text-indigo-600/90">Business Day:</span> {exitRegistered.businessDay}</div>}
             </div>
-            <div className="text-xs text-indigo-200/80">¡Buen trabajo hoy! Descansa y nos vemos en tu próxima jornada.</div>
+            <div className="text-xs text-indigo-600/80">¡Buen trabajo hoy! Descansa y nos vemos en tu próxima jornada.</div>
             <div className="pt-2">
-              <a href="/u" className="block w-full text-center px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-400 text-sm font-semibold text-slate-900 shadow focus:outline-none focus:ring-2 focus:ring-indigo-300">Volver al panel</a>
+              <a href="/u" className="block w-full text-center px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-indigo-300">Volver al panel</a>
             </div>
           </div>
         )}
         <div>
-          <a href="/u" className="text-blue-500 text-sm hover:underline">← Volver</a>
+          <a href="/u" className="text-blue-600 text-sm hover:underline">← Volver</a>
         </div>
       </div>
       <style jsx global>{`
         @keyframes attpulse { 0%{ transform:scale(.6); opacity:0;} 40%{transform:scale(1.05); opacity:1;} 70%{transform:scale(.97);} 100%{transform:scale(1); opacity:0;} }
         .animate-attpulse { animation: attpulse 650ms cubic-bezier(.16,.8,.3,1); }
+          @keyframes scanlineMove { 0% { transform: translateY(0); opacity:.15;} 45%{opacity:.9;} 100% { transform: translateY(calc(100% - 2px)); opacity:.15;} }
+          .animate-scanline { animation: scanlineMove 2.6s cubic-bezier(.45,.05,.55,.95) infinite; }
       `}</style>
     </div>
   );
