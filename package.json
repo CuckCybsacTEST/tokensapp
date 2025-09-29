@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "scripts": {
   "ci:guard": "node scripts/ci/check-legacy-errors.cjs",
-    "dev": "next dev",
+  "dev": "next dev",
+  "dev:auto-e2e-url": "powershell -NoProfile -Command \"$p=3000; try { (Test-NetConnection -ComputerName 'localhost' -Port 3000 -WarningAction SilentlyContinue) | Out-Null } catch {}; Start-Job { npm run dev }; Start-Sleep -Seconds 4; if(Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue){ echo 'E2E_BASE_URL=http://localhost:3001' > .e2e-url; } else { echo 'E2E_BASE_URL=http://localhost:3000' > .e2e-url }; Get-Content .e2e-url\"",
     "build": "next build",
-    "start": "next start",
+  "start": "next start",
+  "start:standalone": "node .next/standalone/server.js",
+  "prebuild": "node -e \"if(!process.env.TOKEN_SECRET){console.warn('[warn] TOKEN_SECRET no definido en build: se usará secreto efímero.');}\"",
     "start:prod": "prisma migrate deploy && next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -39,6 +42,8 @@
     "pg:baseline": "tsx scripts/pgBaseline.ts --push",
     "cron:enable-tokens": "tsx scripts/enable-scheduled.ts",
     "cron:enable-tokens:today": "node -e \"fetch(require('node:process').env.CRON_BASE_URL+'/api/system/tokens/enable-scheduled',{method:'POST',headers:{'x-cron-secret':require('node:process').env.CRON_SECRET,'Content-Type':'application/json'},body:'{}'}).then(r=>r.text()).then(t=>console.log(t)).catch(e=>console.error(e))\"",
+    "cookie:admin": "tsx scripts/genAdminCookie.ts admin",
+    "cookie:staff": "tsx scripts/genAdminCookie.ts staff",
     "postinstall": "prisma generate"
   },
   "engines": {

@@ -65,6 +65,32 @@ La arquitectura de layouts actual resuelve diversos problemas previos:
 
 4. **Mejora de rendimiento**: La carga específica de componentes por sección reduce la cantidad de JavaScript necesario para cada página.
 
+### 2.4 Política de `globals.css` Unificada (2025-09)
+
+Para evitar inconsistencias y 404 de chunks CSS huérfanos observados en desarrollo:
+
+- `globals.css` se importa **una sola vez** en `src/app/layout.tsx`.
+- Ninguna página o layout secundario debe volver a importarlo, salvo layouts realmente "standalone" que definan su propio `<html>` y se aíslen intencionalmente (por ejemplo: `lounge`, `(standalone)/fiesta`). Incluso en esos casos se recomienda evaluar si pueden heredar del root para simplificar.
+- No duplicar `<html>`, `<head>` o `<body>` en layouts anidados. Sólo el root (o un layout totalmente standalone) debe declararlos.
+- El layout de marketing mantiene independencia visual y su propio `<head>` pero ya no re-importa `globals.css`; si requiere aislamiento adicional se documentará explícitamente.
+
+Beneficios:
+
+1. Elimina solicitudes a `/_next/static/css/.../layout.css` obsoletas tras refactors.
+2. Reduce parpadeos (FOUC) y recargas completas al hacer Fast Refresh.
+3. Simplifica el árbol de dependencias CSS para Tailwind.
+4. Facilita pruebas E2E de integridad de estilos.
+
+### 2.5 Test E2E de integridad de estilos
+
+Se añadió `tests/e2e/admin-login-css.spec.ts` para verificar:
+
+- Que `/admin/login` no emite 404 de chunks CSS.
+- Que las utilidades globales (ej. clase `antialiased`) están presentes.
+- Que no hay errores de consola inesperados.
+
+Este test sirve como guardrail ante regresiones en la política de importación.
+
 ## 3. Componente de Ruleta
 
 ### 3.1 Estructura del Componente

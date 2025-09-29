@@ -1,5 +1,5 @@
 import React from "react";
-import "../globals.css";
+import "../globals.css"; // standalone landing con <html>
 
 export const metadata = {
   title: "El Lounge by Ktdral",

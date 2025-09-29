@@ -81,6 +81,7 @@ fi
 
 if [ -f "server.js" ]; then
   echo "[entrypoint] Launching Next standalone server (server.js)"
+  du -sh .next 2>/dev/null || true
   exec node server.js
 else
   if command -v next >/dev/null 2>&1; then

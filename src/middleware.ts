@@ -50,10 +50,7 @@ export async function middleware(req: NextRequest) {
       const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
       const adminSession = await verifySessionCookie(adminRaw);
       const uRaw = getUserCookieEdge(req as unknown as Request);
-      let uSession = await verifyUserCookieEdge(uRaw);
-      if (!uSession && uRaw) {
-        try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession = await verifyUserSessionCookie(uRaw) as any; } catch {}
-      }
+      const uSession = await verifyUserCookieEdge(uRaw);
       if (adminSession || uSession) {
         return NextResponse.redirect(new URL('/u', req.url));
       }
@@ -71,14 +68,7 @@ export async function middleware(req: NextRequest) {
     const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
     const adminSession = await verifySessionCookie(adminRaw);
     const uRaw = getUserCookieEdge(req as unknown as Request);
-    let uSession = await verifyUserCookieEdge(uRaw);
-    if (!uSession && uRaw) {
-      // Fallback: if edge crypto not available, use server-side verifier
-      try {
-        const { verifyUserSessionCookie } = await import('@/lib/auth-user');
-        uSession = await verifyUserSessionCookie(uRaw) as any;
-      } catch {}
-    }
+    const uSession = await verifyUserCookieEdge(uRaw);
     const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN']).ok;
     const allowedByUser = !!uSession; // any valid collaborator
     if (!allowedByAdmin && !allowedByUser) {
@@ -128,10 +118,7 @@ export async function middleware(req: NextRequest) {
       if (isStaffAllowedPath && !session) {
         // Permitir user_session STAFF sin admin_session solo para /admin/attendance (y paths staffAllowed)
         const uRaw2 = getUserCookieEdge(req as unknown as Request);
-        let uSession2 = await verifyUserCookieEdge(uRaw2);
-        if (!uSession2 && uRaw2) {
-          try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession2 = await verifyUserSessionCookie(uRaw2) as any; } catch {}
-        }
+        const uSession2 = await verifyUserCookieEdge(uRaw2);
         if (uSession2 && uSession2.role === 'STAFF') {
           // continuar sin redirigir
         } else {
@@ -192,8 +179,7 @@ export async function middleware(req: NextRequest) {
       if (pathname.startsWith('/api/admin/attendance') && !session) {
         // Allow user_session STAFF for attendance endpoints even without admin_session
   const uRaw2 = getUserCookieEdge(req as unknown as Request);
-  let uSession2 = await verifyUserCookieEdge(uRaw2);
-  if (!uSession2 && uRaw2) { try { const { verifyUserSessionCookie } = await import('@/lib/auth-user'); uSession2 = await verifyUserSessionCookie(uRaw2) as any; } catch {} }
+  const uSession2 = await verifyUserCookieEdge(uRaw2);
         if (uSession2 && uSession2.role === 'STAFF') {
           // allow
         } else {

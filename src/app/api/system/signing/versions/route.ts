@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { apiError, apiOk } from '@/lib/apiError';
 import { CURRENT_SIGNATURE_VERSION, SECRET_MAP } from '@/lib/signing';

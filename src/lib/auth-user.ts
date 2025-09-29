@@ -13,18 +13,21 @@ export interface UserSessionData {
   role: UserSessionRole; // default 'COLLAB'
 }
 
+// NOTA: Para evitar warnings en Edge Runtime, dividimos la obtención del secreto
+// en dos caminos claros: uno 100% WebCrypto (edge) y uno Node (server). No mezclamos import dinámico "crypto" en edge.
 async function getUserSecret(): Promise<Uint8Array> {
   const base = (process.env.TOKEN_SECRET || "dev_secret") + "|user";
-  if ((globalThis as any).crypto?.subtle) {
+  const g: any = globalThis as any;
+  if (g.crypto?.subtle) {
     const enc = new TextEncoder();
     const data = enc.encode(base);
-    const hash = await (globalThis as any).crypto.subtle.digest("SHA-256", data);
+    const hash = await g.crypto.subtle.digest("SHA-256", data);
     return new Uint8Array(hash);
-  } else {
-    const nodeCrypto = await import("crypto");
-    const hex = nodeCrypto.createHash("sha256").update(base).digest();
-    return new Uint8Array(hex);
   }
+  // Node fallback (no WebCrypto)
+  const { createHash } = await import("crypto");
+  const hex = createHash("sha256").update(base).digest();
+  return new Uint8Array(hex);
 }
 
 async function hmacSha256Base64url(keyBytes: Uint8Array, message: string): Promise<string> {
@@ -43,13 +46,12 @@ async function hmacSha256Base64url(keyBytes: Uint8Array, message: string): Promi
     );
     const b64 = Buffer.from(new Uint8Array(sigBuf)).toString("base64");
     return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-  } else {
-    const nodeCrypto = await import("crypto");
-    return nodeCrypto
-      .createHmac("sha256", keyBytes as unknown as any)
-      .update(message)
-      .digest("base64url");
   }
+  // Node fallback HMAC
+  const { createHmac } = await import("crypto");
+  // Convertimos el keyBytes a string hex para usarlo como clave determinística
+  const keyHex = Buffer.from(keyBytes).toString('hex');
+  return createHmac("sha256", keyHex).update(message).digest("base64url");
 }
 
 export async function createUserSessionCookie(userId: string, role: UserSessionRole = 'COLLAB'): Promise<string> {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import "../../globals.css";
+// globals.css ahora sólo se importa en el root layout; no importar aquí para evitar chunks redundantes.
 
 type Mode = "IN" | "OUT";
 type Recent = { scannedAt?: string; type?: Mode; businessDay?: string } | null;

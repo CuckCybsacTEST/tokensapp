@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 // Backward-compat: delegate to /api/system/tokens/toggle
 import { NextResponse } from 'next/server';
 

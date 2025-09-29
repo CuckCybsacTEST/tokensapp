@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import "../../globals.css";
+// Uso de estilos tailwind proviene del root layout (no importar globals.css localmente)
 
 type Item = { id: string; scannedAt: string; type: 'IN'|'OUT'; deviceId?: string|null };
 

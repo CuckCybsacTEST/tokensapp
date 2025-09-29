@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 
 // Deprecated: SystemConfig no longer has admin/test mode fields. Use /api/system/tokens/toggle instead.

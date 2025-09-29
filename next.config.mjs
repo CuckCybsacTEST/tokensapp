@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  output: 'standalone', // Mantenemos standalone para imágenes más ligeras en Docker
   eslint: {
     // Permitir build aunque existan errores de lint (para smoke tests rápidos)
     ignoreDuringBuilds: true,

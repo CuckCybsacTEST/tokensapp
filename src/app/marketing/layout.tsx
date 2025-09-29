@@ -1,5 +1,5 @@
 import React from 'react';
-import '../globals.css';
+// Nota: este layout de marketing es independiente del root y no participa en theme dark/light global.
 import { Metadata } from 'next';
 import { Inter, Poppins } from 'next/font/google';
 

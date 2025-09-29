@@ -1,5 +1,5 @@
 import React from "react";
-import "../globals.css";
+import "../globals.css"; // standalone layout: mantiene su propio <html>, requiere importar globals
 
 export const metadata = {
   title: "El Lounge by Ktdral | Donde la noche se vive",
