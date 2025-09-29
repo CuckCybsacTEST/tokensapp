@@ -316,23 +316,14 @@ export default function ScannerPage() {
     <div className="min-h-[calc(100vh-4rem)]">
       <h1 className="mb-4 text-2xl font-semibold tracking-tight">Scanner</h1>
       {banner && (
-        <div
-          className={
-            "mb-4 rounded-md border p-3 text-sm " +
-            (banner.variant === "success"
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-800")
-          }
-        >
-          {banner.message}
-        </div>
+        <div className={`mb-4 text-sm ${banner.variant === 'success' ? 'alert-success' : 'alert-danger'}`}>{banner.message}</div>
       )}
 
       {/* Panel para ingresar código cuando se escanea un QR GLOBAL (póster) */}
       {awaitingCode && (
         <div className="mb-4 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="mb-2 text-sm text-slate-700">
-            Modo: <span className={mode === "IN" ? "text-green-700" : "text-orange-700"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
+          <div className="mb-2 text-sm text-soft">
+            Modo: <span className={mode === "IN" ? "text-success" : "text-warning"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -374,10 +365,10 @@ export default function ScannerPage() {
         {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
         {!overlay && !cameraError && (
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-4 top-4 h-6 w-6 border-l-2 border-t-2 border-emerald-400/80"></div>
-            <div className="absolute right-4 top-4 h-6 w-6 border-r-2 border-t-2 border-emerald-400/80"></div>
-            <div className="absolute left-4 bottom-4 h-6 w-6 border-l-2 border-b-2 border-emerald-400/80"></div>
-            <div className="absolute right-4 bottom-4 h-6 w-6 border-r-2 border-b-2 border-emerald-400/80"></div>
+            <div className="absolute left-4 top-4 h-6 w-6 border-l-2 border-t-2 border-success"></div>
+            <div className="absolute right-4 top-4 h-6 w-6 border-r-2 border-t-2 border-success"></div>
+            <div className="absolute left-4 bottom-4 h-6 w-6 border-l-2 border-b-2 border-success"></div>
+            <div className="absolute right-4 bottom-4 h-6 w-6 border-r-2 border-b-2 border-success"></div>
           </div>
         )}
 
@@ -407,7 +398,7 @@ export default function ScannerPage() {
       </div>
 
       <div className="mt-4 flex flex-col gap-3">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-soft">
           Consejo: acércate al QR y mantén la cámara estable. Si el navegador te pide permiso de cámara,
           acepta para poder escanear. En caso de problemas, puedes subir una foto del QR.
         </p>

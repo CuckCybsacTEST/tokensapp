@@ -72,11 +72,11 @@ export default function AdminDayBriefPage() {
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
       <div className="grid gap-3">
         <label className="text-sm text-gray-300">Día</label>
-        <input type="date" value={day} onChange={(e)=> setDay(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-48" />
+  <input type="date" value={day} onChange={(e)=> setDay(e.target.value)} className="input-sm w-48" />
       </div>
       <div className="grid gap-1">
         <label className="text-sm text-gray-300">Título</label>
-        <input value={title} onChange={(e)=> setTitle(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" placeholder="Ej: Jueves de Full Salsa" />
+  <input value={title} onChange={(e)=> setTitle(e.target.value)} className="input-sm" placeholder="Ej: Jueves de Full Salsa" />
       </div>
       <div className="grid gap-1">
         <label className="text-sm text-gray-300">Eventos</label>
@@ -86,13 +86,13 @@ export default function AdminDayBriefPage() {
               <input
                 value={v}
                 onChange={(e)=> setEvents(prev => prev.map((x,idx)=> idx===i ? e.target.value : x))}
-                className="flex-1 border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1"
+                className="flex-1 input-sm"
                 placeholder="Artista/Evento y horario"
               />
-              <button type="button" onClick={()=> setEvents(prev => prev.filter((_,idx)=> idx!==i))} className="text-xs px-2 py-1 rounded border border-gray-700 hover:bg-gray-800">Quitar</button>
+              <button type="button" onClick={()=> setEvents(prev => prev.filter((_,idx)=> idx!==i))} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Quitar</button>
             </div>
           ))}
-          <button type="button" onClick={()=> setEvents(prev => [...prev, ''])} className="text-xs px-2 py-1 rounded border border-gray-700 hover:bg-gray-800">Agregar evento</button>
+          <button type="button" onClick={()=> setEvents(prev => [...prev, ''])} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Agregar evento</button>
         </div>
       </div>
       <div className="grid gap-1">
@@ -103,18 +103,18 @@ export default function AdminDayBriefPage() {
               <input
                 value={v}
                 onChange={(e)=> setPromos(prev => prev.map((x,idx)=> idx===i ? e.target.value : x))}
-                className="flex-1 border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1"
+                className="flex-1 input-sm"
                 placeholder="Ej: 2x1 hasta las 11pm"
               />
-              <button type="button" onClick={()=> setPromos(prev => prev.filter((_,idx)=> idx!==i))} className="text-xs px-2 py-1 rounded border border-gray-700 hover:bg-gray-800">Quitar</button>
+              <button type="button" onClick={()=> setPromos(prev => prev.filter((_,idx)=> idx!==i))} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Quitar</button>
             </div>
           ))}
-          <button type="button" onClick={()=> setPromos(prev => [...prev, ''])} className="text-xs px-2 py-1 rounded border border-gray-700 hover:bg-gray-800">Agregar promo</button>
+          <button type="button" onClick={()=> setPromos(prev => [...prev, ''])} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700">Agregar promo</button>
         </div>
       </div>
       <div className="grid gap-1">
         <label className="text-sm text-gray-300">Apuntes</label>
-        <textarea value={notes} onChange={(e)=> setNotes(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 min-h-[80px]" placeholder="Notas de operación" />
+  <textarea value={notes} onChange={(e)=> setNotes(e.target.value)} className="input-sm min-h-[80px]" placeholder="Notas de operación" />
       </div>
       <div>
         <button onClick={save} disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 disabled:opacity-50">{loading ? 'Guardando…' : 'Guardar'}</button>

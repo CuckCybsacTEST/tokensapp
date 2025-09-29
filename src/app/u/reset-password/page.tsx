@@ -57,19 +57,19 @@ export default function ResetPasswordPage() {
       <form onSubmit={onSubmit} className="grid gap-3">
         <div className="grid gap-1">
           <label className="text-sm text-gray-300">DNI</label>
-          <input value={dni} onChange={(e)=> setDni(onlyDigits(e.target.value))} inputMode="numeric" pattern="[0-9]*" placeholder="12345678" className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" />
+          <input value={dni} onChange={(e)=> setDni(onlyDigits(e.target.value))} inputMode="numeric" pattern="[0-9]*" placeholder="12345678" className="input-sm" />
         </div>
         <div className="grid gap-1">
           <label className="text-sm text-gray-300">Código (OTP)</label>
-          <input value={code} onChange={(e)=> setCode((e.target.value||'').trim())} placeholder="AB12CD" className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 uppercase" />
+          <input value={code} onChange={(e)=> setCode((e.target.value||'').trim())} placeholder="AB12CD" className="input-sm uppercase" />
         </div>
         <div className="grid gap-1">
           <label className="text-sm text-gray-300">Nueva contraseña</label>
-          <input type="password" value={password} onChange={(e)=> setPassword(e.target.value)} placeholder="mínimo 8 caracteres" className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" />
+          <input type="password" value={password} onChange={(e)=> setPassword(e.target.value)} placeholder="mínimo 8 caracteres" className="input-sm" />
         </div>
         <div className="grid gap-1">
           <label className="text-sm text-gray-300">Confirmar contraseña</label>
-          <input type="password" value={confirm} onChange={(e)=> setConfirm(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" />
+          <input type="password" value={confirm} onChange={(e)=> setConfirm(e.target.value)} className="input-sm" />
         </div>
         <button disabled={loading} className="bg-blue-600 hover:bg-blue-500 text-white rounded px-3 py-2 disabled:opacity-50">{loading ? 'Guardando…' : 'Guardar'}</button>
       </form>

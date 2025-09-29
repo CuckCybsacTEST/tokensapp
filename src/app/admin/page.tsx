@@ -54,6 +54,25 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
+        {/* Control de Shows Estelares */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-6 w-6 text-red-600 dark:text-red-400" fill="currentColor">
+                <path d="M12 2l2.09 6.26L20.97 9l-5.18 3.76L17.82 20 12 15.9 6.18 20l2.03-7.24L3.03 9l6.88-.74L12 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Control de Shows Estelares</h3>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
+            Administra el lineup publicado, imágenes optimizadas, slots y contenido destacado que aparece en la landing de marketing.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/shows" className="btn">Abrir módulo</a>
+            <a href="/marketing#shows" className="btn-secondary text-xs px-3 py-2">Ver en marketing</a>
+          </div>
+        </div>
+
         {/* Gestión de Cumpleaños */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-center mb-3">

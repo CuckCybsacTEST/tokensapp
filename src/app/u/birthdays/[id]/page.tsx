@@ -39,48 +39,53 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
   if (!resv) return null;
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Reserva: {resv.celebrantName}</h1><a className="btn" href="/u/birthdays">Volver</a></div>
-      {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
-          <div className="text-sm text-slate-300">Fecha: {resv.date} {resv.timeSlot}</div>
-          <div className="text-sm text-slate-300">Pack: {resv.pack?.name}</div>
-          <div className="text-sm text-slate-300">Documento: {resv.documento}</div>
-          <div className="text-sm text-slate-300">WhatsApp: {resv.phone}</div>
-          <div className="text-sm text-slate-300">Email: {resv.email||'-'}</div>
-          <div className="text-sm text-slate-300">Estado: {resv.status}</div>
-          {resv.tokensGeneratedAt && <div className="text-xs text-slate-400">Tokens generados: {resv.tokensGeneratedAt}</div>}
-          <div className="flex flex-wrap gap-2 pt-2">
-            {resv.status==='pending_review' && <button className="btn" disabled={busy} onClick={approve}>Aprobar</button>}
-            {resv.status!=='canceled' && <button className="btn" disabled={busy} onClick={cancel}>Cancelar</button>}
-            {resv.status==='approved' && <button className="btn" disabled={busy} onClick={complete}>Completar</button>}
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Reserva: {resv.celebrantName}</h1>
+          <a className="btn" href="/u/birthdays">Volver</a>
+        </div>
+        {err && <div className="rounded border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-200 p-3 text-sm">{err}</div>}
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-2 shadow-sm">
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">Fecha:</span> {resv.date} {resv.timeSlot}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">Pack:</span> {resv.pack?.name || '-'}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">Documento:</span> {resv.documento}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">WhatsApp:</span> {resv.phone}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">Email:</span> {resv.email||'-'}</div>
+            <div className="text-sm text-slate-600 dark:text-slate-300"><span className="font-medium">Estado:</span> {resv.status}</div>
+            {resv.tokensGeneratedAt && <div className="text-xs text-slate-500 dark:text-slate-400">Tokens generados: {resv.tokensGeneratedAt}</div>}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {resv.status==='pending_review' && <button className="btn h-8 px-3" disabled={busy} onClick={approve}>Aprobar</button>}
+              {resv.status!=='canceled' && <button className="btn h-8 px-3" disabled={busy} onClick={cancel}>Cancelar</button>}
+              {resv.status==='approved' && <button className="btn h-8 px-3" disabled={busy} onClick={complete}>Completar</button>}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-3 shadow-sm">
+            <div className="font-medium text-slate-800 dark:text-slate-100">Invitaciones</div>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn h-8 px-3" disabled={busy} onClick={()=>genTokens(false)}>Generar</button>
+              <button className="btn h-8 px-3" disabled={busy} onClick={()=>genTokens(true)}>Forzar</button>
+              <button className="btn h-8 px-3" onClick={downloadCards}>Descargar</button>
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Total: {tokens.length}</div>
+            <div className="max-h-60 overflow-auto rounded border border-slate-200 dark:border-slate-600">
+              <table className="min-w-[650px] w-full text-sm">
+                <thead><tr className="bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200"><th className="text-left px-2 py-1">Code</th><th className="text-left px-2 py-1">Tipo</th><th className="text-left px-2 py-1">Estado</th><th className="text-left px-2 py-1">Expira</th><th className="text-left px-2 py-1">Usos</th></tr></thead>
+                <tbody>{tokens.map(t=> <tr key={t.id} className="border-t border-slate-100 dark:border-slate-700"><td className="px-2 py-1 font-mono">{t.code}</td><td className="px-2 py-1">{t.kind}</td><td className="px-2 py-1">{t.status}</td><td className="px-2 py-1">{t.expiresAt?.slice?.(0,19)?.replace('T',' ')}</td><td className="px-2 py-1">{(t.usedCount??0)}{t.maxUses?` / ${t.maxUses}`:''}</td></tr>)}</tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
-          <div className="font-medium">Invites</div>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn" disabled={busy} onClick={()=>genTokens(false)}>Generar</button>
-            <button className="btn" disabled={busy} onClick={()=>genTokens(true)}>Forzar</button>
-            <button className="btn" onClick={downloadCards}>Descargar</button>
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-2 shadow-sm">
+            <div className="font-medium text-slate-800 dark:text-slate-100">Cortesías</div>
+            {resv.courtesyItems?.length? <ul className="mt-1 space-y-1">{resv.courtesyItems.map(ci=> <li key={ci.id} className="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 py-1"><span>{ci.type}</span><span className="text-xs text-slate-500 dark:text-slate-400">{ci.status}</span></li>)}</ul> : <div className="text-xs text-slate-500 dark:text-slate-400">No hay cortesías.</div>}
           </div>
-          <div className="text-xs text-slate-400">Total: {tokens.length}</div>
-          <div className="max-h-60 overflow-auto border border-slate-700 rounded">
-            <table className="min-w-[650px] w-full text-sm">
-              <thead><tr className="bg-slate-800"><th className="text-left px-2 py-1">Code</th><th className="text-left px-2 py-1">Tipo</th><th className="text-left px-2 py-1">Estado</th><th className="text-left px-2 py-1">Expira</th><th className="text-left px-2 py-1">Usos</th></tr></thead>
-              <tbody>{tokens.map(t=> <tr key={t.id} className="border-t border-slate-700"><td className="px-2 py-1 font-mono">{t.code}</td><td className="px-2 py-1">{t.kind}</td><td className="px-2 py-1">{t.status}</td><td className="px-2 py-1">{t.expiresAt?.slice?.(0,19)?.replace('T',' ')}</td><td className="px-2 py-1">{(t.usedCount??0)}{t.maxUses?` / ${t.maxUses}`:''}</td></tr>)}</tbody>
-            </table>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-2 shadow-sm">
+            <div className="font-medium text-slate-800 dark:text-slate-100">Fotos</div>
+              {resv.photoDeliveries?.length? <ul className="mt-1 space-y-1">{resv.photoDeliveries.map(ph=> <li key={ph.id} className="flex justify-between text-sm border-b border-slate-100 dark:border-slate-700 py-1"><span>{ph.kind}</span><span className="text-xs text-slate-500 dark:text-slate-400">{ph.status}</span></li>)}</ul> : <div className="text-xs text-slate-500 dark:text-slate-400">No hay fotos.</div>}
           </div>
-        </div>
-      </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
-          <div className="font-medium">Cortesías</div>
-          {resv.courtesyItems?.length? <ul className="mt-1 space-y-1">{resv.courtesyItems.map(ci=> <li key={ci.id} className="flex justify-between text-sm border-b border-slate-800 py-1"><span>{ci.type}</span><span className="text-xs text-slate-400">{ci.status}</span></li>)}</ul> : <div className="text-xs text-slate-500">No hay cortesías.</div>}
-        </div>
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
-          <div className="font-medium">Fotos</div>
-            {resv.photoDeliveries?.length? <ul className="mt-1 space-y-1">{resv.photoDeliveries.map(ph=> <li key={ph.id} className="flex justify-between text-sm border-b border-slate-800 py-1"><span>{ph.kind}</span><span className="text-xs text-slate-400">{ph.status}</span></li>)}</ul> : <div className="text-xs text-slate-500">No hay fotos.</div>}
         </div>
       </div>
     </div>

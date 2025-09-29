@@ -147,7 +147,7 @@ export default function ManualAttendancePage() {
 
             <div className="mb-4">
               <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-100">Contraseña</label>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900" placeholder="Tu contraseña de acceso" />
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800" placeholder="Tu contraseña de acceso" />
             </div>
 
             <div className="mt-4 flex items-stretch gap-3">

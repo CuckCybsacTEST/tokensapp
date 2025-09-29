@@ -104,10 +104,10 @@ function AreaSection(props: {
 
   return (
     <div key={`sec-${areaKey}`} className="mb-6">
-      <div className="mb-2 font-semibold text-gray-100 bg-gray-800/60 rounded px-2 py-1 flex items-center justify-between">
+  <div className="mb-2 font-semibold text-soft bg-slate-100 dark:bg-slate-700/50 rounded px-2 py-1 flex items-center justify-between">
         <span>{label}</span>
         {!canDrag && (
-          <span className="text-xs text-gray-400">Para reordenar, cambia el filtro de estado a "Todas"</span>
+          <span className="text-xs text-soft">Para reordenar, cambia el filtro de estado a "Todas"</span>
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -117,23 +117,23 @@ function AreaSection(props: {
             return (
               <div
                 key={t.id}
-                className={`rounded border border-gray-700 bg-gray-900 p-3 ${canDrag ? 'cursor-move' : ''}`}
+                className={`card p-3 ${canDrag ? 'cursor-move' : ''}`}
                 draggable={canDrag}
                 onDragStart={(e)=> onDragStart(e, t.id)}
                 onDragOver={onDragOver}
                 onDrop={(e)=> onDrop(e, t.id)}
               >
                 {canDrag && (
-                  <div className="mb-1 flex items-center justify-between text-xs text-gray-400">
+                  <div className="mb-1 flex items-center justify-between text-xs text-soft">
                     <span className="hidden sm:inline">Arrastra para reordenar</span>
                     <div className="sm:hidden flex items-center gap-1">
                       <button
-                        className="px-2 py-0.5 rounded border border-gray-700 hover:bg-gray-800"
+                        className="px-2 py-0.5 rounded border border-slate-500 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
                         onClick={() => moveItem(t.id, 'up')}
                         aria-label="Mover arriba"
                       >▲</button>
                       <button
-                        className="px-2 py-0.5 rounded border border-gray-700 hover:bg-gray-800"
+                        className="px-2 py-0.5 rounded border border-slate-500 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
                         onClick={() => moveItem(t.id, 'down')}
                         aria-label="Mover abajo"
                       >▼</button>
@@ -141,12 +141,12 @@ function AreaSection(props: {
                   </div>
                 )}
                 <div className="mb-2">
-                  <input className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue={t.label} onBlur={(e)=>{
+                  <input className="input-sm w-full" defaultValue={t.label} onBlur={(e)=>{
                     const v = e.target.value.trim(); if (v && v !== t.label) updateTask(t.id, { label: v });
                   }} />
                 </div>
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-4 text-xs text-soft">
                     <label className="inline-flex items-center gap-1">
                       <input type="radio" name={`status-${t.id}`} checked={!t.completed} onChange={() => updateTask(t.id, { completed: false } as any)} />
                       <span>Pendiente</span>
@@ -160,16 +160,16 @@ function AreaSection(props: {
                   {/* Desktop/Tablet: select con etiquetas completas */}
                   <div className="hidden sm:block">
                     <select
-                      className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-40 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="input-xs w-40"
                       defaultValue={(t.priority ?? 0).toString()}
                       onChange={(e)=>{
                         const v = Math.floor(Number(e.target.value) || 0);
                         if (v !== (t.priority || 0)) updateTask(t.id, { priority: v } as any);
                       }}
                     >
-                      <option value={2}>Rojo (Alta)</option>
-                      <option value={1}>Amarillo (Media)</option>
-                      <option value={0}>Verde (Baja)</option>
+                      <option value={2}>Alta</option>
+                      <option value={1}>Media</option>
+                      <option value={0}>Baja</option>
                     </select>
                   </div>
                   {/* Móvil: grupo compacto de botones */}
@@ -177,21 +177,21 @@ function AreaSection(props: {
                     <div className="inline-flex items-center gap-1 text-xs">
                       <button
                         type="button"
-                        className={`px-2 py-1 rounded border ${t.priority === 2 ? 'bg-red-700 border-red-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-red-800`}
+                        className={`px-2 py-1 rounded border ${t.priority === 2 ? 'prio-high' : 'border-slate-500 dark:border-slate-600 text-soft'} hover:bg-danger-soft`}
                         onClick={()=> { if ((t.priority || 0) !== 2) updateTask(t.id, { priority: 2 } as any); }}
                         aria-label="Prioridad alta"
                         title="Prioridad alta"
                       >Alta</button>
                       <button
                         type="button"
-                        className={`px-2 py-1 rounded border ${t.priority === 1 ? 'bg-yellow-700 border-yellow-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-yellow-800`}
+                        className={`px-2 py-1 rounded border ${t.priority === 1 ? 'prio-medium' : 'border-slate-500 dark:border-slate-600 text-soft'} hover:bg-warning-soft`}
                         onClick={()=> { if ((t.priority || 0) !== 1) updateTask(t.id, { priority: 1 } as any); }}
                         aria-label="Prioridad media"
                         title="Prioridad media"
                       >Media</button>
                       <button
                         type="button"
-                        className={`px-2 py-1 rounded border ${t.priority === 0 ? 'bg-green-700 border-green-600 text-white' : 'border-gray-700 text-gray-200'} hover:bg-green-800`}
+                        className={`px-2 py-1 rounded border ${t.priority === 0 ? 'prio-low' : 'border-slate-500 dark:border-slate-600 text-soft'} hover:bg-success-soft`}
                         onClick={()=> { if ((t.priority || 0) !== 0) updateTask(t.id, { priority: 0 } as any); }}
                         aria-label="Prioridad baja"
                         title="Prioridad baja"
@@ -202,26 +202,26 @@ function AreaSection(props: {
                 {/* Área select removed: las tarjetas ya están agrupadas por área */}
                 <div className="mb-2 grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-400">Inicio</label>
-                    <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.startDay || ''} onBlur={(e)=>{
+                    <label className="text-xs text-soft">Inicio</label>
+                    <input className="mt-1 input-xs w-full" type="date" defaultValue={t.startDay || ''} onBlur={(e)=>{
                       const v = e.target.value.trim(); if ((t.startDay || '') !== v) updateTask(t.id, { startDay: v || null } as any);
                     }} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400">Vencimiento</label>
-                    <input className="mt-1 border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={t.endDay || ''} onBlur={(e)=>{
+                    <label className="text-xs text-soft">Vencimiento</label>
+                    <input className="mt-1 input-xs w-full" type="date" defaultValue={t.endDay || ''} onBlur={(e)=>{
                       const v = e.target.value.trim(); if ((t.endDay || '') !== v) updateTask(t.id, { endDay: v || null } as any);
                     }} />
                   </div>
                   {typeof t.completedToday === 'number' && (
-                    <div className="text-xs text-gray-400">Completadas hoy: <span className="font-mono">{t.completedToday}</span></div>
+                    <div className="text-xs text-soft">Completadas hoy: <span className="font-mono">{t.completedToday}</span></div>
                   )}
                   {t.measureEnabled && (
-                    <div className="text-xs text-gray-400">Avance hoy: <span className="font-mono">{Number(t.sumValueToday || 0)}</span> {t.unitLabel || ''}</div>
+                    <div className="text-xs text-soft">Avance hoy: <span className="font-mono">{Number(t.sumValueToday || 0)}</span> {t.unitLabel || ''}</div>
                   )}
                 </div>
                 {/* Medición (config admin) */}
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-soft">
                   <label className="inline-flex items-center gap-1">
                     <input
                       type="checkbox"
@@ -245,7 +245,7 @@ function AreaSection(props: {
                       const val = raw === '' ? null : Math.max(0, Math.floor(Number(raw)) || 0);
                       updateTask(t.id, { targetValue: val } as any);
                     }}
-                    className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-24 input-xs"
                   />
                   <input
                     type="text"
@@ -255,7 +255,7 @@ function AreaSection(props: {
                       const s = (e.target.value || '').toString().trim().slice(0, 30);
                       updateTask(t.id, { unitLabel: s.length === 0 ? null : s } as any);
                     }}
-                    className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-28 input-xs"
                     maxLength={30}
                   />
                 </div>
@@ -270,26 +270,26 @@ function AreaSection(props: {
           const refsKey = `${areaKey}-new`;
           if (!createRefs.current[refsKey]) createRefs.current[refsKey] = { label: null, priority: null, start: null, end: null, measureEnabled: null, targetValue: null, unitLabel: null };
           return (
-            <div key={`new-${areaKey}`} className="rounded border border-dashed border-gray-700 bg-gray-900 p-3">
-              <div className="mb-2 font-medium text-gray-300">Nueva tarea</div>
+            <div key={`new-${areaKey}`} className="card border-dashed p-3">
+              <div className="mb-2 font-medium text-soft/60">Nueva tarea</div>
               <div className="mb-2">
-                <input ref={el => (createRefs.current[refsKey].label = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="Etiqueta de la tarea" />
+                <input ref={el => (createRefs.current[refsKey].label = el)} className="input-sm w-full" placeholder="Etiqueta de la tarea" />
               </div>
               <div className="mb-2 grid grid-cols-2 gap-2">
-                <select ref={el => (createRefs.current[refsKey].priority = el)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" defaultValue="">
+                <select ref={el => (createRefs.current[refsKey].priority = el)} className="input-sm w-full" defaultValue="">
                   <option value="">Prioridad</option>
                   <option value={2}>Rojo (Alta)</option>
                   <option value={1}>Amarillo (Media)</option>
                   <option value={0}>Verde (Baja)</option>
                 </select>
-                <div className="text-gray-400 text-sm flex items-center">Área: <span className="ml-1 text-gray-200">{label}</span></div>
+                <div className="text-soft text-sm flex items-center">Área: <span className="ml-1 text-soft/60">{label}</span></div>
               </div>
               <div className="mb-2 grid grid-cols-2 gap-2">
-                <input ref={el => (createRefs.current[refsKey].start = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" defaultValue={todayYmd()} />
-                <input ref={el => (createRefs.current[refsKey].end = el)} className="border border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" type="date" />
+                <input ref={el => (createRefs.current[refsKey].start = el)} className="input-sm w-full" type="date" defaultValue={todayYmd()} />
+                <input ref={el => (createRefs.current[refsKey].end = el)} className="input-sm w-full" type="date" />
               </div>
               {/* Medición (opcional al crear) */}
-              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-300">
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-soft">
                 <label className="inline-flex items-center gap-1">
                   <input
                     ref={el => (createRefs.current[refsKey].measureEnabled = el)}
@@ -304,13 +304,13 @@ function AreaSection(props: {
                   min={0}
                   step={1}
                   placeholder="Objetivo"
-                  className="w-24 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-24 input-xs"
                 />
                 <input
                   ref={el => (createRefs.current[refsKey].unitLabel = el)}
                   type="text"
                   placeholder="Unidad"
-                  className="w-28 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-28 input-xs"
                   maxLength={30}
                 />
               </div>
@@ -527,11 +527,11 @@ export default function AdminTasksPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Tareas (Checklist)</h1>
+  <h1 className="text-2xl font-semibold mb-4">Tareas (Checklist)</h1>
 
       {/* Tabs: Todos + cada área */}
       <div className="mb-3 overflow-x-auto">
-        <div className="inline-flex items-center gap-1 border-b border-gray-700">
+  <div className="inline-flex items-center gap-1 border-b border-slate-300 dark:border-slate-600">
           {['', ...ALLOWED_AREAS].map((a) => {
             const active = areaFilter === a;
             const label = a === '' ? 'Todos' : a;
@@ -539,7 +539,7 @@ export default function AdminTasksPage() {
               <button
                 key={`tab-${a || 'todos'}`}
                 onClick={() => changeArea(a)}
-                className={`${active ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-300 hover:text-gray-100'} px-3 py-2`}
+                className={`${active ? 'border-b-2 border-accent text-accent' : 'text-soft hover:text-accent'} px-3 py-2`}
                 aria-current={active ? 'page' : undefined}
               >
                 {label}
@@ -550,9 +550,9 @@ export default function AdminTasksPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-4">
-        <label className="text-sm text-gray-300">Estado:</label>
+        <label className="text-sm text-soft">Estado:</label>
         <select
-          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          className="input-sm w-48"
           value={statusFilter}
           onChange={(e)=> setStatusFilter(e.target.value)}
         >
@@ -562,7 +562,7 @@ export default function AdminTasksPage() {
         </select>
       </div>
 
-      {loading ? (<div>Cargando…</div>) : error ? (<div className="text-red-600">{error}</div>) : (
+      {loading ? (<div className="text-soft">Cargando…</div>) : error ? (<div className="alert-danger">{error}</div>) : (
         <div>
           {renderAreaSection(areaFilter)}
         </div>

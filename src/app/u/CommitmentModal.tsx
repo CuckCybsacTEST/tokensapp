@@ -35,7 +35,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg max-h-[92dvh] sm:max-h-[90dvh] rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col relative"
+  className="w-full max-w-lg max-h-[92dvh] sm:max-h-[90dvh] rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col relative"
       >
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-5 pb-5 custom-scroll">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100">Compromiso El Lounge</h2>
@@ -62,7 +62,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
           </div>
           {error && <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-[11px] text-red-700">{error}</div>}
         </div>
-        <div className="px-4 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col items-center gap-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70">
+  <div className="px-4 sm:px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col items-center gap-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-800/70">
           <button
             disabled={loading}
             onClick={accept}

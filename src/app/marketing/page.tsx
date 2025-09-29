@@ -12,7 +12,7 @@ import { Stars } from './components/ui/Stars';
 // Importamos los componentes de sección
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { EventsSection } from './components/EventsSection';
+import { DynamicShowsSection } from './components/DynamicShowsSection';
 import { BirthdaySection } from './components/BirthdaySection';
 import { QrSection } from './components/QrSection';
 import { GallerySection } from './components/GallerySection';
@@ -39,15 +39,6 @@ const features = [
   { icon: '🛡️', title: 'Fiabilidad', description: 'Arquitectura estable y escalable.' },
 ];
 
-// Eventos
-const events: Array<{
-  id: number; date: string; title: string; tag: string; poster?: string; aspect?: '4:5' | '9:16'; img?: string;
-}> = [
-  { id: 1, date: "Sáb 21 Sep", title: "SÁBADOS ESTELARES", tag: "Headliners · House x Reggaetón", poster: "/img/events/sabados-estelares-1080x1920.jpg", aspect: '9:16', img: "linear-gradient(135deg,#3d0a0a,#5c1111)" },
-  { id: 2, date: "Sáb 28 Sep", title: "NEON NIGHT SHOW", tag: "Temático · Old vs New", poster: "/img/events/neon-night-1080x1920.jpg", aspect: '9:16', img: "linear-gradient(135deg,#4a0c0c,#7a1a1a)" },
-  { id: 3, date: "Sáb 05 Oct", title: "LIVE SPECIAL GUEST", tag: "Invitado sorpresa", poster: "/img/events/special-guest-1080x1920.jpg", aspect: '9:16', img: "linear-gradient(135deg,#5c1111,#8c2323)" },
-  { id: 4, date: "Sáb 12 Oct", title: "COCTELERÍA & HITS", tag: "Edición especial", poster: "/img/events/cocktails-hits-1080x1920.jpg", aspect: '9:16', img: "linear-gradient(135deg,#6e1515,#a52b2b)" },
-];
 
 // Cócteles
 const cocktails = [
@@ -118,7 +109,8 @@ export default function MarketingPage() {
     <Hero />
       
       {/* Componentes de secciones principales */}
-    <EventsSection events={events} />
+  {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
+  <DynamicShowsSection className="pt-4" />
   <SectionDivider className="my-10 sm:my-14" />
     <BirthdaySection />
   <SectionDivider className="my-10 sm:my-14" />

@@ -28,7 +28,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApp
   const isApproved = r.status === 'approved' || r.status === 'completed';
   const isAlert = r.status === 'pending_review' || r.status === 'canceled';
   const cardBorder = isApproved ? 'border-emerald-700' : isAlert ? 'border-rose-700' : 'border-slate-700';
-  const cardBg = isApproved ? 'bg-emerald-950/30' : isAlert ? 'bg-rose-950/30' : 'bg-slate-900';
+  const cardBg = isApproved ? 'bg-emerald-950/20 dark:bg-emerald-950/30' : isAlert ? 'bg-rose-950/20 dark:bg-rose-950/30' : 'bg-white dark:bg-slate-800';
   const mutedText = isApproved ? 'text-emerald-300' : isAlert ? 'text-rose-300' : 'text-slate-400';
   const badgeCls = isApproved
     ? 'border-emerald-700 bg-emerald-600/20 text-emerald-300'
@@ -49,7 +49,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApp
     return ()=>{ el.removeEventListener('scroll', h); window.removeEventListener('resize', update); };
   }, [hint]);
   return (
-    <div className={`rounded border p-3 ${cardBorder} ${cardBg}`}>
+  <div className={`rounded border p-3 ${cardBorder} ${cardBg} transition-colors shadow-sm`}>    
       <div className="flex flex-wrap justify-between gap-2">
         <div>
           <div className="font-medium flex items-center gap-2">
@@ -73,8 +73,8 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApp
             <button className="btn shrink-0" onClick={()=>onDownload(r.id)}>Descargar tarjetas</button>
             <a className="btn shrink-0" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
           </div>
-          {showLeft && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[rgba(15,23,42,0.9)] to-transparent rounded-l" />}
-          {showRight && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[rgba(15,23,42,0.9)] to-transparent rounded-r" />}
+          {showLeft && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-l" />}
+          {showRight && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-r" />}
           {showRight && hint && <div className="absolute -top-4 right-2 text-[10px] text-slate-400 animate-pulse select-none">Desliza →</div>}
         </div>
       </div>
@@ -196,15 +196,15 @@ export default function AdminBirthdaysPage() {
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
       {/* Crear reserva rápida */}
-      <div className="rounded border border-slate-700 p-3 bg-slate-900">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
         <div className="font-medium mb-2">Crear reserva</div>
   <div className="grid md:grid-cols-3 gap-2">
-          <input className="border rounded px-2 py-1 bg-gray-900 text-gray-100" placeholder="Nombre" value={cName} onChange={(e)=>setCName(e.target.value)} />
-          <input className="border rounded px-2 py-1 bg-gray-900 text-gray-100" placeholder="WhatsApp" value={cPhone} onChange={(e)=>setCPhone(e.target.value)} />
-          <input className="border rounded px-2 py-1 bg-gray-900 text-gray-100" placeholder="Documento" value={cDoc} onChange={(e)=>setCDoc(e.target.value)} />
-          <input className="border rounded px-2 py-1 bg-gray-900 text-gray-100" placeholder="Email (opcional)" value={cEmail} onChange={(e)=>setCEmail(e.target.value)} />
-          <input type="date" className="border rounded px-2 py-1 bg-gray-900 text-gray-100" value={cDate} onChange={(e)=>setCDate(e.target.value)} />
-          <select className="border rounded px-2 py-1 bg-gray-900 text-gray-100" value={cSlot} onChange={(e)=>setCSlot(e.target.value)}>
+          <input className="input-sm" placeholder="Nombre" value={cName} onChange={(e)=>setCName(e.target.value)} />
+          <input className="input-sm" placeholder="WhatsApp" value={cPhone} onChange={(e)=>setCPhone(e.target.value)} />
+          <input className="input-sm" placeholder="Documento" value={cDoc} onChange={(e)=>setCDoc(e.target.value)} />
+          <input className="input-sm" placeholder="Email (opcional)" value={cEmail} onChange={(e)=>setCEmail(e.target.value)} />
+          <input type="date" className="input-sm" value={cDate} onChange={(e)=>setCDate(e.target.value)} />
+          <select className="input-sm" value={cSlot} onChange={(e)=>setCSlot(e.target.value)}>
             <option value="20:00">20:00</option>
             <option value="21:00">21:00</option>
             <option value="22:00">22:00</option>
@@ -212,7 +212,7 @@ export default function AdminBirthdaysPage() {
             <option value="00:00">00:00</option>
           </select>
           <select
-            className="border rounded px-2 py-1 bg-gray-900 text-gray-100"
+            className="input-sm"
             value={cPack}
             onChange={(e)=>{
               const v = e.target.value;
@@ -246,7 +246,7 @@ export default function AdminBirthdaysPage() {
           const perks = (sel.perks || []).filter(Boolean);
           const hasBottlePerk = perks.some(p => p.toLowerCase().startsWith('botella'));
           return (
-            <div className="mt-3 rounded border border-slate-700 bg-slate-800/60 p-3">
+            <div className="mt-3 rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 p-3">
               <div className="flex items-center justify-between">
                 <div className="font-semibold">Pack seleccionado: {sel.name}</div>
                 {/* Oculto: cantidad de QRs */}
@@ -281,7 +281,7 @@ export default function AdminBirthdaysPage() {
       </div>
 
       {/* Gestión de Packs */}
-      <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-3">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-3 shadow-sm">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="font-medium">Packs de cumpleaños</div>
           <button onClick={async()=>{
@@ -312,10 +312,10 @@ export default function AdminBirthdaysPage() {
                 )}
                 {isEditing && edit && (
                   <div className="space-y-2">
-                    <input className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.name} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}}))} placeholder="Nombre" />
-                    <input type="number" className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
-                    <input className="w-full text-sm px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
-                    <textarea className="w-full h-28 text-xs px-2 py-1 rounded bg-slate-900 border border-slate-600" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
+                    <input className="input text-sm px-2 py-1" value={edit.name} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}}))} placeholder="Nombre" />
+                    <input type="number" className="input text-sm px-2 py-1" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
+                    <input className="input text-sm px-2 py-1" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
+                    <textarea className="input h-28 text-xs px-2 py-1" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
                     <div className="flex gap-2 text-xs">
                       <button onClick={()=>savePack(p.id)} className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30">Guardar</button>
                       <button onClick={cancelEdit} className="px-2 py-1 rounded bg-slate-700 border border-slate-500 hover:bg-slate-600">Cancelar</button>
@@ -330,7 +330,7 @@ export default function AdminBirthdaysPage() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid gap-1">
           <label className="text-xs">Estado</label>
-          <select className="border rounded px-2 py-1 bg-gray-900 text-gray-100" value={status} onChange={(e)=>setStatus(e.target.value)}>
+          <select className="input-sm" value={status} onChange={(e)=>setStatus(e.target.value)}>
             <option value="">Todos</option>
             <option value="pending_review">Pendientes</option>
             <option value="approved">Aprobadas</option>
@@ -340,7 +340,7 @@ export default function AdminBirthdaysPage() {
         </div>
         <div className="grid gap-1">
           <label className="text-xs">Buscar</label>
-          <input className="border rounded px-2 py-1 bg-gray-900 text-gray-100" value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="cumpleañero, WhatsApp, documento" />
+          <input className="input-sm" value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="cumpleañero, WhatsApp, documento" />
         </div>
         <button className="btn" onClick={()=>{ setPage(1); load(); }}>Buscar</button>
       </div>

@@ -27,6 +27,9 @@ function adminShape(show: any) {
     createdAt: show.createdAt.toISOString(),
     updatedAt: show.updatedAt.toISOString(),
     hasImage: !!(show.imageWebpPath && show.imageWebpPath.trim() !== '' && show.width > 0 && show.height > 0),
+    details: show.details || null,
+    specialGuests: show.specialGuests || null,
+    notes: show.notes || null,
   };
 }
 

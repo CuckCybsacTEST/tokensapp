@@ -115,21 +115,21 @@ export default function StaffBirthdaysPage() {
             <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400 max-w-prose">Ingresa los datos del celebrante, selecciona horario y pack. La cantidad de QR sugerida se toma del pack, puedes ajustar luego en el detalle. Tras guardar podrás aprobar y generar los códigos para compartir con invitados.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" placeholder="Nombre" value={cName} onChange={e=>setCName(e.target.value)} />
-            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" placeholder="WhatsApp" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
-            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" placeholder="Documento" value={cDoc} onChange={e=>setCDoc(e.target.value)} />
-            <input type="date" className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" value={cDate} onChange={e=>setCDate(e.target.value)} />
-            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" value={cSlot} onChange={e=>setCSlot(e.target.value)}>
+            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" placeholder="Nombre" value={cName} onChange={e=>setCName(e.target.value)} />
+            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" placeholder="WhatsApp" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
+            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" placeholder="Documento" value={cDoc} onChange={e=>setCDoc(e.target.value)} />
+            <input type="date" className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" value={cDate} onChange={e=>setCDate(e.target.value)} />
+            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" value={cSlot} onChange={e=>setCSlot(e.target.value)}>
               <option value="20:00">20:00</option><option value="21:00">21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option><option value="00:00">00:00</option>
             </select>
-            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" value={cPack} onChange={e=>setCPack(e.target.value)}>
+            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" value={cPack} onChange={e=>setCPack(e.target.value)}>
               <option value="">Pack…</option>
               {packs.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <button disabled={creating} onClick={submitCreate} className="btn h-9">{creating? 'Guardando…':'Guardar'}</button>
           </div>
           {cPack && (()=>{ const sel=packs.find(p=>p.id===cPack); if(!sel) return null; const perks=(sel.perks||[]).filter(Boolean); return (
-            <div className="mt-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
+            <div className="mt-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4">
               <div className="font-semibold text-sm text-slate-800 dark:text-slate-200">Pack: {sel.name}</div>
               {sel.bottle && <div className="inline-flex items-center gap-2 mt-2 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"><span>🍾</span><span>Botella: {sel.bottle}</span></div>}
               {perks.length>0 && <ul className="mt-2 space-y-1.5 text-[13px] text-slate-600 dark:text-slate-300">{perks.map(pk=> <li key={pk} className="flex items-start gap-2"><span className="mt-0.5 text-[10px] text-slate-400">●</span><span>{pk}</span></li>)}</ul>}
@@ -145,13 +145,13 @@ export default function StaffBirthdaysPage() {
           <div className="flex flex-wrap items-end gap-4">
           <div className="grid gap-1">
             <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Estado</label>
-            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" value={status} onChange={e=>setStatus(e.target.value)}>
+            <select className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" value={status} onChange={e=>setStatus(e.target.value)}>
               <option value="">Todos</option><option value="pending_review">Pendientes</option><option value="approved">Aprobadas</option><option value="completed">Completadas</option><option value="canceled">Canceladas</option>
             </select>
           </div>
           <div className="grid gap-1 flex-1 min-w-[220px] max-w-xs">
             <label className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Buscar</label>
-            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 text-sm" value={search} onChange={e=>setSearch(e.target.value)} placeholder="nombre, WhatsApp, doc" />
+            <input className="h-9 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 text-sm" value={search} onChange={e=>setSearch(e.target.value)} placeholder="nombre, WhatsApp, doc" />
           </div>
           <button className="btn" onClick={()=>{ setPage(1); load(); }}>Buscar</button>
           </div>

@@ -19,7 +19,7 @@ function statusOf(t: TokenLight): { label: string; cls: string } {
   if (t.revealedAt) return { label: "Revelado", cls: "badge border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-800 dark:text-amber-200" };
   if (t.disabled) return { label: "Deshabilitado", cls: "badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" };
   const exp = new Date(t.expiresAt).getTime();
-  if (exp < Date.now()) return { label: "Expirado", cls: "badge border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-200" };
+  if (exp < Date.now()) return { label: "Expirado", cls: "badge-danger" };
   return { label: "Activo", cls: "badge border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-600 dark:bg-indigo-800 dark:text-indigo-200" };
 }
 
@@ -61,7 +61,7 @@ export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
         <span>Tokens del lote</span>
         <div className="flex items-center gap-2 text-xs">
           <label>Filas por página</label>
-          <select className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1" value={pageSize} onChange={(e)=> setPageSize(Number(e.target.value)||50)}>
+          <select className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1" value={pageSize} onChange={(e)=> setPageSize(Number(e.target.value)||50)}>
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>

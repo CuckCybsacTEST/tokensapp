@@ -5,21 +5,95 @@
 /* CSS Variables for light/dark themes */
 :root {
   --color-bg: #ffffff;
+  --color-bg-rgb: 255,255,255;
   --color-bg-soft: #f8fafc;
   --color-border: #e2e8f0;
   --color-text: #0f172a;
   --color-text-soft: #475569;
   --color-accent: #0ea5e9;
+  /* Semantic tokens (light) */
+  --color-success: #059669; /* emerald-600 */
+  --color-success-rgb: 5,150,105;
+  --color-success-bg: #ecfdf5; /* emerald-50 */
+  --color-success-border: #6ee7b7; /* emerald-300 */
+  --color-warning: #d97706; /* amber-600 */
+  --color-warning-rgb: 217,119,6;
+  --color-warning-bg: #fffbeb; /* amber-50 */
+  --color-warning-border: #fcd34d; /* amber-300 */
+  --color-danger: #dc2626; /* red-600 */
+  --color-danger-rgb: 220,38,38;
+  --color-danger-bg: #fef2f2; /* red-50 */
+  --color-danger-border: #fca5a5; /* red-300 */
+  --color-info: #0ea5e9; /* sky-500 */
+  --color-info-rgb: 14,165,233;
+  --color-info-bg: #f0f9ff; /* sky-50 */
+  --color-info-border: #7dd3fc; /* sky-300 */
+  --color-muted: #64748b; /* slate-500 */
+  --color-muted-rgb: 100,116,139;
+  --color-muted-bg: #f1f5f9; /* slate-100 */
+  --color-muted-border: #cbd5e1; /* slate-300 */
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: #0f172a;
+    --color-bg-rgb: 15,23,42;
     --color-bg-soft: #1e293b;
     --color-border: #334155;
     --color-text: #f1f5f9;
     --color-text-soft: #cbd5e1;
     --color-accent: #38bdf8;
+    /* Semantic tokens (dark auto) */
+    --color-success: #34d399; /* emerald-400 */
+    --color-success-rgb: 52,211,153;
+    --color-success-bg: rgba(16,185,129,0.12); /* emerald-500/12 */
+    --color-success-border: rgba(16,185,129,0.35);
+    --color-warning: #fbbf24; /* amber-400 */
+    --color-warning-rgb: 251,191,36;
+    --color-warning-bg: rgba(217,119,6,0.16);
+    --color-warning-border: rgba(251,191,36,0.35);
+    --color-danger: #f87171; /* red-400 */
+    --color-danger-rgb: 248,113,113;
+    --color-danger-bg: rgba(220,38,38,0.18);
+    --color-danger-border: rgba(248,113,113,0.45);
+    --color-info: #38bdf8; /* sky-400 */
+    --color-info-rgb: 56,189,248;
+    --color-info-bg: rgba(14,165,233,0.15);
+    --color-info-border: rgba(56,189,248,0.45);
+    --color-muted: #94a3b8; /* slate-400 */
+    --color-muted-rgb: 148,163,184;
+    --color-muted-bg: rgba(148,163,184,0.08);
+    --color-muted-border: rgba(148,163,184,0.25);
   }
+}
+
+/* Overrides explícitos por clase para respetar selección manual (light/dark) incluso si el sistema está en otro modo */
+.light {
+  --color-bg: #ffffff;
+  --color-bg-rgb: 255,255,255;
+  --color-bg-soft: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-soft: #475569;
+  --color-accent: #0ea5e9;
+  --color-success: #059669; --color-success-rgb: 5,150,105; --color-success-bg: #ecfdf5; --color-success-border: #6ee7b7;
+  --color-warning: #d97706; --color-warning-rgb: 217,119,6; --color-warning-bg: #fffbeb; --color-warning-border: #fcd34d;
+  --color-danger: #dc2626; --color-danger-rgb: 220,38,38; --color-danger-bg: #fef2f2; --color-danger-border: #fca5a5;
+  --color-info: #0ea5e9; --color-info-rgb:14,165,233; --color-info-bg:#f0f9ff; --color-info-border:#7dd3fc;
+  --color-muted:#64748b; --color-muted-rgb:100,116,139; --color-muted-bg:#f1f5f9; --color-muted-border:#cbd5e1;
+}
+.dark {
+  --color-bg: #0f172a;
+  --color-bg-rgb: 15,23,42;
+  --color-bg-soft: #1e293b;
+  --color-border: #334155;
+  --color-text: #f1f5f9;
+  --color-text-soft: #cbd5e1;
+  --color-accent: #38bdf8;
+  --color-success: #34d399; --color-success-rgb:52,211,153; --color-success-bg: rgba(16,185,129,0.12); --color-success-border: rgba(16,185,129,0.35);
+  --color-warning: #fbbf24; --color-warning-rgb:251,191,36; --color-warning-bg: rgba(217,119,6,0.16); --color-warning-border: rgba(251,191,36,0.35);
+  --color-danger: #f87171; --color-danger-rgb:248,113,113; --color-danger-bg: rgba(220,38,38,0.18); --color-danger-border: rgba(248,113,113,0.45);
+  --color-info: #38bdf8; --color-info-rgb:56,189,248; --color-info-bg: rgba(14,165,233,0.15); --color-info-border: rgba(56,189,248,0.45);
+  --color-muted:#94a3b8; --color-muted-rgb:148,163,184; --color-muted-bg: rgba(148,163,184,0.08); --color-muted-border: rgba(148,163,184,0.25);
 }
 
 html, body, #__next {
@@ -59,6 +133,13 @@ body {
   width: 100%;
   min-height: 100%;
 }
+/* Clase opcional para aplicar transición sólo después de hidratar (agregar desde JS si se desea) */
+.theme-transition {
+  transition: background-color .45s, color .45s, border-color .45s, box-shadow .45s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition { transition: none !important; }
+}
 
 /* Scrollbar (webkit) - Ocultar completamente */
 /* Restauramos scrollbar; si se desea ocultar sólo en la ruleta se hará local */
@@ -76,7 +157,38 @@ body {
 .btn-secondary { @apply bg-slate-600 hover:bg-slate-500 focus:ring-slate-500; }
 .btn-outline { @apply border-slate-300 bg-transparent text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700; }
 .btn-danger { @apply inline-flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 shadow-sm transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-600 dark:bg-rose-900/30 dark:text-rose-200; }
-.input { @apply block w-full rounded-md border-slate-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100; }
+/* Semantic utility classes */
+.alert { @apply rounded-md border px-4 py-3 text-sm flex gap-2 items-start; }
+.alert-success { background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success-border); }
+.alert-warning { background: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning-border); }
+.alert-danger { background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger-border); }
+.alert-info { background: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info-border); }
+.badge-success { @apply badge; background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success-border); }
+.badge-warning { @apply badge; background: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning-border); }
+.badge-danger { @apply badge; background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger-border); }
+.badge-info { @apply badge; background: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info-border); }
+/* Simple text color utilities using semantic tokens */
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-danger { color: var(--color-danger); }
+.text-info { color: var(--color-info); }
+.text-soft { color: var(--color-text-soft); }
+.bg-success-soft { background: var(--color-success-bg); }
+.bg-warning-soft { background: var(--color-warning-bg); }
+.bg-danger-soft { background: var(--color-danger-bg); }
+.bg-info-soft { background: var(--color-info-bg); }
+.border-success { border-color: var(--color-success-border); }
+.border-warning { border-color: var(--color-warning-border); }
+.border-danger { border-color: var(--color-danger-border); }
+.border-info { border-color: var(--color-info-border); }
+
+/* Priority badge helpers */
+.prio-high { @apply badge; background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger-border); }
+.prio-medium { @apply badge; background: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning-border); }
+.prio-low { @apply badge; background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success-border); }
+.input { @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 shadow-sm placeholder-slate-400 focus:border-brand-500 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:placeholder-slate-500 dark:text-slate-100; }
+.input-sm { @apply input px-2 py-1 text-sm; }
+.input-xs { @apply input px-2 py-0.5 text-xs; }
 .badge { @apply inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200; }
 .table { @apply w-full table-auto border-collapse text-sm; }
 .table thead th { @apply border-b border-slate-300 px-3 py-2 text-left font-semibold dark:border-slate-600; }

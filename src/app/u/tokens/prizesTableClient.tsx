@@ -47,7 +47,7 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
     finally { setLoading(false); }
   }
 
-  if (error) return <div className="text-xs text-red-600">{error}</div>;
+  if (error) return <div className="text-xs text-danger">{error}</div>;
   if (!data) return <div className="text-xs opacity-60">{loading?'Cargando…':'Sin datos'}</div>;
 
   // Clasificaciones similares a vista admin
@@ -72,13 +72,13 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
           <span className="text-[10px] opacity-60">{list.length} premios</span>
         </div>
         {list.length === 0 ? (
-          <div className="p-4 text-[11px] text-slate-500">{empty}</div>
+          <div className="p-4 text-[11px] text-soft">{empty}</div>
         ) : (
           <>
           {/* Desktop / >= sm */}
           <div className="overflow-x-auto hidden sm:block">
             <table className="w-full text-[11px] table-fixed">
-              <thead className="bg-slate-50 dark:bg-slate-700/40 text-slate-600 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-700/40 text-soft">
                 <tr>
                   <th className="text-left px-2 py-1 w-[38%]">Label</th>
                   <th className="text-left px-2 py-1 w-[32%]">Lote</th>
@@ -92,8 +92,8 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
                     <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="px-2 py-1 font-semibold uppercase tracking-wide truncate" title={p.label}>{p.label}</td>
                       <td className="px-2 py-1 text-[10px] font-mono truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</td>
-                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-emerald-600 dark:text-emerald-400 font-semibold">{p.emittedTotal}</span></td>
-                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-rose-600 dark:text-rose-400 font-semibold">{p.deliveredCount}</span></td>
+                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-success font-semibold">{p.emittedTotal}</span></td>
+                      <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-danger font-semibold">{p.deliveredCount}</span></td>
                     </tr>
                   );
                 })}
@@ -107,11 +107,11 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-semibold uppercase tracking-wide leading-tight max-w-[60%] truncate" title={p.label}>{p.label}</div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.emittedTotal}</span>
-                    <span className="text-rose-600 dark:text-rose-400 font-semibold">{p.deliveredCount}</span>
+                    <span className="text-success font-semibold">{p.emittedTotal}</span>
+                    <span className="text-danger font-semibold">{p.deliveredCount}</span>
                   </div>
                 </div>
-                <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</div>
+                <div className="mt-0.5 text-[10px] font-mono text-soft truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</div>
               </div>
             ))}
           </div>

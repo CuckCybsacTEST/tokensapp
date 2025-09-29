@@ -32,6 +32,9 @@ function adminFullShape(show: any) {
     bytesOptimized: show.bytesOptimized,
     hasImage,
     isExpired: !!(show.endsAt && show.endsAt.getTime() < Date.now()),
+    details: show.details || null,
+    specialGuests: show.specialGuests || null,
+    notes: show.notes || null,
   };
 }
 
@@ -78,6 +81,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if ('startsAt' in json) patch.startsAt = json.startsAt;
     if ('endsAt' in json) patch.endsAt = json.endsAt;
     if ('slot' in json) patch.slot = json.slot;
+  if ('details' in json) patch.details = json.details;
+  if ('specialGuests' in json) patch.specialGuests = json.specialGuests;
+  if ('notes' in json) patch.notes = json.notes;
 
     const updated = await updatePartial(params.id, patch);
 

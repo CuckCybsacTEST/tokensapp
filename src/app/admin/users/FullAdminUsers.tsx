@@ -149,35 +149,35 @@ export default function FullAdminUsers() {
       </h1>
       {msg && <div className="border border-green-700 bg-green-950/30 text-green-200 rounded p-3 text-sm">{msg}</div>}
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
-      <form onSubmit={onSubmit} className="max-w-xl space-y-3 border rounded p-3">
+  <form onSubmit={onSubmit} className="card max-w-xl space-y-3 p-4">
         <div className="grid gap-2">
           <label className="text-sm text-gray-700">Username</label>
-          <input value={username} onChange={e=>setUsername(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" />
+          <input value={username} onChange={e=>setUsername(e.target.value)} required className="input-sm" />
         </div>
         <div className="grid gap-2">
           <label className="text-sm text-gray-700">Password</label>
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" />
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="input-sm" />
         </div>
         <div className="grid gap-2">
           <label className="text-sm text-gray-700">Nombre</label>
-          <input value={name} onChange={e=>setName(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" placeholder="Nombre y Apellido" />
+          <input value={name} onChange={e=>setName(e.target.value)} className="input-sm" placeholder="Nombre y Apellido" />
         </div>
         <div className="grid gap-2">
           <label className="text-sm text-gray-700">DNI</label>
-          <input value={dni} onChange={e=> setDni((e.target.value||'').replace(/\D+/g,''))} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" placeholder="12345678" inputMode="numeric" />
+          <input value={dni} onChange={e=> setDni((e.target.value||'').replace(/\D+/g,''))} className="input-sm" placeholder="12345678" inputMode="numeric" />
         </div>
         <div className="flex gap-4">
           <div className="grid gap-2">
             <label className="text-sm text-gray-700">WhatsApp</label>
-            <input value={whatsapp} onChange={e=> setWhatsapp(e.target.value.replace(/[^0-9+]/g,''))} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1" placeholder="999888777" />
+            <input value={whatsapp} onChange={e=> setWhatsapp(e.target.value.replace(/[^0-9+]/g,''))} className="input-sm" placeholder="999888777" />
           </div>
           <div className="grid gap-2">
             <label className="text-sm text-gray-700">Cumpleaños (día y mes)</label>
             <div className="flex gap-2">
-              <select value={birthdayDay} onChange={e=> setBirthdayDay(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+              <select value={birthdayDay} onChange={e=> setBirthdayDay(e.target.value)} className="input-sm">
                 {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d => <option key={d} value={d}>{d}</option>)}
               </select>
-              <select value={birthdayMonth} onChange={e=> setBirthdayMonth(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+              <select value={birthdayMonth} onChange={e=> setBirthdayMonth(e.target.value)} className="input-sm">
                 {MONTHS_ES.map((m,idx) => <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
               </select>
             </div>
@@ -186,13 +186,13 @@ export default function FullAdminUsers() {
         <div className="flex gap-4">
           <div className="grid gap-2">
             <label className="text-sm text-gray-700">Área</label>
-            <select value={area} onChange={e=> setArea(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+            <select value={area} onChange={e=> setArea(e.target.value)} className="input-sm">
               {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div className="grid gap-2">
             <label className="text-sm text-gray-700">Rol</label>
-            <select value={role} onChange={e=> setRole(e.target.value)} className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1">
+            <select value={role} onChange={e=> setRole(e.target.value)} className="input-sm">
               <option value="COLLAB">COLLAB</option>
               <option value="STAFF">STAFF</option>
             </select>
@@ -202,7 +202,7 @@ export default function FullAdminUsers() {
           <button className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-sm">Crear usuario</button>
         </div>
       </form>
-      <div className="border rounded p-4">
+  <div className="card p-4">
         <h2 className="text-lg font-medium mb-4">Usuarios existentes</h2>
         <div className="overflow-x-auto">
           <table className="min-w-[1400px] w-full text-sm">
@@ -237,7 +237,7 @@ export default function FullAdminUsers() {
                           value={nameEdit[u.id]?.value || ''}
                           onChange={e=> setNameEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value } }))}
                           placeholder="Nombre completo"
-                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs w-[280px]"
+                          className="input-xs w-[280px]"
                         />
                         <button
                           className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"
@@ -287,7 +287,7 @@ export default function FullAdminUsers() {
                         <select
                           value={areaEdit[u.id]?.value || ''}
                           onChange={e=> setAreaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value } }))}
-                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs"
+                          className="input-xs"
                         >
                           {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
@@ -366,7 +366,7 @@ export default function FullAdminUsers() {
                           value={waEdit[u.id]?.value || ''}
                           onChange={e=> setWaEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value.replace(/[^0-9+]/g,'') } }))}
                           placeholder="WhatsApp"
-                          className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs w-[140px]"
+                          className="input-xs w-[140px]"
                         />
                         <button
                           className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"
@@ -434,7 +434,7 @@ export default function FullAdminUsers() {
                             value={pwEdit[u.id]?.value || ''}
                             onChange={e=> setPwEdit(prev => ({ ...prev, [u.id]: { ...prev[u.id], value: e.target.value } }))}
                             placeholder="Nueva contraseña (min 8)"
-                            className="border border-gray-700 bg-gray-900 text-gray-100 rounded px-2 py-1 text-xs"
+                            className="input-xs"
                           />
                           <button
                             className="text-xs px-2 py-1 rounded bg-blue-600 disabled:opacity-50"

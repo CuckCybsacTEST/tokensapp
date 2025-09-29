@@ -437,7 +437,7 @@ export function PrintControlClient() {
       </div>
 
       {/* Formulario para subir nueva plantilla */}
-      <div className="mb-6 p-4 bg-slate-900 rounded-lg border border-slate-700">
+  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-medium text-slate-300">Subir nueva plantilla</h3>
           {templates.length > 0 && (
@@ -528,7 +528,7 @@ export function PrintControlClient() {
 
       {/* Vista previa de la plantilla con QR */}
       {(templatePreview || selectedTemplateId) && (
-        <div className="mb-6 p-4 bg-slate-900 rounded-lg border border-slate-700">
+  <div className="mb-6 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-medium text-slate-300">Vista previa con QR de ejemplo</h3>
             {selectedTemplateId && (

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ALLOWED_AREAS } from "@/lib/areas";
 import { MONTHS_ES, buildBirthdaySubmission } from '@/lib/birthday';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -80,43 +81,47 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col px-4 pt-16 pb-10 sm:pt-10 bg-slate-900 text-slate-100">
-  <div className="w-full max-w-md mx-auto">
-  <h1 className="text-2xl font-bold tracking-tight mb-2 text-white text-center">¡Bienvenido al equipo El Lounge!</h1>
-  <p className="text-sm text-slate-300 mb-5 max-w-prose mx-auto text-center">Registra tus datos para activar tu acceso. Este usuario te permitirá registrar asistencia, tareas y métricas que impulsan el funcionamiento diario.</p>
+    <div className="min-h-[100dvh] flex flex-col px-4 pt-16 pb-10 sm:pt-10 bg-[var(--color-bg)] relative">
+  {/* Toggle de tema (usa ThemeProvider del layout raíz) */}
+  <div className="absolute top-4 right-4"><ThemeToggle compact /></div>
+  <div className="w-full max-w-md mx-auto space-y-5">
+  <div className="text-center space-y-2">
+    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">¡Bienvenido al equipo El Lounge!</h1>
+    <p className="text-sm text-slate-600 dark:text-slate-300 max-w-prose mx-auto">Registra tus datos para activar tu acceso. Este usuario te permitirá registrar asistencia y otras funcionalidades internas.</p>
+  </div>
         {error && (
           <div className="mb-3 border border-red-600 bg-red-50 text-red-700 rounded p-2 text-sm">{error}</div>
         )}
         {done ? (
           <div className="text-sm">Registro completado. Redirigiendo…</div>
         ) : (
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="space-y-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
             <div>
               <label className="block text-sm mb-1">Nombre y apellido <span className="text-red-600">*</span></label>
-              <input value={name} onChange={e=>setName(e.target.value)} className="w-full border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="Ej: Juan Pérez" />
+              <input value={name} onChange={e=>setName(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="Ej: Juan Pérez" />
             </div>
             <div>
               <label className="block text-sm mb-1">DNI</label>
-              <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="Solo números" />
+              <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="Solo números" />
             </div>
             <div>
               <label className="block text-sm mb-1">Área</label>
-              <select className="w-full border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" value={area} onChange={e=>setArea(e.target.value)}>
+              <select className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" value={area} onChange={e=>setArea(e.target.value)}>
                 {ALLOWED_AREAS.map(a => (<option key={a} value={a}>{a}</option>))}
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm mb-1">WhatsApp <span className="text-red-500">*</span></label>
-                <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="9XXXXXXXX" />
+                <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100" placeholder="9XXXXXXXX" />
               </div>
               <div>
                 <label className="block text-sm mb-1">Cumpleaños (día y mes) <span className="text-red-500">*</span></label>
                 <div className="flex gap-2">
-                  <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2 py-2 text-slate-900 dark:text-slate-100">
+                  <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2 py-2 text-slate-900 dark:text-slate-100">
                     {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d=> <option key={d} value={d}>{d}</option>)}
                   </select>
-                  <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2 py-2 text-slate-900 dark:text-slate-100">
+                  <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded px-2 py-2 text-slate-900 dark:text-slate-100">
                     {MONTHS_ES.map((m,idx)=> <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
                   </select>
                 </div>
@@ -129,7 +134,7 @@ export default function RegisterPage() {
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e=>setPassword(e.target.value)}
-                  className="w-full pr-10 border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100"
+                  className="w-full pr-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100"
                   placeholder="Mínimo 8 caracteres"
                 />
                 <button
@@ -158,7 +163,7 @@ export default function RegisterPage() {
                   type={showConfirmPw ? 'text' : 'password'}
                   value={confirm}
                   onChange={e=>setConfirm(e.target.value)}
-                  className="w-full pr-10 border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100"
+                  className="w-full pr-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 rounded px-3 py-2 text-slate-900 dark:text-slate-100"
                 />
                 <button
                   type="button"

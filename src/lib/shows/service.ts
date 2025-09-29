@@ -19,6 +19,9 @@ export interface UpdatePartialInput {
   startsAt?: string | Date;
   endsAt?: string | Date | null;
   slot?: number | null;
+  details?: string | null;
+  specialGuests?: string | null;
+  notes?: string | null;
 }
 
 export interface ListAdminFilters {
@@ -319,6 +322,9 @@ export async function updatePartial(_id: string, _patch: UpdatePartialInput) {
   const newEndsMs = endsAt ? endsAt.getTime() : null;
   if (existingEndsMs !== newEndsMs) data.endsAt = endsAt;
   if (slot !== existing.slot) data.slot = slot;
+  if (patch.details !== undefined) data.details = patch.details == null ? null : String(patch.details).slice(0, 5000);
+  if (patch.specialGuests !== undefined) data.specialGuests = patch.specialGuests == null ? null : String(patch.specialGuests).slice(0, 2000);
+  if (patch.notes !== undefined) data.notes = patch.notes == null ? null : String(patch.notes).slice(0, 4000);
 
   if (Object.keys(data).length === 0) {
     return existing; // no-op

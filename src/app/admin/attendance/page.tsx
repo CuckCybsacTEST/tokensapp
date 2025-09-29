@@ -231,7 +231,7 @@ export default function AdminAttendancePage() {
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 dark:text-slate-300">Período:</label>
             <select
-              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input px-3 py-1 text-sm"
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
             >
@@ -247,9 +247,9 @@ export default function AdminAttendancePage() {
           {period === 'custom' && (
             <div className="flex items-center gap-2 text-sm">
               <label>Desde</label>
-              <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" />
+              <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="input-sm" />
               <label>Hasta</label>
-              <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" />
+              <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="input-sm" />
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export default function AdminAttendancePage() {
             <select
               value={area}
               onChange={(e)=> setArea(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input px-3 py-1 text-sm"
             >
               <option value="">Todas</option>
               {ALLOWED_AREAS.map(a => (
@@ -271,7 +271,7 @@ export default function AdminAttendancePage() {
               value={person}
               onChange={(e)=> setPerson(e.target.value)}
               placeholder="Código o id:..."
-              className="w-56 rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input w-56 px-3 py-1 text-sm"
             />
           </div>
         </div>
@@ -281,7 +281,7 @@ export default function AdminAttendancePage() {
         <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">Cargando…</div>
       )}
       {error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200 dark:border-rose-900">Error: {error}</div>
+        <div className="alert-danger">Error: {error}</div>
       )}
 
       {/* MÉTRICAS (derivadas en cliente) */}
@@ -309,7 +309,7 @@ export default function AdminAttendancePage() {
               <div className="text-sm font-semibold">Resumen por persona / día</div>
               <div className="flex items-center gap-2 text-xs">
                 <label>Filas por página</label>
-                <select className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1" value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value)||20)}>
+                <select className="input-xs" value={pageSize} onChange={(e)=>setPageSize(Number(e.target.value)||20)}>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
@@ -333,20 +333,20 @@ export default function AdminAttendancePage() {
                 </thead>
                 <tbody>
                   {(table?.rows || []).map((r, i) => (
-                    <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
+                    <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-danger-soft' : ''}`}>
                       <td className="py-2 px-3 whitespace-nowrap">{r.day}</td>
-                      <td className="py-2 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
+                      <td className="py-2 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-soft">({r.personCode})</span></td>
                       <td className="py-2 px-3 whitespace-nowrap">{r.area || '-'}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.firstIn)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{fmtHHmmLima(r.lastOut)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         {r.incomplete ? (
-                          <span title="Jornada no completada (sin salida registrada)" className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">
+                          <span title="Jornada no completada (sin salida registrada)" className="badge-warning inline-flex items-center gap-1">
                             <span className="font-bold">!</span> Falta salida
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-xs">-</span>
+                          <span className="text-soft text-xs">-</span>
                         )}
                       </td>
                       <td className="py-2 px-3 whitespace-nowrap">
@@ -376,14 +376,14 @@ export default function AdminAttendancePage() {
                     </tr>
                   ))}
                   {table && table.rows.length === 0 && (
-                    <tr><td className="py-3 px-3 text-slate-500" colSpan={10}>Sin datos</td></tr>
+                    <tr><td className="py-3 px-3 text-soft" colSpan={10}>Sin datos</td></tr>
                   )}
                 </tbody>
               </table>
               </div>
             </div>
             <div className="p-3 flex items-center justify-between text-sm">
-              <div className="text-slate-500">Página {table?.page || page} de {table?.totalPages || 1} — {table?.total || 0} filas</div>
+              <div className="text-soft">Página {table?.page || page} de {table?.totalPages || 1} — {table?.total || 0} filas</div>
               <div className="flex items-center gap-2">
                 <button className="btn-secondary px-3 py-1 rounded disabled:opacity-50" disabled={(table?.page || page) <= 1} onClick={()=> setPage((p)=> Math.max(1, p - 1))}>Anterior</button>
                 <button className="btn px-3 py-1 rounded disabled:opacity-50" disabled={(table?.page || page) >= (table?.totalPages || 1)} onClick={()=> setPage((p)=> (table?.totalPages ? Math.min(table.totalPages, p+1) : p+1))}>Siguiente</button>
@@ -392,27 +392,27 @@ export default function AdminAttendancePage() {
         </div>
         {/* Mobile card list mirroring /u/attendance */}
         <div className="md:hidden space-y-3">
-          <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Resumen por persona / día</div>
+          <div className="text-xs font-medium text-soft">Resumen por persona / día</div>
     {(table?.rows || []).map((r,i)=>(
-            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-rose-300 dark:ring-rose-600/50' : ''}`}> 
+            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-warning' : ''}`}> 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate">{r.personName}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{r.personCode} · {r.day}</div>
+                  <div className="text-[11px] text-soft truncate">{r.personCode} · {r.day}</div>
                 </div>
                 <div>
                   {r.incomplete ? (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">Falta salida</span>
+                    <span className="badge-warning text-[10px]">Falta salida</span>
                   ) : (
-                    <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">OK</span>
+                    <span className="badge-success text-[10px]">OK</span>
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                <div><span className="text-slate-500">Área:</span> {r.area || '-'}</div>
-                <div><span className="text-slate-500">Duración:</span> {formatMinutes(r.durationMin)}</div>
-                <div><span className="text-slate-500">ENTRADA:</span> {fmtHHmmLima(r.firstIn)}</div>
-                <div><span className="text-slate-500">SALIDA:</span> {fmtHHmmLima(r.lastOut)}</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-soft">
+                <div><span className="text-soft">Área:</span> {r.area || '-'}</div>
+                <div><span className="text-soft">Duración:</span> {formatMinutes(r.durationMin)}</div>
+                <div><span className="text-soft">ENTRADA:</span> {fmtHHmmLima(r.firstIn)}</div>
+                <div><span className="text-soft">SALIDA:</span> {fmtHHmmLima(r.lastOut)}</div>
               </div>
               <div>
                 <button
@@ -432,9 +432,9 @@ export default function AdminAttendancePage() {
             </div>
           ))}
           {table && table.rows.length === 0 && (
-            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-xs text-slate-500">Sin datos</div>
+            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-xs text-soft">Sin datos</div>
           )}
-          <div className="flex items-center justify-between pt-2 text-[11px] text-slate-500">
+          <div className="flex items-center justify-between pt-2 text-[11px] text-soft">
             <div>Pág. {table?.page || page}/{table?.totalPages || 1}</div>
             <div className="flex items-center gap-1">
               <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Anterior">

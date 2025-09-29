@@ -101,7 +101,7 @@ export default function UsersRegisterClient() {
   <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Usuarios existentes</h1>
   <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-prose">Listado de colaboradores registrados. Solo los de rol COLLAB pueden eliminarse desde aquí.</p>
         {/* Existing users table FIRST */}
-        <div className="mb-10 border rounded border-slate-300 dark:border-slate-700 p-4 bg-white dark:bg-slate-900">
+  <div className="mb-10 border rounded border-slate-300 dark:border-slate-700 p-4 bg-white dark:bg-slate-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-slate-900 dark:text-slate-100">Colaboradores</h2>
             <button onClick={loadUsers} disabled={loadingUsers} type="button" className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50" title="Refrescar">
@@ -161,32 +161,32 @@ export default function UsersRegisterClient() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nombre</label>
-            <input value={name} onChange={e=>setName(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Nombre completo" />
+            <input value={name} onChange={e=>setName(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm" placeholder="Nombre completo" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">DNI</label>
-            <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Solo números" />
+            <input value={dni} onChange={e=>setDni(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm" placeholder="Solo números" />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Área</label>
-            <select value={area} onChange={e=>setArea(e.target.value as Area)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+            <select value={area} onChange={e=>setArea(e.target.value as Area)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
               {ALLOWED_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">WhatsApp</label>
-              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="9XXXXXXXX" />
+              <input value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm" placeholder="9XXXXXXXX" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Día</label>
-              <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+              <select value={birthdayDay} onChange={e=>setBirthdayDay(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
                 {Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')).map(d=> <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Mes</label>
-              <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
+              <select value={birthdayMonth} onChange={e=>setBirthdayMonth(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
                 {MONTHS_ES.map((m,idx)=> <option key={m} value={String(idx+1).padStart(2,'0')}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>)}
               </select>
             </div>
@@ -194,11 +194,11 @@ export default function UsersRegisterClient() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Password</label>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm" placeholder="Mínimo 8 caracteres" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Confirmar</label>
-              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm" />
+              <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm" />
             </div>
           </div>
           <button disabled={loading} className="btn">{loading ? 'Creando…' : 'Registrar'}</button>

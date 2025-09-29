@@ -77,7 +77,7 @@ function TaskCommentBox({ day, taskId }: { day: string; taskId: string }) {
         <button onClick={()=> setOpen(true)} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600">Agregar comentario</button>
       ) : (
         <div className="space-y-2">
-          <textarea value={text} onChange={(e)=> setText(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded px-2 py-2 min-h-[60px]" placeholder="Escribe tu comentario sobre esta tarea" />
+          <textarea value={text} onChange={(e)=> setText(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded px-2 py-2 min-h-[60px]" placeholder="Escribe tu comentario sobre esta tarea" />
           <div className="flex gap-2 justify-end">
             <button onClick={()=> setOpen(false)} className="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600">Cancelar</button>
             <button onClick={send} disabled={!canSend} className="text-xs px-3 py-1.5 rounded bg-blue-600 text-white disabled:opacity-50">Enviar</button>
@@ -557,7 +557,7 @@ function ChecklistPageInner() {
                             value={Number.isFinite(currentVal) ? currentVal : 0}
                             onChange={(e) => setValueForTask(t.id, Number(e.target.value))}
                             disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)}
-                            className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-50 text-slate-900 placeholder-slate-400 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder-slate-400"
+                            className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-50 text-slate-900 placeholder-slate-400 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder-slate-400"
                           />
                           <button
                             type="button"

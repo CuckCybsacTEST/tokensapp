@@ -219,12 +219,12 @@ export default function PrizeManager({
               required
               maxLength={120}
             />
-            {errors.label && <p className="text-xs text-rose-600">{errors.label}</p>}
+            {errors.label && <p className="text-xs text-danger">{errors.label}</p>}
           </div>
           <div className="form-row">
             <label className="text-xs font-medium">Color (paleta)</label>
             <ColorPalette value={form.color} onChange={(c) => setForm((f: any) => ({ ...f, color: c }))} />
-            {errors.color && <p className="text-xs text-rose-600">{errors.color}</p>}
+            {errors.color && <p className="text-xs text-danger">{errors.color}</p>}
           </div>
           {/* Descripción eliminada */}
           <div className="form-row">
@@ -236,7 +236,7 @@ export default function PrizeManager({
               type="number"
               min={0}
             />
-            {errors.stock && <p className="text-xs text-rose-600">{errors.stock}</p>}
+            {errors.stock && <p className="text-xs text-danger">{errors.stock}</p>}
           </div>
           {form.id && (
             <div className="form-row">
@@ -264,9 +264,7 @@ export default function PrizeManager({
       </form>
       {/* Mensaje global (acciones de tabla) */}
       {message && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-600 dark:bg-amber-900/30 dark:text-amber-200">
-          {message}
-        </div>
+        <div className="alert-info text-sm">{message}</div>
       )}
       {(() => {
         // Ordenar por clave con orden natural (premio1, premio2, ...)
@@ -394,11 +392,9 @@ export default function PrizeManager({
                           </td>
                           <td>
                             <span
-                              className={"badge border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-800 dark:text-rose-200"}
+                              className="badge-danger"
                               title={p.active ? "Se marcaba como activo anteriormente" : "Premio inactivo"}
-                            >
-                              Sí
-                            </span>
+                            >Sí</span>
                           </td>
                           <td className="text-right space-x-2">
                             {(() => {

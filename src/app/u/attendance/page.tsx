@@ -76,7 +76,7 @@ export default function StaffAttendanceLitePage() {
                 <select
                   value={period}
                   onChange={e=>setPeriod(e.target.value as Period)}
-                  className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[70px]"
+                  className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[70px]"
                 >
                   <option value="today">Hoy</option>
                   <option value="yesterday">Ayer</option>
@@ -92,8 +92,8 @@ export default function StaffAttendanceLitePage() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <input value={area} onChange={e=>setArea(e.target.value)} placeholder="Área" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-28 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                <input value={person} onChange={e=>setPerson(e.target.value)} placeholder="Código o persona" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 w-36 sm:w-44 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <input value={area} onChange={e=>setArea(e.target.value)} placeholder="Área" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 w-28 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <input value={person} onChange={e=>setPerson(e.target.value)} placeholder="Código o persona" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 w-36 sm:w-44 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function StaffAttendanceLitePage() {
         </div>
 
         {loading && <div className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm">Cargando…</div>}
-        {error && <div className="rounded border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-3 text-sm text-rose-700 dark:text-rose-200">Error: {error}</div>}
+  {error && <div className="alert alert-danger text-sm">Error: {error}</div>}
 
         {/* Desktop table */}
         <div className="hidden md:block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -124,7 +124,7 @@ export default function StaffAttendanceLitePage() {
               </thead>
               <tbody>
                 {(table?.rows || []).map((r,i)=>(
-                  <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-rose-50 dark:bg-rose-950/20' : ''}`}>
+                  <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-danger-soft/70' : ''}`}>
                     <td className="py-1 px-3 whitespace-nowrap">{r.day}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
                     <td className="py-1 px-3 whitespace-nowrap">{r.area || '-'}</td>
@@ -133,10 +133,10 @@ export default function StaffAttendanceLitePage() {
                     <td className="py-1 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
                     <td className="py-1 px-3 whitespace-nowrap">
                       {r.incomplete && (
-                        <span title="Jornada no completada (sin salida registrada)" className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"><span className="font-bold">!</span> Incompleta</span>
+                        <span title="Jornada no completada (sin salida registrada)" className="badge-danger inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium"><span className="font-bold">!</span> Incompleta</span>
                       )}
                       {!r.incomplete && (
-                        <span className="text-[10px] text-slate-400">—</span>
+                        <span className="text-[10px] text-soft">—</span>
                       )}
                     </td>
                   </tr>
@@ -148,7 +148,7 @@ export default function StaffAttendanceLitePage() {
             </table>
           </div>
           <div className="p-3 flex items-center justify-between text-xs">
-            <div className="text-slate-500">Página {table?.page || page} de {table?.totalPages || 1}</div>
+            <div className="text-soft">Página {table?.page || page} de {table?.totalPages || 1}</div>
             <div className="flex items-center gap-2">
               <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 px-2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] disabled:opacity-40">Anterior</button>
               <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-7 px-2 rounded bg-slate-800 text-white dark:bg-blue-600 text-[11px] disabled:opacity-40">Siguiente</button>
@@ -168,9 +168,9 @@ export default function StaffAttendanceLitePage() {
                 </div>
                 <div>
                   {r.incomplete ? (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200">Incompleta</span>
+                    <span className="badge-danger inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium">Incompleta</span>
                   ) : (
-                    <span className="text-[10px] text-slate-400">—</span>
+                    <span className="text-[10px] text-soft">—</span>
                   )}
                 </div>
               </div>

@@ -14,6 +14,9 @@ interface ShowRow {
   createdAt: string;
   updatedAt: string;
   isExpired?: boolean;
+  details?: string | null;
+  specialGuests?: string | null;
+  notes?: string | null;
 }
 
 interface ApiListResponse { ok: boolean; shows: ShowRow[] }
@@ -93,7 +96,13 @@ export default function AdminShowsPage() {
         toastSuccess('Publicado');
       } else {
         fetchShows();
-        toastError(j.code || 'Error publicando');
+        if (j.code === 'INVALID_ACTIVE_WINDOW') {
+          toastError('No se puede publicar: la fecha de fin ya pasó. Ajusta Ends At o déjalo vacío.');
+        } else if (j.code === 'IMAGE_REQUIRED') {
+          toastError('Falta imagen antes de publicar.');
+        } else {
+          toastError(j.code || 'Error publicando');
+        }
       }
     } catch (e:any) { fetchShows(); toastError('Fallo de red'); }
   }
@@ -146,43 +155,47 @@ export default function AdminShowsPage() {
       </div>
 
       {/* Create Form */}
-      <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-5 items-end bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+  <form onSubmit={handleCreate} className="card grid gap-4 md:grid-cols-5 items-end p-4">
         <div className="col-span-2 flex flex-col gap-1">
           <label className="text-xs uppercase tracking-wide">Title</label>
-          <input required value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} className="px-2 py-1 border rounded bg-white dark:bg-gray-900" />
+          <input required value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} className="input-sm" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs uppercase">Starts At</label>
-          <input type="datetime-local" required value={form.startsAt} onChange={e=>setForm(f=>({...f,startsAt:e.target.value}))} className="px-2 py-1 border rounded bg-white dark:bg-gray-900" />
+          <input type="datetime-local" required value={form.startsAt} onChange={e=>setForm(f=>({...f,startsAt:e.target.value}))} className="input-sm" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs uppercase">Ends At</label>
-          <input type="datetime-local" value={form.endsAt} onChange={e=>setForm(f=>({...f,endsAt:e.target.value}))} className="px-2 py-1 border rounded bg-white dark:bg-gray-900" />
+          <input type="datetime-local" value={form.endsAt} onChange={e=>setForm(f=>({...f,endsAt:e.target.value}))} className="input-sm" />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs uppercase">Slot (1-4)</label>
-            <input type="number" min={1} max={4} value={form.slot} onChange={e=>setForm(f=>({...f,slot:e.target.value}))} className="px-2 py-1 border rounded bg-white dark:bg-gray-900" />
+            <input type="number" min={1} max={4} value={form.slot} onChange={e=>setForm(f=>({...f,slot:e.target.value}))} className="input-sm" />
         </div>
         <div className="md:col-span-5 flex justify-end">
           <button disabled={creating || !form.title} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded">{creating ? 'Creando...' : 'Crear'}</button>
         </div>
       </form>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <h2 className="font-medium">Shows ({shows.length})</h2>
-        <button onClick={fetchShows} className="text-sm px-3 py-1 border rounded hover:bg-gray-100 dark:hover:bg-gray-700">Refrescar</button>
+        <button onClick={fetchShows} className="text-sm px-3 py-1 border rounded hover:bg-slate-100 dark:hover:bg-slate-700">Refrescar</button>
         {loading && <span className="text-xs text-gray-500">Cargando…</span>}
+        <div className="ml-auto text-[11px] text-gray-500 flex flex-col sm:flex-row gap-2">
+          <span><strong>Campos:</strong> Details, Invitados Especiales, Notas (click para editar)</span>
+        </div>
       </div>
 
-      <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+  <div className="overflow-x-auto card p-0">
+        <table className="min-w-full text-sm align-top">
+          <thead className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
             <tr>
               <th className="p-2 text-left">Title</th>
               <th className="p-2">Status</th>
               <th className="p-2">Slot</th>
               <th className="p-2">Starts</th>
               <th className="p-2">Image</th>
+              <th className="p-2">Detalles</th>
               <th className="p-2">Acciones</th>
             </tr>
           </thead>
@@ -190,22 +203,27 @@ export default function AdminShowsPage() {
             {shows.map(s => {
               const canPublish = s.status === 'DRAFT' && s.hasImage;
               return (
-                <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr key={s.id} className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800">
                   <td className="p-2 align-top max-w-xs">
                     <div className="font-medium truncate" title={s.title}>{s.title}</div>
                     <div className="text-[10px] text-gray-500">{s.slug}</div>
                   </td>
                   <td className="p-2 text-center">
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 dark:bg-gray-600 dark:text-gray-100">{s.status}</span>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 dark:bg-slate-600 dark:text-slate-100">{s.status}</span>
                   </td>
                   <td className="p-2 text-center">{s.slot ?? '-'}</td>
                   <td className="p-2 whitespace-nowrap">{new Date(s.startsAt).toLocaleString()}</td>
                   <td className="p-2 text-center">
                     {s.hasImage ? <span className="text-green-600 font-semibold">✓</span> : <span className="text-red-500">✗</span>}
                   </td>
+                  <td className="p-2 w-72 align-top">
+                    <InlineRichField show={s} field="details" label="Detalles" placeholder="Descripción, temática, etc." onUpdated={updateShowLocally} />
+                    <InlineRichField show={s} field="specialGuests" label="Invitados" placeholder="Lista o nombres" onUpdated={updateShowLocally} />
+                    <InlineRichField show={s} field="notes" label="Notas" placeholder="Notas internas" onUpdated={updateShowLocally} />
+                  </td>
                   <td className="p-2 space-x-1 whitespace-nowrap">
                     <input ref={el=> (fileInputsRef.current[s.id]=el)} type="file" accept="image/*" className="hidden" onChange={e=>onFileSelected(s.id,e)} />
-                    <button onClick={()=>triggerUpload(s.id)} className="px-2 py-1 border rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-700">Img</button>
+                    <button onClick={()=>triggerUpload(s.id)} className="px-2 py-1 border rounded text-xs hover:bg-slate-100 dark:hover:bg-slate-700">Img</button>
                     <button disabled={!canPublish} onClick={()=>publishShow(s.id)} className="px-2 py-1 border rounded text-xs disabled:opacity-40 bg-emerald-600 text-white hover:bg-emerald-700">Publish</button>
                     <button disabled={s.status==='ARCHIVED'} onClick={()=>archiveShow(s.id)} className="px-2 py-1 border rounded text-xs disabled:opacity-40 bg-orange-600 text-white hover:bg-orange-700">Archive</button>
                   </td>
@@ -213,12 +231,66 @@ export default function AdminShowsPage() {
               );
             })}
             {shows.length === 0 && !loading && (
-              <tr><td colSpan={6} className="p-4 text-center text-gray-500">No shows</td></tr>
+              <tr><td colSpan={7} className="p-4 text-center text-gray-500">No shows</td></tr>
             )}
           </tbody>
         </table>
       </div>
       <p className="text-xs text-gray-500">Nota: Botón Publish deshabilitado hasta que el show tenga imagen. Errores de conflicto (slot, límite) se muestran como toast.</p>
+    </div>
+  );
+}
+
+// --- Inline editor component ---
+interface InlineFieldProps {
+  show: ShowRow;
+  field: 'details' | 'specialGuests' | 'notes';
+  label: string;
+  placeholder?: string;
+  onUpdated: (id: string, patch: Partial<ShowRow>) => void;
+}
+
+function InlineRichField({ show, field, label, placeholder, onUpdated }: InlineFieldProps) {
+  const [open, setOpen] = useState(false);
+  const [val, setVal] = useState<string>(show[field] || '');
+  const [saving, setSaving] = useState(false);
+  useEffect(()=> { setVal(show[field] || ''); }, [show.id, show[field]]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const r = await fetch(`/api/admin/shows/${show.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [field]: val || null }) });
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        onUpdated(show.id, { [field]: val || null } as any);
+        setOpen(false);
+      } else {
+        // TODO: hook global toast; fallback alert
+        alert(j.code || 'Error guardando');
+      }
+    } catch {
+      alert('Error de red');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="mb-2 last:mb-0">
+      <button type="button" onClick={()=>setOpen(o=>!o)} className="text-[11px] uppercase tracking-wide font-medium text-slate-600 dark:text-slate-300 hover:underline flex items-center gap-1">
+        {label}
+        <span className="text-[9px] opacity-60">{open ? '▼' : '▶'}</span>
+      </button>
+      {!open && (
+        <div className="text-xs mt-0.5 line-clamp-2 text-gray-600 dark:text-gray-300 whitespace-pre-wrap max-h-16">{val || <span className="opacity-40 italic">{placeholder || 'Vacío'}</span>}</div>
+      )}
+      {open && (
+        <div className="mt-1 space-y-1">
+          <textarea value={val} onChange={e=>setVal(e.target.value)} rows={3} placeholder={placeholder} className="w-full resize-y rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-1.5 text-xs leading-snug" />
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={()=>{ setVal(show[field] || ''); setOpen(false); }} className="px-2 py-0.5 text-[11px] rounded border">Cancelar</button>
+            <button disabled={saving} onClick={save} className="px-3 py-0.5 text-[11px] rounded bg-blue-600 text-white disabled:opacity-50">{saving ? 'Guardando…' : 'Guardar'}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

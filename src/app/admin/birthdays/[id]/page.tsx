@@ -163,7 +163,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="text-sm text-slate-300">Fecha: {resv.date} {resv.timeSlot}</div>
           <div className="text-sm text-slate-300">Pack: {resv.pack?.name}</div>
           <div className="text-sm text-slate-300">Documento: {resv.documento}</div>
@@ -179,7 +179,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="font-medium">Invites</div>
           <div className="flex flex-wrap gap-2">
             <button className="btn" disabled={busy} onClick={()=>genTokens(false)}>Generar tokens</button>
@@ -225,7 +225,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       </div>
 
       {/* Detalles del Pack (vista fija, no editable) */}
-      <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="font-medium">Detalles del Pack</div>
           {/* Oculto: cantidad de QRs */}
@@ -257,7 +257,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="font-medium">Cortesías</div>
           <div className="text-xs text-slate-400">Resumen no editable de elementos registrados</div>
           {resv.courtesyItems?.length ? (
@@ -274,7 +274,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
           )}
         </div>
 
-        <div className="rounded border border-slate-700 p-3 bg-slate-900 space-y-2">
+  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="font-medium">Fotos</div>
           <div className="text-xs text-slate-400">Listado no editable de fotos adjuntas</div>
           {resv.photoDeliveries?.length ? (

@@ -44,7 +44,7 @@ export default function TasksMetricsPage() {
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 dark:text-slate-300">Período:</label>
             <select
-              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input px-3 py-1 text-sm"
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
             >
@@ -60,9 +60,9 @@ export default function TasksMetricsPage() {
           {period === 'custom' && (
             <div className="flex items-center gap-2 text-sm">
               <label>Desde</label>
-              <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" />
+              <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="input-sm" />
               <label>Hasta</label>
-              <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700" />
+              <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="input-sm" />
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export default function TasksMetricsPage() {
             <select
               value={area}
               onChange={(e)=> setArea(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input px-3 py-1 text-sm"
             >
               <option value="">Todas</option>
               {ALLOWED_AREAS.map(a => (
@@ -84,7 +84,7 @@ export default function TasksMetricsPage() {
               value={person}
               onChange={(e)=> setPerson(e.target.value)}
               placeholder="Código o id:..."
-              className="w-56 rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:border-slate-700"
+              className="input w-56 px-3 py-1 text-sm"
             />
           </div>
         </div>

@@ -1,27 +1,20 @@
-// Este layout específico es para la página de login, para evitar mostrar
-// el header de navegación cuando el usuario no está autenticado
-
-import React from "react";
-import "../../globals.css"; // estilos globales
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import ThemeToggle from "@/components/theme/ThemeToggle";
+import React from 'react';
+import "../../globals.css";
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 
 export const metadata = {
-  title: "Login Admin - QR Prize",
-  description: "Acceso al panel de administración",
+  title: 'Login Usuario - QR Prize',
+  description: 'Acceso colaboradores',
 };
 
-// Layout específico de login admin (sin header de navegación completo)
-export default function AdminLoginLayout({ children }: { children: React.ReactNode }) {
+export default function UserLoginLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className="h-full">
       <head>
-        {/* Script anti-FOUC para aplicar tema antes de hidratar */}
         <script
           dangerouslySetInnerHTML={{ __html: `(()=>{try{const ck=document.cookie.match(/(?:^|; )theme_pref=([^;]+)/);const ckt=ck?decodeURIComponent(ck[1]):null;const k='app-theme';const ls=localStorage.getItem(k);const pref=ckt||ls||'system';const m=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';const t=pref==='system'?m:(pref==='dark'?'dark':'light');document.documentElement.classList.add(t);}catch{}})();` }}
         />
-        {/* Oculta el header global del layout padre (/admin/layout) solo en /admin/login */}
-        <style>{`header{display:none !important;}`}</style>
       </head>
       <body className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
         <ThemeProvider>
