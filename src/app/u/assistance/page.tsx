@@ -1,13 +1,15 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { parseInOut } from '../../../lib/attendance/parseInOut';
+import PendingRegistrationCard from '../../../components/attendance/PendingRegistrationCard';
 
 interface Detection { raw: string; ts: number; mode: 'IN'|'OUT'; }
 
 export default function AssistanceScannerPage(){
   const videoRef = useRef<HTMLVideoElement|null>(null);
   // Comienza activo para que el escaneo arranque automáticamente sin requerir clic del usuario
-  const [active, setActive] = useState(true);
+  const [active] = useState(true); // mantenemos bandera original pero ya no la apagamos; usamos scanningRef
   const [error, setError] = useState<string|null>(null);
   // Información de usuario para saludo personalizado
   const [me, setMe] = useState<{ personName?: string; dni?: string } | null>(null);
@@ -31,6 +33,12 @@ export default function AssistanceScannerPage(){
   // Modo pendiente para feedback inmediato (optimista) mientras esperamos respuesta del backend
   const [pendingMode, setPendingMode] = useState<null | 'IN' | 'OUT'>(null);
   const expectedRef = useRef<'IN'|'OUT'|null>(null);
+  const scanningRef = useRef(true); // controla si procesamos detecciones
+  const markControllerRef = useRef<AbortController|null>(null);
+  const recentControllerRef = useRef<AbortController|null>(null);
+  const meControllerRef = useRef<AbortController|null>(null);
+  const pendingTimerRef = useRef<number|null>(null);
+  const [pendingTooLong, setPendingTooLong] = useState(false);
   function triggerFlash(kind:'OK'|'WARN'){
     flashRef.current = { ts: Date.now(), kind };
     forceFlashRerender(v=>v+1);
@@ -46,10 +54,12 @@ export default function AssistanceScannerPage(){
   }, []);
 
   const fetchRecent = useCallback(()=>{
-    fetch('/api/attendance/me/recent', { cache: 'no-store' })
+    try { recentControllerRef.current?.abort(); } catch{}
+    const ac = new AbortController(); recentControllerRef.current = ac;
+    fetch('/api/attendance/me/recent', { cache: 'no-store', signal: ac.signal })
       .then(r=>{ if(r.status===401){ window.location.href='/u/login?next='+encodeURIComponent('/u/assistance'); return null; } return r.json(); })
-  .then(j=>{ if(j && j.ok){ setRecent(j); recentRef.current = j; } })
-      .catch(()=>{})
+      .then(j=>{ if(j && j.ok){ setRecent(j); recentRef.current = j; } })
+      .catch(e=>{ if(e?.name==='AbortError') return; });
   },[]);
 
   // Cargar datos básicos del usuario para el nombre (independiente del historial reciente)
@@ -57,7 +67,9 @@ export default function AssistanceScannerPage(){
     let cancelled = false;
     (async ()=>{
       try {
-        const r = await fetch('/api/user/me', { cache: 'no-store' });
+        try { meControllerRef.current?.abort(); } catch{}
+        const ac = new AbortController(); meControllerRef.current = ac;
+        const r = await fetch('/api/user/me', { cache: 'no-store', signal: ac.signal });
         if(r.status===401){ return; }
         const j = await r.json().catch(()=>({}));
         if(!cancelled && r.ok && j?.ok && j.user){
@@ -65,7 +77,7 @@ export default function AssistanceScannerPage(){
         }
       } catch {}
     })();
-    return ()=>{ cancelled=true; };
+    return ()=>{ cancelled=true; meControllerRef.current?.abort(); };
   }, []);
 
   useEffect(()=>{ fetchRecent(); }, [fetchRecent]);
@@ -79,26 +91,7 @@ export default function AssistanceScannerPage(){
   return last.type === 'IN' ? 'OUT' : 'IN';
   }
 
-  function parseInOut(raw: string): 'IN'|'OUT'|null {
-    if(!raw) return null;
-    const text = raw.trim();
-    const upper = text.toUpperCase();
-    if(upper === 'IN' || upper === 'OUT') return upper as 'IN'|'OUT';
-    // JSON directo kind GLOBAL
-    try { const j = JSON.parse(text); if(j && typeof j==='object' && j.kind==='GLOBAL' && (j.mode==='IN'||j.mode==='OUT')) return j.mode; } catch{}
-    // base64url JSON
-    try { const pad = text.length % 4 === 2 ? '==' : text.length % 4 === 3 ? '=' : ''; const b64 = text.replace(/-/g,'+').replace(/_/g,'/')+pad; const dec = atob(b64); const j2 = JSON.parse(dec); if(j2 && j2.kind==='GLOBAL' && (j2.mode==='IN'||j2.mode==='OUT')) return j2.mode; } catch{}
-    // URL con ?mode=
-    try { const u = new URL(text); const m = (u.searchParams.get('mode')||'').toUpperCase(); if(m==='IN'||m==='OUT') return m as 'IN'|'OUT'; } catch{}
-    // Texto que empiece con GLOBAL y contenga IN u OUT
-    if(upper.startsWith('GLOBAL') && (upper.includes('IN') || upper.includes('OUT'))){
-      if(upper.includes('IN') && !upper.includes('OUT')) return 'IN';
-      if(upper.includes('OUT') && !upper.includes('IN')) return 'OUT';
-      // Si contiene ambas decidir según siguiente esperado (fallback)
-      return deriveNextMode();
-    }
-    return null;
-  }
+  // Eliminado parseInOut inline: ahora se usa utilidad central (importada)
 
   useEffect(()=>{
   if(!active) return;
@@ -145,7 +138,9 @@ export default function AssistanceScannerPage(){
       forceFlashRerender(v=>v+1);
     }
     function handleRawCandidate(raw: string){
-      const mode = parseInOut(raw); if(!mode) return; // ignorar otros códigos
+      if(!scanningRef.current) return; // pausa lógica
+      const fallback = deriveNextMode();
+      const { mode } = parseInOut(raw, fallback); if(!mode) return; // ignorar otros códigos
       const nextExpected = deriveNextMode();
       const override = expectedRef.current;
       const lastType = recentRef.current?.recent?.type as ('IN'|'OUT'|undefined);
@@ -172,50 +167,45 @@ export default function AssistanceScannerPage(){
     return ()=>{ cancelled=true; if(rafRef.current) cancelAnimationFrame(rafRef.current); if(stream) stream.getTracks().forEach(t=>t.stop()); try { zxingReaderRef.current?.reset(); } catch{} };
   }, [active, registering]);
 
+  function safeVibrate(pattern: number|number[]){ try { (navigator as any).vibrate?.(pattern); } catch{} }
+  function startPendingTimeout(){ if(pendingTimerRef.current) clearTimeout(pendingTimerRef.current); pendingTimerRef.current = window.setTimeout(()=>{ setPendingTooLong(true); }, 4000); }
+  function clearPendingTimeout(){ if(pendingTimerRef.current){ clearTimeout(pendingTimerRef.current); pendingTimerRef.current=null; } }
   async function doRegister(mode: 'IN'|'OUT', raw: string){
-    setRegistering(true); setMessage(null); setPendingMode(mode);
-    // Feedback inmediato: para IN solo sonido; para OUT sonido + flash
+    setRegistering(true); setMessage(null); setPendingMode(mode); setPendingTooLong(false);
+    // Pausar detecciones lógicas mientras enviamos
+    scanningRef.current = false;
+    // Feedback optimista inmediato
+    try { if(mode==='OUT'){ audioOkRef.current?.play().catch(()=>{}); triggerFlash('OK'); } else { audioOkRef.current?.play().catch(()=>{}); } } catch {}
+    safeVibrate(mode==='IN'?20:30);
+    startPendingTimeout();
+    try { markControllerRef.current?.abort(); } catch{}
+    const ac = new AbortController(); markControllerRef.current = ac;
     try {
-      if(mode==='OUT'){ audioOkRef.current?.play().catch(()=>{}); triggerFlash('OK'); }
-      else { audioOkRef.current?.play().catch(()=>{}); }
-    } catch {}
-    try {
-      // Enviar deviceId para evitar requerir password (como flujo escáner) y permitir rate-limit por dispositivo
       const deviceId = getOrCreateDeviceId();
-      const res = await fetch('/api/attendance/mark', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mode, deviceId }) });
+      const res = await fetch('/api/attendance/mark', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mode, deviceId }), signal: ac.signal });
       if(res.status===401){ window.location.href='/u/login?next='+encodeURIComponent('/u/assistance'); return; }
       const j = await res.json().catch(()=>({}));
       if(!res.ok || !j.ok){
         const code = j?.code;
-        // Silenciar duplicados o ya-hoy (no audio, no mensaje)
-        if(code==='DUPLICATE' || code==='ALREADY_TODAY') return;
-        // Reemplazar feedback optimista por advertencia
+        if(code==='DUPLICATE' || code==='ALREADY_TODAY') return; // silencioso
         audioWarnRef.current?.play().catch(()=>{}); triggerFlash('WARN');
         let friendly = 'Error registrando.';
         if(code==='NO_IN_TODAY') friendly = 'No tienes una ENTRADA previa.';
-        else if(code==='OUT_COOLDOWN') friendly = `Debes esperar unos segundos antes de marcar SALIDA.`;
+        else if(code==='OUT_COOLDOWN') friendly = 'Debes esperar unos segundos antes de marcar SALIDA.';
         else if(code==='PERSON_INACTIVE') friendly = 'Tu usuario está inactivo.';
         else if(code==='RATE_LIMIT') friendly = 'Demasiados intentos, espera un momento.';
         else if(code==='BAD_PASSWORD') friendly = 'Password incorrecto.';
         setMessage(friendly);
-      }
-      else {
-        // Ya se mostró feedback optimista; actualizar estado real
+      } else {
         fetchRecent();
-        if(mode === 'IN'){
-          // Mostrar detalles inmediatamente (sin fase intermedia) para reducir retraso y evitar doble check
-          setActive(false);
-          const info = { person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() };
-          setEntryRegistered(info);
-          return; // detener aquí
-        } else if(mode === 'OUT') {
-          // Mostrar confirmación de salida y detener escaneo
-          setActive(false);
+        if(mode==='IN'){
+          setEntryRegistered({ person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() });
+        } else {
           setExitRegistered({ person: j.person, businessDay: j.businessDay || j.utcDay, at: new Date() });
         }
       }
-    } catch { audioWarnRef.current?.play().catch(()=>{}); triggerFlash('WARN'); setMessage('Error de red.'); }
-    finally { setRegistering(false); setTimeout(()=>{ setMessage(m=> m && m.startsWith('✓') ? null: m); }, 3000); setPendingMode(null); }
+    } catch(e:any){ if(e?.name!=='AbortError'){ audioWarnRef.current?.play().catch(()=>{}); triggerFlash('WARN'); setMessage('Error de red.'); } }
+    finally { clearPendingTimeout(); setRegistering(false); setTimeout(()=>{ setMessage(m=> m && m.startsWith('✓') ? null : m); }, 3000); setPendingMode(null); }
   }
 
   function manualFallback(){ window.location.href='/u/manual'; }
@@ -266,23 +256,13 @@ export default function AssistanceScannerPage(){
             </p>
           </div>
         )}
-        {pendingMode==='IN' && !entryRegistered && (
-          <div className="rounded-md border border-emerald-300 bg-emerald-50 p-5 space-y-4 animate-fadeIn shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 flex items-center justify-center">
-                <div className="h-10 w-10 rounded-full border-2 border-emerald-300/60 flex items-center justify-center">
-                  <div className="h-5 w-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-                </div>
-              </div>
-              <div>
-                <div className="text-emerald-700 font-semibold">Procesando entrada…</div>
-                <div className="text-xs text-emerald-600/80">Confirmando con el servidor…</div>
-              </div>
-            </div>
-            <div className="h-2 w-full bg-emerald-100 rounded overflow-hidden">
-              <div className="h-full w-2/3 bg-emerald-400 animate-pulse" />
-            </div>
-          </div>
+        {pendingMode && !entryRegistered && !exitRegistered && (
+          <PendingRegistrationCard
+            mode={pendingMode}
+            pendingTooLong={pendingTooLong}
+            onRetry={()=>{ try{ markControllerRef.current?.abort(); }catch{}; clearPendingTimeout(); setPendingMode(null); setPendingTooLong(false); scanningRef.current=true; }}
+            onCancel={()=>{ try{ markControllerRef.current?.abort(); }catch{}; clearPendingTimeout(); setPendingMode(null); setPendingTooLong(false); scanningRef.current=true; setMessage('Cancelado.'); }}
+          />
         )}
         {entryRegistered && (
           <div className="rounded-md border border-emerald-300 bg-emerald-50 p-4 space-y-3 animate-fadeIn shadow-sm">
