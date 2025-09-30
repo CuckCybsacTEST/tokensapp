@@ -9,8 +9,9 @@ export const metadata = {
 export default function LoungeLayout({ children }: { children: React.ReactNode }) {
   // Este layout es independiente del layout principal de la aplicación
   return (
-    <html lang="es" className="bg-black">
-      <body className="min-h-screen">
+    <html lang="es" className="h-full" suppressHydrationWarning>
+      <head />
+      <body className="min-h-screen bg-black dark:bg-black text-slate-100">
         {children}
       </body>
     </html>

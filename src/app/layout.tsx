@@ -1,6 +1,7 @@
 import React from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { ThemeScript } from "@/components/theme/ThemeScript";
 // Inicia servicios de servidor (scheduler de tokens) al cargar el layout en el servidor
 import "@/server/start";
 
@@ -16,14 +17,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="h-full">
+    <html lang="es" className="h-full" suppressHydrationWarning>
       <head>
-        {/* Prevent FOUC: inline script sets initial theme class before React hydration */}
-        <script
-          dangerouslySetInnerHTML={{ __html: `(()=>{try{const ck=document.cookie.match(/(?:^|; )theme_pref=([^;]+)/);const ckt=ck?decodeURIComponent(ck[1]):null;const k='app-theme';const ls=localStorage.getItem(k);const pref=ckt||ls||'system';const m=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';const t=pref==='system'?m:(pref==='dark'?'dark':'light');document.documentElement.classList.add(t);}catch{}})();` }}
-        />
+        <style>{`html{background:#ffffff;color-scheme:light}`}</style>
+        <ThemeScript />
       </head>
-      <body className="min-h-full w-full antialiased">
+      <body className="min-h-full w-full antialiased transition-colors duration-150">
         <ThemeProvider>
           {children}
         </ThemeProvider>
