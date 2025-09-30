@@ -14,6 +14,7 @@ export default function ScannerClient() {
   const zxingControlsRef = useRef<any>(null); // ZXing controls when using fallback
   const audioOkRef = useRef<HTMLAudioElement|null>(null);
   const flashRef = useRef<{ ts:number }|null>(null);
+  const redirectedRef = useRef<boolean>(false); // evita múltiples redirecciones
   const [, force] = useState(0);
   const frameRef = useRef<number>();
 
@@ -81,6 +82,8 @@ export default function ScannerClient() {
         try { audioOkRef.current?.play().catch(()=>{}); } catch {}
         flashRef.current = { ts: Date.now() }; force(v=>v+1);
       }
+      // Intentar navegación automática si es un QR de cumpleaños (/b/<code>)
+      maybeNavigate(raw);
     }
     function isGlobalInOutCode(raw: string): boolean {
       if (!raw) return false; const text = String(raw).trim();
@@ -119,6 +122,37 @@ export default function ScannerClient() {
           }
         }
       } catch {/* swallow */}
+    }
+    function maybeNavigate(raw: string) {
+      if (redirectedRef.current) return;
+      try {
+        const url = new URL(raw);
+        // Patrón principal: /b/<code>
+        if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
+          redirectedRef.current = true;
+          setActive(false); // detener cámara antes de salir
+          // pequeña pausa para permitir sonido/flash visual
+          setTimeout(()=>{ window.location.href = raw; }, 120);
+          return;
+        }
+        // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
+        if (/^\/marketing\/birthdays\//.test(url.pathname)) {
+          redirectedRef.current = true;
+          setActive(false);
+          setTimeout(()=>{ window.location.href = raw; }, 120);
+        }
+      } catch {
+        // no es URL absoluta; podría venir un code simple futuro: birthday:<code>
+        if (/^https?:\/\//i.test(raw) === false && /^bday:/i.test(raw)) {
+          // Formato hipotético bday:<code>
+          const code = raw.split(':')[1];
+          if (code && code.length >= 4 && !redirectedRef.current) {
+            redirectedRef.current = true;
+            setActive(false);
+            setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
+          }
+        }
+      }
     }
     init();
     return () => {

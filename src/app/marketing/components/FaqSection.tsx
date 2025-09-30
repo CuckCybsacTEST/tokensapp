@@ -15,6 +15,7 @@ export function FaqSection({ faq }: FaqSectionProps) {
   const [tallMobile, setTallMobile] = useState(false);
   const [shouldCenter, setShouldCenter] = useState(false);
   const [offsetMobile, setOffsetMobile] = useState(false);
+  const [narrowMobile, setNarrowMobile] = useState(false); // <=360px padding superior extra
 
   const toggleQuestion = (index: number) => {
     setExpandedIndex(expandedIndex === index ? null : index);
@@ -27,6 +28,7 @@ export function FaqSection({ faq }: FaqSectionProps) {
   const isTall = w < 768 && h >= 780; // mismo umbral que otras secciones
   setTallMobile(isTall);
   setOffsetMobile(w < 768 && w <= 430 && h >= 730);
+  setNarrowMobile(w <= 360);
       // Verificamos si el contenido cabe razonablemente para centrar
       const section = document.getElementById('faq');
       if (section) {
@@ -45,7 +47,10 @@ export function FaqSection({ faq }: FaqSectionProps) {
   return (
     <section
       id="faq"
-  className={`relative overflow-hidden flex flex-col ${shouldCenter ? `justify-center ${offsetMobile ? 'pt-12' : 'pt-8'}` : `justify-start ${offsetMobile ? 'pt-10' : 'pt-6'}`} md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
+  className={`relative overflow-hidden flex flex-col ${shouldCenter
+        ? `justify-center ${offsetMobile ? (narrowMobile ? 'pt-16' : 'pt-12') : (narrowMobile ? 'pt-12' : 'pt-8')}`
+        : `justify-start ${offsetMobile ? (narrowMobile ? 'pt-14' : 'pt-10') : (narrowMobile ? 'pt-12' : 'pt-6')}`}
+        md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
       style={{ minHeight: 'var(--app-vh,100vh)' }}
     >
       <div

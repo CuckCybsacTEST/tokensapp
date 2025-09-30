@@ -20,6 +20,7 @@ export function QrSection() {
   const [hideVisual, setHideVisual] = useState(false);
   const [tallMobile, setTallMobile] = useState(false);
   const [offsetMobile, setOffsetMobile] = useState(false); // para desplazar un poco hacia abajo en móviles altos angostos
+  const [narrowMobile, setNarrowMobile] = useState(false); // <=360px ancho: añadir más padding superior
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const evaluate = () => {
@@ -27,8 +28,8 @@ export function QrSection() {
       const h = window.innerHeight;
       setHideVisual(w <= 360);
       setTallMobile(w < 768 && h >= 780);
-      // Consideramos dispositivos tipo S8+ (~360x740) u otros altos angostos
       setOffsetMobile(w <= 430 && h >= 730);
+      setNarrowMobile(w <= 360);
     };
     evaluate();
     window.addEventListener('resize', evaluate);
@@ -38,7 +39,10 @@ export function QrSection() {
   return (
   <section
     id="por-que-elegirnos"
-    className={`relative overflow-hidden flex flex-col ${tallMobile ? `justify-center ${offsetMobile ? 'pt-16' : 'pt-12'}` : `justify-start ${offsetMobile ? 'pt-12' : 'pt-10'}`} md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
+    className={`relative overflow-hidden flex flex-col ${tallMobile
+      ? `justify-center ${offsetMobile ? (narrowMobile ? 'pt-20' : 'pt-16') : (narrowMobile ? 'pt-16' : 'pt-12')}`
+      : `justify-start ${offsetMobile ? (narrowMobile ? 'pt-14' : 'pt-12') : (narrowMobile ? 'pt-12' : 'pt-10')}`}
+      md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
     style={{ minHeight: 'var(--app-vh,100vh)' }}
   >
       {/* Elementos decorativos de fondo */}

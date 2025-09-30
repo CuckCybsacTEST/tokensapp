@@ -22,6 +22,7 @@ export function GallerySection({ gallery }: GallerySectionProps) {
 
   const [tallMobile, setTallMobile] = useState(false);
   const [offsetMobile, setOffsetMobile] = useState(false);
+  const [narrowMobile, setNarrowMobile] = useState(false); // <=360px para padding extra superior
   const [mobileCount, setMobileCount] = useState(8);
   const [mobileCols, setMobileCols] = useState<'grid-cols-2' | 'grid-cols-3' | 'grid-cols-4'>('grid-cols-4');
 
@@ -29,7 +30,8 @@ export function GallerySection({ gallery }: GallerySectionProps) {
     if (typeof window === 'undefined') return;
     const evaluate = () => {
       const w = window.innerWidth; const h = window.innerHeight;
-      const isMobile = w < 768;
+  const isMobile = w < 768;
+  setNarrowMobile(w <= 360);
       setTallMobile(isMobile && h >= 780);
       setOffsetMobile(isMobile && w <= 430 && h >= 730);
       if (!isMobile) { setMobileCount(8); setMobileCols('grid-cols-4'); return; }
@@ -47,7 +49,10 @@ export function GallerySection({ gallery }: GallerySectionProps) {
   return (
     <section
       id="galeria"
-  className={`relative overflow-hidden flex flex-col ${tallMobile ? `justify-center ${offsetMobile ? 'pt-14' : 'pt-10'}` : `justify-start ${offsetMobile ? 'pt-10' : 'pt-8'}`} md:justify-center pb-14 md:pt-14 md:pb-20 transition-[justify-content,padding] duration-300`}
+  className={`relative overflow-hidden flex flex-col ${tallMobile
+        ? `justify-center ${offsetMobile ? (narrowMobile ? 'pt-20' : 'pt-14') : (narrowMobile ? 'pt-16' : 'pt-10')}`
+        : `justify-start ${offsetMobile ? (narrowMobile ? 'pt-14' : 'pt-10') : (narrowMobile ? 'pt-12' : 'pt-8')}`}
+        md:justify-center pb-14 md:pt-14 md:pb-20 transition-[justify-content,padding] duration-300`}
       style={{ minHeight: 'var(--app-vh,100vh)' }}
     >
       <div
