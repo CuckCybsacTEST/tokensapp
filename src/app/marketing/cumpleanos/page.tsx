@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { brand } from '../styles/brand';
-import { Navbar } from '../components/Navbar';
+import { OverlayNav } from '../components/OverlayNav';
 import { Footer } from '../components/Footer';
 import { BirthdayForm } from './components/BirthdayForm';
 
@@ -22,8 +22,8 @@ export default function BirthdayPage() {
         }}
       />
       
-      {/* Navbar */}
-      <Navbar />
+  {/* Navegación flotante */}
+  <OverlayNav />
       
       {/* Hero con formulario de cumpleaños */}
       <section className="relative py-16 md:py-24">

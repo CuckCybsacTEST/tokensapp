@@ -10,7 +10,9 @@ import { ScrollX } from './components/ui/ScrollX';
 import { Stars } from './components/ui/Stars';
 
 // Importamos los componentes de sección
-import { Navbar } from './components/Navbar';
+// Reemplazamos Navbar por OverlayNav flotante
+import { OverlayNav } from './components/OverlayNav';
+import { TopNavBar } from './components/TopNavBar';
 import { Hero } from './components/Hero';
 import { DynamicShowsSection } from './components/DynamicShowsSection';
 import { BirthdaySection } from './components/BirthdaySection';
@@ -100,24 +102,49 @@ export default function MarketingPage() {
       window.removeEventListener('orientationchange', setVh);
     };
   }, []);
+  // Fuerza ocultar scrollbar en mobile (algunos navegadores aún muestran una barra tenue)
+  useEffect(() => {
+    const apply = () => {
+      if (window.innerWidth <= 900) {
+        document.documentElement.classList.add('mobile-no-scrollbar');
+        document.body.classList.add('mobile-no-scrollbar');
+      } else {
+        document.documentElement.classList.remove('mobile-no-scrollbar');
+        document.body.classList.remove('mobile-no-scrollbar');
+      }
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, []);
   // Nota: Se eliminó el formulario de reservas de la landing
 
   return (
     <div
-      className="min-h-screen w-full text-white overflow-x-hidden relative"
+      className="min-h-screen w-full text-white overflow-x-hidden relative marketing-scroll"
       style={{
         background: `radial-gradient(1200px 600px at 15% -10%, ${brand.primary}10, transparent), 
                    radial-gradient(900px 500px at 110% 10%, ${brand.secondary}10, transparent), 
                    linear-gradient(180deg, ${brand.darkA}, ${brand.darkB})`,
       }}
     >
+      <style jsx global>{`
+        @media (max-width: 900px){
+          .marketing-scroll{ -ms-overflow-style: none; scrollbar-width: none; }
+          .marketing-scroll::-webkit-scrollbar{ width:0; height:0; display:none; }
+          html.mobile-no-scrollbar, body.mobile-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+          html.mobile-no-scrollbar::-webkit-scrollbar, body.mobile-no-scrollbar::-webkit-scrollbar { width:0; height:0; display:none; }
+          body.mobile-no-scrollbar { overscroll-behavior: contain; }
+        }
+      `}</style>
       {/* Patrón sutil */}
       <div aria-hidden className="pointer-events-none fixed inset-0 opacity-[0.07]" style={{
         backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)`,
         backgroundSize: '36px 36px'
       }} />
-      {/* Componente Navbar */}
-      <Navbar />
+  {/* Navegación flotante de secciones (dots) y barra superior fija */}
+  <TopNavBar />
+  <OverlayNav />
       {/* Hero ocupa todo el viewport (ajustado por --app-vh) y ninguna otra sección se ve en primer pantallazo */}
       <Hero />
       

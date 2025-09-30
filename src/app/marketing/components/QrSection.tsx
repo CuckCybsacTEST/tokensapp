@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { brand } from '../styles/brand';
 import { SectionTitle } from './ui/SectionTitle';
@@ -15,11 +15,30 @@ export function QrSection() {
     { title: 'Cocteles de autor', description: 'Recetas pensadas para cada momento del set, con presentaciones memorables.' },
     { title: 'Artistas en escena', description: 'Performers, hosts e invitados que suben la energía de la noche.' },
   ];
+
+  // Ocultar visual (columna derecha) en pantallas ultra pequeñas (<=360px)
+  const [hideVisual, setHideVisual] = useState(false);
+  const [tallMobile, setTallMobile] = useState(false);
+  const [offsetMobile, setOffsetMobile] = useState(false); // para desplazar un poco hacia abajo en móviles altos angostos
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const evaluate = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setHideVisual(w <= 360);
+      setTallMobile(w < 768 && h >= 780);
+      // Consideramos dispositivos tipo S8+ (~360x740) u otros altos angostos
+      setOffsetMobile(w <= 430 && h >= 730);
+    };
+    evaluate();
+    window.addEventListener('resize', evaluate);
+    return () => window.removeEventListener('resize', evaluate);
+  }, []);
   
   return (
   <section
     id="por-que-elegirnos"
-    className="relative overflow-hidden flex flex-col justify-start md:justify-center pt-10 pb-16 md:pt-16 md:pb-20"
+    className={`relative overflow-hidden flex flex-col ${tallMobile ? `justify-center ${offsetMobile ? 'pt-16' : 'pt-12'}` : `justify-start ${offsetMobile ? 'pt-12' : 'pt-10'}`} md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
     style={{ minHeight: 'var(--app-vh,100vh)' }}
   >
       {/* Elementos decorativos de fondo */}
@@ -75,7 +94,7 @@ export function QrSection() {
           <div className="w-full md:w-1/2 flex flex-col items-center">
             <div className="grid grid-cols-1 gap-4 w-full max-w-md mx-auto">
               {qrFeatures.map((feature, index) => {
-                const hideMobile = index >= 4; // mostrar solo 4 en móviles
+                const hideMobile = index >= 3; // mostrar solo 3 en móviles
                 return (
                   <motion.div
                     key={index}
@@ -106,43 +125,45 @@ export function QrSection() {
             </div>
           </div>
           
-          {/* Columna derecha - Visualización QR (más grande y compuesta) */}
-          <motion.div 
-            className="w-full md:w-1/2 flex items-center justify-center"
-            initial={{ opacity: 0, scale: 0.97 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <div className="relative w-full max-w-md aspect-[4/5] rounded-2xl overflow-hidden border"
-              style={{ 
-                background: `linear-gradient(135deg, ${brand.primary}1f, ${brand.secondary}12)`,
-                borderColor: 'rgba(255,255,255,0.08)',
-                boxShadow: `0 20px 48px -18px ${brand.primary}99`
-              }}
+          {/* Columna derecha - Visualización QR (oculta en <=360px) */}
+          {!hideVisual && (
+            <motion.div 
+              className="w-full md:w-1/2 flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
             >
-              {/* Capa central con un “mock” de pulsera y un QR grande */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg border-2 border-dashed flex items-center justify-center mb-4"
-                  style={{ borderColor: `${brand.primary}66`, background: 'rgba(0,0,0,0.25)' }}>
-                  <span className="text-3xl">📱</span>
+              <div className="relative w-full max-w-md aspect-[4/5] rounded-2xl overflow-hidden border"
+                style={{ 
+                  background: `linear-gradient(135deg, ${brand.primary}1f, ${brand.secondary}12)`,
+                  borderColor: 'rgba(255,255,255,0.08)',
+                  boxShadow: `0 20px 48px -18px ${brand.primary}99`
+                }}
+              >
+                {/* Capa central con un “mock” de pulsera y un QR grande */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6">
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg border-2 border-dashed flex items-center justify-center mb-4"
+                    style={{ borderColor: `${brand.primary}66`, background: 'rgba(0,0,0,0.25)' }}>
+                    <span className="text-3xl">📱</span>
+                  </div>
+                  <h3 className="text-base font-bold mb-1">Escanea y participa</h3>
+                  <p className="text-xs opacity-80 text-center max-w-xs" style={{ color: brand.text.secondary }}>
+                    Todo parte de tu QR: participa, vota y gana. El entorno (luces, pantallas y efectos) acompaña cada momento para que vivas la noche.
+                  </p>
+                  <a href="#" className="mt-4 rounded-md px-4 py-2 text-xs font-semibold inline-block"
+                    style={{ background: `${brand.primary}`, boxShadow: `0 4px 12px -6px ${brand.primary}` }}>
+                    Ver cómo funciona
+                  </a>
                 </div>
-                <h3 className="text-base font-bold mb-1">Escanea y participa</h3>
-                <p className="text-xs opacity-80 text-center max-w-xs" style={{ color: brand.text.secondary }}>
-                  Todo parte de tu QR: participa, vota y gana. El entorno (luces, pantallas y efectos) acompaña cada momento para que vivas la noche.
-                </p>
-                <a href="#" className="mt-4 rounded-md px-4 py-2 text-xs font-semibold inline-block"
-                  style={{ background: `${brand.primary}`, boxShadow: `0 4px 12px -6px ${brand.primary}` }}>
-                  Ver cómo funciona
-                </a>
-              </div>
 
-              {/* Aros y brillos decorativos para dar sensación tech */}
-              <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full" style={{ border: `1px solid ${brand.primary}22` }} />
-              <div className="absolute -left-16 -bottom-16 w-52 h-52 rounded-full" style={{ border: `1px solid ${brand.secondary}22` }} />
-              <div className="absolute inset-x-0 bottom-0 h-28" style={{ background: `linear-gradient(to top, rgba(0,0,0,0.55), transparent)` }} />
-            </div>
-          </motion.div>
+                {/* Aros y brillos decorativos para dar sensación tech */}
+                <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full" style={{ border: `1px solid ${brand.primary}22` }} />
+                <div className="absolute -left-16 -bottom-16 w-52 h-52 rounded-full" style={{ border: `1px solid ${brand.secondary}22` }} />
+                <div className="absolute inset-x-0 bottom-0 h-28" style={{ background: `linear-gradient(to top, rgba(0,0,0,0.55), transparent)` }} />
+              </div>
+            </motion.div>
+          )}
         </div>
   </div>
     </section>
