@@ -1,18 +1,40 @@
 {
-  "name": "Tokens App",
-  "short_name": "Tokens",
-  "description": "Gestión de tokens, premios y lotes",
+  "id": "/",
+  "name": "Go Lounge",
+  "short_name": "Go Lounge",
+  "description": "Experiencias con tecnología QR: shows, rewards y más.",
   "lang": "es",
-  "start_url": "/?source=pwa",
+  "dir": "ltr",
+  "start_url": "/marketing?src=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#0ea5e9",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#0E0606",
+  "theme_color": "#FF4D2E",
+  "categories": ["entertainment", "events", "nightlife"],
   "prefer_related_applications": false,
   "icons": [
-    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/logo.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  { "src": "/icons-golounge/web/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+  { "src": "/icons-golounge/web/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "/icons-golounge/web/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+  { "src": "/icons-golounge/web/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+  { "src": "/icons-golounge/web/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Tokens",
+      "short_name": "Tokens",
+      "description": "Ir al panel de tokens",
+      "url": "/admin",
+  "icons": [ { "src": "/icons-golounge/web/icon-192.png", "sizes": "192x192", "type": "image/png" } ]
+    },
+    {
+      "name": "Escáner QR",
+      "short_name": "Escáner",
+      "description": "Abrir escáner QR",
+      "url": "/scanner",
+  "icons": [ { "src": "/icons-golounge/web/icon-192.png", "sizes": "192x192", "type": "image/png" } ]
+    }
   ]
 }
