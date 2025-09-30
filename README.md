@@ -1,8 +1,10 @@
-# QR Prizes App
+# Go Lounge! Tokens Platform
 
 ![CI](https://github.com/deivipluss/tokensapp/actions/workflows/ci.yml/badge.svg)
 
 Aplicación Next.js para generación de tokens con premios preasignados, QRs y canje con expiración.
+
+> Rebrand: el proyecto antes referenciado como "QR Prizes" / "QR Platform" ahora se denomina **Go Lounge!**. Cualquier referencia antigua en logs o eventos se mantiene para trazabilidad histórica.
 
 ## Stack
 - Next.js (App Router)
@@ -84,6 +86,48 @@ La documentación técnica completa está disponible en la carpeta `docs/`:
 - [Escáner de asistencia](./docs/attendance-scanner.md) - Flujo optimista IN/OUT, parseo de códigos y componente pendiente
 - [Troubleshooting local](./docs/troubleshooting.md) - Errores comunes (`DATABASE_URL`, EPERM Windows, regeneración Prisma)
 - [Shows / Flyers](./docs/shows.md) - Modelo, reglas y endpoints del subsistema de shows
+
+### Branding, Metadata Dinámica y PWA
+
+Se implementó un sistema centralizado para títulos y marca global que evita inconsistencias y reduce parpadeos en pestañas.
+
+Componentes / Helpers claves:
+- `src/lib/seo/title.ts`: `buildTitle(parts)` devuelve sólo la parte contextual (sin marca). La marca se añade mediante templates de Next metadata.
+- `root layout (src/app/layout.tsx)`: define `metadata.title` con template `%s · Go Lounge!` para páginas generales.
+- `admin layout (src/app/admin/layout.tsx)`: usa template `%s · Admin · Go Lounge!` diferenciando el panel.
+- `DynamicTitle` (`src/components/seo/DynamicTitle.tsx`): componente client-side que ajusta `document.title` en páginas marcadas con `"use client"` o sin metadata server (fallback). Mapea rutas → etiquetas semánticas (ej. `/admin/batches/123` → `Batch 123 · Admin · Go Lounge!`).
+
+Rutas con metadata dinámica (`generateMetadata`):
+- `admin/batches/[id]` (usa descripción del batch si existe)
+- `admin/roulette/session/[sessionId]`, `admin/roulette/[sessionId]` (placeholder heredado), `admin/roulette/batch/[batchId]`
+- `admin/token/[tokenId]` (muestra label de premio si disponible)
+- `redeem/[tokenId]`, `r/[tokenId]` (prefijo recortado del token)
+- `marketing/ruleta` (experiencia de ruleta pública)
+
+Marketing rebrand:
+- `src/app/marketing/layout.tsx` reemplazó referencias SEO (title, openGraph, twitter, keywords, canonical) de "QR Platform" a "Go Lounge!".
+- Componentes (`Footer`, `MarketingNavbar`, `Navbar`, `TestimonialsSection`) actualizados.
+- Textos de página y disclaimers (`(marketing)/page.tsx`, invitaciones `/b/[code]`) ajustados.
+
+PWA / Manifest:
+- `public/manifest.webmanifest` expuesto en `<head>` con `<link rel="manifest" ...>`.
+- Para forzar actualización de íconos/título tras cambios usar query param versionado (ej. `/manifest.webmanifest?v=2`) y renombrar iconos (`icon-192-v2.png`).
+- Service Worker básico en `public/sw.js`; pendiente (roadmap) añadir caché offline (`stale-while-revalidate` para estáticos y fallback offline para marketing).
+
+Procedimiento para actualizar icono o nombre de la app:
+1. Añadir nuevos archivos de icono con sufijo versión (`icon-192-v3.png`, `icon-512-v3.png`).
+2. Actualizar array `icons` en `manifest.webmanifest` con los nuevos nombres (añadir `purpose: "any maskable"` si se agrega variante).
+3. Incrementar query param en `<link rel="manifest" href="/manifest.webmanifest?v=3" />`.
+4. Deploy. Verificar en DevTools > Application > Manifest.
+5. Usuarios: cerrar y reabrir aplicación instalada; Android puede tardar si se reutiliza el mismo nombre de archivo (por eso el versionado).
+
+Anti‑flicker / Theme:
+- `ThemeScript` ahora inyecta variables críticas y marca `.theme-hydrated` con re-supresión de transiciones al volver de bfcache (`pageshow`) o `visibilitychange`. Nueva clase `.transition-hold` aplicada brevemente para evitar micro parpadeos en componentes interactivos.
+
+Recomendaciones de extensión futura:
+- Reemplazar `DynamicTitle` gradualmente cuando todas las páginas client-only exporten metadata (si se migran a server components).
+- Añadir `shortcuts` en manifest (ej. Generar Lote, Ruleta, Batches) y soporte offline incremental.
+
 
 ### Formato de Errores (API)
 Las respuestas de error siguen formato unificado:

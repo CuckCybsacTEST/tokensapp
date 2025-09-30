@@ -1,8 +1,7 @@
-"use client";
 import { prisma } from "@/lib/prisma";
 import { buildTitle } from '@/lib/seo/title';
 import { isTwoPhaseRedemptionEnabled } from "@/lib/featureFlags";
-import React from "react";
+import DeliveryForm from './DeliveryForm';
 export const revalidate = 0;
 
 function format(ts?: Date|null) { return ts ? ts.toLocaleString() : "—"; }
@@ -54,37 +53,4 @@ function StateBadge({ state }: { state: string }) {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${m.cls}`}>{m.label}</span>;
 }
 
-// Client component inline (simple)
-
-import { useState } from 'react';
-
-function DeliveryForm({ tokenId }: { tokenId: string }) {
-  const [note, setNote] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState<string|null>(null);
-  async function submit() {
-    setLoading(true); setError(null);
-    try {
-      const res = await fetch(`/api/token/${tokenId}/deliver`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ deliveryNote: note || undefined }) });
-      const body = await res.json().catch(()=>({}));
-      if (!res.ok) {
-        setError(body?.error || 'ERROR');
-      } else {
-        setDone(true);
-        // Hard refresh just this route for updated server data
-        location.reload();
-      }
-    } catch (e:any) {
-      setError(e.message || 'ERROR');
-    } finally { setLoading(false); }
-  }
-  return <div className="space-y-2">
-    <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Nota (opcional)" className="w-full rounded border p-2 text-xs" rows={3} />
-    <div className="flex items-center gap-2">
-      <button onClick={submit} disabled={loading || done} className="btn btn-sm">{loading ? 'Confirmando…' : 'Confirmar entrega'}</button>
-      {done && <span className="text-emerald-600 text-xs">OK</span>}
-    </div>
-    {error && <div className="text-xs text-rose-600">{error}</div>}
-  </div>;
-}
+// DeliveryForm ahora es un componente cliente separado en ./DeliveryForm.tsx
