@@ -1,10 +1,20 @@
 "use client";
 import { prisma } from "@/lib/prisma";
+import { buildTitle } from '@/lib/seo/title';
 import { isTwoPhaseRedemptionEnabled } from "@/lib/featureFlags";
 import React from "react";
 export const revalidate = 0;
 
 function format(ts?: Date|null) { return ts ? ts.toLocaleString() : "—"; }
+
+export async function generateMetadata({ params }: { params: { tokenId: string } }) {
+  const tokenId = params.tokenId;
+  try {
+    const t = await (prisma as any).token.findUnique({ where: { id: tokenId }, select: { prize: { select: { label: true } } } });
+    if (t?.prize?.label) return { title: buildTitle(['Token', t.prize.label]) };
+  } catch {}
+  return { title: buildTitle(['Token', tokenId.slice(0,8)]) };
+}
 
 export default async function AdminTokenLookup({ params }: { params: { tokenId: string } }) {
   const { tokenId } = params;

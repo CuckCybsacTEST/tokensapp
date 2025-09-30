@@ -1,8 +1,10 @@
 // DUPLICATE ROUTE (disabled): Original session page exists at /admin/roulette/[sessionId]
 // This file retained to avoid build errors in patch tool; export placeholder to prevent dynamic slug conflict.
 import RouletteSessionClient from './client';
-
-export const metadata = { title: 'Roulette Session' };
+import { buildTitle } from '@/lib/seo/title';
+export async function generateMetadata({ params }: { params: { sessionId: string } }) {
+  return { title: buildTitle(['Ruleta', '#' + params.sessionId]) };
+}
 
 interface Params { params: { sessionId: string } }
 

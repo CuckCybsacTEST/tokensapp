@@ -5,8 +5,8 @@ import { EventsList } from './components/Events';
 import { GalleryGrid } from './components/Gallery';
 
 export const metadata = {
-  title: 'Marketing Landing | QR Platform',
-  description: 'Página informativa de la plataforma QR',
+  title: 'Marketing Landing',
+  description: 'Página informativa de Go Lounge!',
 };
 
 export default function MarketingLandingPage() {
@@ -59,7 +59,7 @@ export default function MarketingLandingPage() {
       </Section>
 
       <footer className="mt-24 py-10 text-center text-white/50 text-sm">
-        <p>© {new Date().getFullYear()} QR Platform. Todos los derechos reservados.</p>
+  <p>© {new Date().getFullYear()} Go Lounge!. Todos los derechos reservados.</p>
       </footer>
     </main>
   );

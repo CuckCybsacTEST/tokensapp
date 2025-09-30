@@ -7,8 +7,8 @@ import FooterGate from './FooterGate';
 // import MarketingNavbar from '../components/MarketingNavbar';
 
 export const metadata: Metadata = {
-  title: "Ruleta de Premios | QR Platform",
-  description: "Gira la ruleta y descubre tu premio en QR Platform",
+  title: "Ruleta de Premios",
+  description: "Gira la ruleta y descubre tu premio en Go Lounge!",
 };
 
 export default function RuletaPage({ searchParams }: { searchParams: { tokenId?: string } }) {
@@ -37,7 +37,7 @@ export default function RuletaPage({ searchParams }: { searchParams: { tokenId?:
           <RouletteClientPage tokenId={tokenId} />
         </div>
         <footer className="relative z-[1] pt-8 text-center text-white/50 text-xs roulette-footer">
-          <p>©  2025 TOKEN APP - Ktdral Lounge</p>
+          <p>© 2025 Go Lounge!</p>
         </footer>
       </div>
       {/* Eliminado styled-jsx para mantener este Server Component puro y evitar client-only import */}

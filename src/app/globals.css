@@ -118,6 +118,9 @@ html:not(.theme-hydrated) .form-row,
 html:not(.theme-hydrated) [data-theme-quiet]
 { transition: none !important; }
 
+/* While .transition-hold is present (set by ThemeScript on tab restore / pageshow) suppress transitions to avoid repaint flicker */
+html.transition-hold *, html.transition-hold { transition: none !important; }
+
 /* Bloqueo de scroll (se aplica/retira dinámicamente mientras el loader está visible) */
 html.scroll-locked, body.scroll-locked {
   overflow: hidden !important;

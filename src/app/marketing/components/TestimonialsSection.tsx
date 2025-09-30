@@ -55,7 +55,7 @@ export function TestimonialsSection({ testimonials }: TestimonialsSectionProps) 
         <SectionTitle 
           kicker="Testimonios"
           title="Lo que dicen nuestros clientes"
-          subtitle="Experiencias reales de quienes han vivido la experiencia QR Platform"
+          subtitle="Experiencias reales de quienes han vivido Go Lounge!"
         />
         
   <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">

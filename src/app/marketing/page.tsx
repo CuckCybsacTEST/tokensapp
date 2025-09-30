@@ -62,7 +62,7 @@ const gallery = [
 
 // Testimonios
 const testimonials = [
-  { name: "Camila", text: "La mejor vibra de QR Platform. Los cócteles 🔥 y la música nunca baja.", rating: 5 },
+  { name: "Camila", text: "La mejor vibra de Go Lounge!. Los cócteles 🔥 y la música nunca baja.", rating: 5 },
   { name: "Diego", text: "Festejé mi cumple y los QR para invitados fueron un golazo.", rating: 5 },
   { name: "Mariana", text: "Staff atento y DJs con energía. Volvería mil veces.", rating: 4 },
 ];

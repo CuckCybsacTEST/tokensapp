@@ -40,7 +40,7 @@ export const Footer: React.FC<FooterProps> = () => {
         <motion.div variants={fadeInUp}>
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg" style={{ background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})` }} />
-            <span className="font-black">QR Platform</span>
+            <span className="font-black">Go Lounge!</span>
           </div>
           <p className="text-sm mt-3" style={{ color: "#FFFFFF99" }}>Tu noche empieza aquí.</p>
           <div className="mt-4 flex gap-3">
@@ -101,7 +101,7 @@ export const Footer: React.FC<FooterProps> = () => {
         whileInView={{ opacity: 1, transition: { delay: 0.5, duration: 0.6 } }}
         viewport={{ once: true }}
       >
-        © {currentYear} QR Platform. Todos los derechos reservados.
+  © {currentYear} Go Lounge!. Todos los derechos reservados.
       </motion.div>
     </footer>
   );

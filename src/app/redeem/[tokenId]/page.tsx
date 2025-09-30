@@ -1,5 +1,10 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { buildTitle } from '@/lib/seo/title';
+
+export async function generateMetadata({ params }: { params: { tokenId: string } }) {
+  return { title: buildTitle(['Canjear', params.tokenId.slice(0,10)]) };
+}
 
 export default async function Page({ params }: { params: { tokenId: string } }) {
   const code = params.tokenId;

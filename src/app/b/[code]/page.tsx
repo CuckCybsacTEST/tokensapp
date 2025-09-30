@@ -67,7 +67,7 @@ export default async function BirthdayInvitePage({ params }: { params: { code: s
               <StaffValidateControls code={token.code} isHost={token.isHost} multiUse={token.multiUse} initialStatus={token.status} />
             )}
         </div>
-        <div className="mt-8 text-center text-xs opacity-50">© 2025 QR Platform</div>
+  <div className="mt-8 text-center text-xs opacity-50">© 2025 Go Lounge!</div>
       </div>
     </div>
   );

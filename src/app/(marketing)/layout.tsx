@@ -4,7 +4,7 @@ import { Inter, Poppins } from 'next/font/google';
 
 // Layout base para el grupo (marketing) que es completamente independiente
 export const metadata = {
-  title: "QR Platform",
+  title: 'Marketing',
   description: "Experiencias que prenden la noche",
 };
 

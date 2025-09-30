@@ -5,13 +5,13 @@ import { Inter, Poppins } from 'next/font/google';
 
 // Metadata específica para la landing page
 export const metadata: Metadata = {
-  title: "QR Platform - Experiencias que prenden la noche",
-  description: "Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto en Lima. Eventos temáticos, tecnología QR y música seleccionada.",
+  title: "Go Lounge! - Experiencias que prenden la noche",
+  description: "Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto en Lima. Eventos temáticos, experiencias con tokens y música seleccionada.",
   // Metadatos para SEO
-  keywords: "QR Platform, eventos Lima, discoteca interactiva, tecnología QR eventos, fiestas temáticas, reservaciones online",
-  authors: [{ name: "QR Platform Team" }],
-  creator: "QR Platform",
-  publisher: "QR Platform",
+  keywords: "Go Lounge, eventos Lima, discoteca interactiva, tokens premios, fiestas temáticas, reservaciones online",
+  authors: [{ name: "Go Lounge Team" }],
+  creator: "Go Lounge!",
+  publisher: "Go Lounge!",
   // Configuración de robots
   robots: {
     index: true,
@@ -27,29 +27,29 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'es_PE',
-    url: 'https://qrplatform.pe/marketing',
-    title: 'QR Platform - Experiencias interactivas',
-    description: 'Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.',
-    siteName: 'QR Platform',
+  url: 'https://golounge.pe/marketing',
+  title: 'Go Lounge! - Experiencias interactivas',
+  description: 'Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.',
+  siteName: 'Go Lounge!',
     images: [
       {
         url: 'https://qrplatform.pe/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'QR Platform - Experiencias interactivas',
+  alt: 'Go Lounge! - Experiencias interactivas',
       }
     ],
   },
   // Configuración Twitter Card
   twitter: {
     card: 'summary_large_image',
-    title: 'QR Platform - Experiencias interactivas',
-    description: 'Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.',
+  title: 'Go Lounge! - Experiencias interactivas',
+  description: 'Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.',
     images: ['https://qrplatform.pe/twitter-image.jpg'],
   },
   // Aseguramos que los motores de búsqueda entienden que esta es una página independiente
   alternates: {
-    canonical: 'https://qrplatform.pe/marketing'
+  canonical: 'https://golounge.pe/marketing'
   },
 };
 

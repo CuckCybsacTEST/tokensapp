@@ -1,5 +1,5 @@
 /**
- * Servicio de reservas mock para la aplicación QR Platform
+ * Servicio de reservas mock para la aplicación Go Lounge!
  * 
  * Este servicio simula la interacción con un backend para procesar reservas
  */

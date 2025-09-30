@@ -2,6 +2,7 @@ import React from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ThemeScript } from "@/components/theme/ThemeScript";
+import { DynamicTitle } from "@/components/seo/DynamicTitle";
 // Inicia servicios de servidor (scheduler de tokens) al cargar el layout en el servidor
 import "@/server/start";
 
@@ -11,8 +12,11 @@ import "@/server/start";
 // - /marketing/** y / -> usa src/app/(marketing)/layout.tsx
 
 export const metadata = {
-  title: "QR Prize",
-  description: "QR premios y experiencias",
+  title: {
+    default: 'Go Lounge!',
+    template: '%s · Go Lounge!'
+  },
+  description: "Go Lounge! experiencias y tokens",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           {children}
         </ThemeProvider>
+        <DynamicTitle />
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>{const sw='/sw.js';navigator.serviceWorker.getRegistrations().then(r=>{const has=r.some(x=>x.active && x.active.scriptURL.endsWith(sw));if(!has) navigator.serviceWorker.register(sw).catch(()=>{});});});}`

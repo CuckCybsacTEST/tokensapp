@@ -1,4 +1,5 @@
 import React from "react";
+import { buildTitle } from '@/lib/seo/title';
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { computeBatchStats } from "@/lib/batchStats";
@@ -30,6 +31,15 @@ async function getBatch(id: string) {
     template = null;
   }
   return { batch, session, template };
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  // Attempt to fetch batch description quickly for title; swallow errors
+  try {
+    const b = await prisma.batch.findUnique({ where: { id: params.id }, select: { description: true } });
+    if (b) return { title: buildTitle(['Batch', b.description || params.id]) };
+  } catch {}
+  return { title: buildTitle(['Batch', params.id]) };
 }
 
 export default async function BatchDetailPage({ params }: { params: { id: string } }) {

@@ -1,5 +1,10 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { buildTitle } from '@/lib/seo/title';
+
+export async function generateMetadata({ params }: { params: { tokenId: string } }) {
+  return { title: buildTitle(['Token', params.tokenId.slice(0,10)]) };
+}
 
 // Aseguramos ejecución siempre en runtime Node y sin caché para evitar falsos negativos en lookups
 export const dynamic = 'force-dynamic';

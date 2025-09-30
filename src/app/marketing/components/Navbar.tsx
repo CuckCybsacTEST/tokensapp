@@ -16,7 +16,7 @@ export function Navbar() {
           <div className="h-8 w-8 rounded-lg ring-1 ring-white/15" 
             style={{ background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})` }} 
           />
-          <span className="font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>QR Platform</span>
+          <span className="font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Go Lounge!</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 text-sm" style={{ color: "#FFFFFFCC" }}>
           <a href="#eventos" className="hover:text-white transition-colors">Eventos</a>

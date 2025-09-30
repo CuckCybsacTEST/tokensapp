@@ -7,8 +7,11 @@ import { cookies } from "next/headers";
 import "@/server/start";
 
 export const metadata = {
-  title: "QR Prize Admin",
-  description: "Panel administración QR premios",
+  title: {
+    default: 'Admin',
+    template: '%s · Admin · Go Lounge!'
+  },
+  description: "Panel administración Go Lounge!",
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

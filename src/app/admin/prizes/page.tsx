@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import PrizesClient from "./PrizesClient";
+export const metadata = { title: 'Premios' };
 
 export const dynamic = "force-dynamic";
 
