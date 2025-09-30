@@ -51,22 +51,34 @@ export function TopNavBar() {
         <span
           className="text-sm md:text-base font-extrabold tracking-tight"
           style={{ fontFamily: 'var(--font-display)' }}
-        >Go Lounge!</span>
+  >Go Lounge</span>
       </a>
 
-      {/* Botón intranet lado derecho */}
-      <a
-        href="/admin"
-        className="group inline-flex items-center rounded-sm px-1 py-1 md:px-1 md:py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
-        style={{
-          color: '#ffffffb0',
-          ['--ring-color' as any]: `${brand.primary}55`
-        }}
-        aria-label="Ir a Intranet (staff)"
-      >
-        <span className="opacity-70 group-hover:opacity-100 transition-opacity">Intranet</span>
-        <span className="hidden md:inline text-[10px] font-normal opacity-35 group-hover:opacity-60 ml-1 transition-opacity">Staff</span>
-      </a>
+      {/* Enlaces acceso: login y admin más sobrios */}
+      <div className="flex items-center gap-2 md:gap-3">
+        <a
+          href="/u/login"
+          className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
+          style={{
+            color: '#ffffffb0',
+            ['--ring-color' as any]: `${brand.primary}55`
+          }}
+          aria-label="Ir a login usuarios"
+        >
+          <span className="opacity-70 group-hover:opacity-100 transition-opacity">Login</span>
+        </a>
+        <a
+          href="/admin"
+          className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
+          style={{
+            color: '#ffffff80',
+            ['--ring-color' as any]: `${brand.primary}40`
+          }}
+          aria-label="Ir a panel admin"
+        >
+          <span className="opacity-60 group-hover:opacity-100 transition-opacity">Admin</span>
+        </a>
+      </div>
       {/* Línea inferior sutil */}
       <div aria-hidden className="absolute bottom-0 inset-x-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${brand.primary}66, transparent)` }} />
     </motion.nav>
