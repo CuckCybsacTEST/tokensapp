@@ -104,6 +104,20 @@ html, body, #__next {
   overflow-x: hidden; /* sólo ocultamos horizontal para evitar saltos laterales */
 }
 
+/* Evitar transiciones de color antes de que el script de tema fije la clase (botones / inputs) */
+html:not(.theme-hydrated) .btn,
+html:not(.theme-hydrated) .btn-outline,
+html:not(.theme-hydrated) .btn-secondary,
+html:not(.theme-hydrated) .btn-danger,
+html:not(.theme-hydrated) .input,
+html:not(.theme-hydrated) select,
+html:not(.theme-hydrated) .card,
+html:not(.theme-hydrated) .badge,
+html:not(.theme-hydrated) .alert,
+html:not(.theme-hydrated) .form-row,
+html:not(.theme-hydrated) [data-theme-quiet]
+{ transition: none !important; }
+
 /* Bloqueo de scroll (se aplica/retira dinámicamente mientras el loader está visible) */
 html.scroll-locked, body.scroll-locked {
   overflow: hidden !important;

@@ -41,9 +41,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initial?: AppT
     } catch {}
   }, []);
 
+  const persistCookie = (val: AppTheme) => {
+    try {
+      const maxAge = 60 * 60 * 24 * 365; // 1 año
+      document.cookie = `theme_pref=${encodeURIComponent(val)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    } catch {}
+  };
+
   const setTheme = useCallback((t: AppTheme) => {
     setThemeState(t);
     try { localStorage.setItem(STORAGE_KEY, t); } catch {}
+    persistCookie(t);
     syncServer(t);
   }, [syncServer]);
 
@@ -57,6 +65,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initial?: AppT
         next = prev === 'dark' ? 'light' : 'dark';
       }
       try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+      persistCookie(next);
       syncServer(next);
       return next;
     });

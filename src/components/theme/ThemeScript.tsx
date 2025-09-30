@@ -8,14 +8,14 @@ export function ThemeScript() {
       // Logic order: cookie > localStorage > system. Adds class + color-scheme + inline bg early. Removes anti-FOUC style.
       dangerouslySetInnerHTML={{
         __html: `(()=>{try{const d=document;const h=d.documentElement;const foucId='anti-fouc-style';
-if(!d.getElementById(foucId)){const st=d.createElement('style');st.id=foucId;st.textContent='html{opacity:0}';d.head.appendChild(st);} 
+if(!d.getElementById(foucId)){const st=d.createElement('style');st.id=foucId;st.textContent='html{opacity:0}html:not(.theme-hydrated) body,html:not(.theme-hydrated) .card,html:not(.theme-hydrated) .btn,html:not(.theme-hydrated) .input{background:var(--color-bg,transparent)!important;color:var(--color-text,#0f172a)!important;transition:none!important;}';d.head.appendChild(st);} 
 const CK=d.cookie.match(/(?:^|; )theme_pref=([^;]+)/);const cookiePref=CK?decodeURIComponent(CK[1]):null;const LS=(()=>{try{return localStorage.getItem('app-theme')}catch{return null}})();
 let pref=cookiePref||LS||'system'; if(!['light','dark','system'].includes(pref)) pref='system';
 const sys= window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
 const mode = pref==='system'?sys:pref; h.classList.remove('light','dark'); h.classList.add(mode); h.style.colorScheme=mode; h.setAttribute('data-initial-theme',mode);
-// Minimal inline background to avoid white/black flash mismatch
 if(!h.style.backgroundColor){ h.style.backgroundColor = mode==='dark'?'#0b0d10':'#ffffff'; }
-const foucEl=d.getElementById(foucId); if(foucEl) foucEl.parentNode?.removeChild(foucEl);
+// Mark hydrated on next frame so transitions can start *after* first paint with correct colors
+requestAnimationFrame(()=>{h.classList.add('theme-hydrated');const f=d.getElementById(foucId); if(f) f.remove();});
 }catch(e){/* ignore */}})();`
       }}
     />
