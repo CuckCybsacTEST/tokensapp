@@ -38,13 +38,13 @@ ENV DATABASE_URL="postgresql://build:build@localhost:5432/build_db"
 RUN npm run build
 
 # Production image, copy needed artifacts
-FROM public.ecr.aws/docker/library/node:${NODE_VERSION}-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Los paquetes necesarios (openssl, ca-certificates, libc6-compat) ya están instalados en la imagen 'base'.
 USER root
-RUN apk add --no-cache openssl ca-certificates libc6-compat
 
 # Copy standalone output instead of full node_modules to minimize runtime image
 COPY --from=builder /app/.next/standalone ./
