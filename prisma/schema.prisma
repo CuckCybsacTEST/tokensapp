@@ -29,10 +29,12 @@ model Batch {
   createdBy        String?
   createdAt        DateTime          @default(now())
   functionalDate   DateTime?
+  staticTargetUrl  String?           // If present, this batch is a static redirect batch
   rouletteSessions RouletteSession[]
   tokens           Token[]
 
   @@index([functionalDate])
+  @@index([staticTargetUrl])
 }
 
 model Token {

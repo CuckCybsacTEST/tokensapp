@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import PrizeManager from "./PrizeManager";
 import InlineAutoBatchPanel from "./InlineAutoBatchPanel";
+import InlineStaticBatchPanel from "./InlineStaticBatchPanel";
 
 export default function PrizesClient({
   initialPrizes,
@@ -33,7 +34,12 @@ export default function PrizesClient({
   <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
 
   {/* Luego: generación de tokens (si hay premios) */}
-  {hasPrizes && <InlineAutoBatchPanel prizes={prizes} />}
+  {hasPrizes && (
+    <>
+      <InlineAutoBatchPanel prizes={prizes} />
+      <InlineStaticBatchPanel prizes={prizes} />
+    </>
+  )}
 
     </div>
   );

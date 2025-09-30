@@ -75,8 +75,17 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
           const eligibleByPrize = distinctPrizeIds >= 2 && distinctPrizeIds <= 12;
           const eligibleByToken = b.tokens.length >= 2 && b.tokens.length <= 12;
           const session = b.rouletteSessions[0] || null;
+          const isStatic = !!b.staticTargetUrl;
           return (
-            <div key={b.id} className="card transition-colors hover:border-brand-400/60">
+            <div
+              key={b.id}
+              className={
+                "card transition-colors hover:border-brand-400/60 " +
+                (isStatic
+                  ? "border-indigo-400/60 bg-indigo-50/60 dark:bg-indigo-900/20 dark:border-indigo-500/50"
+                  : "")
+              }
+            >
               <div className="card-body space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex flex-col min-w-0">
@@ -94,6 +103,21 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                     ) : (
                       <Link href={`/admin/batches/${b.id}`} className="text-sm font-medium hover:underline">Batch {b.id}</Link>
                     )}
+                    {isStatic && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded bg-indigo-600/90 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-indigo-500/90" title={b.staticTargetUrl || ''}>
+                        STATIC
+                        {b.staticTargetUrl && (
+                          <a
+                            href={b.staticTargetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline decoration-white/40 hover:decoration-white/80 ml-1 max-w-[160px] truncate"
+                          >
+                            {b.staticTargetUrl.replace(/^https?:\/\//,'')}
+                          </a>
+                        )}
+                      </span>
+                    )}
                   </div>
                   <span className="text-[10px] tabular-nums text-slate-500 dark:text-slate-400">{new Date(b.createdAt).toLocaleString()}</span>
                 </div>
@@ -103,23 +127,27 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                   <span>Expirados: {expired}</span>
                   <span>Activos: {active < 0 ? 0 : active}</span>
                   <span>Premios: {distinctPrizeIds}</span>
+                  {isStatic && <span className="text-indigo-600 dark:text-indigo-400 font-medium">(no ruleta)</span>}
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1 items-center">
                   <a href={`/api/batch/${b.id}/download?qr=1`} className="btn-outline !px-2 !py-1 text-[10px]">ZIP+QR</a>
                   <a href={`/api/batch/${b.id}/download`} className="btn-outline !px-2 !py-1 text-[10px]">ZIP</a>
                   <a href={`/api/batch/${b.id}/export`} className="btn-outline !px-2 !py-1 text-[10px]">CSV</a>
                   <Link href={`/admin/print?preselect=${b.id}`} className="btn-outline !px-2 !py-1 text-[10px]">Imprimir</Link>
-                  {!session && eligibleByPrize && (
+                  {!isStatic && !session && eligibleByPrize && (
                     <Link href={`/admin/batches?createRoulette=1&batch=${b.id}`} className="btn-outline !px-2 !py-1 text-[10px]">Ruleta</Link>
                   )}
-                  {!session && !eligibleByPrize && eligibleByToken && (
+                  {!isStatic && !session && !eligibleByPrize && eligibleByToken && (
                     <Link href={`/admin/batches?createRoulette=1&batch=${b.id}&mode=token`} className="btn-outline !px-2 !py-1 text-[10px]">Ruleta tokens</Link>
                   )}
-                  {session && (
+                  {!isStatic && session && (
                     <Link href={`/admin/roulette/session/${session.id}`} className="btn !px-2 !py-1 text-[10px]">Ruleta ({session.mode})</Link>
                   )}
-                  {!session && (
+                  {!isStatic && !session && (
                     <span className="text-[10px] text-slate-500">pr:{distinctPrizeIds} tok:{b.tokens.length}</span>
+                  )}
+                  {isStatic && (
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400">redirige a 1 URL</span>
                   )}
                 </div>
               </div>

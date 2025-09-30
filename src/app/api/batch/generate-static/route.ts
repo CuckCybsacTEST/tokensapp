@@ -1,0 +1,227 @@
+import { Readable } from 'stream';
+import { z } from 'zod';
+import { DateTime } from 'luxon';
+import { prisma } from '@/lib/prisma';
+import { generateBatchCore } from '@/lib/batch/generateBatchCore';
+import { applySingleDayWindow, applySingleHourWindow } from '@/lib/batch/postProcess';
+import { apiError } from '@/lib/apiError';
+import { logEvent } from '@/lib/log';
+import { generateQrPngDataUrl } from '@/lib/qr';
+import { createZipStream } from '@/lib/zip';
+import { getPublicBaseUrl } from '@/lib/config';
+
+// Schema for static batch generation
+// validity: byDays | singleDay | singleHour
+const byDaysValidity = z.object({
+  mode: z.literal('byDays'),
+  expirationDays: z.number().int().positive().min(1).max(30)
+});
+const singleDayValidity = z.object({
+  mode: z.literal('singleDay'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+});
+const singleHourValidity = z.object({
+  mode: z.literal('singleHour'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  hour: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  durationMinutes: z.number().int().positive().min(5).max(720).default(60)
+});
+
+const validitySchema = z.union([byDaysValidity, singleDayValidity, singleHourValidity]);
+
+const bodySchema = z.object({
+  name: z.string().min(1).max(120),
+  targetUrl: z.string().url().refine(u => /^https?:\/\//.test(u), 'TARGET_URL_PROTOCOL'),
+  prizes: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().positive().max(100000) })).min(1),
+  validity: validitySchema,
+  includeQr: z.boolean().optional().default(true),
+  lazyQr: z.boolean().optional().default(false)
+});
+
+export async function POST(req: Request) {
+  let parsed;
+  try {
+    const json = await req.json();
+    parsed = bodySchema.safeParse(json);
+  } catch {
+    return apiError('BAD_REQUEST', 'JSON inválido', undefined, 400);
+  }
+  if (!parsed.success) {
+    return apiError('BAD_REQUEST', 'Datos inválidos', { issues: parsed.error.issues }, 400);
+  }
+  const { name, targetUrl, prizes, validity, includeQr, lazyQr } = parsed.data;
+
+  // Validate prizes existence & fetch minimal info
+  const prizeIds = [...new Set(prizes.map(p => p.prizeId))];
+  const dbPrizes = await prisma.prize.findMany({ where: { id: { in: prizeIds }, active: true }, select: { id: true, key: true, label: true, color: true, stock: true } });
+  if (dbPrizes.length !== prizeIds.length) {
+    return apiError('PRIZE_NOT_FOUND', 'Algún premio no existe o está inactivo', { prizeIds }, 400);
+  }
+
+  // Build prizeRequests respecting counts; reuse generateBatchCore but it currently consumes full stock. We bypass by temporarily setting stock to desired count semantics via in-memory patching approach.
+  // Instead of modifying core, we simulate: set prize.stock = requested count and after generation restore manually.
+  // WARNING: generateBatchCore sets generationCount = currentStock. So we must ensure DB stock >= requested count else error.
+  for (const reqP of prizes) {
+    const dbp = dbPrizes.find(p => p.id === reqP.prizeId)!;
+    if (typeof dbp.stock !== 'number' || dbp.stock < reqP.count) {
+      return apiError('INSUFFICIENT_STOCK', 'Stock insuficiente', { prizeId: dbp.id, have: dbp.stock, need: reqP.count }, 400);
+    }
+  }
+
+  // Strategy: temporarily update stock to requested count for each prize, run core, then subtract exactly that count (core will set stock=0, so we pre-store original and restore remainder). This keeps core untouched.
+  const originalStocks: Record<string, number> = {};
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const p of dbPrizes) {
+        originalStocks[p.id] = p.stock ?? 0;
+        const requested = prizes.find(pp => pp.prizeId === p.id)!.count;
+        // Set stock to requested so core will emit exactly that many (since generationCount = currentStock)
+        await tx.prize.update({ where: { id: p.id }, data: { stock: requested } });
+      }
+    });
+  } catch (e) {
+    return apiError('STOCK_PATCH_FAIL', 'No se pudo preparar stock', undefined, 500);
+  }
+
+  // Determine base expirationDays for initial generation (will be patched for singleDay/hour)
+  let baseExpirationDays: number = 1;
+  if (validity.mode === 'byDays') baseExpirationDays = validity.expirationDays;
+
+  // Prepare prizeRequests with per-prize expiration inheritance
+  const prizeRequests = prizes.map(p => ({ prizeId: p.prizeId, count: 1, expirationDays: baseExpirationDays }));
+
+  // Expand counts into repeated entries? generateBatchCore currently ignores count property because it derives from stock. So we just need one entry per prize to ensure it validates expirationDays; actual count comes from patched stock.
+  const uniquePrizeRequests = [...new Map(prizeRequests.map(p => [p.prizeId, p])).values()];
+
+  let result;
+  try {
+    result = await generateBatchCore(uniquePrizeRequests, { description: name, includeQr, lazyQr, expirationDays: baseExpirationDays });
+  } catch (e: any) {
+    // Attempt to restore stocks best-effort
+    for (const p of dbPrizes) {
+      const orig = originalStocks[p.id];
+      await prisma.prize.update({ where: { id: p.id }, data: { stock: orig } }).catch(() => {});
+    }
+    return apiError('STATIC_GEN_FAIL', 'Fallo generación', { message: e?.message }, 500);
+  }
+
+  // Recalculate new stocks: original - requested
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const p of dbPrizes) {
+        const requested = prizes.find(pp => pp.prizeId === p.id)!.count;
+        const remainder = (originalStocks[p.id] ?? 0) - requested;
+        if (remainder < 0) throw new Error('NEGATIVE_STOCK');
+        await tx.prize.update({ where: { id: p.id }, data: { stock: remainder, emittedTotal: { increment: requested } } });
+      }
+  // Anotar batch como estático con URL destino
+  await tx.batch.update({ where: { id: result.batch.id }, data: { staticTargetUrl: targetUrl } as any });
+    });
+  } catch (e) {
+    await logEvent('STATIC_PATCH_STOCK_ERROR', 'Error al ajustar stock post generación', { batchId: result.batch.id });
+  }
+
+  // Post-processing validity
+  let windowStart: Date | null = null;
+  let windowEnd: Date | null = null;
+  if (validity.mode === 'singleDay') {
+    try {
+      const r = await applySingleDayWindow({ batchId: result.batch.id, isoDate: validity.date });
+      windowStart = r.windowStart; windowEnd = r.windowEnd;
+    } catch { return apiError('INVALID_DATE', 'Fecha inválida', undefined, 400); }
+  } else if (validity.mode === 'singleHour') {
+    try {
+      const r = await applySingleHourWindow({ batchId: result.batch.id, isoDate: validity.date, hour: validity.hour, durationMinutes: validity.durationMinutes });
+      windowStart = r.windowStart; windowEnd = r.windowEnd;
+    } catch { return apiError('INVALID_DATE', 'Fecha inválida', undefined, 400); }
+  }
+
+  // Reload tokens for manifest/CSV (need updated expiresAt/disabled)
+  const tokens = await prisma.token.findMany({
+    where: { batchId: result.batch.id },
+    include: { prize: { select: { key: true, label: true, color: true } } }
+  });
+
+  // Build ZIP
+  const { archive, stream } = createZipStream();
+  const csvColumns = ['token_id','batch_id','prize_id','prize_key','prize_label','prize_color','expires_at_iso','expires_at_unix','signature','redirect_url','redeemed_at','disabled'];
+  const csvRows: string[] = [csvColumns.join(',')];
+  const baseUrl = getPublicBaseUrl();
+
+  const grouped = new Map<string, any[]>();
+  for (const t of tokens) {
+    if (!grouped.has(t.prizeId)) grouped.set(t.prizeId, []);
+    grouped.get(t.prizeId)!.push(t);
+  }
+
+  const manifest: any = {
+    batchId: result.batch.id,
+    name,
+    createdAt: result.batch.createdAt.toISOString(),
+    prizes: [] as any[],
+    meta: {
+      mode: 'static',
+      static: true,
+      staticTargetUrl: targetUrl,
+      validityMode: validity.mode,
+      windowStartIso: windowStart?.toISOString() || null,
+      windowEndIso: windowEnd?.toISOString() || null,
+      totalTokens: tokens.length,
+      qrMode: includeQr ? (lazyQr ? 'lazy' : 'eager') : 'none'
+    }
+  };
+
+  for (const [prizeId, list] of grouped.entries()) {
+    const first = list[0];
+    manifest.prizes.push({ prizeId, prizeKey: first.prize.key, prizeLabel: first.prize.label, count: list.length });
+    for (const t of list) {
+      const redirectUrl = `${baseUrl}/s/${t.id}`;
+      csvRows.push([
+        t.id,
+        result.batch.id,
+        prizeId,
+        first.prize.key,
+        first.prize.label,
+        first.prize.color || '',
+        t.expiresAt.toISOString(),
+        Math.floor(t.expiresAt.getTime() / 1000).toString(),
+        t.signature,
+        redirectUrl,
+        '',
+        t.disabled ? 'true' : 'false'
+      ].map(csvEscape).join(','));
+      if (includeQr && !lazyQr) {
+        const dataUrl = await generateQrPngDataUrl(redirectUrl);
+        const base64 = dataUrl.split(',')[1];
+        archive.append(Buffer.from(base64, 'base64'), { name: `png/${t.id}.png` });
+      }
+    }
+  }
+
+  archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+  archive.append(csvRows.join('\n'), { name: 'tokens.csv' });
+  archive.finalize();
+
+  await logEvent('STATIC_BATCH_CREATE', 'lote estático creado', { batchId: result.batch.id, targetUrl, tokens: tokens.length });
+
+  const slug = slugify(name);
+  return new Response(Readable.toWeb(stream) as any, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename=${slug}_${result.batch.id}.zip`,
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
+function slugify(str: string) {
+  return str.toLowerCase().normalize('NFD').replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-').slice(0,50) || 'lote';
+}
+
+function csvEscape(val: string) {
+  if (val == null) return '';
+  const needs = /[",\n\r]/.test(val);
+  if (!needs) return val;
+  return '"' + val.replace(/"/g, '""') + '"';
+}
