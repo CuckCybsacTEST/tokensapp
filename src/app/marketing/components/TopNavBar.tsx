@@ -65,7 +65,7 @@ export function TopNavBar() {
           }}
           aria-label="Ir a login usuarios"
         >
-          <span className="opacity-70 group-hover:opacity-100 transition-opacity">Login</span>
+          <span className="opacity-70 group-hover:opacity-100 transition-opacity">Staff</span>
         </a>
         <a
           href="/admin"
