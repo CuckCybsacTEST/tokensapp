@@ -4,7 +4,7 @@ import { brand } from '../styles/brand';
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md border-b" 
+    <header data-hero-nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b" 
       style={{ 
         background: "rgba(0,0,0,0.35)", 
         borderColor: "rgba(255,255,255,0.08)", 
@@ -19,7 +19,7 @@ export function Navbar() {
           <span className="font-black tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Go Lounge!</span>
         </div>
         <nav className="hidden md:flex items-center gap-6 text-sm" style={{ color: "#FFFFFFCC" }}>
-          <a href="#eventos" className="hover:text-white transition-colors">Eventos</a>
+          <a href="#shows" className="hover:text-white transition-colors">Estelares</a>
           <a href="#cumple" className="hover:text-white transition-colors">Cumple</a>
           <a href="#por-que-elegirnos" className="relative hover:text-white transition-colors" style={{ color: brand.primary }}>
             ¿Por qué elegirnos?

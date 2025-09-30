@@ -6,19 +6,22 @@ import { SectionTitle } from './ui/SectionTitle';
 export function QrSection() {
   // URLs de Spotify ahora viven en SpotifySection
   // Sábados Estelares con Experiencias QR integradas
+  // Solo 6 características (antes 8); en mobile se muestran solo las primeras 4
   const qrFeatures = [
     { title: 'Tecnología QR', description: 'Pulseras y mesas con QR para participar, votar, ganar rewards y desbloquear contenido en vivo.' },
     { title: 'Sábados Estelares', description: 'Nuestra noche insignia: headliners, shows temáticos y bloques especiales.' },
     { title: 'Luces inteligentes', description: 'Programación dinámica, escenas y sincronía para un ambiente envolvente.' },
-    { title: 'Pantallas gigantes', description: 'Visuales y mensajes en tiempo real para amplificar la experiencia.' },
     { title: 'Experiencias inmersivas', description: 'Efectos especiales (CO₂, confetti) y dinámicas que te meten en la acción.' },
     { title: 'Cocteles de autor', description: 'Recetas pensadas para cada momento del set, con presentaciones memorables.' },
     { title: 'Artistas en escena', description: 'Performers, hosts e invitados que suben la energía de la noche.' },
-    { title: 'Aforo controlado', description: 'Comodidad y seguridad cuidando la capacidad en cada bloque.' },
   ];
   
   return (
-  <section id="por-que-elegirnos" className="py-14 md:py-20 relative overflow-hidden">
+  <section
+    id="por-que-elegirnos"
+    className="relative overflow-hidden flex flex-col justify-start md:justify-center pt-10 pb-16 md:pt-16 md:pb-20"
+    style={{ minHeight: 'var(--app-vh,100vh)' }}
+  >
       {/* Elementos decorativos de fondo */}
       <motion.div 
         aria-hidden 
@@ -53,43 +56,53 @@ export function QrSection() {
         }} 
       />
       
-  <div className="container mx-auto max-w-7xl px-4 md:px-8 py-8 md:py-12 relative z-10 w-full">
+  <div className="container mx-auto max-w-7xl px-4 md:px-8 pt-2 md:pt-4 pb-4 md:pb-8 relative z-10 w-full">
         <SectionTitle
           kicker="¿Por qué elegirnos?"
           title="Experiencia que te elige a ti"
-          subtitle="Combinamos tecnología QR, shows y ambientación para crear una noche inmersiva: sábados estelares, luces inteligentes, pantallas gigantes, cocteles de autor, artistas en escena y aforo controlado."
+          compact
+          dense
+          subtitle={
+            <>
+              <span className="hidden md:inline">Combinamos tecnología QR, shows y ambientación para crear una noche inmersiva: sábados estelares, luces inteligentes, experiencias inmersivas, cocteles de autor y artistas en escena.</span>
+              <span className="inline md:hidden text-sm">Tecnología QR, shows y ambientación inmersiva.</span>
+            </>
+          }
         />
         
   <div className="mt-8 flex flex-col md:flex-row gap-8 md:gap-10 items-center justify-center">
           {/* Columna izquierda - Características (más amplias) */}
           <div className="w-full md:w-1/2 flex flex-col items-center">
             <div className="grid grid-cols-1 gap-4 w-full max-w-md mx-auto">
-              {qrFeatures.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className="backdrop-blur-sm rounded-md p-3"
-                  style={{ 
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    boxShadow: `0 0 0 1px ${brand.primary}11 inset`
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 rounded flex items-center justify-center" 
-                      style={{ background: `${brand.primary}33` }}>
-                      <div className="h-3.5 w-3.5 rounded" style={{ background: `${brand.primary}` }} />
+              {qrFeatures.map((feature, index) => {
+                const hideMobile = index >= 4; // mostrar solo 4 en móviles
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className={`backdrop-blur-sm rounded-md p-3 ${hideMobile ? 'hidden sm:block' : ''}`}
+                    style={{ 
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: `0 0 0 1px ${brand.primary}11 inset`
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-7 w-7 rounded flex items-center justify-center" 
+                        style={{ background: `${brand.primary}33` }}>
+                        <div className="h-3.5 w-3.5 rounded" style={{ background: `${brand.primary}` }} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm mb-0.5" style={{ fontFamily: 'var(--font-display)' }}>{feature.title}</h3>
+                        <p className="text-xs opacity-80" style={{ color: brand.text.secondary, fontFamily: 'var(--font-text)' }}>{feature.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-sm mb-0.5" style={{ fontFamily: 'var(--font-display)' }}>{feature.title}</h3>
-                      <p className="text-xs opacity-80" style={{ color: brand.text.secondary, fontFamily: 'var(--font-text)' }}>{feature.description}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
           

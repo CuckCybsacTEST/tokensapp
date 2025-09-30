@@ -23,7 +23,7 @@ export default function MarketingNavbar() {
 
   const navLinks = [
     { name: 'Inicio', href: '/marketing' },
-    { name: 'Eventos', href: '/marketing#eventos' },
+    { name: 'Estelares', href: '/marketing#shows' },
     { name: 'Cumpleaños', href: '/marketing#cumple' },
     { name: 'Contacto', href: '/marketing#contacto' },
   ];

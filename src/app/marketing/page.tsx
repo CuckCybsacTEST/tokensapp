@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { brand } from './styles/brand';
 
@@ -86,6 +86,20 @@ const faq = [
 
 // Componente principal de la landing page
 export default function MarketingPage() {
+  // Ajuste dinámico de viewport para evitar recortes o scroll inicial mostrando la siguiente sección.
+  useEffect(() => {
+    const setVh = () => {
+      const vh = window.innerHeight;
+      document.documentElement.style.setProperty('--app-vh', vh + 'px');
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    window.addEventListener('orientationchange', setVh);
+    return () => {
+      window.removeEventListener('resize', setVh);
+      window.removeEventListener('orientationchange', setVh);
+    };
+  }, []);
   // Nota: Se eliminó el formulario de reservas de la landing
 
   return (
@@ -104,13 +118,12 @@ export default function MarketingPage() {
       }} />
       {/* Componente Navbar */}
       <Navbar />
-      
-    {/* Componente Hero */}
-    <Hero />
+      {/* Hero ocupa todo el viewport (ajustado por --app-vh) y ninguna otra sección se ve en primer pantallazo */}
+      <Hero />
       
       {/* Componentes de secciones principales */}
   {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-  <DynamicShowsSection className="pt-4" />
+  <DynamicShowsSection />
   <SectionDivider className="my-10 sm:my-14" />
     <BirthdaySection />
   <SectionDivider className="my-10 sm:my-14" />

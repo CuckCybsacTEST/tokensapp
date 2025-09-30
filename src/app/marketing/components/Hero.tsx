@@ -4,7 +4,7 @@ import { brand } from '../styles/brand';
 
 export function Hero() {
   return (
-  <section id="hero" className="relative overflow-hidden py-16 md:py-28 flex items-center justify-center min-h-[80vh] w-full">
+  <section id="hero" className="relative overflow-hidden flex items-center justify-center w-full pt-24 md:pt-32" style={{ minHeight: 'var(--app-vh,100vh)' }}>
       <motion.div 
         aria-hidden 
         initial={{ rotate: 0 }} 
@@ -57,7 +57,7 @@ export function Hero() {
             className="mt-10 flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto sm:w-auto justify-center"
           >
             <a 
-              href="#eventos" 
+              href="#shows" 
               className="rounded-full px-4 py-2.5 font-semibold text-sm transition-all duration-300 w-full sm:w-auto text-center flex-1 shadow-md"
               style={{ 
                 background: `linear-gradient(135deg, ${brand.primary}, ${brand.primary}ee)`,
@@ -67,7 +67,7 @@ export function Hero() {
               onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
               onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
             >
-              Ver próximos eventos
+              Próximos Estelares
             </a>
             <a 
               href="#cumple" 

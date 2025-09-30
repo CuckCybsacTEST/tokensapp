@@ -36,8 +36,9 @@ interface ApiResp { ok: boolean; shows: PublicShow[] }
 export function DynamicShowsSection({
   limit = 8,
   className = '',
-  endpoint = '/api/shows/public'
-}: { limit?: number; className?: string; endpoint?: string }) {
+  endpoint = '/api/shows/public',
+  fullscreen = true
+}: { limit?: number; className?: string; endpoint?: string; fullscreen?: boolean }) {
   const [shows, setShows] = useState<PublicShow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,12 +75,27 @@ export function DynamicShowsSection({
     return <div className={`mt-10 text-center text-soft text-sm ${className}`}>Pronto anunciaremos nuevos shows ✨</div>;
   }
 
+  // Subtítulos: versión completa (desktop) y versión corta (mobile) visibles según breakpoint.
+  const fullSubtitle = 'Lineup dinámico: headliners, temáticos y experiencias especiales cada sábado. Reservas sujetas a disponibilidad.';
+  const mobileSubtitle = 'Headliners y temáticos cada sábado.';
+  const ShowsSubtitle = () => (
+    <>
+      <p id="shows-subtitle" className="hidden md:block text-sm md:text-base max-w-2xl opacity-80">{fullSubtitle}</p>
+      <p id="shows-subtitle-mobile" className="md:hidden text-xs max-w-xs opacity-75 leading-snug px-4">{mobileSubtitle}</p>
+    </>
+  );
+
+  const baseMinHeight = fullscreen ? 'var(--app-vh,100vh)' : undefined;
   return (
-    <section id="shows" className={`relative py-14 md:py-20 ${className}`}>
+    <section
+      id="shows"
+      className={`relative flex flex-col justify-start md:justify-center pt-20 pb-14 md:py-20 ${className}`}
+      style={{ minHeight: baseMinHeight }}
+    >
       <div className="container mx-auto max-w-7xl px-4 md:px-8">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3" style={{ textShadow: '0 4px 18px rgba(255,255,255,0.15)' }}>Próximos Shows</h2>
-          <p className="text-sm md:text-base max-w-2xl opacity-80">Lineup dinámico: headliners, temáticos y experiencias especiales cada sábado. Reservas sujetas a disponibilidad.</p>
+        <div className="mb-6 md:mb-8 flex flex-col items-center text-center gap-3 md:gap-4">
+          <h2 aria-describedby="shows-subtitle shows-subtitle-mobile" className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ textShadow: '0 4px 18px rgba(255,255,255,0.15)' }}>Próximos Shows</h2>
+          <ShowsSubtitle />
         </div>
         {/* Grid responsiva */}
         <div className="grid gap-6 md:gap-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
