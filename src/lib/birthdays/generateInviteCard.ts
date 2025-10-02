@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import sharp from 'sharp';
 import { inviteTemplates, InviteTemplateKind } from './inviteTemplates';
-import { generateQrPngBuffer } from '@/lib/qr';
+import { generateQrPngBuffer } from '@/lib/qr-server';
 
 function clamp(n: number, min: number, max: number) { return Math.min(max, Math.max(min, n)); }
 function escapeXml(s: string) { return s.replace(/[&<>"] /g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',' ':' ' }[c] as string)); }
@@ -30,8 +30,12 @@ export async function generateInviteCard(
   let templateInput: Buffer | null = null;
   try {
     templateInput = await fs.readFile(absPath);
-  } catch {
+  } catch (e: any) {
     // Fallback: create a dark gradient-ish plain background so we still deliver a card.
+    if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+      // eslint-disable-next-line no-console
+      console.warn('[inviteCard] no se pudo leer plantilla, usando fondo plano', { path: absPath, error: e?.message });
+    }
     templateInput = await sharp({ create: { width: tpl.width, height: tpl.height, channels: 4, background: { r: 12, g: 12, b: 12, alpha: 1 } } })
       .png()
       .toBuffer();
@@ -42,7 +46,16 @@ export async function generateInviteCard(
   const left = Math.round(tpl.width * tpl.area.leftRatio);
   const top = Math.round(tpl.height * tpl.area.topRatio);
 
-  const qrPng = await generateQrPngBuffer(redeemUrl, qrSize);
+  let qrPng: Buffer;
+  try {
+    qrPng = await generateQrPngBuffer(redeemUrl, qrSize);
+  } catch (e: any) {
+    if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+      // eslint-disable-next-line no-console
+      console.error('[inviteCard] fallo generando QR', { code, redeemUrl, err: e?.message });
+    }
+    throw e; // re-propagamos para que la ruta devuelva 400 y podamos ver el log
+  }
   // Create rounded-corner mask for QR (applies to both host & guest)
   const cornerR = Math.round(qrSize * 0.08);
   const qrMaskSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><svg width="${qrSize}" height="${qrSize}" viewBox="0 0 ${qrSize} ${qrSize}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${qrSize}" height="${qrSize}" rx="${cornerR}" ry="${cornerR}" fill="white"/></svg>`);
@@ -57,25 +70,40 @@ export async function generateInviteCard(
     const pillFont = Math.max(18, Math.round(qrSize * 0.06)); // scale with QR size
     const horizontalPadding = Math.round(pillFont * 0.9);
     const textApproxWidth = fechaSmall.length * pillFont * 0.55; // heuristic width per char
-    const pillWidth = Math.round(textApproxWidth + horizontalPadding * 2);
-    const pillHeight = Math.round(pillFont * 1.9);
-    const pillLeft = left + Math.round((qrSize - pillWidth) / 2);
+  let pillWidth = Math.round(textApproxWidth + horizontalPadding * 2);
+  let pillHeight = Math.round(pillFont * 1.9);
+  // Clamp pill to template bounds
+  if (pillWidth > tpl.width) pillWidth = tpl.width - 20;
+  if (pillHeight > Math.round(tpl.height * 0.2)) pillHeight = Math.round(tpl.height * 0.2);
+  let pillLeft = left + Math.round((qrSize - pillWidth) / 2);
+  if (pillLeft < 0) pillLeft = 0;
+  if (pillLeft + pillWidth > tpl.width) pillLeft = tpl.width - pillWidth;
     const marginBottom = Math.round(pillFont * 0.6);
     let pillTop = top - pillHeight - marginBottom;
     if (pillTop < 8) pillTop = 8; // clamp
     const radius = Math.round(pillHeight / 2);
     // Render pill SVG at higher density to reduce text blur in production
     const dateSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${pillWidth}\" height=\"${pillHeight}\" viewBox=\"0 0 ${pillWidth} ${pillHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <filter id=\"shadow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">\n      <feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"3\" flood-opacity=\"0.35\"/>\n    </filter>\n  </defs>\n  <rect x=\"0\" y=\"0\" width=\"${pillWidth}\" height=\"${pillHeight}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"rgba(0,0,0,0.55)\" />\n  <text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-family=\"'Inter','Arial',sans-serif\" font-size=\"${pillFont}px\" font-weight=\"600\" fill=\"#FFFFFF\" filter=\"url(#shadow)\" letter-spacing=\"1\">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
-    const dateSvgRaster = await sharp(dateSvg, { density: 220 }).png().toBuffer();
+    let dateSvgRaster = await sharp(dateSvg, { density: 220 }).resize(pillWidth, pillHeight).png().toBuffer();
+    if (!process.env.SILENCE_INVITE_CARD_LOGS && process.env.DEBUG_INVITE_CARD_SIZES) {
+      try {
+        const meta = await sharp(dateSvgRaster).metadata();
+        // eslint-disable-next-line no-console
+        console.info('[inviteCard] date pill size', { w: meta.width, h: meta.height, expected: { pillWidth, pillHeight } });
+      } catch {}
+    }
     composites.push({ input: dateSvgRaster, left: pillLeft, top: pillTop });
   }
 
   // Adaptive footer for both guest & host (if nameBar provided)
   if ((kind === 'guest' || kind === 'host') && celebrantName && (tpl as any).nameBar) {
     const nb = (tpl as any).nameBar as { leftRatio: number; widthRatio: number; topRatio: number; heightRatio: number };
-    const barWidth = Math.round(tpl.width * nb.widthRatio);
+  let barWidth = Math.round(tpl.width * nb.widthRatio);
     const baseBarHeight = Math.round(tpl.height * nb.heightRatio);
-    const barLeft = Math.round(tpl.width * nb.leftRatio);
+  let barLeft = Math.round(tpl.width * nb.leftRatio);
+  if (barWidth > tpl.width) barWidth = tpl.width;
+  if (barLeft < 0) barLeft = 0;
+  if (barLeft + barWidth > tpl.width) barLeft = tpl.width - barWidth;
     const baseBarTop = Math.round(tpl.height * nb.topRatio);
     const first = celebrantName.trim().split(/\s+/)[0];
     const fechaTxt = reservationDateISO ? formatFecha(reservationDateISO) : '';
@@ -141,7 +169,14 @@ export async function generateInviteCard(
     }
     textSvg += `  <text x="50%" y="${cursorY + f2 * 0.85}" text-anchor="middle" fill="${dateColor}" font-family="'Inter','Arial',sans-serif" font-weight="700" font-size="${f2}px" letter-spacing="1">${escapeXml(fechaTxt)}</text>\n`;
     const nameBarSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${barWidth}\" height=\"${barHeight}\" viewBox=\"0 0 ${barWidth} ${barHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"ograd\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n      <stop offset=\"0%\" stop-color=\"#FF7A00\"/>\n      <stop offset=\"40%\" stop-color=\"#FFA630\"/>\n      <stop offset=\"60%\" stop-color=\"#FFB347\"/>\n      <stop offset=\"100%\" stop-color=\"#FF7A00\"/>\n    </linearGradient>\n  </defs>\n  <rect x=\"${inset}\" y=\"${inset}\" width=\"${barWidth - strokeW}\" height=\"${barHeight - strokeW}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"black\" stroke=\"url(#ograd)\" stroke-width=\"${strokeW}\" />\n${textSvg}</svg>`);
-    const nameBarRaster = await sharp(nameBarSvg, { density: 230 }).png().toBuffer();
+    let nameBarRaster = await sharp(nameBarSvg, { density: 230 }).resize(barWidth, barHeight).png().toBuffer();
+    if (!process.env.SILENCE_INVITE_CARD_LOGS && process.env.DEBUG_INVITE_CARD_SIZES) {
+      try {
+        const meta2 = await sharp(nameBarRaster).metadata();
+        // eslint-disable-next-line no-console
+        console.info('[inviteCard] name bar size', { w: meta2.width, h: meta2.height, expected: { barWidth, barHeight } });
+      } catch {}
+    }
     composites.push({ input: nameBarRaster, left: barLeft, top: barTop });
   }
   // Build base image; avoid unnecessary resize (can blur text) if dimensions already match template.

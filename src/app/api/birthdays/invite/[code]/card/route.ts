@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'; // necesario para usar fs/sharp (evitar Edge runtime sin acceso a filesystem)
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateInviteCard } from '@/lib/birthdays/generateInviteCard';
@@ -19,9 +20,17 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const celebrantFull = (token as any).reservation?.celebrantName || '';
   const celebrantFirst = celebrantFull.trim().split(/\s+/)[0] || celebrantFull;
   const reservationDateISO = (token as any).reservation?.date ? (token as any).reservation.date.toISOString() : undefined;
+  if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+    // eslint-disable-next-line no-console
+    console.info('[inviteCard] generando', { code: token.code, kind, fmt, celebrantFirst, reservationDateISO });
+  }
   const buf = await generateInviteCard(kind, token.code, redeemUrl, fmt, celebrantFirst, reservationDateISO);
   return new Response(new Uint8Array(buf), { status: 200, headers: { 'Content-Type': fmt === 'png' ? 'image/png' : 'image/webp', 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' } });
-  } catch (e) {
-  return apiError('INTERNAL_ERROR','Error generando tarjeta');
+  } catch (e: any) {
+    if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+      // eslint-disable-next-line no-console
+      console.error('[inviteCard] error en endpoint', { code: params.code, err: e?.message, stack: e?.stack });
+    }
+    return apiError('INTERNAL_ERROR','Error generando tarjeta');
   }
 }
