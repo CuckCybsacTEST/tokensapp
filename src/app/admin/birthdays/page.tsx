@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, memo } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 
 type Reservation = {
   id: string;
@@ -14,76 +14,49 @@ type Reservation = {
   status: string;
   tokensGeneratedAt: string | null;
   createdAt: string;
-  cardsReady?: boolean;
 };
 
 type AdminReservationCardProps = {
   r: Reservation;
   busy: boolean;
   onApprove: (id:string)=>void;
-  onGenerateCards: (id:string)=>void; // kept for context
+  onGenerateCards: (id:string)=>void;
+  onViewCards: (id:string)=>void;
 };
 
-const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenerateCards }: AdminReservationCardProps){
-  const isApproved = r.status === 'approved' || r.status === 'completed';
-  const isAlert = r.status === 'pending_review' || r.status === 'canceled';
-  const cardBorder = isApproved ? 'border-emerald-400 dark:border-emerald-700' : isAlert ? 'border-rose-400 dark:border-rose-700' : 'border-slate-200 dark:border-slate-700';
-  const cardBg = isApproved
-    ? 'bg-emerald-50 dark:bg-emerald-950/30'
-    : isAlert
-      ? 'bg-rose-50 dark:bg-rose-950/30'
-      : 'bg-white dark:bg-slate-800';
-  const mutedText = isApproved ? 'text-emerald-700 dark:text-emerald-300' : isAlert ? 'text-rose-700 dark:text-rose-300' : 'text-slate-600 dark:text-slate-400';
-  const badgeCls = isApproved
-    ? 'border-emerald-300 dark:border-emerald-700 bg-emerald-200/60 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300'
-    : isAlert
-      ? 'border-rose-300 dark:border-rose-700 bg-rose-200/60 dark:bg-rose-600/20 text-rose-700 dark:text-rose-300'
-      : 'border-slate-300 dark:border-slate-700 bg-slate-200/70 dark:bg-slate-600/20 text-slate-700 dark:text-slate-300';
-  const scrollRef = useRef<HTMLDivElement|null>(null);
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-  const [hint, setHint] = useState(true);
-  useEffect(()=>{
-    const el = scrollRef.current; if(!el) return;
-    const update = ()=>{ const {scrollLeft, scrollWidth, clientWidth}=el; setShowLeft(scrollLeft>0); setShowRight(scrollLeft+clientWidth < scrollWidth-1); };
-    update();
-    const h=()=>{ update(); if(hint) setHint(false); };
-    el.addEventListener('scroll', h, { passive:true });
-    window.addEventListener('resize', update);
-    return ()=>{ el.removeEventListener('scroll', h); window.removeEventListener('resize', update); };
-  }, [hint]);
+const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenerateCards, onViewCards }: AdminReservationCardProps){
+  // Mirror estilo de /u/birthdays
+  const isApproved = r.status==='approved' || r.status==='completed';
+  const isAlert = r.status==='pending_review' || r.status==='canceled';
+  const badgeCls = isApproved ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : isAlert ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200';
+  const statusLabel = r.status === 'pending_review'
+    ? 'PENDIENTE'
+    : r.status === 'approved'
+      ? 'APROBADO'
+      : r.status === 'completed'
+        ? 'COMPLETADO'
+        : r.status === 'canceled'
+          ? 'CANCELADO'
+          : r.status;
+  const cleanDate = r.date?.replace(/T00:00:00\.000Z$/,'');
   return (
-  <div className={`rounded border p-3 ${cardBorder} ${cardBg} transition-colors shadow-sm`}>    
-      <div className="flex flex-wrap justify-between gap-2">
-        <div>
-          <div className="font-medium flex items-center gap-2">
-            <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="hover:underline">
-              {r.celebrantName}
-            </a>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badgeCls}`}>{r.status}</span>
-            <span className="text-xs text-slate-400">({r.documento})</span>
-          </div>
-          <div className={`text-xs ${mutedText}`}>{r.date} {r.timeSlot} • Pack: {r.pack?.name}</div>
-          <div className={`text-xs ${mutedText}`}>
-            Estado: {r.status}{r.tokensGeneratedAt ? ` • Tokens: ${r.tokensGeneratedAt}` : ''}
-          </div>
-        </div>
-        <div className="relative max-w-full">
-          <div ref={scrollRef} className="flex gap-2 overflow-x-auto max-w-full pr-1 -mr-1 flex-nowrap scrollbar-thin scrollbar-thumb-slate-700/50 scroll-smooth" style={{scrollbarGutter:'stable'}}>
-            {r.status === 'pending_review' && (
-              <button className="btn shrink-0" disabled={busy} onClick={()=>onApprove(r.id)}>Aprobar</button>
-            )}
-            {(!r.cardsReady) ? (
-              <button className="btn shrink-0" disabled={busy} onClick={()=>onGenerateCards(r.id)}>Generar tarjetas</button>
-            ) : (
-              <a className="btn shrink-0" href={`/marketing/birthdays/${encodeURIComponent(r.id)}/qrs?mode=admin`} target="_blank" rel="noopener noreferrer">Ver tarjetas</a>
-            )}
-            <a className="btn shrink-0" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Detalle</a>
-          </div>
-          {showLeft && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-l" />}
-          {showRight && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-r" />}
-          {showRight && hint && <div className="absolute -top-4 right-2 text-[10px] text-slate-400 animate-pulse select-none">Desliza →</div>}
-        </div>
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <a href={`/admin/birthdays/${encodeURIComponent(r.id)}`} className="font-semibold text-slate-800 dark:text-slate-100 hover:underline leading-tight">{r.celebrantName}</a>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeCls}`}>{statusLabel}</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{r.documento}</span>
+      </div>
+      <div className="grid gap-y-1 text-[13px] sm:grid-cols-2">
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Fecha celebración:</span> {cleanDate}</div>
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Hora llegada:</span> {r.timeSlot}</div>
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Invitados (QR):</span> {r.guestsPlanned || r.pack?.qrCount || '-'}</div>
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Pack:</span> {r.pack?.name || '-'}</div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {r.status==='pending_review' && <button className="btn h-8 px-3" disabled={busy} onClick={()=>onApprove(r.id)}>Aprobar</button>}
+        {!r.tokensGeneratedAt && <button className="btn h-8 px-3" disabled={busy} onClick={()=>onGenerateCards(r.id)}>{busy? 'Generando…':'Generar tarjetas'}</button>}
+        {r.tokensGeneratedAt && <button className="btn h-8 px-3" onClick={()=>onViewCards(r.id)}>Ver tarjetas</button>}
+        <a className="btn h-8 px-3" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Detalle</a>
       </div>
     </div>
   );
@@ -93,9 +66,9 @@ export default function AdminBirthdaysPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<Reservation[]>([]);
-  const [success, setSuccess] = useState<Record<string,string>>({});
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(5);
+    const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<string | "">("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<Record<string, boolean>>({});
@@ -133,7 +106,8 @@ export default function AdminBirthdaysPage() {
       } else j = {};
       if (!res.ok) throw new Error(j?.code || j?.message || `HTTP_${res.status}`);
       if (!j.items && Array.isArray(j)) j = { items: j };
-      setItems((j.items || []) as Reservation[]);
+        setItems(j.items || []);
+        if (typeof j.total === 'number') setTotal(j.total);
     } catch(e:any) {
       setErr(String(e?.message||e));
     } finally { setLoading(false); }
@@ -169,33 +143,26 @@ export default function AdminBirthdaysPage() {
     }
   }
 
-  async function genTokens(id: string) {
-    setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
+  const [cardGenErr, setCardGenErr] = useState<Record<string,string|undefined>>({});
+  async function generateCards(id: string) {
+    setBusy(prev => ({ ...prev, [id]: true }));
+    setCardGenErr(prev => ({ ...prev, [id]: undefined }));
     try {
       const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/tokens`, { method: 'POST' });
-      const j = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(j?.code || j?.message || res.status);
+      const txt = await res.text();
+      let j: any = {};
+      if (txt) { try { j = JSON.parse(txt); } catch {/* ignore */} }
+      if (!res.ok) {
+        const raw = j?.code || j?.message || `HTTP_${res.status}`;
+        let friendly = raw;
+        if (/RESERVATION_DATE_PAST/.test(raw)) friendly = 'La fecha ya pasó - no se pueden generar.';
+        if (/RESERVATION_NOT_FOUND/.test(raw)) friendly = 'Reserva no encontrada.';
+        setCardGenErr(prev => ({ ...prev, [id]: friendly }));
+        return;
+      }
       await load();
-    } catch (e: any) {
-      setErr(String(e?.message || e));
-    } finally {
-      setBusy(prev => ({ ...prev, [id]: false }));
-    }
-  }
-
-  async function generateCards(id: string) {
-    setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
-    try {
-      const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/cards/generate`, { method: 'POST' });
-      const j = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(j?.code || j?.message || res.status);
-      // Actualizar item local sin recargar toda la lista
-      setItems(prev => prev.map(r => r.id === id ? { ...r, cardsReady: true } : r));
-      const already = j?.already === true || j?.result?.already === true;
-      setSuccess(prev => ({ ...prev, [id]: already ? 'Las tarjetas ya estaban generadas' : 'Tarjetas generadas' }));
-      setTimeout(()=>{ setSuccess(prev => { const n={...prev}; delete n[id]; return n; }); }, 4000);
-    } catch (e: any) {
-      setErr(String(e?.message || e));
+    } catch(e:any) {
+      setCardGenErr(prev => ({ ...prev, [id]: String(e?.message||e) }));
     } finally {
       setBusy(prev => ({ ...prev, [id]: false }));
     }
@@ -218,8 +185,9 @@ export default function AdminBirthdaysPage() {
   const empty = !loading && items.length === 0;
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-2xl font-semibold">Gestión de Cumpleaños</h1>
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+      <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Gestión de Cumpleaños</h1>
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
       {/* Crear reserva rápida */}
@@ -254,13 +222,30 @@ export default function AdminBirthdaysPage() {
           <button className="btn" disabled={creating} onClick={async ()=>{
             setCreating(true); setErr(null);
             try {
+              // Validaciones básicas
+              if (!cName.trim()) throw new Error('Nombre requerido');
+              if (!cPhone.trim()) throw new Error('WhatsApp requerido');
+              if (!cDoc.trim()) throw new Error('Documento requerido');
+              let finalDate = cDate;
+              if (!finalDate) {
+                const d = new Date();
+                finalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                setCDate(finalDate);
+              }
               const sel = packs.find(p => p.id === cPack);
               const guests = sel ? sel.qrCount : cGuests;
               const phoneFinal = cPhone.trim(); // WhatsApp como teléfono principal
-              const payload = { celebrantName: cName, phone: phoneFinal, documento: cDoc, email: (cEmail || undefined), date: cDate, timeSlot: cSlot, packId: cPack, guestsPlanned: guests } as any;
+              const payload = { celebrantName: cName.trim(), phone: phoneFinal, documento: cDoc.trim(), email: (cEmail || undefined), date: finalDate, timeSlot: cSlot, packId: cPack, guestsPlanned: guests } as any;
               const res = await fetch('/api/admin/birthdays', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
               const j = await res.json();
-              if (!res.ok || !j?.ok) throw new Error(j?.code || j?.message || res.status);
+              if (!res.ok || !j?.ok) {
+                // Mostrar detalles de validación si existen
+                if (j?.errors) {
+                  const firstErr = Object.values(j.errors).flat()?.[0];
+                  throw new Error(firstErr || (j?.code || j?.message || res.status));
+                }
+                throw new Error(j?.code || j?.message || res.status);
+              }
               setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPack(''); setCGuests(5);
               await load();
             } catch(e:any) { setErr(String(e?.message || e)); } finally { setCreating(false); }
@@ -368,6 +353,13 @@ export default function AdminBirthdaysPage() {
             <option value="approved">Aprobadas</option>
             <option value="completed">Completadas</option>
             <option value="canceled">Canceladas</option>
+                    {(() => { const totalPages = Math.max(1, Math.ceil(total / pageSize)); return (
+                      <div className="flex items-center gap-3 pt-2">
+                        {(page>1) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>}
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Página {page} de {totalPages}</span>
+                        {(page < totalPages) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.min(totalPages, p+1))}>Siguiente</button>}
+                      </div>
+                    ); })()}
           </select>
         </div>
         <div className="grid gap-1">
@@ -380,26 +372,37 @@ export default function AdminBirthdaysPage() {
       {loading && <div className="text-sm text-gray-400">Cargando…</div>}
       {empty && <div className="text-sm text-gray-400">No hay reservas</div>}
 
-      <div className="grid gap-2">
+      <div className="grid gap-3">
         {items.map(r => (
           <div key={r.id} className="space-y-1">
             <AdminReservationCard
               r={r}
               busy={!!busy[r.id]}
               onApprove={approve}
-              onGenerateCards={generateCards}
+              onGenerateCards={async (id)=>{ await generateCards(id); }}
+              onViewCards={async (id)=>{
+                try {
+                  const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/client-secret?ttl=15`, { method: 'POST' });
+                  const j = await res.json().catch(()=>({}));
+                  if (!res.ok || !j?.clientSecret) throw new Error(j?.code || 'No se pudo generar link');
+                  const cs = j.clientSecret;
+                  window.location.href = `/marketing/birthdays/${encodeURIComponent(id)}/qrs?cs=${encodeURIComponent(cs)}`;
+                } catch (e) {
+                  await load();
+                }
+              }}
             />
-            {success[r.id] && (
-              <div className="text-[11px] text-emerald-600 dark:text-emerald-300 px-1">{success[r.id]}</div>
+            {!r.tokensGeneratedAt && cardGenErr[r.id] && (
+              <div className="text-[11px] text-rose-500 dark:text-rose-300 ml-1">{cardGenErr[r.id]}</div>
             )}
           </div>
         ))}
       </div>
-
-      <div className="flex items-center gap-2">
-        <button className="btn" onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>
-        <span className="text-xs">Página {page}</span>
-        <button className="btn" onClick={()=>setPage(p=>p+1)}>Siguiente</button>
+      <div className="flex items-center gap-3 pt-2">
+        {(page>1) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>}
+        <span className="text-xs text-slate-500 dark:text-slate-400">Página {page}</span>
+        {(!empty && items.length===pageSize) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>p+1)}>Siguiente</button>}
+      </div>
       </div>
     </div>
   );
