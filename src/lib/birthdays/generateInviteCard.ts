@@ -64,8 +64,10 @@ export async function generateInviteCard(
     let pillTop = top - pillHeight - marginBottom;
     if (pillTop < 8) pillTop = 8; // clamp
     const radius = Math.round(pillHeight / 2);
-    const dateSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${pillWidth}" height="${pillHeight}" viewBox="0 0 ${pillWidth} ${pillHeight}" xmlns="http://www.w3.org/2000/svg">\n  <defs>\n    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">\n      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.35"/>\n    </filter>\n  </defs>\n  <rect x="0" y="0" width="${pillWidth}" height="${pillHeight}" rx="${radius}" ry="${radius}" fill="rgba(0,0,0,0.55)" />\n  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="'Inter','Arial',sans-serif" font-size="${pillFont}px" font-weight="600" fill="#FFFFFF" filter="url(#shadow)" letter-spacing="1">${escapeXml(fechaSmall)}</text>\n</svg>`);
-    composites.push({ input: dateSvg, left: pillLeft, top: pillTop });
+    // Render pill SVG at higher density to reduce text blur in production
+    const dateSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${pillWidth}\" height=\"${pillHeight}\" viewBox=\"0 0 ${pillWidth} ${pillHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <filter id=\"shadow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">\n      <feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"3\" flood-opacity=\"0.35\"/>\n    </filter>\n  </defs>\n  <rect x=\"0\" y=\"0\" width=\"${pillWidth}\" height=\"${pillHeight}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"rgba(0,0,0,0.55)\" />\n  <text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-family=\"'Inter','Arial',sans-serif\" font-size=\"${pillFont}px\" font-weight=\"600\" fill=\"#FFFFFF\" filter=\"url(#shadow)\" letter-spacing=\"1\">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
+    const dateSvgRaster = await sharp(dateSvg, { density: 220 }).png().toBuffer();
+    composites.push({ input: dateSvgRaster, left: pillLeft, top: pillTop });
   }
 
   // Adaptive footer for both guest & host (if nameBar provided)
@@ -138,11 +140,17 @@ export async function generateInviteCard(
       cursorY += f1 + effectiveGap;
     }
     textSvg += `  <text x="50%" y="${cursorY + f2 * 0.85}" text-anchor="middle" fill="${dateColor}" font-family="'Inter','Arial',sans-serif" font-weight="700" font-size="${f2}px" letter-spacing="1">${escapeXml(fechaTxt)}</text>\n`;
-    const svg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${barWidth}" height="${barHeight}" viewBox="0 0 ${barWidth} ${barHeight}" xmlns="http://www.w3.org/2000/svg">\n  <defs>\n    <linearGradient id="ograd" x1="0%" y1="0%" x2="100%" y2="0%">\n      <stop offset="0%" stop-color="#FF7A00"/>\n      <stop offset="40%" stop-color="#FFA630"/>\n      <stop offset="60%" stop-color="#FFB347"/>\n      <stop offset="100%" stop-color="#FF7A00"/>\n    </linearGradient>\n  </defs>\n  <rect x="${inset}" y="${inset}" width="${barWidth - strokeW}" height="${barHeight - strokeW}" rx="${radius}" ry="${radius}" fill="black" stroke="url(#ograd)" stroke-width="${strokeW}" />\n${textSvg}</svg>`);
-    composites.push({ input: svg, left: barLeft, top: barTop });
+    const nameBarSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${barWidth}\" height=\"${barHeight}\" viewBox=\"0 0 ${barWidth} ${barHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"ograd\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n      <stop offset=\"0%\" stop-color=\"#FF7A00\"/>\n      <stop offset=\"40%\" stop-color=\"#FFA630\"/>\n      <stop offset=\"60%\" stop-color=\"#FFB347\"/>\n      <stop offset=\"100%\" stop-color=\"#FF7A00\"/>\n    </linearGradient>\n  </defs>\n  <rect x=\"${inset}\" y=\"${inset}\" width=\"${barWidth - strokeW}\" height=\"${barHeight - strokeW}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"black\" stroke=\"url(#ograd)\" stroke-width=\"${strokeW}\" />\n${textSvg}</svg>`);
+    const nameBarRaster = await sharp(nameBarSvg, { density: 230 }).png().toBuffer();
+    composites.push({ input: nameBarRaster, left: barLeft, top: barTop });
   }
-
-  let composite = sharp(templateInput).composite(composites).resize(tpl.width, tpl.height, { fit: 'cover' });
+  // Build base image; avoid unnecessary resize (can blur text) if dimensions already match template.
+  let base = sharp(templateInput);
+  const metadata = await base.metadata();
+  if (metadata.width !== tpl.width || metadata.height !== tpl.height) {
+    base = base.resize(tpl.width, tpl.height, { fit: 'cover' });
+  }
+  const composite = base.composite(composites);
 
   if (format === 'png') {
     return await composite.png({ compressionLevel: 9 }).toBuffer();
