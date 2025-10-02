@@ -1,24 +1,10 @@
 import { prisma } from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
 import { audit } from '@/lib/audit';
-import { buildDefaultClaim, signBirthdayClaim, verifyBirthdayClaim } from '@/lib/birthdays/token';
+import { signBirthdayClaim, verifyBirthdayClaim } from '@/lib/birthdays/token';
 import { randomBytes } from 'crypto';
-import type {
-  BirthdayReservation,
-  BirthdayPack,
-  InviteToken,
-  TokenRedemption,
-  CourtesyItem,
-  PhotoDeliverable,
-  Prisma,
-} from '@prisma/client';
-
-// Config helpers -------------------------------------------------------------
-import { getBirthdayTokenTtlHours } from '@/lib/config';
-const BDAY_TOKEN_TTL_HOURS = getBirthdayTokenTtlHours();
-
-function addHours(d: Date, hours: number) {
-  return new Date(d.getTime() + hours * 3600 * 1000);
-}
+import { Prisma, type BirthdayReservation, type BirthdayPack, type InviteToken, type TokenRedemption, type CourtesyItem, type PhotoDeliverable } from '@prisma/client';
 
 function now() {
   return new Date();
@@ -106,7 +92,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
 export async function listReservations(
   filters: ListReservationFilters = {},
   pagination: Pagination = {}
-): Promise<{ items: ReservationWithRelations[]; total: number; page: number; pageSize: number }> {
+): Promise<{ items: (ReservationWithRelations & { cardsReady?: boolean })[]; total: number; page: number; pageSize: number }> {
   const page = Math.max(1, Math.floor(pagination.page ?? 1));
   const pageSize = Math.min(100, Math.max(1, Math.floor(pagination.pageSize ?? 20)));
 
@@ -131,14 +117,69 @@ export async function listReservations(
     prisma.birthdayReservation.count({ where }),
     prisma.birthdayReservation.findMany({
       where,
-      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [
+        // Aprobadas/completadas primero (simular booleano con CASE luego en orden post-proc)
+        { date: 'desc' },
+        { createdAt: 'desc' }
+      ],
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
     }),
   ]);
 
-  return { items: items as ReservationWithRelations[], total, page, pageSize };
+  // Obtener ids para buscar existencia de tarjetas (InviteTokenCard) sin romper si aún no existe la tabla
+  const ids = items.map(i => i.id);
+  let cardsByReservation: Record<string, boolean> = {};
+  if (ids.length) {
+    try {
+      // Buscar tokens y luego si hay registros de cards para esos tokens
+      const tokens = await prisma.inviteToken.findMany({ where: { reservationId: { in: ids } }, select: { id: true, reservationId: true } });
+      if (tokens.length) {
+        const tokenIds = tokens.map(t => t.id);
+        try {
+          const cards = await prisma.$queryRawUnsafe<{ inviteTokenId: string }[]>(
+            `SELECT "inviteTokenId" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_,i)=>'$'+(i+1)).join(',')})`,
+            ...tokenIds
+          );
+          const tokenIdSet = new Set(cards.map(c => c.inviteTokenId));
+          for (const t of tokens) {
+            if (tokenIdSet.has(t.id)) cardsByReservation[t.reservationId] = true;
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+
+  // Post-order to push approved/completed first maintaining internal date ordering.
+  // Además: fallback a filesystem si aún no existe la tabla o no se pudo insertar registro.
+  const decorated = (items as ReservationWithRelations[]).map(r => Object.assign(r, { cardsReady: !!cardsByReservation[r.id] }));
+
+  // Filesystem fallback (solo para los que aún no marcan cardsReady)
+  const toCheckFs = decorated.filter(r => !r.cardsReady);
+  if (toCheckFs.length) {
+    await Promise.all(toCheckFs.map(async r => {
+      try {
+        const relDir = path.resolve(process.cwd(), 'public', 'birthday-cards', r.id);
+        const host = path.join(relDir, 'host.png');
+        const guest = path.join(relDir, 'guest.png');
+        const hostOk = await fs.promises.access(host).then(()=>true).catch(()=>false);
+        const guestOk = await fs.promises.access(guest).then(()=>true).catch(()=>false);
+        if (hostOk && guestOk) (r as any).cardsReady = true;
+      } catch {}
+    }));
+  }
+  decorated.sort((a,b)=>{
+    const aPri = (a.status === 'approved' || a.status === 'completed') ? 0 : 1;
+    const bPri = (b.status === 'approved' || b.status === 'completed') ? 0 : 1;
+    if (aPri !== bPri) return aPri - bPri;
+    const aDt = a.date.getTime();
+    const bDt = b.date.getTime();
+    if (aDt !== bDt) return bDt - aDt;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return { items: decorated, total, page, pageSize };
 }
 
 export async function getReservation(id: string): Promise<ReservationWithRelations | null> {
@@ -190,9 +231,25 @@ export async function generateInviteTokens(
     : undefined;
 
   const nowDt = now();
-  const exp = addHours(nowDt, BDAY_TOKEN_TTL_HOURS);
+  // --- Cálculo manual zona Lima (UTC-5, sin DST efectivo) ---
+  // Convertimos la fecha de la reserva (asumida en UTC) a "día Lima" restando 5 horas.
+  function toLimaDateParts(date: Date) {
+    const limaMs = date.getTime() - 5 * 3600 * 1000; // UTC-5
+    const lima = new Date(limaMs);
+    return { y: lima.getUTCFullYear(), m: lima.getUTCMonth(), d: lima.getUTCDate() };
+  }
+  const { y, m, d } = toLimaDateParts(reservation.date);
+  // Expira a las 00:01 (Lima) del día siguiente => 05:01 UTC del día siguiente.
+  const expUtcMs = Date.UTC(y, m, d + 1, 5, 1, 0, 0); // 00:01 Lima = 05:01 UTC
+  const exp = new Date(expUtcMs);
+  // Hora actual en Lima (aprox) para validar que no sea pasado.
+  const { y: cy, m: cm, d: cd } = toLimaDateParts(nowDt);
+  const nowLimaApproxUtcMs = Date.UTC(cy, cm, cd, nowDt.getUTCHours(), nowDt.getUTCMinutes(), nowDt.getUTCSeconds(), nowDt.getUTCMilliseconds());
+  if (exp.getTime() <= nowDt.getTime()) {
+    throw new Error('RESERVATION_DATE_PAST');
+  }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Attempt to claim generation by setting tokensGeneratedAt only if currently null (and optional optimistic lock on updatedAt)
     let claimed = false;
     if (!opts?.force) {
@@ -215,7 +272,7 @@ export async function generateInviteTokens(
 
     const created: InviteToken[] = [];
 
-  async function createToken(kind: 'host' | 'guest', maxUses: number) {
+    async function createToken(kind: 'host' | 'guest', maxUses: number) {
       let code = generateCode(10);
       for (let attempts = 0; attempts < 3; attempts++) {
         const dup = await tx.inviteToken.findUnique({ where: { code } });
@@ -232,20 +289,23 @@ export async function generateInviteTokens(
           expiresAt: exp,
           claim: '',
           metadata: null,
-          // cast due to possible stale prisma types at dev-time
-          ...( { maxUses, usedCount: 0 } as any ),
+          maxUses,
+          usedCount: 0,
         },
       });
-      const claimPayload = buildDefaultClaim(reservationId, code);
-      const signed = signBirthdayClaim(claimPayload);
+      // Build claim with explicit expiration anchored to reservation date (already computed above)
+      const iatSec = Math.floor(Date.now() / 1000);
+      const expSec = Math.floor(exp.getTime() / 1000);
+      const claimPayload = { t: 'birthday', rid: reservationId, kind, code, iat: iatSec, exp: expSec };
+      const signed = signBirthdayClaim(claimPayload as any);
       const updated = await tx.inviteToken.update({ where: { id: token.id }, data: { claim: JSON.stringify(signed) } });
       created.push(updated);
       return updated;
     }
 
     // detect if we already have host and guest tokens in any state
-    const hasHost = existing.find(e => e.kind === 'host');
-    const hasGuest = existing.find(e => e.kind === 'guest');
+  const hasHost = existing.find((e: any) => e.kind === 'host');
+  const hasGuest = existing.find((e: any) => e.kind === 'guest');
 
     if (!hasHost) await createToken('host', 1);
     if (!hasGuest) await createToken('guest', Math.max(1, target));
@@ -264,6 +324,9 @@ export async function generateInviteTokens(
     created: result.created,
     exp: toIso(exp),
     force: Boolean(opts?.force),
+    mode: 'RES_DATE_ANCHORED',
+    resDate: toIso(reservation.date),
+    // Se omite ahora Lima exacto (aprox implícito en cálculo manual)
   });
   return result.tokens;
 }
@@ -273,7 +336,7 @@ export async function listTokens(reservationId: string): Promise<InviteToken[]> 
 }
 
 export async function redeemToken(code: string, context: RedeemContext = {}, byUserId?: string): Promise<{ token: InviteToken; redemption: TokenRedemption }>{
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const token = await tx.inviteToken.findUnique({ where: { code } });
     if (!token) throw new Error('TOKEN_NOT_FOUND');
     const nowDt = now();

@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const id = params.id;
   try {
     const body = await req.json().catch(()=>({}));
-    const { name, qrCount, bottle, perks, active, featured } = body;
+  const { name, qrCount, bottle, perks, active, featured, priceSoles } = body;
     const data: any = {};
     if (name != null) {
       const trimmed = String(name).trim();
@@ -35,11 +35,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     if (active != null) data.active = !!active;
     if (featured != null) data.featured = !!featured;
+    if (priceSoles != null) {
+      const n = Number(priceSoles);
+      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) return apiError('INVALID_PRICE', 'Precio inválido', undefined, 400);
+      data.priceSoles = Math.floor(n);
+    }
 
     if (Object.keys(data).length === 0) return apiError('NO_FIELDS', 'Sin cambios', undefined, 400);
 
     const updated = await prisma.birthdayPack.update({ where: { id }, data });
-    return apiOk({ pack: { id: updated.id, name: updated.name, qrCount: updated.qrCount, bottle: updated.bottle, featured: updated.featured, active: updated.active, perks: JSON.parse(updated.perks || '[]') } });
+  return apiOk({ pack: { id: updated.id, name: updated.name, qrCount: updated.qrCount, bottle: updated.bottle, featured: updated.featured, active: updated.active, perks: JSON.parse(updated.perks || '[]'), priceSoles: (updated as any).priceSoles ?? 0 } });
   } catch (e: any) {
     if (String(e?.message||'').includes('Unique') && String(e?.message||'').includes('name')) {
       return apiError('NAME_TAKEN', 'Nombre de pack duplicado', undefined, 409);

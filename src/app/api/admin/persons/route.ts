@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     if (!code || code.length < 3 || code.length > 40) errors.code = 'Código entre 3 y 40 chars';
     if (!/^[A-Za-z0-9_.\-]+$/.test(code)) errors.code = 'Solo letras, números, guiones, guion bajo y punto';
     if (!name || name.length < 2 || name.length > 120) errors.name = 'Nombre entre 2 y 120 chars';
-  if (Object.keys(errors).length) return apiError('VALIDATION','Errores de validación',errors,400);
+  if (Object.keys(errors).length) return apiError('INVALID_BODY','Errores de validación',errors,400);
 
     // Unique code
     const existing = await prisma.person.findUnique({ where: { code }, select: { id: true } });
@@ -49,6 +49,6 @@ export async function POST(req: Request) {
     return apiOk(created,201);
   } catch (e: any) {
     console.error('admin persons POST error', e);
-    return apiError('INTERNAL','Error interno',{ message: String(e?.message || e) },500);
+  return apiError('INTERNAL_ERROR','Error interno',{ message: String(e?.message || e) },500);
   }
 }

@@ -39,7 +39,7 @@ export default function NewPersonForm({ onCreated }: Props) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (data?.error === 'VALIDATION' && data.details) {
+        if ((data?.error === 'INVALID_BODY' || data?.code === 'INVALID_BODY') && (data.details || data?.details)) {
           setFieldErrors(data.details);
           setError('Revisa los campos.');
         } else if (res.status === 409) {

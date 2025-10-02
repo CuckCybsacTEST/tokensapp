@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     const templateId = url.searchParams.get('templateId');
     
     if (!batchId) {
-      return apiError('MISSING_BATCH_ID','Falta batchId',undefined,400);
+      return apiError('BATCH_ID_REQUIRED','Falta batchId',undefined,400);
     }
 
     if (!templateId) {
@@ -98,7 +98,8 @@ export async function GET(req: Request) {
     }
 
     if (!fs.existsSync(templatePath)) {
-      return apiError('TEMPLATE_FILE_MISSING','Archivo de plantilla faltante',{ path: templatePath },500);
+      // Archivo físicamente ausente: diferenciamos de TEMPLATE_NOT_FOUND (registro DB)
+      return apiError('TEMPLATE_FILE_NOT_FOUND','Archivo de plantilla no encontrado',{ path: templatePath },404);
     }
 
     // Procesar tokens en chunks para mantener el uso de memoria limitado

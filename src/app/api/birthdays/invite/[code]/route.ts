@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     };
     return apiOk({ public: false, token: base, reservation: extended });
   } catch (e) {
-    return apiError('INTERNAL', 'Error interno');
+  return apiError('INTERNAL_ERROR', 'Error interno');
   }
 }
 
@@ -135,6 +135,6 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     if (msg === 'TOKEN_ALREADY_REDEEMED') return apiError('TOKEN_ALREADY_REDEEMED','Token ya usado');
     if (msg === 'TOKEN_EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado');
     if (msg === 'INVALID_SIGNATURE') return apiError('INVALID_SIGNATURE','Firma inválida');
-    return apiError('INTERNAL','Error interno');
+  return apiError('INTERNAL_ERROR','Error interno');
   }
 }

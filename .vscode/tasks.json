@@ -333,6 +333,41 @@
 			"label": "Typecheck TS (adhoc) - cron bypass check",
 			"type": "shell",
 			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck orphan prizes",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck purge ui",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck final purge integration",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck retry",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck final",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck final 2",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "adhoc typecheck clean",
+			"type": "shell",
+			"command": "npm run -s typecheck"
 		}
 	]
 }

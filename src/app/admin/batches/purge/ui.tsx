@@ -17,6 +17,7 @@ type DryRunSummary = {
   rouletteSessions: number;
   spins: number;
   redeemed: { batchId: string; _count: { _all: number } }[];
+  orphanPrizes?: string[]; // presente en dry-run de sólo huérfanos o cuando deleteUnusedPrizes=true
 };
 
 interface DryRunResponse { ok: true; dryRun: true; batchIds: string[]; summary: DryRunSummary }
@@ -32,6 +33,8 @@ export default function PurgeBatchesClient() {
   const [deleteUnusedPrizes, setDeleteUnusedPrizes] = useState(false);
   const [force, setForce] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [orphanPrizes, setOrphanPrizes] = useState<Array<{ id: string; key: string; label: string; emittedTotal: number; stock: number | null; createdAt: string }>>([]);
+  const [purgeOrphansOnly, setPurgeOrphansOnly] = useState(false);
 
   const redeemedMap = useMemo(()=>{
     const m = new Map<string, number>();
@@ -45,8 +48,9 @@ export default function PurgeBatchesClient() {
       const r = await fetch('/api/admin/batches/purge', { cache: 'no-store' });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error');
-      const rows: BatchRow[] = j.batches.map((b: any) => ({ ...b, createdAt: b.createdAt }));
-      setBatches(rows);
+  const rows: BatchRow[] = j.batches.map((b: any) => ({ ...b, createdAt: b.createdAt }));
+  setBatches(rows);
+  setOrphanPrizes(j.orphanPrizes || []);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -64,10 +68,10 @@ export default function PurgeBatchesClient() {
   function selectLatest(n: number) { setSelected(new Set(batches.slice(0,n).map(b=>b.id))); }
 
   async function runDry() {
-    if (!selected.size) return;
+    if (!purgeOrphansOnly && !selected.size) return;
     setDryRun(null); setResult(null); setError(null);
     try {
-      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: Array.from(selected), options: { dryRun: true, deleteUnusedPrizes } }) });
+      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: Array.from(selected), options: { dryRun: true, deleteUnusedPrizes, purgeOrphansOnly } }) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error dry-run');
       setDryRun(j);
@@ -78,11 +82,11 @@ export default function PurgeBatchesClient() {
 
   async function executePurge() {
     if (!dryRun) return;
-    if (anyRedeemed && !force) { setError('Hay tokens redimidos/entregados. Marca FORCE para continuar.'); return; }
+    if (!purgeOrphansOnly && anyRedeemed && !force) { setError('Hay tokens redimidos/entregados. Marca FORCE para continuar.'); return; }
     if (confirmText !== 'PURGE') { setError('Debes escribir PURGE para confirmar.'); return; }
     setError(null);
     try {
-      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: dryRun.batchIds, options: { dryRun: false, deleteUnusedPrizes } }) });
+      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: dryRun.batchIds, options: { dryRun: false, deleteUnusedPrizes, purgeOrphansOnly } }) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error purge');
       setResult(j);
@@ -93,6 +97,20 @@ export default function PurgeBatchesClient() {
 
   function summaryLines() {
     if (!dryRun) return null;
+    if (purgeOrphansOnly) {
+      const ids = dryRun.summary.orphanPrizes || [];
+      return (
+        <div className="space-y-2 mt-4 text-xs">
+          <div className="font-medium">Dry-run orphan prizes:</div>
+          {ids.length === 0 && <div>No hay prizes huérfanos.</div>}
+          {ids.length > 0 && (
+            <ul className="list-disc pl-5 space-y-1">
+              {ids.map(id => <li key={id} className="font-mono">{id}</li>)}
+            </ul>
+          )}
+        </div>
+      );
+    }
     const lines = dryRun.summary.tokenCounts.map(tc => {
       const redeemed = redeemedMap.get(tc.batchId) || 0;
       return { id: tc.batchId, tokens: tc._count._all, redeemed };
@@ -118,9 +136,11 @@ export default function PurgeBatchesClient() {
         <button onClick={()=>selectLatest(5)} className="btn-outline !px-2 !py-1">Latest 5</button>
         <button onClick={()=>selectLatest(10)} className="btn-outline !px-2 !py-1">Latest 10</button>
         <button onClick={selectNone} className="btn-outline !px-2 !py-1">Limpiar selección</button>
-        <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={deleteUnusedPrizes} onChange={e=>setDeleteUnusedPrizes(e.target.checked)} /> <span>Eliminar prizes huérfanos</span></label>
+        <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={deleteUnusedPrizes} disabled={purgeOrphansOnly} onChange={e=>setDeleteUnusedPrizes(e.target.checked)} /> <span>Eliminar prizes huérfanos</span></label>
+        <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={purgeOrphansOnly} onChange={e=>{ setPurgeOrphansOnly(e.target.checked); setSelected(new Set()); setDryRun(null); setResult(null); }} /> <span>Solo purgar prizes huérfanos</span></label>
         <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={force} onChange={e=>setForce(e.target.checked)} /> <span>FORCE</span></label>
       </div>
+      {!purgeOrphansOnly && (
       <div className="overflow-x-auto border rounded">
         <table className="w-full text-[11px]">
           <thead>
@@ -155,6 +175,19 @@ export default function PurgeBatchesClient() {
             </tbody>
         </table>
       </div>
+      )}
+      {purgeOrphansOnly && (
+        <div className="border rounded p-3 bg-slate-50 dark:bg-slate-800/30 text-[11px]">
+          <div className="font-medium mb-2">Prizes huérfanos detectados ({orphanPrizes.length}):</div>
+          {orphanPrizes.length === 0 && <div>No hay prizes huérfanos.</div>}
+          {orphanPrizes.length > 0 && (
+            <ul className="max-h-56 overflow-auto space-y-1 list-disc pl-5">
+              {orphanPrizes.map(p => <li key={p.id} className="font-mono" title={p.label}>{p.key} • {p.id.slice(0,12)}… stock={p.stock ?? '-'} emitted={p.emittedTotal}</li>)}
+            </ul>
+          )}
+          <div className="mt-2 text-xs text-slate-500">Se eliminarán únicamente prizes sin tokens ni assignedTokens.</div>
+        </div>
+      )}
       <div className="flex flex-col gap-3 border rounded p-4 bg-slate-50 dark:bg-slate-800/30">
         <div className="flex gap-2 flex-wrap items-center">
           <button disabled={!selected.size} onClick={runDry} className="btn !px-3 !py-1 text-xs">Dry-run</button>

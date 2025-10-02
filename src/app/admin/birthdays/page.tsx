@@ -14,17 +14,17 @@ type Reservation = {
   status: string;
   tokensGeneratedAt: string | null;
   createdAt: string;
+  cardsReady?: boolean;
 };
 
 type AdminReservationCardProps = {
   r: Reservation;
   busy: boolean;
   onApprove: (id:string)=>void;
-  onGenTokens: (id:string)=>void;
-  onDownload: (id:string)=>void;
+  onGenerateCards: (id:string)=>void; // kept for context
 };
 
-const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenTokens, onDownload }: AdminReservationCardProps){
+const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenerateCards }: AdminReservationCardProps){
   const isApproved = r.status === 'approved' || r.status === 'completed';
   const isAlert = r.status === 'pending_review' || r.status === 'canceled';
   const cardBorder = isApproved ? 'border-emerald-400 dark:border-emerald-700' : isAlert ? 'border-rose-400 dark:border-rose-700' : 'border-slate-200 dark:border-slate-700';
@@ -73,9 +73,12 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApp
             {r.status === 'pending_review' && (
               <button className="btn shrink-0" disabled={busy} onClick={()=>onApprove(r.id)}>Aprobar</button>
             )}
-            <button className="btn shrink-0" disabled={busy} onClick={()=>onGenTokens(r.id)}>Generar tokens</button>
-            <button className="btn shrink-0" onClick={()=>onDownload(r.id)}>Descargar tarjetas</button>
-            <a className="btn shrink-0" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Ver detalle</a>
+            {(!r.cardsReady) ? (
+              <button className="btn shrink-0" disabled={busy} onClick={()=>onGenerateCards(r.id)}>Generar tarjetas</button>
+            ) : (
+              <a className="btn shrink-0" href={`/marketing/birthdays/${encodeURIComponent(r.id)}/qrs?mode=admin`} target="_blank" rel="noopener noreferrer">Ver tarjetas</a>
+            )}
+            <a className="btn shrink-0" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Detalle</a>
           </div>
           {showLeft && <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-l" />}
           {showRight && <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[rgba(var(--color-bg-rgb),0.9)] to-transparent rounded-r" />}
@@ -90,6 +93,7 @@ export default function AdminBirthdaysPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<Reservation[]>([]);
+  const [success, setSuccess] = useState<Record<string,string>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [status, setStatus] = useState<string | "">("");
@@ -106,9 +110,9 @@ export default function AdminBirthdaysPage() {
   const [cPack, setCPack] = useState("");
   const [cGuests, setCGuests] = useState(5);
   const [creating, setCreating] = useState(false);
-  const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[] }[]>([]);
+  const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[]; priceSoles?: number; isCustom?: boolean }[]>([]);
   const [editingPack, setEditingPack] = useState<string|null>(null);
-  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string }>>({});
+  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string; priceSoles: number }>>({});
 
   async function load() {
     setLoading(true); setErr(null);
@@ -129,14 +133,15 @@ export default function AdminBirthdaysPage() {
       } else j = {};
       if (!res.ok) throw new Error(j?.code || j?.message || `HTTP_${res.status}`);
       if (!j.items && Array.isArray(j)) j = { items: j };
-      setItems(j.items || []);
+      setItems((j.items || []) as Reservation[]);
     } catch(e:any) {
       setErr(String(e?.message||e));
     } finally { setLoading(false); }
   }
 
   useEffect(()=>{ load(); }, [page, pageSize]);
-  useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
+  // Cargar packs desde endpoint admin para incluir isCustom y evitar filtrado público
+  useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/admin/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
 
   async function restorePacks() {
     try {
@@ -146,9 +151,9 @@ export default function AdminBirthdaysPage() {
       if (j?.packs) setPacks(j.packs);
     } catch(e:any){ setErr(String(e?.message||e)); }
   }
-  function startEdit(pId:string){ const p = packs.find(x=>x.id===pId); if(!p) return; setEditingPack(pId); setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n') }})); }
+  function startEdit(pId:string){ const p = packs.find(x=>x.id===pId); if(!p) return; setEditingPack(pId); setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n'), priceSoles: p.priceSoles ?? 0 }})); }
   function cancelEdit(){ setEditingPack(null); }
-  async function savePack(pId:string){ const e = packEdits[pId]; if(!e) return; try { const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean); const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks }; const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); const j=await res.json().catch(()=>({})); if(!res.ok) throw new Error(j?.code||j?.message||res.status); const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null); if(list?.packs) setPacks(list.packs); setEditingPack(null); } catch(e:any){ setErr(String(e?.message||e)); } }
+  async function savePack(pId:string){ const e = packEdits[pId]; if(!e) return; try { const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean); const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.priceSoles }; const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); const j=await res.json().catch(()=>({})); if(!res.ok) throw new Error(j?.code||j?.message||res.status); const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null); if(list?.packs) setPacks(list.packs); setEditingPack(null); } catch(e:any){ setErr(String(e?.message||e)); } }
 
   async function approve(id: string) {
     setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
@@ -171,6 +176,24 @@ export default function AdminBirthdaysPage() {
       const j = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(j?.code || j?.message || res.status);
       await load();
+    } catch (e: any) {
+      setErr(String(e?.message || e));
+    } finally {
+      setBusy(prev => ({ ...prev, [id]: false }));
+    }
+  }
+
+  async function generateCards(id: string) {
+    setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
+    try {
+      const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/cards/generate`, { method: 'POST' });
+      const j = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(j?.code || j?.message || res.status);
+      // Actualizar item local sin recargar toda la lista
+      setItems(prev => prev.map(r => r.id === id ? { ...r, cardsReady: true } : r));
+      const already = j?.already === true || j?.result?.already === true;
+      setSuccess(prev => ({ ...prev, [id]: already ? 'Las tarjetas ya estaban generadas' : 'Tarjetas generadas' }));
+      setTimeout(()=>{ setSuccess(prev => { const n={...prev}; delete n[id]; return n; }); }, 4000);
     } catch (e: any) {
       setErr(String(e?.message || e));
     } finally {
@@ -302,11 +325,15 @@ export default function AdminBirthdaysPage() {
             const isEditing = editingPack === p.id;
             const edit = packEdits[p.id];
             return (
-              <div key={p.id} className="rounded border border-slate-300 dark:border-slate-600 p-3 bg-slate-50 dark:bg-slate-800/60 flex flex-col gap-2 transition-colors">
+              <div key={p.id} className={`rounded border ${p.isCustom ? 'border-fuchsia-400 dark:border-fuchsia-600' : 'border-slate-300 dark:border-slate-600'} p-3 bg-slate-50 dark:bg-slate-800/60 flex flex-col gap-2 transition-colors`}>                
                 {!isEditing && (
                   <>
-                    <div className="font-semibold text-sm">{p.name}</div>
+                    <div className="font-semibold text-sm flex items-center gap-2">
+                      {p.name}
+                      {p.isCustom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300">Custom</span>}
+                    </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400 transition-colors">Invitados (QRs): {p.qrCount}</div>
+                    <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Precio: S/ {p.priceSoles ?? 0}</div>
                     {p.bottle && <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Botella: {p.bottle}</div>}
                     <ul className="text-[11px] list-disc ml-4 space-y-0.5 text-slate-700 dark:text-slate-300 transition-colors">
                       {(p.perks||[]).map(per=> <li key={per}>{per}</li>)}
@@ -316,10 +343,11 @@ export default function AdminBirthdaysPage() {
                 )}
                 {isEditing && edit && (
                   <div className="space-y-2">
-                    <input className="input text-sm px-2 py-1" value={edit.name} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}}))} placeholder="Nombre" />
+                    <input className="input text-sm px-2 py-1" value={edit.name} onChange={e=>{ if(p.isCustom) return; setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}})); }} placeholder="Nombre" disabled={p.isCustom} title={p.isCustom ? 'Nombre bloqueado para el placeholder Custom' : 'Nombre del pack'} />
                     <input type="number" className="input text-sm px-2 py-1" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
                     <input className="input text-sm px-2 py-1" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
                     <textarea className="input h-28 text-xs px-2 py-1" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
+                    <input type="number" className="input text-sm px-2 py-1" value={edit.priceSoles} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], priceSoles: Math.max(0, parseInt(e.target.value)||0)}}))} placeholder="Precio (S/)" />
                     <div className="flex gap-2 text-xs">
                       <button onClick={()=>savePack(p.id)} className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30">Guardar</button>
                       <button onClick={cancelEdit} className="px-2 py-1 rounded bg-slate-700 border border-slate-500 hover:bg-slate-600">Cancelar</button>
@@ -354,14 +382,17 @@ export default function AdminBirthdaysPage() {
 
       <div className="grid gap-2">
         {items.map(r => (
-          <AdminReservationCard
-            key={r.id}
-            r={r}
-            busy={!!busy[r.id]}
-            onApprove={approve}
-            onGenTokens={genTokens}
-            onDownload={downloadCards}
-          />
+          <div key={r.id} className="space-y-1">
+            <AdminReservationCard
+              r={r}
+              busy={!!busy[r.id]}
+              onApprove={approve}
+              onGenerateCards={generateCards}
+            />
+            {success[r.id] && (
+              <div className="text-[11px] text-emerald-600 dark:text-emerald-300 px-1">{success[r.id]}</div>
+            )}
+          </div>
         ))}
       </div>
 

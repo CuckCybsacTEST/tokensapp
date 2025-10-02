@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     if (/column .* does not exist/i.test(msg) || /no such column/i.test(msg)) {
       return apiError('DB_SCHEMA_MISMATCH', 'Faltan migraciones en la base de datos.', { raw: msg }, 500);
     }
-    return apiError('INTERNAL', 'Error al listar reservas', { raw: msg }, 500);
+  return apiError('INTERNAL_ERROR', 'Error al listar reservas', { raw: msg }, 500);
   }
 }
 

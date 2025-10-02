@@ -6,6 +6,7 @@ import { ALLOWED_AREAS } from '@/lib/areas';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 type Task = { id: string; label: string; completed?: boolean; sortOrder: number; priority?: number; startDay?: string | null; endDay?: string | null; area?: string | null; completedToday?: number; sumValueToday?: number; measureEnabled?: boolean; targetValue?: number | null; unitLabel?: string | null };
+type TaskComment = { id: string; text: string; createdAt: string; username?: string; personCode?: string; personName?: string };
 
 function AreaSection(props: {
   areaKey: string;
@@ -29,6 +30,9 @@ function AreaSection(props: {
 
   const dragItemId = useRef<string | null>(null);
   const [localOrder, setLocalOrder] = useState<string[]>(groupTasks.map(t => t.id));
+  const commentsMetaRef = useRef<Record<string, { loading: boolean; loaded: boolean; items: TaskComment[]; error?: string }>>({});
+  const [commentsVersion, setCommentsVersion] = useState(0); // bump to re-render
+  const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   useEffect(() => {
     setLocalOrder(groupTasks.map(t => t.id));
   }, [allTasks, areaKey, statusFilter]);
@@ -100,6 +104,30 @@ function AreaSection(props: {
       void persistOrder(ids);
       return ids;
     });
+  };
+
+  const toggleComments = async (taskId: string) => {
+    setOpenComments(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+    const meta = commentsMetaRef.current[taskId];
+    if (!meta || (!meta.loaded && !meta.loading)) {
+      commentsMetaRef.current[taskId] = { loading: true, loaded: false, items: [] };
+      setCommentsVersion(v => v + 1);
+      try {
+        const day = props.todayYmd();
+        const r = await fetch(`/api/admin/tasks/comments?day=${encodeURIComponent(day)}&taskId=${encodeURIComponent(taskId)}`, { cache: 'no-store' });
+        const j = await r.json().catch(()=> ({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.code || 'ERR');
+        commentsMetaRef.current[taskId] = { loading: false, loaded: true, items: Array.isArray(j.comments) ? j.comments : [] };
+      } catch (e: any) {
+        commentsMetaRef.current[taskId] = { loading: false, loaded: true, items: [], error: e?.message || String(e) };
+      } finally {
+        setCommentsVersion(v => v + 1);
+      }
+    }
+  };
+
+  const formatTime = (iso: string) => {
+    try { const d = new Date(iso); return d.toISOString().slice(11,16); } catch { return ''; }
   };
 
   return (
@@ -261,6 +289,32 @@ function AreaSection(props: {
                 </div>
                 <div className="text-right">
                   <button className="text-red-500 hover:underline" onClick={()=> deleteTask(t.id)}>Eliminar</button>
+                </div>
+                <div className="mt-2 border-t pt-2">
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={()=> toggleComments(t.id)}
+                  >{openComments[t.id] ? 'Ocultar comentarios' : 'Ver comentarios'}</button>
+                  {openComments[t.id] && (() => {
+                    const meta = commentsMetaRef.current[t.id];
+                    if (!meta || meta.loading) return <div className="mt-2 text-xs text-soft">Cargando…</div>;
+                    if (meta.error) return <div className="mt-2 text-xs text-danger">Error: {meta.error}</div>;
+                    if (!meta.items.length) return <div className="mt-2 text-xs text-soft">(Sin comentarios)</div>;
+                    return (
+                      <ul className="mt-2 space-y-1 max-h-40 overflow-auto pr-1 text-xs">
+                        {meta.items.map(c => (
+                          <li key={c.id} className="p-1 rounded bg-slate-100 dark:bg-slate-700/50">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{c.personName || c.username || '—'}</span>
+                              <span className="text-[10px] text-soft">{formatTime(c.createdAt)}</span>
+                            </div>
+                            <div className="whitespace-pre-wrap break-words">{c.text}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
                 </div>
               </div>
             );

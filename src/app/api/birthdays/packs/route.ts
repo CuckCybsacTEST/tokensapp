@@ -25,15 +25,18 @@ export async function GET(req: NextRequest) {
   }
   try {
     const packs = await prisma.birthdayPack.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
-    const data = packs.map((p) => ({
+    const data = packs.map((p: any) => ({
       id: p.id,
       name: p.name,
       qrCount: p.qrCount,
       bottle: p.bottle,
       featured: p.featured,
       perks: safeParseJsonArray(p.perks),
+      priceSoles: (p as any).priceSoles ?? 0,
+      isCustom: (p as any).isCustom === true,
     }));
-    return apiOk({ packs: data }, 200, cors);
+    const filtered = isAdmin ? data : data.filter((p: any) => !p.isCustom);
+    return apiOk({ packs: filtered }, 200, cors);
   } catch (e) {
     return apiError('PACKS_FETCH_ERROR', 'Failed to load packs', undefined, 500, cors);
   }

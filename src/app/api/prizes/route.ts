@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const json = await req.json();
   const parsed = prizeSchema.safeParse(json);
   if (!parsed.success) {
-    return apiError("VALIDATION_ERROR", "Datos inválidos", parsed.error.flatten(), 400);
+    return apiError("INVALID_BODY", "Datos inválidos", parsed.error.flatten(), 400);
   }
   // Compute a robust unique key: find the smallest available "premioN"
   async function computeNextKey() {

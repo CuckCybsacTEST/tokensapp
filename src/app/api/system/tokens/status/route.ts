@@ -62,6 +62,6 @@ export async function GET(req: Request) {
     return res;
   } catch (e: any) {
     console.error('status endpoint error', e);
-    return apiError('INTERNAL', 'Error interno', { message: String(e?.message || e) }, 500);
+  return apiError('INTERNAL_ERROR', 'Error interno', { message: String(e?.message || e) }, 500);
   }
 }

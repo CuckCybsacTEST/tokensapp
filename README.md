@@ -155,8 +155,8 @@ Soporte end-to-end para tareas con metas numéricas por persona/día. Detalle co
 | Método | Path | Descripción | Body (JSON clave) | Códigos éxito | Códigos error más comunes |
 |--------|------|-------------|-------------------|---------------|---------------------------|
 | GET | `/api/prizes` | Lista premios | - | 200 | 500 |
-| POST | `/api/prizes` | Crea premio nuevo (key secuencial auto) | `label`, `color?`, `description?`, `stock?` | 201 | 400 (VALIDATION_ERROR / INVALID_COLOR) |
-| PATCH | `/api/prizes/:id` | Actualiza premio | `label?`, `color?`, `description?`, `stock?`, `active?` | 200 | 400 (VALIDATION_ERROR/INVALID_COLOR), 404 (NOT_FOUND) |
+| POST | `/api/prizes` | Crea premio nuevo (key secuencial auto) | `label`, `color?`, `description?`, `stock?` | 201 | 400 (INVALID_BODY / INVALID_COLOR) |
+| PATCH | `/api/prizes/:id` | Actualiza premio | `label?`, `color?`, `description?`, `stock?`, `active?` | 200 | 400 (INVALID_BODY/INVALID_COLOR), 404 (NOT_FOUND) |
 | POST | `/api/batch/generate-all` | Emite tokens para TODOS los premios activos con stock > 0 consumiendo todo el stock | `expirationDays`, `description?`, `includeQr?`, `lazyQr?` | 200 | 400 (NO_ACTIVE_PRIZES / INVALID_STOCK / LIMIT_EXCEEDED / INVALID_EXPIRATION), 409 (RACE_CONDITION), 429 (RATE_LIMIT), 500 |
 | POST | `/api/batch/generate` | DEPRECATED: usar `/api/batch/generate-all` | - | - | 410 (MANUAL_MODE_DISABLED) |
 | GET | `/api/batch/:id/download` | Descarga ZIP de batch existente | query `qr=1` para PNGs | 200 | 404 (NOT_FOUND) |

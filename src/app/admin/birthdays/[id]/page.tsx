@@ -182,9 +182,9 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
   <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="font-medium">Invites</div>
           <div className="flex flex-wrap gap-2">
-            <button className="btn" disabled={busy} onClick={()=>genTokens(false)}>Generar tokens</button>
-            <button className="btn" disabled={busy} onClick={()=>genTokens(true)}>Forzar (rellenar)</button>
-            <button className="btn" onClick={downloadCards}>Descargar tarjetas</button>
+            <button className="btn" disabled={busy} onClick={()=>genTokens(false)}>Generar tarjetas</button>
+            <a className="btn" href={`/marketing/birthdays/${encodeURIComponent(id)}/qrs?mode=admin`} target="_blank" rel="noopener noreferrer">Ver tarjetas</a>
+            <button className="btn" disabled={busy} onClick={()=>genTokens(true)}>Regenerar tokens (forzar)</button>
           </div>
           <div className="text-xs text-slate-400">Total: {tokens.length}</div>
           <div className="max-h-60 overflow-auto border border-slate-700 rounded">

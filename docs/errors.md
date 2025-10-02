@@ -33,8 +33,8 @@ Formato unificado de errores REST/JSON.
 | TEMPLATE_FILE_NOT_FOUND | 404 | Archivo de plantilla no hallado |
 | BATCH_NOT_FOUND | 404 | Lote inexistente |
 | TOKEN_NOT_FOUND | 404 | Token inexistente |
-| VALIDATION | 400 | Errores de validación específicos (ver details) |
-| VALIDATION_ERROR | 400 | Alias legado (no usar nuevo) |
+| INVALID_QUERY | 400 | Query params inválidos |
+| INVALID_BODY | 400 | Body inválido / errores de validación (details con campos) |
 | BAD_REQUEST | 400 | Petición mal formada / parámetros inválidos |
 | INVALID_JSON | 400 | JSON no parseable (legacy; usar BAD_REQUEST) |
 | INVALID_LABEL | 400 | Etiqueta fuera de rango/regla |
@@ -42,7 +42,6 @@ Formato unificado de errores REST/JSON.
 | INVALID_ID | 400 | ID faltante o malformado |
 | TOKEN_ID_REQUIRED | 400 | Falta tokenId en ruta |
 | BATCH_ID_REQUIRED | 400 | Falta batchId (nuevo; reemplaza MISSING_BATCH_ID) |
-| MISSING_BATCH_ID | 400 | Alias legado batchId faltante |
 | INVALID_MEASURE_ENABLED | 400 | Campo measureEnabled inválido |
 | INVALID_TARGET_VALUE | 400 | Valor objetivo inválido |
 | INVALID_UNIT_LABEL | 400 | Unidad inválida |
@@ -97,7 +96,7 @@ Formato unificado de errores REST/JSON.
 | DELIVER_STATE_LOST | 500 | Estado inconsistente tras entrega |
 | COMPOSE_ERROR | 500 | Error al componer imagen/plantilla |
 | UPLOAD_FAILED | 500 | Fallo inesperado subiendo plantilla |
-| TEMPLATE_FILE_MISSING | 500 | Archivo de plantilla faltante en FS |
+| TEMPLATE_FILE_NOT_FOUND | 404 | Archivo de plantilla no hallado |
 | TEMPLATE_MISSING | 500 | Plantilla no disponible en render batch |
 | DB_ERROR | 500 | Error de base de datos |
 | TX_FAIL | 500 | Fallo genérico en transacción |
@@ -106,8 +105,10 @@ Formato unificado de errores REST/JSON.
 
 ### Alias / Legacy / Notas
 - BAD_REQUEST reemplaza casos previos de INVALID_JSON o BAD_JSON.
-- BATCH_ID_REQUIRED sustituye MISSING_BATCH_ID (mantener alias hasta limpiar clientes).
 - INTERNAL se mantiene como alias; usar INTERNAL_ERROR para nuevos lanzamientos.
+- Diferenciar:
+  - TEMPLATE_NOT_FOUND: registro inexistente en DB
+  - TEMPLATE_FILE_NOT_FOUND: registro existe pero archivo en FS falta
 - NOT_ELIGIBLE expone `details.reason` (ej: TOO_MANY_TOKENS, NEED_AT_LEAST_2_TOKENS, NO_PRIZES) y campos adicionales (`totalTokens`, `prizes`).
 - RATE_LIMIT incluye `details.retryAfterSeconds` y header `Retry-After`.
 - En migración two-phase los códigos NOT_REVEALED / ALREADY_REVEALED / ALREADY_DELIVERED / NOT_DELIVERED unifican semántica.

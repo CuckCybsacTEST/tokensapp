@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = await req.json().catch(() => ({}));
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return apiError("VALIDATION_ERROR", "Datos inválidos", parsed.error.flatten(), 400);
+    return apiError("INVALID_BODY", "Datos inválidos", parsed.error.flatten(), 400);
   }
   try {
     const data = { ...parsed.data } as any;

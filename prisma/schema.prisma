@@ -232,6 +232,8 @@ model BirthdayPack {
   perks        String
   active       Boolean               @default(true)
   featured     Boolean               @default(false)
+  priceSoles   Int                   @default(0) // Precio entero en soles (sin decimales)
+  isCustom     Boolean               @default(false) // Pack placeholder / personalizado interno
   reservations BirthdayReservation[]
 
   @@index([active])
@@ -282,10 +284,23 @@ model InviteToken {
   createdAt     DateTime            @default(now())
   reservation   BirthdayReservation @relation(fields: [reservationId], references: [id])
   redemptions   TokenRedemption[]
+  card          InviteTokenCard?
 
   @@index([reservationId])
   @@index([status])
   @@index([expiresAt])
+}
+
+model InviteTokenCard {
+  id            String      @id @default(cuid())
+  inviteTokenId String      @unique
+  kind          String
+  filePath      String      // relative to public/ (e.g. birthday-cards/<reservationId>/host.png)
+  createdAt     DateTime    @default(now())
+  inviteToken   InviteToken @relation(fields: [inviteTokenId], references: [id], onDelete: Cascade)
+
+  @@index([kind])
+  @@index([createdAt])
 }
 
 model TokenRedemption {

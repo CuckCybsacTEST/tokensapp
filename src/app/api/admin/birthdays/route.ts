@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     if (/P2021/.test(msg) || /P2022/.test(msg)) {
       return apiError('DB_SCHEMA_MISMATCH', 'Inconsistencia de esquema Prisma. Ejecuta migraciones.', { raw: msg }, 500);
     }
-    return apiError('INTERNAL', 'Error interno al listar reservas', { raw: msg }, 500);
+  return apiError('INTERNAL_ERROR', 'Error interno al listar reservas', { raw: msg }, 500);
   }
 }
 

@@ -23,6 +23,6 @@ export async function GET(req: Request) {
     if (!isStaff) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
     return apiOk({ canView: true, canToggle: true });
   } catch (e) {
-    return apiError('INTERNAL','Error interno', { message: String((e as any)?.message || e) }, 500);
+  return apiError('INTERNAL_ERROR','Error interno', { message: String((e as any)?.message || e) }, 500);
   }
 }

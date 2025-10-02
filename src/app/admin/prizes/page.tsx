@@ -1,18 +1,37 @@
 import { prisma } from "@/lib/prisma";
 import PrizesClient from "./PrizesClient";
+
 export const metadata = { title: 'Premios' };
+export const dynamic = "force-dynamic"; // evitar cache SSR para panel admin
 
-export const dynamic = "force-dynamic";
+// Tipos enriquecidos
+type BasePrize = Awaited<ReturnType<typeof prisma.prize.findMany>>[number];
+type PrizeWithStats = BasePrize & { revealedCount: number; deliveredCount: number };
+type LastBatchMap = Record<string, { id: string; name: string; createdAt: Date }>;
+type BatchPrizeStat = {
+  batchId: string;
+  description: string;
+  createdAt: Date;
+  prizes: Array<{ prizeId: string; label: string; color: string | null; count: number }>;
+};
 
-async function getPrizesWithLastBatch() {
+async function getPrizesWithLastBatch(): Promise<{
+  prizes: PrizeWithStats[];
+  lastBatch: LastBatchMap;
+  batchPrizeStats: BatchPrizeStat[];
+}> {
   const prizes = await prisma.prize.findMany({ orderBy: { createdAt: "asc" } });
-  if (!prizes.length) return { prizes: [], lastBatch: {} } as any;
-  const prizeIds = prizes.map((p) => p.id);
+  if (!prizes.length) {
+    return { prizes: [], lastBatch: {}, batchPrizeStats: [] };
+  }
 
-  // Obtener tokens ordenados por creación desc para los premios involucrados (para last batch)
+  const prizeIds = prizes.map((p: BasePrize) => p.id);
+
+  // OPT: Limitamos el número de tokens escaneados para encontrar último batch por premio.
   const tokens = await prisma.token.findMany({
     where: { prizeId: { in: prizeIds } },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
+    take: prizeIds.length * 6, // heurística: suficiente para encontrar el último batch de cada premio
     select: {
       prizeId: true,
       batch: { select: { id: true, description: true, createdAt: true } },
@@ -21,14 +40,14 @@ async function getPrizesWithLastBatch() {
     },
   });
 
-  const seen = new Set<string>();
-  const lastBatch: Record<string, { id: string; name: string; createdAt: Date }> = {};
+  const lastBatch: LastBatchMap = {};
   const revealedCount: Record<string, number> = {};
   const deliveredCount: Record<string, number> = {};
+  const seenBatchPerPrize = new Set<string>();
 
   for (const t of tokens) {
-    if (!seen.has(t.prizeId) && t.batch) {
-      seen.add(t.prizeId);
+    if (t.batch && !seenBatchPerPrize.has(t.prizeId)) {
+      seenBatchPerPrize.add(t.prizeId);
       lastBatch[t.prizeId] = {
         id: t.batch.id,
         name: t.batch.description || t.batch.id,
@@ -43,30 +62,27 @@ async function getPrizesWithLastBatch() {
     }
   }
 
-  // Fusionar counts a los objetos de premios (propiedades extra para el cliente)
-  const enriched = prizes.map((p) => ({
+  const enriched: PrizeWithStats[] = prizes.map((p: BasePrize) => ({
     ...p,
     revealedCount: revealedCount[p.id] || 0,
     deliveredCount: deliveredCount[p.id] || 0,
   }));
 
-  // === NUEVO: estadística reciente por batch (evitar traer todos los tokens) ===
+  // Estadísticas recientes por batch
   const recentBatches = await prisma.batch.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 12, // límite razonable para UI
+    take: 12,
     select: { id: true, description: true, createdAt: true }
   });
-  const recentIds = recentBatches.map(b => b.id);
-  let batchPrizeStats: Array<{ batchId: string; description: string; createdAt: Date; prizes: Array<{ prizeId: string; label: string; color: string|null; count: number }> }> = [];
-  if (recentIds.length) {
-    const grouped = await (prisma as any).token.groupBy({
+  const batchPrizeStats: BatchPrizeStat[] = [];
+  if (recentBatches.length) {
+    const grouped = await prisma.token.groupBy({
       by: ['batchId', 'prizeId'],
-      where: { batchId: { in: recentIds } },
+  where: { batchId: { in: recentBatches.map((b: typeof recentBatches[number]) => b.id) } },
       _count: { _all: true },
     });
     const prizeMap = new Map(enriched.map(p => [p.id, p]));
-    const batchMeta = new Map(recentBatches.map(b => [b.id, b]));
-    const perBatch: Record<string, any[]> = {};
+    const perBatch: Record<string, BatchPrizeStat['prizes']> = {};
     for (const row of grouped) {
       if (!perBatch[row.batchId]) perBatch[row.batchId] = [];
       const p = prizeMap.get(row.prizeId);
@@ -77,18 +93,26 @@ async function getPrizesWithLastBatch() {
         count: row._count._all,
       });
     }
-    batchPrizeStats = recentBatches.map(b => ({
-      batchId: b.id,
-      description: b.description || b.id,
-      createdAt: b.createdAt,
-      prizes: (perBatch[b.id] || []).sort((a,b)=> a.label.localeCompare(b.label)),
-    }));
+    for (const b of recentBatches) {
+      batchPrizeStats.push({
+        batchId: b.id,
+        description: b.description || b.id,
+        createdAt: b.createdAt,
+        prizes: (perBatch[b.id] || []).sort((a, b) => a.label.localeCompare(b.label)),
+      });
+    }
   }
 
-  return { prizes: enriched, lastBatch, batchPrizeStats } as any;
+  return { prizes: enriched, lastBatch, batchPrizeStats };
 }
 
 export default async function PrizesPage() {
   const { prizes, lastBatch, batchPrizeStats } = await getPrizesWithLastBatch();
-  return <PrizesClient initialPrizes={prizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />;
+  return (
+    <PrizesClient
+      initialPrizes={prizes}
+      lastBatch={lastBatch}
+      batchPrizeStats={batchPrizeStats}
+    />
+  );
 }
