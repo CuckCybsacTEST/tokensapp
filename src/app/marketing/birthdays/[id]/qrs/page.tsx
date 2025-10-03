@@ -31,7 +31,7 @@ export default function QRsFinalesPage() {
   useEffect(() => {
     (async () => {
       if (!id) { setError('Falta ID'); setLoading(false); return; }
-      // Admin mode bypasses client secret
+      // Admin mode bypasses client secret but now falls back to public-secret if unauthorized
       if (!cs && mode === 'admin') {
         setLoading(true); setError(null);
         try {
@@ -39,12 +39,29 @@ export default function QRsFinalesPage() {
             fetch(`/api/admin/birthdays/${id}/tokens`),
             fetch(`/api/admin/birthdays/${id}/cards`)
           ]);
+          if (tRes.status === 401 || tRes.status === 403 || cRes.status === 401 || cRes.status === 403) {
+            // Try public-secret fallback to get ephemeral client secret
+            const secRes = await fetch(`/api/birthdays/reservations/${id}/public-secret`);
+            if (secRes.ok) {
+              const secJson = await secRes.json().catch(()=>({}));
+              const newCs = secJson?.clientSecret;
+              if (newCs) {
+                // Now load public tokens using newCs
+                const pubRes = await fetch(`/api/birthdays/reservations/${id}/tokens?clientSecret=${encodeURIComponent(newCs)}`);
+                const pubJson = await pubRes.json().catch(()=>({}));
+                if (pubRes.ok && pubJson?.items) {
+                  setTokens(pubJson.items);
+                  setLoading(false);
+                  return;
+                }
+              }
+            }
+            throw new Error('No autorizado (se requiere enlace público válido)');
+          }
           const tJson = await tRes.json().catch(()=>({}));
           const cJson = await cRes.json().catch(()=>({}));
           if (!tRes.ok) throw new Error(tJson?.code || tJson?.message || 'No se pudieron cargar tokens');
           setTokens(tJson.items || []);
-          // If cards exist and host/guest, we will favor those URLs by setting cardFailed false (handled in img src below)
-          // We could store paths in state if needed later.
         } catch(e:any){ setError(e?.message||'No se pudieron cargar los QRs'); }
         finally { setLoading(false); }
         return;
