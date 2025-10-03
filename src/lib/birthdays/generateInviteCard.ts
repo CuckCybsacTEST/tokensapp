@@ -78,12 +78,19 @@ export async function generateInviteCard(
   let pillLeft = left + Math.round((qrSize - pillWidth) / 2);
   if (pillLeft < 0) pillLeft = 0;
   if (pillLeft + pillWidth > tpl.width) pillLeft = tpl.width - pillWidth;
-    const marginBottom = Math.round(pillFont * 0.6);
+    const marginBottom = Math.round(pillFont * 0.8); // más aire sobre el QR
     let pillTop = top - pillHeight - marginBottom;
     if (pillTop < 8) pillTop = 8; // clamp
     const radius = Math.round(pillHeight / 2);
-    // Render pill SVG at higher density to reduce text blur in production
-    const dateSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${pillWidth}\" height=\"${pillHeight}\" viewBox=\"0 0 ${pillWidth} ${pillHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <filter id=\"shadow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">\n      <feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"3\" flood-opacity=\"0.35\"/>\n    </filter>\n  </defs>\n  <rect x=\"0\" y=\"0\" width=\"${pillWidth}\" height=\"${pillHeight}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"rgba(0,0,0,0.55)\" />\n  <text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" font-family=\"'Inter','Arial',sans-serif\" font-size=\"${pillFont}px\" font-weight=\"600\" fill=\"#FFFFFF\" filter=\"url(#shadow)\" letter-spacing=\"1\">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
+    // Intento de embed de fuente para evitar tofu si falta Inter en el sistema
+    let pillFontEmbed = '';
+    try {
+      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'Inter-SemiBold.woff2');
+      const fontBuf = await fs.readFile(interPath);
+      pillFontEmbed = `@font-face{font-family:'InterEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+    } catch {}
+    // Render pill SVG at higher density; incluye style si hay embed
+    const dateSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${pillWidth}" height="${pillHeight}" viewBox="0 0 ${pillWidth} ${pillHeight}" xmlns="http://www.w3.org/2000/svg">\n  <defs>\n    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">\n      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.35"/>\n    </filter>\n  </defs>\n  ${pillFontEmbed ? `<style>${pillFontEmbed}</style>` : ''}\n  <rect x="0" y="0" width="${pillWidth}" height="${pillHeight}" rx="${radius}" ry="${radius}" fill="rgba(0,0,0,0.55)" />\n  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="'InterEmbed','Inter','Arial',sans-serif" font-size="${pillFont}px" font-weight="600" fill="#FFFFFF" filter="url(#shadow)" letter-spacing="1">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
     let dateSvgRaster = await sharp(dateSvg, { density: 220 }).resize(pillWidth, pillHeight).png().toBuffer();
     if (!process.env.SILENCE_INVITE_CARD_LOGS && process.env.DEBUG_INVITE_CARD_SIZES) {
       try {
@@ -127,7 +134,7 @@ export async function generateInviteCard(
         const pivot = ' A LA FIESTA DE ';
         const idx = fullPhrase.indexOf(pivot.toUpperCase());
         if (idx > 0) {
-          phraseLines = [fullPhrase.slice(0, idx), fullPhrase.slice(idx + 1)];
+          phraseLines = [fullPhrase.slice(0, idx), fullPhrase.slice(idx + pivot.length)]; // quitar pivot completo
         } else {
           const mid = Math.floor(fullPhrase.length / 2);
           phraseLines = [fullPhrase.slice(0, mid), fullPhrase.slice(mid)];
@@ -150,24 +157,30 @@ export async function generateInviteCard(
     const linesHeight = phraseLines.length * f1 + (phraseLines.length - 1) * effectiveGap;
     const blockHeight = linesHeight + effectiveGap + f2;
   // Desplazamos ligeramente hacia abajo el bloque de texto para mejor alineación visual
-  const verticalBias = Math.round(barHeight * 0.16); // desplazado aún más hacia abajo
-    let cursorY = Math.round((barHeight - blockHeight)/2) + verticalBias + f1 * 0.82;
+  const verticalBias = Math.round(barHeight * 0.08); // menor sesgo, centrado más natural
+    let cursorY = Math.round((barHeight - blockHeight)/2) + verticalBias + Math.round(f1 * 0.6);
     const highlightColor = '#FFD36A';
     const firstUpper = first.toUpperCase();
-    let textSvg = '';
+    let embeddedFontCss = '';
+    try {
+      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'Inter-SemiBold.woff2');
+      const fontBuf = await fs.readFile(interPath);
+      embeddedFontCss = `@font-face{font-family:'InterEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+    } catch {}
+    let textSvg = embeddedFontCss ? `  <style>${embeddedFontCss}</style>\n` : '';
     for (const line of phraseLines) {
       const idx = line.indexOf(firstUpper);
       if (idx >= 0) {
         const before = line.slice(0, idx);
         const namePart = line.slice(idx, idx + firstUpper.length);
         const after = line.slice(idx + firstUpper.length);
-        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(before)}<tspan fill="${highlightColor}">${escapeXml(namePart)}</tspan>${escapeXml(after)}</text>\n`;
+        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(before)}<tspan fill="${highlightColor}">${escapeXml(namePart)}</tspan>${escapeXml(after)}</text>\n`;
       } else {
-        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(line)}</text>\n`;
+        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(line)}</text>\n`;
       }
       cursorY += f1 + effectiveGap;
     }
-    textSvg += `  <text x="50%" y="${cursorY + f2 * 0.85}" text-anchor="middle" fill="${dateColor}" font-family="'Inter','Arial',sans-serif" font-weight="700" font-size="${f2}px" letter-spacing="1">${escapeXml(fechaTxt)}</text>\n`;
+  textSvg += `  <text x="50%" y="${cursorY + f2 * 0.85}" text-anchor="middle" fill="${dateColor}" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="700" font-size="${f2}px" letter-spacing="1">${escapeXml(fechaTxt)}</text>\n`;
     const nameBarSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${barWidth}\" height=\"${barHeight}\" viewBox=\"0 0 ${barWidth} ${barHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"ograd\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n      <stop offset=\"0%\" stop-color=\"#FF7A00\"/>\n      <stop offset=\"40%\" stop-color=\"#FFA630\"/>\n      <stop offset=\"60%\" stop-color=\"#FFB347\"/>\n      <stop offset=\"100%\" stop-color=\"#FF7A00\"/>\n    </linearGradient>\n  </defs>\n  <rect x=\"${inset}\" y=\"${inset}\" width=\"${barWidth - strokeW}\" height=\"${barHeight - strokeW}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"black\" stroke=\"url(#ograd)\" stroke-width=\"${strokeW}\" />\n${textSvg}</svg>`);
     let nameBarRaster = await sharp(nameBarSvg, { density: 230 }).resize(barWidth, barHeight).png().toBuffer();
     if (!process.env.SILENCE_INVITE_CARD_LOGS && process.env.DEBUG_INVITE_CARD_SIZES) {
