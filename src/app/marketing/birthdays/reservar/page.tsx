@@ -8,6 +8,8 @@ function isValidDateYYYYMMDD(v: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
+// Simplified styling (removed heavy orange gradients). Maintain subtle marketing tones.
+
 function ReservarCumplePageInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -77,22 +79,8 @@ function ReservarCumplePageInner() {
   const selectedPack = useMemo(() => packs.find(p => p.id === packId) || null, [packs, packId]);
 
   // Perks / preview
-  function PackPreview() {
-    if (!selectedPack) return null;
-    return (
-      <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3">
-        <div className="font-semibold">{selectedPack.name}</div>
-        {selectedPack.bottle ? (
-          <div className="text-sm mt-1">🍾 Botella de cortesía: {selectedPack.bottle}</div>
-        ) : null}
-        {selectedPack.perks && selectedPack.perks.length ? (
-          <ul className="mt-2 list-disc pl-5 text-sm opacity-90">
-            {selectedPack.perks.map((p: string) => <li key={p}>{p}</li>)}
-          </ul>
-        ) : null}
-      </div>
-    );
-  }
+  // Eliminado preview visual de pack para UI simplificada
+  function PackPreview() { return null; }
 
   // Simple validation
   function validate(): string | null {
@@ -173,68 +161,55 @@ function ReservarCumplePageInner() {
   }
 
   return (
-    <section className="container mx-auto max-w-3xl px-4 py-8">
-      {/* Hero de alto impacto */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 15% 85%, rgba(255,77,46,0.35), transparent 40%), radial-gradient(circle at 85% 15%, rgba(255,122,60,0.35), transparent 40%)' }} />
-        <div className="relative z-10 px-5 md:px-8 py-8 md:py-10">
-          <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight">Tu cumple, con accesos QR</h1>
-          <p className="mt-2 md:mt-3 text-base md:text-lg opacity-85 max-w-2xl">Elige tu Pack, coordinamos por WhatsApp y recibirás tus tarjetas QR para ti y tus invitados. Rápido, simple y con beneficios.</p>
-          {/* Chips de beneficios */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {['QR para invitados','Botella de cortesía','Coordinación por WhatsApp','Fecha y horario a elección'].map(b => (
-              <span key={b} className="px-3 py-1.5 rounded-full text-xs border" style={{ borderColor: 'rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)' }}>{b}</span>
-            ))}
-            {selectedPack ? (
-              <span className="px-3 py-1.5 rounded-full text-xs border font-semibold" style={{ borderColor: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.12)' }}>Pack: {selectedPack.name}{selectedPack.bottle ? ` · 🍾 ${selectedPack.bottle}` : ''}</span>
-            ) : null}
-          </div>
-          <div className="mt-5">
-            <a href="#form" className="inline-block rounded px-5 py-2.5 text-sm font-semibold shadow-md" style={{ background: '#3D2EFF' }}>Ir al formulario</a>
-          </div>
-        </div>
+    <section className="mx-auto w-full max-w-4xl px-4 py-8 md:py-10 lg:py-12">
+      <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6 md:p-10 space-y-5">
+        <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-300 to-red-400">Reserva y genera tus tarjetas al toque</span>
+        </h1>
+        <p className="text-sm md:text-base opacity-85 max-w-2xl leading-relaxed">
+          Confirma tu reserva y genera tus tarjetas de invitación al toque. Completa los datos y obtén de inmediato tus accesos QR.
+        </p>
       </div>
 
       {/* Anchor to form */}
       <div id="form" className="pt-2 scroll-mt-24 md:scroll-mt-32" />
-      <h1 className="text-2xl font-extrabold">Reserva tu cumpleaños</h1>
-      <p className="opacity-80 mt-1">Completa tus datos para confirmar tu Pack. Te mostraremos tus tarjetas QR al finalizar.</p>
-
-      {/* Confirmación previa al form */}
-      {selectedPack ? (
-        <div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3">
-          <div className="text-sm">Vas a reservar el <span className="font-semibold">{selectedPack.name}</span>.</div>
-          {selectedPack.bottle ? <div className="text-xs opacity-80 mt-1">Incluye botella de cortesía: {selectedPack.bottle}</div> : null}
+      <div className="mt-10 md:mt-14 mb-2">
+        <div className="inline-flex items-baseline gap-3">
+          <h2 className="text-xl md:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-500 to-red-400 tracking-tight">Datos de la reserva</h2>
+          <span className="h-px w-24 md:w-40 bg-gradient-to-r from-orange-500/60 to-transparent" />
         </div>
-      ) : null}
+        <p className="opacity-70 mt-2 text-sm md:text-base max-w-2xl leading-relaxed">Revisa que la información sea correcta para evitar demoras.</p>
+      </div>
+
+      {/* Sección de confirmación de pack eliminada intencionalmente */}
 
       {packsError ? (
         <div className="mt-4 p-3 rounded bg-red-900/40 border border-red-500/30 text-sm">{packsError}</div>
       ) : null}
 
-      <form className="mt-6 space-y-4" onSubmit={onSubmit} data-testid="reserve-form">
+      <form className="mt-6 space-y-5 md:space-y-6" onSubmit={onSubmit} data-testid="reserve-form">
         <div>
-          <label className="block text-sm font-semibold">Nombre del cumpleañero</label>
-          <input data-testid="input-name" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre" />
+          <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">Nombre del cumpleañero</label>
+          <input data-testid="input-name" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre" />
         </div>
         <div>
-          <label className="block text-sm font-semibold">WhatsApp</label>
-          <input data-testid="input-whatsapp" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="+51 9xx xxx xxx" />
+          <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">WhatsApp</label>
+          <input data-testid="input-whatsapp" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} placeholder="+51 9xx xxx xxx" />
         </div>
         <div>
-          <label className="block text-sm font-semibold">Documento</label>
-          <input data-testid="input-documento" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={documento} onChange={e=>setDocumento(e.target.value)} placeholder="DNI / CE" />
+          <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">Documento</label>
+          <input data-testid="input-documento" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={documento} onChange={e=>setDocumento(e.target.value)} placeholder="DNI / CE" />
         </div>
         {/* Email oculto por ahora (opcional) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold">Fecha</label>
-            <input data-testid="input-date" type="date" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={date} min={date} onChange={e=>setDate(e.target.value)} />
-            <div className="text-xs opacity-70 mt-1">Sugerencia: elige una fecha de este mes. Puedes cambiarla luego con nuestro equipo.</div>
+            <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">Fecha</label>
+            <input data-testid="input-date" type="date" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={date} min={date} onChange={e=>setDate(e.target.value)} />
+            {/* Sugerencia removida según requerimiento */}
           </div>
           <div>
-            <label className="block text-sm font-semibold">Horario</label>
-            <select data-testid="input-timeslot" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={timeSlot} onChange={e=>setTimeSlot(e.target.value)}>
+            <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">Horario</label>
+            <select data-testid="input-timeslot" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={timeSlot} onChange={e=>setTimeSlot(e.target.value)}>
               <option className="text-black" value="20:00">20:00</option>
               <option className="text-black" value="21:00">21:00</option>
               <option className="text-black" value="22:00">22:00</option>
@@ -244,25 +219,24 @@ function ReservarCumplePageInner() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-semibold">Pack</label>
-          <select data-testid="input-pack" className="mt-1 w-full rounded border border-white/10 bg-transparent px-3 py-2" value={packId} onChange={e=>setPackId(e.target.value)}>
+          <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">Pack</label>
+            <select data-testid="input-pack" className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" value={packId} onChange={e=>setPackId(e.target.value)}>
             <option className="text-black" value="">Selecciona un Pack…</option>
             {packs.map(p => (
               <option className="text-black" key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          {/* Preview del pack (botella/perks) */}
-          <PackPreview />
+          {/* Preview removido para simplificar UX */}
         </div>
 
-        {error ? <div className="p-3 rounded bg-red-900/40 border border-red-500/30 text-sm">{error}</div> : null}
+  {error ? <div className="p-3 rounded-lg bg-red-900/30 border border-red-500/40 text-sm backdrop-blur-sm">{error}</div> : null}
 
-        <div className="pt-2">
-          <button data-testid="submit-reservation" type="submit" disabled={submitting || loadingPacks} className="rounded px-4 py-2 font-semibold" style={{ background: '#3D2EFF', opacity: submitting ? 0.7 : 1 }}>
-            {submitting ? (phase === 'creating' ? 'Creando reserva…' : 'Estamos preparando tus accesos…') : 'Confirmar y ver QRs'}
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
+          <button data-testid="submit-reservation" type="submit" disabled={submitting || loadingPacks} className="rounded-lg px-6 py-3 text-sm font-semibold tracking-wide bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/70 transition disabled:opacity-60 disabled:cursor-not-allowed">
+            {submitting ? (phase === 'creating' ? 'Creando reserva…' : 'Preparando accesos…') : 'Confirmar y ver QRs'}
           </button>
           {submitting ? (
-            <div className="mt-2 text-sm opacity-80" data-testid={phase === 'creating' ? 'state-creating' : 'state-generating'}>
+            <div className="text-xs sm:text-sm opacity-85 animate-pulse" data-testid={phase === 'creating' ? 'state-creating' : 'state-generating'}>
               {phase === 'creating' ? 'Registrando tu solicitud…' : 'Generando tus tarjetas QR. Esto puede tardar unos segundos.'}
             </div>
           ) : null}

@@ -106,27 +106,32 @@ export async function listReservations(
   }
   if (filters.search && filters.search.trim()) {
     const s = filters.search.trim();
+    // Búsqueda case-insensitive en campos clave
     where.OR = [
-      { celebrantName: { contains: s } },
-      { phone: { contains: s } },
-      { documento: { contains: s } },
+      { celebrantName: { contains: s, mode: 'insensitive' } },
+      { phone: { contains: s, mode: 'insensitive' } },
+      { documento: { contains: s, mode: 'insensitive' } },
     ];
   }
 
-  const [total, items] = await prisma.$transaction([
-    prisma.birthdayReservation.count({ where }),
-    prisma.birthdayReservation.findMany({
-      where,
-      orderBy: [
-        // Aprobadas/completadas primero (simular booleano con CASE luego en orden post-proc)
-        { date: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
-    }),
-  ]);
+  // Estrategia: traer coincidencias completas y ordenar en memoria aplicando prioridad de estado.
+  // Priorizamos: approved/completed primero (peso 0), luego el resto (peso 1), dentro del mismo peso orden por createdAt DESC.
+  // Se usa createdAt (fecha de creación) en lugar de date (fecha de celebración) para el orden principal solicitado.
+  const rawItems = await prisma.birthdayReservation.findMany({
+    where,
+    include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
+  });
+  rawItems.sort((a, b) => {
+    const weight = (s: string) => (s === 'approved' || s === 'completed' ? 0 : 1);
+    const wa = weight(a.status);
+    const wb = weight(b.status);
+    if (wa !== wb) return wa - wb;
+    // createdAt más reciente primero
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+  const total = rawItems.length;
+  const start = (page - 1) * pageSize;
+  const items = rawItems.slice(start, start + pageSize);
 
   // Obtener ids para buscar existencia de tarjetas (InviteTokenCard) sin romper si aún no existe la tabla
   const ids = items.map(i => i.id);

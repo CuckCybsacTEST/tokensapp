@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { generateQrPngDataUrl } from '@/lib/qr'; // still used for fallback if card fails (optional)
 
@@ -27,6 +27,29 @@ export default function QRsFinalesPage() {
 
   const host = useMemo(() => tokens.find(t => t.kind === 'host') || null, [tokens]);
   const guest = useMemo(() => tokens.find(t => t.kind === 'guest') || null, [tokens]);
+  const sliderRef = useRef<HTMLDivElement|null>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  // Slider logic (mobile only)
+  useEffect(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+    function onScroll() {
+      const node = sliderRef.current; if (!node) return;
+      const w = node.clientWidth;
+      if (w > 0) {
+        const idx = Math.round(node.scrollLeft / w);
+        setActiveSlide(idx);
+      }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [host, guest]);
+
+  function scrollToSlide(i: number) {
+    const el = sliderRef.current; if (!el) return;
+    const w = el.clientWidth || 0; el.scrollTo({ left: i * w, behavior: 'smooth' });
+  }
 
   useEffect(() => {
     (async () => {
@@ -150,17 +173,95 @@ export default function QRsFinalesPage() {
       <h1 className="text-2xl font-extrabold">Tus tarjetas QR</h1>
       <p className="opacity-80 mt-1">Descarga y comparte tus códigos. El de invitados puedes compartirlo por WhatsApp.</p>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Slider móvil */}
+      <div className="mt-6 md:hidden">
+        <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth gap-4" style={{scrollbarWidth:'none'}}>
+          {host && (
+            <div className="snap-center shrink-0 w-full" style={{scrollSnapAlign:'center'}}>
+              <div
+                className="relative overflow-hidden rounded-2xl p-5"
+                data-testid="qr-host"
+                style={{
+                  background: 'linear-gradient(145deg,#121212 0%,#1a1812 55%,#262017 100%)',
+                  boxShadow: '0 0 0 1px rgba(212,175,55,0.55),0 0 18px -6px rgba(212,175,55,0.5)'
+                }}
+              >
+                {/* Overlay suave para un borde dorado más fino y limpio */}
+                <div className="pointer-events-none absolute inset-0 rounded-2xl" style={{
+                  background: 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.05) 40%,rgba(255,255,255,0) 70%)',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,236,190,0.08),0 0 0 1px rgba(212,175,55,0.4)'
+                }} />
+                <div className="absolute top-2 right-2 select-none">
+                  <span className="text-[11px] tracking-[0.18em] font-extrabold px-3 py-1 rounded-full shadow"
+                        style={{background:'linear-gradient(90deg,#FFD873,#E7B647)',color:'#1a1205',border:'1px solid rgba(0,0,0,0.35)',boxShadow:'0 2px 4px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.06)'}}>VIP</span>
+                </div>
+                <div className="text-sm font-semibold" style={{ color: '#D4AF37' }}>Cumpleañero</div>
+                <div className="mt-1 text-xs opacity-80">Estado: {host.status || 'activo'} · 1 uso</div>
+                <div className="mt-4 flex items-center justify-center">
+                  <div className="relative w-full flex items-center justify-center">
+                    <img src={`/api/birthdays/invite/${host.code}/card`} alt="Tarjeta cumpleañero" className="w-full max-w-[280px] rounded-lg shadow-lg" onError={() => setCardFailed(p=>({...p,[host.id]:true}))} />
+                    {cardFailed[host.id] && (qrData[host.id] ? (
+                      <img src={qrData[host.id]} alt="QR cumpleañero" data-testid="qr-host-img" className="w-56 h-56 bg-white p-3 rounded-xl absolute" style={{ boxShadow:'0 0 0 4px #D4AF37'}} />
+                    ) : (
+                      <div className="w-56 h-56 rounded-xl animate-pulse absolute" style={{ background:'rgba(255,255,255,0.08)'}} />
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <a href={`/api/birthdays/invite/${host.code}/card?fmt=png`} download className="rounded px-3 py-2 text-sm font-semibold" style={{ background:'#D4AF37',color:'#111'}}>PNG</a>
+                  <button onClick={()=>copyLink(host.code)} className="rounded px-3 py-2 text-sm font-semibold border" style={{ borderColor:'#D4AF37',color:'#D4AF37'}}>Copiar link</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {guest && (
+            <div className="snap-center shrink-0 w-full" style={{scrollSnapAlign:'center'}}>
+              <div className="relative rounded-2xl p-5 flex flex-col" data-testid="qr-guest" style={{background:'linear-gradient(150deg,#171717 0%,#1F1F24 60%,#23262B 100%)',boxShadow:'0 0 0 1px #B7BDC9',border:'1px solid #B7BDC9'}}>
+                <div className="text-sm font-semibold opacity-90" style={{color:'#E2E6EC'}}>Invitados</div>
+                <div className="mt-1 text-xs opacity-80">Compártelo con tus invitados</div>
+                <div className="mt-4 flex items-center justify-center flex-1">
+                  <div className="relative w-full flex items-center justify-center">
+                    <img src={`/api/birthdays/invite/${guest.code}/card`} alt="Tarjeta invitados" className="w-full max-w-[280px] rounded-lg shadow-lg" onError={() => setCardFailed(p=>({...p,[guest.id]:true}))} />
+                    {cardFailed[guest.id] && (qrData[guest.id] ? (
+                      <img src={qrData[guest.id]} alt="QR invitados" data-testid="qr-guest-img" className="w-56 h-56 bg-white p-2 rounded-xl absolute" />
+                    ) : (
+                      <div className="w-56 h-56 bg-white/10 rounded-xl animate-pulse absolute" />
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  <a href={`/api/birthdays/invite/${guest.code}/card?fmt=png`} download className="rounded px-3 py-2 text-sm font-semibold" style={{ background: '#3D2EFF' }}>PNG</a>
+                  <button onClick={()=>copyLink(guest.code)} className="rounded px-3 py-2 text-sm font-semibold border border-white/20">Copiar link</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        {(host || guest) && (
+          <div className="mt-4 flex items-center justify-center gap-2">
+            {[host, guest].filter(Boolean).map((_,i)=> (
+              <button key={i} onClick={()=>scrollToSlide(i)} aria-label={`Slide ${i+1}`} className={`h-2.5 w-2.5 rounded-full transition-all ${activeSlide===i?'bg-white scale-110':'bg-white/30 hover:bg-white/60'}`} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Grid para pantallas medianas y grandes */}
+  <div className="hidden md:grid mt-6 grid-cols-1 md:grid-cols-2 gap-6">
         {/* Cumpleañero (host) */}
         {host && (
           <div
             className="relative overflow-hidden rounded-2xl p-5"
             data-testid="qr-host"
             style={{
-              background: 'linear-gradient(145deg,#121212 0%,#1d1d1d 55%,#262017 100%)',
-              boxShadow: '0 0 0 2px #D4AF37, 0 0 18px -4px rgba(212,175,55,0.5)',
+              background: 'linear-gradient(145deg,#121212 0%,#1a1812 55%,#262017 100%)',
+              boxShadow: '0 0 0 1px rgba(212,175,55,0.55),0 0 18px -6px rgba(212,175,55,0.5)'
             }}
           >
+            <div className="pointer-events-none absolute inset-0 rounded-2xl" style={{
+              background: 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(212,175,55,0.05) 40%,rgba(255,255,255,0) 70%)',
+              boxShadow: 'inset 0 0 0 1px rgba(255,236,190,0.08),0 0 0 1px rgba(212,175,55,0.4)'
+            }} />
             <div className="absolute top-2 right-2 select-none">
               <span
                 className="text-[11px] tracking-[0.18em] font-extrabold px-3 py-1 rounded-full shadow"
@@ -197,7 +298,7 @@ export default function QRsFinalesPage() {
                 )}
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
               <a
                 href={`/api/birthdays/invite/${host.code}/card?fmt=png`}
                 download
@@ -224,8 +325,8 @@ export default function QRsFinalesPage() {
             data-testid="qr-guest"
             style={{
               background: 'linear-gradient(150deg,#171717 0%,#1F1F24 60%,#23262B 100%)',
-              boxShadow: '0 0 0 2px #B7BDC9',
-              border: '2px solid #B7BDC9'
+              boxShadow: '0 0 0 1px #B7BDC9',
+              border: '1px solid #B7BDC9'
             }}
           >
             <div className="text-sm font-semibold opacity-90" style={{color:'#E2E6EC'}}>Invitados</div>
@@ -247,13 +348,13 @@ export default function QRsFinalesPage() {
                 )}
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
               <a href={`/api/birthdays/invite/${guest.code}/card?fmt=png`} download className="rounded px-3 py-2 text-sm font-semibold" style={{ background: '#3D2EFF' }}>Descargar PNG</a>
               <button onClick={()=>copyLink(guest.code)} className="rounded px-3 py-2 text-sm font-semibold border border-white/20">Copiar link de canje</button>
             </div>
           </div>
         )}
-      </div>
+  </div>
 
       {(!host || !guest) && (
         <p className="mt-4 text-sm opacity-70">Nota: No se encontraron ambos tokens esperados. Si el problema persiste, vuelve a intentarlo desde el formulario.</p>
