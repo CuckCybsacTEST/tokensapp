@@ -218,3 +218,15 @@ body {
 
 /* Utility helpers */
 .truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+@keyframes dynamicColor {
+  0% { color: #ffffff; }
+  25% { color: #f8e16b; }
+  50% { color: #e65353; }
+  75% { color: #4fa6ff; }
+  100% { color: #ffffff; }
+}
+
+.animate-color-change {
+  animation: dynamicColor 5s infinite;
+}

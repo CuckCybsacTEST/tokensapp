@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-  "ci:guard": "node scripts/ci/check-legacy-errors.cjs",
-  "dev": "next dev",
-  "dev:auto-e2e-url": "powershell -NoProfile -Command \"$p=3000; try { (Test-NetConnection -ComputerName 'localhost' -Port 3000 -WarningAction SilentlyContinue) | Out-Null } catch {}; Start-Job { npm run dev }; Start-Sleep -Seconds 4; if(Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue){ echo 'E2E_BASE_URL=http://localhost:3001' > .e2e-url; } else { echo 'E2E_BASE_URL=http://localhost:3000' > .e2e-url }; Get-Content .e2e-url\"",
+    "ci:guard": "node scripts/ci/check-legacy-errors.cjs",
+    "dev": "next dev",
+    "dev:auto-e2e-url": "powershell -NoProfile -Command \"$p=3000; try { (Test-NetConnection -ComputerName 'localhost' -Port 3000 -WarningAction SilentlyContinue) | Out-Null } catch {}; Start-Job { npm run dev }; Start-Sleep -Seconds 4; if(Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue){ echo 'E2E_BASE_URL=http://localhost:3001' > .e2e-url; } else { echo 'E2E_BASE_URL=http://localhost:3000' > .e2e-url }; Get-Content .e2e-url\"",
     "build": "next build",
-  "start": "next start",
-  "start:standalone": "node .next/standalone/server.js",
-  "prebuild": "node -e \"if(!process.env.TOKEN_SECRET){console.warn('[warn] TOKEN_SECRET no definido en build: se usará secreto efímero.');}\"",
+    "start": "next start",
+    "start:standalone": "node .next/standalone/server.js",
+    "prebuild": "node -e \"if(!process.env.TOKEN_SECRET){console.warn('[warn] TOKEN_SECRET no definido en build: se usará secreto efímero.');}\"",
     "start:prod": "prisma migrate deploy && next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -34,7 +34,7 @@
     "backup:batches": "tsx scripts/backup-batches.ts",
     "restore:zip": "tsx scripts/restore-batches-from-zip.ts",
     "verify:restore": "tsx scripts/verify-restore.ts",
-  "batch:set-date": "tsx scripts/setFunctionalDate.ts",
+    "batch:set-date": "tsx scripts/setFunctionalDate.ts",
     "purge:batches": "tsx scripts/purge-batches.ts",
     "tasks:clear": "set CONFIRM=YES && tsx scripts/clearTasks.ts",
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
@@ -44,7 +44,8 @@
     "cron:enable-tokens:today": "node -e \"fetch(require('node:process').env.CRON_BASE_URL+'/api/system/tokens/enable-scheduled',{method:'POST',headers:{'x-cron-secret':require('node:process').env.CRON_SECRET,'Content-Type':'application/json'},body:'{}'}).then(r=>r.text()).then(t=>console.log(t)).catch(e=>console.error(e))\"",
     "cookie:admin": "tsx scripts/genAdminCookie.ts admin",
     "cookie:staff": "tsx scripts/genAdminCookie.ts staff",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "build:css": "npx postcss src/app/globals.css -o src/app/output.css"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -91,7 +92,7 @@
     "postcss": "^8.5.6",
     "prettier": "^3.3.2",
     "prisma": "^5.22.0",
-    "tailwindcss": "3.4.10",
+    "tailwindcss": "^3.4.10",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.5",
     "typescript": "5.4.5",

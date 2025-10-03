@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { brand } from '../styles/brand';
-import { OverlayNav } from '../components/OverlayNav';
 import { Footer } from '../components/Footer';
 import { BackToTop } from '../components/BackToTop';
 
@@ -16,7 +15,6 @@ export default function BlogPage() {
                    linear-gradient(180deg, ${brand.darkA}, ${brand.darkB})`,
       }}
     >
-  <OverlayNav />
       <section className="relative py-24 md:py-32 px-4 md:px-8">
         <div className="container mx-auto max-w-5xl text-center">
           <h1 className="text-3xl md:text-5xl font-black tracking-tight" style={{ textShadow: `0 0 14px ${brand.primary}55` }}>

@@ -11,7 +11,6 @@ import { Stars } from './components/ui/Stars';
 
 // Importamos los componentes de sección
 // Reemplazamos Navbar por OverlayNav flotante
-import { OverlayNav } from './components/OverlayNav';
 import { TopNavBar } from './components/TopNavBar';
 import { Hero } from './components/Hero';
 import { DynamicShowsSection } from './components/DynamicShowsSection';
@@ -27,6 +26,7 @@ import { BlogSection } from './components/BlogSection';
 import { Footer } from './components/Footer';
 import { SectionDivider } from './components/SectionDivider';
 import { BackToTop } from './components/BackToTop';
+import { MinimalNavButtons } from './components/MinimalNavButtons';
 
 // Datos estructurados para la landing page
 // -----------------------------------------
@@ -119,6 +119,43 @@ export default function MarketingPage() {
   }, []);
   // Nota: Se eliminó el formulario de reservas de la landing
 
+  const [showNavButtons, setShowNavButtons] = React.useState(false);
+  const [currentSection, setCurrentSection] = React.useState('');
+
+  React.useEffect(() => {
+    const hero = document.getElementById('hero');
+    if (!hero) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setShowNavButtons(!entry.isIntersecting);
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    const sections = document.querySelectorAll('[data-section]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setCurrentSection(entry.target.getAttribute('data-section') || '');
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       className="min-h-screen w-full text-white overflow-x-hidden relative marketing-scroll"
@@ -144,37 +181,44 @@ export default function MarketingPage() {
       }} />
   {/* Navegación flotante de secciones (dots) y barra superior fija */}
   <TopNavBar />
-  <OverlayNav />
       {/* Hero ocupa todo el viewport (ajustado por --app-vh) y ninguna otra sección se ve en primer pantallazo */}
       <Hero />
       
       {/* Componentes de secciones principales */}
   {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-      <div id="shows" style={{ minHeight: '100vh', padding: '2rem 0', backgroundColor: 'transparent' }}>
+      <div id="shows" data-section="shows" style={{ minHeight: '100vh', padding: '2rem 0', backgroundColor: 'transparent' }}>
         <DynamicShowsSection />
       </div>
-  <SectionDivider className="my-10 sm:my-14" />
-    <BirthdaySection />
-  <SectionDivider className="my-10 sm:my-14" />
-    <QrSection />
-    <SectionDivider className="my-12 sm:my-16" />
-    <SpotifySection />
-  <SectionDivider className="my-12 sm:my-16 z-30" />
-    <GallerySection gallery={gallery} />
-  <SectionDivider className="my-12 sm:my-16 z-30" />
-  {/* Testimonials ocultados por ahora */}
-  {/* <TestimonialsSection testimonials={testimonials} /> */}
-  {/* <SectionDivider className="my-10 sm:my-14" /> */}
-    <FaqSection faq={faq} />
-  <SectionDivider className="my-10 sm:my-14" />
-    <BlogSection blogPosts={blogPosts} />
-  <SectionDivider className="my-10 sm:my-14" />
-    <MapSection />
+      <SectionDivider className="my-10 sm:my-14" />
+      <div id="cumple" data-section="cumple">
+        <BirthdaySection />
+      </div>
+      <SectionDivider className="my-10 sm:my-14" />
+      <div id="spotify" data-section="spotify">
+        <SpotifySection />
+      </div>
+      <SectionDivider className="my-12 sm:my-16" />
+      <div id="galeria" data-section="galeria">
+        <GallerySection gallery={gallery} />
+      </div>
+      <SectionDivider className="my-12 sm:my-16 z-30" />
+      <div id="faq" data-section="faq">
+        <FaqSection faq={faq} />
+      </div>
+      <SectionDivider className="my-10 sm:my-14" />
+      <div id="blog" data-section="blog">
+        <BlogSection blogPosts={blogPosts} />
+      </div>
+      <SectionDivider className="my-10 sm:my-14" />
+      <div id="mapa" data-section="mapa">
+        <MapSection />
+      </div>
       
       {/* Footer Component */}
       <Footer />
       {/* Floating Back to Top button */}
       <BackToTop />
+      {showNavButtons && <MinimalNavButtons />}
     </div>
   );
 }

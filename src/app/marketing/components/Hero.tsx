@@ -1,40 +1,23 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { brand } from '../styles/brand';
+import { DynamicTitle } from './DynamicTitle';
 
 export function Hero() {
   const [showScroll, setShowScroll] = useState(true);
 
   useEffect(() => {
     function onScroll() {
-      if (window.scrollY > 40) {
-        setShowScroll(false);
-      } else {
-        setShowScroll(true);
-      }
+      setShowScroll(window.scrollY <= 40);
     }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  function handleScrollClick() {
-    try {
-      const target = document.querySelector("#shows");
-      if (target && "scrollIntoView" in target) {
-        (target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
-      } else {
-        console.warn("Target #shows not found");
-      }
-    } catch (error) {
-      console.error("Error scrolling to #shows:", error);
-    }
-  }
 
   return (
     <section
       id="hero"
       className="relative overflow-hidden flex items-center justify-center w-full pt-10 md:pt-12"
-      style={{ minHeight: "var(--app-vh,100vh)" }}
+      style={{ minHeight: 'var(--app-vh,100vh)' }}
     >
       {/* Video background with adaptive resolution */}
       <video
@@ -52,39 +35,21 @@ export function Hero() {
 
       {/* Overlay filter */}
       <div
-        className="absolute inset-0"
-        style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(20px)" }}
+        className="absolute inset-0 z-10"
+        style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(20px)' }}
       />
 
-      <div className="container mx-auto max-w-6xl px-4 md:px-8 py-0 relative z-10 w-full">
+      <div className="container mx-auto max-w-6xl px-4 md:px-8 py-0 relative z-20 w-full">
         <div className="flex flex-col items-center justify-center text-center gap-4 md:gap-6">
-          {/* Title and subtitle */}
-          <div className="mt-4 md:mt-6 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-[40px] md:text-[72px] font-black leading-[0.95] tracking-tight"
-              style={{ color: "#FFFFFF", textShadow: "0 0 14px #FFFFFF70, 0 0 28px #FFFFFF40" }}
-            >
-              EL LOUNGE
-            </motion.h1>
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.45 }}
-              className="text-sm md:text-base font-medium opacity-80"
-              style={{ color: "#FFFFFFB8" }}
-            >
-              by ktdral
-            </motion.span>
-          </div>
+          {/* Dynamic Title Component with LED effect */}
+          <DynamicTitle />
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.5 }}
             className="mt-3 max-w-xl mx-auto text-base md:text-lg opacity-90"
-            style={{ color: "#FFFFFFDD" }}
+            style={{ color: '#FFFFFFDD' }}
           >
             Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.
           </motion.p>
@@ -92,43 +57,34 @@ export function Hero() {
       </div>
 
       {/* Scroll-down button */}
-      <AnimatePresence>
-        {showScroll && (
-          <motion.button
-            key="scroll-down"
-            initial={{ opacity: 0, y: 30, scale: 0.7 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.6 }}
-            transition={{ duration: 0.65, ease: "easeOut" }}
-            aria-label="Desplazar a la siguiente sección"
-            onClick={handleScrollClick}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.92 }}
-            className="scroll-down-btn absolute left-1/2 -translate-x-1/2 bottom-24 md:bottom-16"
-            style={{ zIndex: 15 }}
+      {showScroll && (
+        <motion.div
+          key="scroll-down"
+          initial={{ y: 0 }}
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute bottom-10 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-md cursor-pointer hover:opacity-90"
+          onClick={() => {
+            const target = document.querySelector('#shows');
+            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+            stroke="currentColor"
+            className="w-6 h-6 text-gray-800"
           >
-            <motion.span
-              className="arrow"
-              animate={{ y: [0, 6, 0, 4, 0] }}
-              transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
-            >
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </motion.span>
-            <span className="sr-only">Bajar</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </motion.div>
+      )}
     </section>
   );
 }
@@ -340,6 +296,14 @@ function BirthdaySearch(){
           box-shadow: 0 4px 14px -4px rgba(255,100,40,0.55), 0 0 0 1px rgba(255,255,255,0.08);
         }
         /* Removed icon animations */
+        @keyframes led-lights {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-led-lights {
+          animation: led-lights 10s ease infinite;
+        }
       `}</style>
     </div>
   );
