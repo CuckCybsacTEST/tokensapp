@@ -33,6 +33,11 @@ out_auto_batch_*/
 tmp_*/
 *.tsbuildinfo
 
+# Generated birthday invite card image directories (reservation-specific)
+public/birthday-cards/*
+!public/birthday-cards/.gitkeep
+!public/birthday-cards/README.md
+
 # Next.js build/trace cache (avoid backup locking)
 .next/cache/
 .next/trace

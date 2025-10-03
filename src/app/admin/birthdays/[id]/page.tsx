@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+function fmtLima(iso?: string | null) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
+    const y = lima.getUTCFullYear();
+    const m = String(lima.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(lima.getUTCDate()).padStart(2, '0');
+    const hh = String(lima.getUTCHours()).padStart(2, '0');
+    const mm = String(lima.getUTCMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}`;
+  } catch { return ''; }
+}
 import { generateQrPngDataUrl } from "@/lib/qr";
 
 type Reservation = {
@@ -170,7 +185,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
           <div className="text-sm text-slate-300">WhatsApp: {resv.phone}</div>
           <div className="text-sm text-slate-300">Email: {resv.email || '-'}</div>
           <div className="text-sm text-slate-300">Estado: {resv.status}</div>
-          {resv.tokensGeneratedAt && <div className="text-xs text-slate-400">Tokens generados: {resv.tokensGeneratedAt}</div>}
+          {resv.tokensGeneratedAt && <div className="text-xs text-slate-400">Tokens generados: {fmtLima(resv.tokensGeneratedAt)}</div>}
 
           <div className="flex flex-wrap gap-2 pt-2">
             {resv.status === 'pending_review' && <button className="btn" disabled={busy} onClick={approve}>Aprobar</button>}
@@ -213,7 +228,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
                     <td className="px-2 py-1 font-mono">{t.code}</td>
                     <td className="px-2 py-1">{t.kind}</td>
                     <td className="px-2 py-1">{t.status}</td>
-                    <td className="px-2 py-1">{t.expiresAt?.slice?.(0,19)?.replace('T',' ') || ''}</td>
+                    <td className="px-2 py-1">{fmtLima(t.expiresAt)}</td>
                     <td className="px-2 py-1">{(t.usedCount ?? 0)}{t.maxUses ? ` / ${t.maxUses}` : ''}</td>
                   </tr>
                 ))}

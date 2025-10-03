@@ -2,29 +2,46 @@
 
 import { useEffect, useMemo, useState, memo } from "react";
 
+// Formateo manual a hora Lima (UTC-5 sin DST efectivo). Restamos 5 horas y usamos componentes UTC.
+function fmtLima(iso?: string | null) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
+    const y = lima.getUTCFullYear();
+    const m = String(lima.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(lima.getUTCDate()).padStart(2, '0');
+    const hh = String(lima.getUTCHours()).padStart(2, '0');
+    const mm = String(lima.getUTCMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}`;
+  } catch { return ''; }
+}
+
 type Reservation = {
   id: string;
   celebrantName: string;
   phone: string;
   documento: string;
-  date: string;
+  date: string; // fecha celebración
   timeSlot: string;
   pack: { id: string; name: string; qrCount: number; bottle: string | null };
   guestsPlanned: number;
   status: string;
   tokensGeneratedAt: string | null;
-  createdAt: string;
+  createdAt: string; // fecha creación reserva
 };
 
 type AdminReservationCardProps = {
   r: Reservation;
-  busy: boolean;
+  busyApprove: boolean;
+  busyGenerate: boolean;
   onApprove: (id:string)=>void;
   onGenerateCards: (id:string)=>void;
   onViewCards: (id:string)=>void;
 };
 
-const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApprove, onGenerateCards, onViewCards }: AdminReservationCardProps){
+const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove, busyGenerate, onApprove, onGenerateCards, onViewCards }: AdminReservationCardProps){
   // Mirror estilo de /u/birthdays
   const isApproved = r.status==='approved' || r.status==='completed';
   const isAlert = r.status==='pending_review' || r.status==='canceled';
@@ -47,14 +64,15 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busy, onApp
         <span className="text-xs text-slate-500 dark:text-slate-400">{r.documento}</span>
       </div>
       <div className="grid gap-y-1 text-[13px] sm:grid-cols-2">
+  <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Creada:</span> {fmtLima(r.createdAt)}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Fecha celebración:</span> {cleanDate}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Hora llegada:</span> {r.timeSlot}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Invitados (QR):</span> {r.guestsPlanned || r.pack?.qrCount || '-'}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Pack:</span> {r.pack?.name || '-'}</div>
       </div>
       <div className="flex flex-wrap gap-2">
-        {r.status==='pending_review' && <button className="btn h-8 px-3" disabled={busy} onClick={()=>onApprove(r.id)}>Aprobar</button>}
-        {!r.tokensGeneratedAt && <button className="btn h-8 px-3" disabled={busy} onClick={()=>onGenerateCards(r.id)}>{busy? 'Generando…':'Generar tarjetas'}</button>}
+        {r.status==='pending_review' && <button className="btn h-8 px-3" disabled={busyApprove} onClick={()=>onApprove(r.id)}>{busyApprove? 'Aprobando…':'Aprobar'}</button>}
+        {!r.tokensGeneratedAt && <button className="btn h-8 px-3" disabled={busyGenerate} onClick={()=>onGenerateCards(r.id)}>{busyGenerate? 'Generando…':'Generar tarjetas'}</button>}
         {r.tokensGeneratedAt && <button className="btn h-8 px-3" onClick={()=>onViewCards(r.id)}>Ver tarjetas</button>}
         <a className="btn h-8 px-3" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Detalle</a>
       </div>
@@ -71,7 +89,8 @@ export default function AdminBirthdaysPage() {
     const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<string | "">("");
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [busyApprove, setBusyApprove] = useState<Record<string, boolean>>({});
+  const [busyGenerate, setBusyGenerate] = useState<Record<string, boolean>>({});
   // create form state
   const [cName, setCName] = useState("");
   const [cPhone, setCPhone] = useState("");
@@ -114,6 +133,12 @@ export default function AdminBirthdaysPage() {
   }
 
   useEffect(()=>{ load(); }, [page, pageSize]);
+  // Búsqueda instantánea (debounced) por status / search
+  useEffect(()=>{
+    const h = setTimeout(()=>{ setPage(1); load(); }, 300); // 300ms debounce
+    return () => clearTimeout(h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status]);
   // Cargar packs desde endpoint admin para incluir isCustom y evitar filtrado público
   useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/admin/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
 
@@ -130,7 +155,7 @@ export default function AdminBirthdaysPage() {
   async function savePack(pId:string){ const e = packEdits[pId]; if(!e) return; try { const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean); const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.priceSoles }; const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }); const j=await res.json().catch(()=>({})); if(!res.ok) throw new Error(j?.code||j?.message||res.status); const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null); if(list?.packs) setPacks(list.packs); setEditingPack(null); } catch(e:any){ setErr(String(e?.message||e)); } }
 
   async function approve(id: string) {
-    setBusy(prev => ({ ...prev, [id]: true })); setErr(null);
+    setBusyApprove(prev => ({ ...prev, [id]: true })); setErr(null);
     try {
       const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/approve`, { method: 'POST' });
       const j = await res.json().catch(()=>({}));
@@ -139,22 +164,23 @@ export default function AdminBirthdaysPage() {
     } catch (e: any) {
       setErr(String(e?.message || e));
     } finally {
-      setBusy(prev => ({ ...prev, [id]: false }));
+      setBusyApprove(prev => ({ ...prev, [id]: false }));
     }
   }
 
   const [cardGenErr, setCardGenErr] = useState<Record<string,string|undefined>>({});
   async function generateCards(id: string) {
-    setBusy(prev => ({ ...prev, [id]: true }));
+    setBusyGenerate(prev => ({ ...prev, [id]: true }));
     setCardGenErr(prev => ({ ...prev, [id]: undefined }));
     try {
-      const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/tokens`, { method: 'POST' });
+      const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/cards/generate`, { method: 'POST' });
       const txt = await res.text();
       let j: any = {};
-      if (txt) { try { j = JSON.parse(txt); } catch {/* ignore */} }
+      if (txt) { try { j = JSON.parse(txt); } catch {/* ignore parse error */} }
       if (!res.ok) {
         const raw = j?.code || j?.message || `HTTP_${res.status}`;
         let friendly = raw;
+        if (/NO_TOKENS|MISSING_TOKENS/.test(raw)) friendly = 'No hay tokens aún (verifica estado de la reserva).';
         if (/RESERVATION_DATE_PAST/.test(raw)) friendly = 'La fecha ya pasó - no se pueden generar.';
         if (/RESERVATION_NOT_FOUND/.test(raw)) friendly = 'Reserva no encontrada.';
         setCardGenErr(prev => ({ ...prev, [id]: friendly }));
@@ -164,7 +190,7 @@ export default function AdminBirthdaysPage() {
     } catch(e:any) {
       setCardGenErr(prev => ({ ...prev, [id]: String(e?.message||e) }));
     } finally {
-      setBusy(prev => ({ ...prev, [id]: false }));
+      setBusyGenerate(prev => ({ ...prev, [id]: false }));
     }
   }
 
@@ -366,7 +392,7 @@ export default function AdminBirthdaysPage() {
           <label className="text-xs">Buscar</label>
           <input className="input-sm" value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="cumpleañero, WhatsApp, documento" />
         </div>
-        <button className="btn" onClick={()=>{ setPage(1); load(); }}>Buscar</button>
+  {/* Búsqueda automática: botón ya no necesario */}
       </div>
 
       {loading && <div className="text-sm text-gray-400">Cargando…</div>}
@@ -377,19 +403,13 @@ export default function AdminBirthdaysPage() {
           <div key={r.id} className="space-y-1">
             <AdminReservationCard
               r={r}
-              busy={!!busy[r.id]}
+              busyApprove={!!busyApprove[r.id]}
+              busyGenerate={!!busyGenerate[r.id]}
               onApprove={approve}
               onGenerateCards={async (id)=>{ await generateCards(id); }}
-              onViewCards={async (id)=>{
-                try {
-                  const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/client-secret?ttl=15`, { method: 'POST' });
-                  const j = await res.json().catch(()=>({}));
-                  if (!res.ok || !j?.clientSecret) throw new Error(j?.code || 'No se pudo generar link');
-                  const cs = j.clientSecret;
-                  window.location.href = `/marketing/birthdays/${encodeURIComponent(id)}/qrs?cs=${encodeURIComponent(cs)}`;
-                } catch (e) {
-                  await load();
-                }
+              onViewCards={(id)=>{
+                // Para admins usamos modo admin; la página intentará endpoints protegidos y fallback a public-secret si no autorizado.
+                window.open(`/marketing/birthdays/${encodeURIComponent(id)}/qrs?mode=admin`, '_blank', 'noopener');
               }}
             />
             {!r.tokensGeneratedAt && cardGenErr[r.id] && (
