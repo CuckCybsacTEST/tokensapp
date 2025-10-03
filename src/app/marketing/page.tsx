@@ -150,7 +150,9 @@ export default function MarketingPage() {
       
       {/* Componentes de secciones principales */}
   {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-  <DynamicShowsSection />
+      <div id="shows" style={{ minHeight: '100vh', padding: '2rem 0', backgroundColor: 'transparent' }}>
+        <DynamicShowsSection />
+      </div>
   <SectionDivider className="my-10 sm:my-14" />
     <BirthdaySection />
   <SectionDivider className="my-10 sm:my-14" />

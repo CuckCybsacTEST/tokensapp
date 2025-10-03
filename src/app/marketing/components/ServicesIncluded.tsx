@@ -16,9 +16,9 @@ interface ServicesIncludedProps {
  */
 export const ServicesIncluded: React.FC<ServicesIncludedProps> = ({ items, className = '' }) => {
   return (
-    <div className={className}>
+    <div className={`flex flex-col items-center ${className}`}>
       {/* Desktop / tablet layout */}
-      <div className="hidden md:flex flex-wrap gap-2">
+      <div className="hidden md:flex flex-wrap gap-2 justify-center">
         {items.map(s => {
           const isHighlight = s.highlight;
           return (

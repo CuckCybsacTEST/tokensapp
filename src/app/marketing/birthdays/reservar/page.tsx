@@ -172,7 +172,10 @@ function ReservarCumplePageInner() {
       </div>
 
       {/* Anchor to form */}
-      <div id="form" className="pt-2 scroll-mt-24 md:scroll-mt-32" />
+      <a href="/marketing#dynamic-shows-section" className="pt-2 scroll-mt-24 md:scroll-mt-32 block">
+        <div id="form" />
+      </a>
+
       <div className="mt-10 md:mt-14 mb-2">
         <div className="inline-flex items-baseline gap-3">
           <h2 className="text-xl md:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-500 to-red-400 tracking-tight">Datos de la reserva</h2>
@@ -231,8 +234,8 @@ function ReservarCumplePageInner() {
 
   {error ? <div className="p-3 rounded-lg bg-red-900/30 border border-red-500/40 text-sm backdrop-blur-sm">{error}</div> : null}
 
-        <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
-          <button data-testid="submit-reservation" type="submit" disabled={submitting || loadingPacks} className="rounded-lg px-6 py-3 text-sm font-semibold tracking-wide bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/70 transition disabled:opacity-60 disabled:cursor-not-allowed">
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3">
+          <button data-testid="submit-reservation" type="submit" disabled={submitting || loadingPacks} className="rounded-lg px-6 py-3 text-sm font-semibold tracking-wide bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/70 transition disabled:opacity-60 disabled:cursor-not-allowed animate-bounce-slow">
             {submitting ? (phase === 'creating' ? 'Creando reserva…' : 'Preparando accesos…') : 'Confirmar y ver QRs'}
           </button>
           {submitting ? (
@@ -242,6 +245,45 @@ function ReservarCumplePageInner() {
           ) : null}
         </div>
       </form>
+
+      {/* Icons with legends for mobile view */}
+      <div className="flex justify-center gap-4 mt-4">
+        <div className="flex flex-col items-center">
+          <img src="/path/to/torta-icon.png" alt="Torta" className="h-6 w-6" />
+          <span className="text-[10px] mt-1">Torta</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <img src="/path/to/decoracion-icon.png" alt="Decoración" className="h-6 w-6" />
+          <span className="text-[10px] mt-1">Decoración</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <img src="/path/to/qrs-icon.png" alt="QR's" className="h-6 w-6" />
+          <span className="text-[10px] mt-1">QR's</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <img src="/path/to/djs-icon.png" alt="DJ's" className="h-6 w-6" />
+          <span className="text-[10px] mt-1">DJ's</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <img src="/path/to/taxi-icon.png" alt="Taxi" className="h-6 w-6" />
+          <span className="text-[10px] mt-1">Taxi</span>
+        </div>
+      </div>
+
+      {/* Add subtle animation for the button */}
+      <style jsx>{`
+        @keyframes bounce-slow {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2s infinite;
+        }
+      `}</style>
     </section>
   );
 }

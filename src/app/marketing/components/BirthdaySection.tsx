@@ -112,7 +112,7 @@ export function BirthdaySection() {
                   <div className="max-w-[340px] mx-auto rounded-xl p-4 flex flex-col border border-white/10 bg-white/5 animate-pulse h-full" />
                 </div>
               ))}
-              {!loading && decorated.map((c,i)=>{
+              {!loading && decorated.filter(pack => pack.name.toLowerCase() !== 'personalizado').map((c,i)=>{
                 const active = i===activeIdx;
                 return (
                   <div key={c.key} data-pack-slide className="w-full flex-shrink-0 snap-center">
@@ -187,7 +187,7 @@ export function BirthdaySection() {
             {(loading && packs.length===0) && [0,1,2,3].map(i => (
               <div key={`skel-d-${i}`} className="rounded-2xl p-5 flex flex-col h-full border border-white/10 bg-white/5 animate-pulse" />
             ))}
-            {!loading && decorated.map((c,i)=>(
+            {!loading && decorated.filter(pack => pack.name.toLowerCase() !== 'personalizado').map((c,i)=>(
               <motion.div
                 key={c.key}
                 initial={{opacity:0,y:18}}

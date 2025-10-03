@@ -6,84 +6,92 @@ export function Hero() {
   const [showScroll, setShowScroll] = useState(true);
 
   useEffect(() => {
-    function onScroll(){
-      if(window.scrollY > 40){ setShowScroll(false); } else { setShowScroll(true); }
+    function onScroll() {
+      if (window.scrollY > 40) {
+        setShowScroll(false);
+      } else {
+        setShowScroll(true);
+      }
     }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  function handleScrollClick(){
+  function handleScrollClick() {
     try {
-      const target = document.querySelector('#shows') || document.querySelector('#hero')?.nextElementSibling;
-      if(target && 'scrollIntoView' in target){
-        // smooth scroll to next section
-        (target as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = document.querySelector("#shows");
+      if (target && "scrollIntoView" in target) {
+        (target as HTMLElement).scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
-        window.scrollTo({ top: window.innerHeight - 120, behavior: 'smooth' });
+        console.warn("Target #shows not found");
       }
-    } catch {}
+    } catch (error) {
+      console.error("Error scrolling to #shows:", error);
+    }
   }
 
   return (
-  <section id="hero" className="relative overflow-hidden flex items-center justify-center w-full pt-10 md:pt-12" style={{ minHeight: 'var(--app-vh,100vh)' }}>
-      <motion.div 
-        aria-hidden 
-        initial={{ rotate: 0 }} 
-        animate={{ rotate: 360 }} 
-        transition={{ duration: 40, ease: "linear", repeat: Infinity }} 
-        style={{ 
-          position: "absolute", 
-          inset: "-20%", 
-          background: `conic-gradient(from 90deg at 50% 50%, ${brand.primary}33, ${brand.secondary}33, ${brand.accent}22, ${brand.primary}33)`, 
-          filter: "blur(70px)", 
-          zIndex: 0 
-        }} 
+    <section
+      id="hero"
+      className="relative overflow-hidden flex items-center justify-center w-full pt-10 md:pt-12"
+      style={{ minHeight: "var(--app-vh,100vh)" }}
+    >
+      {/* Video background with adaptive resolution */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+        poster="/videos/poster.jpg"
+      >
+        <source src="/videos/videohero-1080p.mp4" type="video/mp4" media="(min-width: 1280px)" />
+        <source src="/videos/videohero-720p.mp4" type="video/mp4" media="(min-width: 768px)" />
+        <source src="/videos/videohero-480p.mp4" type="video/mp4" media="(max-width: 767px)" />
+      </video>
+
+      {/* Overlay filter */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(20px)" }}
       />
-  <div className="container mx-auto max-w-6xl px-4 md:px-8 py-0 relative z-10 w-full">
+
+      <div className="container mx-auto max-w-6xl px-4 md:px-8 py-0 relative z-10 w-full">
         <div className="flex flex-col items-center justify-center text-center gap-4 md:gap-6">
-          {/* Título principal EL LOUNGE + byline responsive */}
+          {/* Title and subtitle */}
           <div className="mt-4 md:mt-6 flex flex-col md:flex-row items-center justify-center gap-1.5 md:gap-3">
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ duration: 0.6, delay: 0.3 }} 
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
               className="text-[40px] md:text-[72px] font-black leading-[0.95] tracking-tight"
-              style={{ color: brand.primary, textShadow: `0 0 14px ${brand.primary}70, 0 0 28px ${brand.secondary}40`, fontFamily: 'var(--font-display)' }}
+              style={{ color: "#FFFFFF", textShadow: "0 0 14px #FFFFFF70, 0 0 28px #FFFFFF40" }}
             >
               EL LOUNGE
             </motion.h1>
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.45 }}
               className="text-sm md:text-base font-medium opacity-80"
-              style={{ color: `#FFFFFFB8`, fontFamily: 'var(--font-text)' }}
+              style={{ color: "#FFFFFFB8" }}
             >
               by ktdral
             </motion.span>
           </div>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.5 }}
             className="mt-3 max-w-xl mx-auto text-base md:text-lg opacity-90"
-            style={{ color: "#FFFFFFDD", fontFamily: 'var(--font-text)' }}
+            style={{ color: "#FFFFFFDD" }}
           >
             Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.
           </motion.p>
-          {/* Buscador de cumpleaños */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.62 }}
-            className="w-full max-w-lg mx-auto mt-4"
-          >
-            <BirthdaySearch />
-          </motion.div>
         </div>
       </div>
-      {/* Botón scroll-down reposicionado más abajo */}
+
+      {/* Scroll-down button */}
       <AnimatePresence>
         {showScroll && (
           <motion.button
@@ -91,7 +99,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 30, scale: 0.7 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.6 }}
-            transition={{ duration: 0.65, ease: 'easeOut' }}
+            transition={{ duration: 0.65, ease: "easeOut" }}
             aria-label="Desplazar a la siguiente sección"
             onClick={handleScrollClick}
             whileHover={{ scale: 1.1 }}
@@ -102,9 +110,18 @@ export function Hero() {
             <motion.span
               className="arrow"
               animate={{ y: [0, 6, 0, 4, 0] }}
-              transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut' }}
+              transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
             >
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="30"
+                height="30"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </motion.span>
@@ -112,65 +129,6 @@ export function Hero() {
           </motion.button>
         )}
       </AnimatePresence>
-      {/* Separador anclado al final del hero */}
-      <div
-        className="pointer-events-none absolute bottom-0 inset-x-0 z-10 h-px"
-        style={{
-          background: `linear-gradient(90deg, transparent, ${brand.primary}80, transparent)`,
-          boxShadow: `0 0 20px ${brand.primary}40`
-        }}
-      />
-      <style jsx>{`
-        .scroll-down-btn {
-          --glow-orange: 255,116,46;
-          position: relative;
-          width: 3.5rem; height: 3.5rem;
-          display: flex; align-items: center; justify-content: center;
-          border-radius: 50%;
-          background: radial-gradient(circle at 35% 30%, rgba(255,120,40,0.10), rgba(10,4,4,0.55) 60%, rgba(0,0,0,0.55));
-          backdrop-filter: blur(14px) saturate(160%);
-          -webkit-backdrop-filter: blur(14px) saturate(160%);
-          border: 1px solid rgba(var(--glow-orange),0.55);
-          color: #fff;
-          cursor: pointer;
-          overflow: hidden;
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.06),
-            0 0 18px -4px rgba(var(--glow-orange),0.55),
-            0 0 44px -10px rgba(var(--glow-orange),0.55),
-            0 0 60px -18px rgba(var(--glow-orange),0.35);
-          transition: box-shadow .65s cubic-bezier(.4,.14,.2,1),
-            border-color .6s, transform .55s;
-        }
-        .scroll-down-btn:before, .scroll-down-btn:after {
-          content: '';
-            position: absolute; inset: 0; border-radius: inherit; pointer-events:none;
-        }
-        .scroll-down-btn:before {
-          background: radial-gradient(circle at 30% 25%, rgba(var(--glow-orange),0.35), transparent 70%);
-          mix-blend-mode: screen;
-          opacity: .55;
-          animation: glowShift 6s linear infinite;
-        }
-        .scroll-down-btn:after {
-          box-shadow: 0 0 0 2px rgba(var(--glow-orange),0.25), 0 0 24px -6px rgba(var(--glow-orange),0.55), 0 0 70px -10px rgba(var(--glow-orange),0.45);
-          opacity: .55;
-          animation: pulseOuter 4.2s ease-in-out infinite;
-        }
-        .scroll-down-btn:hover, .scroll-down-btn:focus-visible {
-          border-color: rgba(var(--glow-orange),0.85);
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.10),
-            0 0 22px 0 rgba(var(--glow-orange),0.75),
-            0 0 62px -4px rgba(var(--glow-orange),0.70),
-            0 0 90px -8px rgba(var(--glow-orange),0.55);
-        }
-        .scroll-down-btn .arrow { display:flex; align-items:center; justify-content:center; }
-        .scroll-down-btn .arrow svg { filter: drop-shadow(0 0 4px rgba(255,140,60,0.4)); }
-        .scroll-down-btn:hover .arrow svg { filter: drop-shadow(0 0 8px rgba(255,150,70,0.75)); }
-        @keyframes glowShift { 0%{transform:translate3d(0,0,0) scale(1);} 50%{transform:translate3d(2px,3px,0) scale(1.05);} 100%{transform:translate3d(0,0,0) scale(1);} }
-        @keyframes pulseOuter { 0%,100%{opacity:.45; transform:scale(1);} 50%{opacity:.85; transform:scale(1.08);} }
-      `}</style>
     </section>
   );
 }
