@@ -26,7 +26,7 @@ export function Hero() {
         loop
         muted
         playsInline
-        poster="/videos/poster.jpg"
+  poster="/posters/in.png"
       >
         <source src="/videos/videohero-1080p.mp4" type="video/mp4" media="(min-width: 1280px)" />
         <source src="/videos/videohero-720p.mp4" type="video/mp4" media="(min-width: 768px)" />

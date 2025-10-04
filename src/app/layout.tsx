@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="h-full" suppressHydrationWarning>
+    <html lang="es" className="h-full theme-hydrated" suppressHydrationWarning>
       <head>
         <style>{`html{background:#ffffff;color-scheme:light}`}</style>
         <ThemeScript />

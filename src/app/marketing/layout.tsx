@@ -60,31 +60,8 @@ const poppins = Poppins({ subsets: ['latin'], weight: ['400','600','800'], varia
 // Layout completamente independiente para marketing
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <head>
-        {/* Favicon */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        
-        {/* Fuentes gestionadas via next/font para evitar FOUT/FOIT */}
-        
-        {/* Script de precarga para evitar parpadeos */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              document.documentElement.style.background = '#0E0606';
-              document.documentElement.style.color = 'white';
-              
-              // Implementación básica de Google Tag Manager
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-XXXXXXXXXX'); // Reemplazar con ID real
-            `
-          }}
-        />
-        
-        {/* Estilos críticos para carga inicial */}
+    <div className={`min-h-full antialiased ${inter.variable} ${poppins.variable}`} style={{ fontFamily: 'var(--font-text)' }}>
+        {/* Estilos críticos para carga inicial (inline) */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -96,67 +73,38 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 --dark-color-a: #0E0606;
                 --dark-color-b: #07070C;
               }
-              
-              html, body {
-                background: var(--dark-color-a);
-                color: white;
-                margin: 0;
-                padding: 0;
-                min-height: 100%;
-                font-family: var(--font-family-primary);
-                scroll-behavior: smooth;
-                -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
-              }
-              
-              body {
-                background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b));
-              }
-              
-              /* Oculta completamente cualquier elemento del header de admin */
-              header.admin-header {
-                display: none !important;
-              }
-              
-              /* Estilos de scrollbar personalizados */
-              ::-webkit-scrollbar {
-                width: 8px;
-                height: 8px;
-              }
-              
-              ::-webkit-scrollbar-track {
-                background: rgba(0,0,0,0.2);
-              }
-              
-              ::-webkit-scrollbar-thumb {
-                background: rgba(255,255,255,0.1);
-                border-radius: 4px;
-              }
-              
-              ::-webkit-scrollbar-thumb:hover {
-                background: rgba(255,255,255,0.2);
-              }
-              
-              /* Animación de carga */
-              .page-transition-enter {
-                opacity: 0;
-              }
-              .page-transition-enter-active {
-                opacity: 1;
-                transition: opacity 300ms;
-              }
-              .page-transition-exit {
-                opacity: 1;
-              }
-              .page-transition-exit-active {
-                opacity: 0;
-                transition: opacity 300ms;
-              }
+              html, body { background: var(--dark-color-a); color: white; margin:0; padding:0; min-height:100%; font-family: var(--font-family-primary); scroll-behavior:smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+              body { background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b)); }
+              header.admin-header { display: none !important; }
+              ::-webkit-scrollbar { width: 8px; height: 8px; }
+              ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+              ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+              ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+              .page-transition-enter { opacity: 0; }
+              .page-transition-enter-active { opacity: 1; transition: opacity 300ms; }
+              .page-transition-exit { opacity: 1; }
+              .page-transition-exit-active { opacity: 0; transition: opacity 300ms; }
             `
           }}
         />
-      </head>
-      <div className={`min-h-full antialiased ${inter.variable} ${poppins.variable}`} style={{ fontFamily: 'var(--font-text)' }}>
+        {/* Script de precarga: evitar parpadeos. Quitar tipos TS (as any) que rompen en runtime */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try{
+                var d=document;var h=d.documentElement;
+                h.style.background='#0E0606'; h.style.color='white';
+                // GTM/GA placeholder (no-op si no se configura ID real)
+                window.dataLayer=window.dataLayer||[]; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config','G-XXXXXXXXXX');
+                // Suprimir transiciones breves al volver de bfcache o visibilidad
+                var SUPPRESS_CLASS='transition-hold';
+                var suppress=function(){ h.classList.add(SUPPRESS_CLASS); clearTimeout(suppress._t); suppress._t=setTimeout(function(){ h.classList.remove(SUPPRESS_CLASS); },140); };
+                window.addEventListener('pageshow',function(ev){ if(ev && ev.persisted) suppress(); });
+                document.addEventListener('visibilitychange',function(){ if(!document.hidden) suppress(); });
+              }catch(e){}
+            `
+          }}
+        />
         {/* Elemento para inyectar el ID de Google Tag Manager */}
         <noscript>
           <iframe
@@ -172,14 +120,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           {children}
         </main>
         
-        {/* Script para habilitar página PWA */}
+        {/* Script para habilitar PWA: usar script existente en public/sw.js */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               // Registra service worker para PWA si está disponible
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/service-worker.js').then(
+                  navigator.serviceWorker.register('/sw.js').then(
                     function(registration) {
                       console.log('ServiceWorker registration successful');
                     },
@@ -193,6 +141,5 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           }}
         />
       </div>
-    </>
   );
 }

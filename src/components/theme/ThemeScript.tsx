@@ -22,11 +22,11 @@ const mode = pref==='system'?sys:pref; h.classList.remove('light','dark'); h.cla
 const vars=THEME_VARS[mode]; for(const k in vars){ if(h.style.getPropertyValue(k)!==vars[k]) h.style.setProperty(k,vars[k]); }
 if(!h.style.backgroundColor){ h.style.backgroundColor = mode==='dark'?'#0b0d10':'#ffffff'; }
 // Suppress transitions briefly when returning from bfcache / tab visibility change to avoid micro flicker
-const SUPPRESS_CLASS='transition-hold';
-const suppress=()=>{h.classList.add(SUPPRESS_CLASS); clearTimeout((suppress as any)._t); (suppress as any)._t=setTimeout(()=>h.classList.remove(SUPPRESS_CLASS),140);};
+var SUPPRESS_CLASS='transition-hold';
+var _suppressTimer; function suppress(){ h.classList.add(SUPPRESS_CLASS); clearTimeout(_suppressTimer); _suppressTimer=setTimeout(function(){ h.classList.remove(SUPPRESS_CLASS); },140); }
 // Some browsers fire pageshow (persisted) after bfcache restore
-window.addEventListener('pageshow',ev=>{ if((ev as any).persisted) suppress(); });
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden) suppress(); });
+window.addEventListener('pageshow',function(ev){ if(ev && ev.persisted) suppress(); });
+document.addEventListener('visibilitychange',function(){ if(!document.hidden) suppress(); });
 // Mark hydrated on next frame so transitions can start *after* first paint with correct colors
 requestAnimationFrame(()=>{h.classList.add('theme-hydrated');const f=d.getElementById(foucId); if(f) f.remove();});
 }catch(e){/* ignore */}})();`
