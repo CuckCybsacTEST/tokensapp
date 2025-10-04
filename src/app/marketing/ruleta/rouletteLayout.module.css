@@ -6,10 +6,8 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  /* Quitamos min-height global para no empujar el footer hacia abajo artificialmente.
-     El contenido interno ya define alturas mínimas razonables. */
-  padding-top: 0.5rem; /* antes dependíamos de pt del contenedor padre */
-  padding-bottom: 1rem; /* más espacio inferior por defecto */
+  padding-top: 0.5rem;
+  padding-bottom: 1rem;
 }
 
 /* En pantallas semi-altas añadimos un pequeño respiro pero sin grandes bloques vacíos */

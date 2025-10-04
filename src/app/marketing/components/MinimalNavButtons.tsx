@@ -1,57 +1,41 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+// Importar identificadores centralizados
+import { SECTIONS } from '../constants/sections';
+
 export function MinimalNavButtons() {
-  const sections = [
-    'hero',
-    'shows',
-    'cumple',
-    'por-que-elegirnos',
-    'spotify',
-    'galeria',
-    'faq',
-    'blog',
-    'mapa',
-  ];
+  // Reemplazar la definición local de "sections" con la importación
+  const sections = SECTIONS.map((section) => section.id);
+
+  // Función auxiliar para buscar una sección por su índice
+  const getSectionElement = (index: number) => {
+    const sectionId = sections[index];
+    return sectionId ? document.querySelector(`#${sectionId}`) : null;
+  };
 
   const scrollToSection = (direction: 'up' | 'down') => {
-    if (typeof window !== 'undefined') {
-      const currentIndex = sections.findIndex((section) => {
-        const element = document.querySelector(`#${section}`);
-        return (
-          element &&
-          element.getBoundingClientRect().top < window.innerHeight / 2 &&
-          element.getBoundingClientRect().bottom > window.innerHeight / 2
-        );
-      });
+    if (typeof window === 'undefined') return;
 
-      if (currentIndex === -1) return; // Evitar errores si no se encuentra la sección actual
+    const currentIndex = sections.findIndex((section) => {
+      const element = document.querySelector(`#${section}`);
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.top < window.innerHeight / 2 && rect.bottom > window.innerHeight / 2;
+    });
 
-      let targetIndex;
-      if (direction === 'up') {
-        targetIndex = currentIndex - 1;
-        while (targetIndex >= 0) {
-          const targetElement = document.querySelector(`#${sections[targetIndex]}`);
-          if (targetElement) break;
-          targetIndex--;
-        }
-      } else {
-        targetIndex = currentIndex + 1;
-        while (targetIndex < sections.length) {
-          const targetElement = document.querySelector(`#${sections[targetIndex]}`);
-          if (targetElement) break;
-          targetIndex++;
-        }
-      }
+    if (currentIndex === -1) return;
 
-      if (targetIndex >= 0 && targetIndex < sections.length) {
-        const targetSection = document.querySelector(`#${sections[targetIndex]}`);
-        if (targetSection) {
-          targetSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
+    const targetIndex =
+      direction === 'up' ? Math.max(0, currentIndex - 1) : Math.min(sections.length - 1, currentIndex + 1);
+
+    const targetElement = getSectionElement(targetIndex);
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
+
+  const buttonStyles = "h-10 w-10 border-2 border-white rounded-full flex items-center justify-center";
 
   return (
     <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-4">
@@ -60,7 +44,7 @@ export function MinimalNavButtons() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => scrollToSection('up')}
-        className="h-10 w-10 border-2 border-white rounded-full flex items-center justify-center"
+        className={buttonStyles}
         aria-label="Scroll Up"
       >
         <span className="text-white">↑</span>
@@ -71,7 +55,7 @@ export function MinimalNavButtons() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => scrollToSection('down')}
-        className="h-10 w-10 border-2 border-white rounded-full flex items-center justify-center"
+        className={buttonStyles}
         aria-label="Scroll Down"
       >
         <span className="text-white">↓</span>

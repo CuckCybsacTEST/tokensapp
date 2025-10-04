@@ -28,6 +28,9 @@ import { SectionDivider } from './components/SectionDivider';
 import { BackToTop } from './components/BackToTop';
 import { MinimalNavButtons } from './components/MinimalNavButtons';
 
+// Importar identificadores centralizados
+import { SECTIONS } from './constants/sections';
+
 // Datos estructurados para la landing page
 // -----------------------------------------
 
