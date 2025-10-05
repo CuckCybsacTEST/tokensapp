@@ -158,7 +158,9 @@ export default function MarketingPage() {
     >
       <style jsx global>{`
         html, body { scroll-behavior: smooth; }
+        html, body { scroll-padding-top: 10px; }
         @media (max-width: 767px){
+          html, body { scroll-padding-top: 16px; }
           .marketing-scroll{ -ms-overflow-style: none; scrollbar-width: none; }
           .marketing-scroll::-webkit-scrollbar{ width:0; height:0; display:none; }
           html.mobile-no-scrollbar, body.mobile-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -166,11 +168,16 @@ export default function MarketingPage() {
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
-  .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
+        .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
         .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); scroll-margin-top: 8px; }
         @media (max-width: 767px){
           .marketing-scroll{ scroll-padding-top: 16px; }
-          .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 14px; }
+          .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 16px; }
+        }
+        /* Preferir 100svh cuando esté disponible para estabilizar viewport móvil */
+        @supports (height: 1svh) {
+          .snap-section { min-height: 100svh; }
+          @media (max-width: 767px){ .snap-section { min-height: calc(100svh - var(--bottom-bar-h, 56px)); } }
         }
       `}</style>
       {/* Patrón sutil */}
