@@ -244,7 +244,7 @@ export function BirthdaySection() {
       <style jsx>{`
         /* En pantallas altas, centrar verticalmente la sección de Cumple */
         @media (min-height: 740px) {
-          .birthday-wrap { min-height: var(--app-vh, 100vh); justify-content: center; padding-top: 2.5rem; padding-bottom: 2.5rem; }
+          .birthday-wrap { min-height: 100vh; justify-content: center; padding-top: 2.5rem; padding-bottom: 2.5rem; }
         }
         @supports (height: 1svh) {
           @media (min-height: 740px) {

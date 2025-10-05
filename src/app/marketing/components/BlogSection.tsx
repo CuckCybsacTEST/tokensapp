@@ -52,7 +52,7 @@ export function BlogSection({ blogPosts }: BlogSectionProps) {
     <section
       id="blog"
       className={`relative overflow-hidden flex flex-col ${tallMobile ? 'justify-center pt-10' : 'justify-start pt-8'} md:justify-center pb-14 md:pt-14 md:pb-20 transition-[justify-content,padding] duration-300`}
-      style={{ minHeight: 'var(--app-vh,100vh)' }}
+  style={{ minHeight: '100vh' }}
     >
       <div
         className="absolute inset-0 z-0 opacity-10"

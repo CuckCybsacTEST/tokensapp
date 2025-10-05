@@ -43,7 +43,7 @@ export function QrSection() {
       ? `justify-center ${offsetMobile ? (narrowMobile ? 'pt-20' : 'pt-16') : (narrowMobile ? 'pt-16' : 'pt-12')}`
       : `justify-start ${offsetMobile ? (narrowMobile ? 'pt-14' : 'pt-12') : (narrowMobile ? 'pt-12' : 'pt-10')}`}
       md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
-    style={{ minHeight: 'var(--app-vh,100vh)' }}
+  style={{ minHeight: '100vh' }}
   >
       {/* Elementos decorativos de fondo */}
       <motion.div 

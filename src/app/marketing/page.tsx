@@ -58,20 +58,6 @@ const faq = [
 
 // Componente principal de la landing page
 export default function MarketingPage() {
-  // Ajuste dinámico de viewport para evitar recortes o scroll inicial mostrando la siguiente sección.
-  useEffect(() => {
-    const setVh = () => {
-      const vh = window.innerHeight;
-      document.documentElement.style.setProperty('--app-vh', vh + 'px');
-    };
-    setVh();
-    window.addEventListener('resize', setVh);
-    window.addEventListener('orientationchange', setVh);
-    return () => {
-      window.removeEventListener('resize', setVh);
-      window.removeEventListener('orientationchange', setVh);
-    };
-  }, []);
   // Fuerza ocultar scrollbar en mobile (algunos navegadores aún muestran una barra tenue)
   useEffect(() => {
     const apply = () => {

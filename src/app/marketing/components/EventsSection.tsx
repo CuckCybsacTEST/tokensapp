@@ -22,7 +22,7 @@ interface EventsSectionProps {
 
 export function EventsSection({ events }: EventsSectionProps) {
   return (
-    <section id="shows" className="relative py-14 md:py-20 overflow-hidden" style={{ minHeight: 'var(--app-vh,100vh)' }}>
+  <section id="shows" className="relative py-14 md:py-20 overflow-hidden" style={{ minHeight: '100vh' }}>
       {/* Fondo decorativo con motion */}
       <motion.div 
         aria-hidden 

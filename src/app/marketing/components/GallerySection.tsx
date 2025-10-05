@@ -53,7 +53,7 @@ export function GallerySection({ gallery }: GallerySectionProps) {
         ? `justify-center ${offsetMobile ? (narrowMobile ? 'pt-20' : 'pt-14') : (narrowMobile ? 'pt-16' : 'pt-10')}`
         : `justify-start ${offsetMobile ? (narrowMobile ? 'pt-14' : 'pt-10') : (narrowMobile ? 'pt-12' : 'pt-8')}`}
         md:justify-center pb-14 md:pt-14 md:pb-20 transition-[justify-content,padding] duration-300`}
-      style={{ minHeight: 'var(--app-vh,100vh)' }}
+  style={{ minHeight: '100vh' }}
     >
       <div
         className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full opacity-20 blur-3xl"

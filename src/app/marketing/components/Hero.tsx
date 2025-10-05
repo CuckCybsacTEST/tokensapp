@@ -21,7 +21,7 @@ export function Hero() {
     <section
       id="hero"
       className="relative overflow-hidden flex items-center justify-center w-full pt-10 md:pt-12"
-      style={{ minHeight: 'var(--app-vh,100vh)' }}
+  style={{ minHeight: '100vh' }}
     >
       {/* Video background with adaptive resolution + overlay */}
       <HeroVideo showOverlay overlayBlur={10} />
