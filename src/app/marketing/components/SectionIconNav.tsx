@@ -129,24 +129,11 @@ export function SectionIconNav() {
             )}
             <a
               href={`#${it.id}`}
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={() => {
                 showTip(it.id);
-                const el = document.getElementById(it.id);
-                if (!el) return;
                 const scroller = document.querySelector('.marketing-scroll') as HTMLElement | null;
                 scroller?.classList.add('no-snap');
-                const rect = el.getBoundingClientRect();
-                const currentY = window.scrollY || window.pageYOffset || 0;
-                const offset = 6; // evitar quedarnos en el límite del snap
-                const targetTop = Math.max(0, currentY + rect.top - offset);
-                try {
-                  window.scrollTo({ top: targetTop, behavior: 'smooth' });
-                } catch {
-                  window.scrollTo(0, targetTop);
-                }
-                el.focus?.({ preventScroll: true });
-                window.setTimeout(() => { scroller?.classList.remove('no-snap'); }, 450);
+                window.setTimeout(() => { scroller?.classList.remove('no-snap'); }, 600);
               }}
               aria-label={`Ir a ${it.label}`}
               className={`h-9 w-10 flex items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? 'bg-white/15' : 'bg-white/6 hover:bg-white/12'}`}
