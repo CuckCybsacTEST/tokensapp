@@ -165,8 +165,9 @@ export default function MarketingPage() {
           html.mobile-no-scrollbar::-webkit-scrollbar, body.mobile-no-scrollbar::-webkit-scrollbar { width:0; height:0; display:none; }
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
-        /* Scroll snap para que cada sección llene el viewport y quede alineada */
+  /* Scroll snap para que cada sección llene el viewport y quede alineada */
   .marketing-scroll{ scroll-snap-type: y mandatory; }
+  .marketing-scroll.no-snap{ scroll-snap-type: none !important; }
   .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); scroll-margin-top: 6px; }
         @media (max-width: 767px){
           .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 10px; }
