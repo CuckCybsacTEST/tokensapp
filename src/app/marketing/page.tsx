@@ -168,7 +168,7 @@ export default function MarketingPage() {
         .marketing-scroll{ scroll-snap-type: y mandatory; }
         .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); }
         @media (max-width: 767px){
-          .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); }
+          .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 10px; }
         }
       `}</style>
       {/* Patrón sutil */}

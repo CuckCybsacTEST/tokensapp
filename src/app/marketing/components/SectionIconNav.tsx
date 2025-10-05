@@ -64,8 +64,21 @@ export function SectionIconNav() {
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    el?.focus?.({ preventScroll: true });
+    if (!el) return;
+    // En móviles altos, el snap puede quedar en el umbral. Empujamos un poco si ya está parcialmente visible.
+    const vh = window.innerHeight || 0;
+    const rect = el.getBoundingClientRect();
+    const visible = Math.max(0, Math.min(rect.bottom, vh) - Math.max(rect.top, 0));
+    const ratio = vh > 0 ? (visible / Math.max(1, rect.height)) : 0;
+    if (ratio >= 0.45) {
+      // Ya está cerca: empuje mínimo para cruzar el snap
+      window.scrollBy({ top: 18, behavior: 'smooth' });
+    } else {
+      // Scroll a inicio y compensar un pequeño offset para evitar quedar exacto en el límite
+      const top = window.scrollY + rect.top - 6;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+    el.focus?.({ preventScroll: true });
   };
 
   const labelMap: Record<string, string> = {
