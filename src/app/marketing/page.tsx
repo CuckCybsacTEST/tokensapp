@@ -157,6 +157,7 @@ export default function MarketingPage() {
       }}
     >
       <style jsx global>{`
+        html, body { scroll-behavior: smooth; }
         @media (max-width: 767px){
           .marketing-scroll{ -ms-overflow-style: none; scrollbar-width: none; }
           .marketing-scroll::-webkit-scrollbar{ width:0; height:0; display:none; }
@@ -165,8 +166,8 @@ export default function MarketingPage() {
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
-        .marketing-scroll{ scroll-snap-type: y mandatory; }
-        .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); }
+  .marketing-scroll{ scroll-snap-type: y mandatory; }
+  .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); scroll-margin-top: 6px; }
         @media (max-width: 767px){
           .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 10px; }
         }
