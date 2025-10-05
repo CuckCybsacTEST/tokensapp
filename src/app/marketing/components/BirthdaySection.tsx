@@ -87,7 +87,7 @@ export function BirthdaySection() {
   },[]);
 
   return (
-  <section id="cumple" className="birthday-wrap relative overflow-hidden flex flex-col justify-start pt-6 md:pt-10 pb-10 md:pb-12" style={{ minHeight: 'calc(var(--app-vh, 100svh))' }}>
+    <section id="cumple" className="birthday-wrap relative overflow-hidden flex flex-col justify-start pt-6 md:pt-10 pb-10 md:pb-12">
       <div
         className="absolute inset-0 z-0 opacity-10"
         style={{backgroundImage:`radial-gradient(circle at 12% 88%, ${brand.secondary}33 0%, transparent 40%),radial-gradient(circle at 88% 18%, ${brand.primary}22 0%, transparent 30%)`}}
@@ -252,11 +252,11 @@ export function BirthdaySection() {
           }
         }
         /* Asegurar espacio para la barra inferior en pantallas pequeñas */
-        @media (max-width: 899px) {
+        @media (max-width: 767px) {
           .birthday-wrap { padding-bottom: calc(3.25rem + var(--bottom-bar-h, 56px)); }
         }
         /* Compactar en móviles de poca altura (ej. 740px) */
-        @media (max-width: 899px) && (max-height: 740px) {
+        @media (max-width: 767px) and (max-height: 740px) {
           .birthday-wrap { padding-top: 0.75rem; padding-bottom: calc(1rem + var(--bottom-bar-h, 56px)); }
         }
         /* Ocultar completamente scrollbar del carrusel móvil */
@@ -264,7 +264,7 @@ export function BirthdaySection() {
         .packs-slider::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
         /* Ajustes extra para pantallas de poca altura */
-        @media (max-width: 899px) and (max-height: 740px) {
+        @media (max-width: 767px) and (max-height: 740px) {
           .services-inc { display: none; }
           .packs-dots { margin-top: 0.25rem; }
           .packs-dots .dot { width: 0.5rem !important; height: 0.5rem !important; }

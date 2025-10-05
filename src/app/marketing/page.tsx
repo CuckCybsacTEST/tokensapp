@@ -3,19 +3,17 @@
 import React, { useEffect } from 'react';
 import { brand } from './styles/brand';
 
-// Importamos los componentes UI reutilizables
-// import { SectionTitle } from './components/ui/SectionTitle';
+// Importamos los componentes UI reutilizables (no usados por ahora)
 
 // Importamos los componentes de sección
 import { TopNavBar } from './components/TopNavBar';
 import { Hero } from './components/Hero';
 import { DynamicShowsSection } from './components/DynamicShowsSection';
 import { BirthdaySection } from './components/BirthdaySection';
-// import { QrSection } from './components/QrSection';
+// QrSection removido temporalmente
 import { GallerySection } from './components/GallerySection';
 import { SpotifySection } from './components/SpotifySection';
-// import { TestimonialsSection } from './components/TestimonialsSection';
-// import { ReservationForm } from './components/ReservationForm';
+// Otros módulos deshabilitados en marketing
 import { FaqSection } from './components/FaqSection';
 import { MapSection } from './components/MapSection';
 import { BlogSection } from './components/BlogSection';
@@ -77,7 +75,7 @@ export default function MarketingPage() {
   // Fuerza ocultar scrollbar en mobile (algunos navegadores aún muestran una barra tenue)
   useEffect(() => {
     const apply = () => {
-      if (window.innerWidth <= 900) {
+      if (window.innerWidth < 768) {
         document.documentElement.classList.add('mobile-no-scrollbar');
         document.body.classList.add('mobile-no-scrollbar');
       } else {
@@ -98,10 +96,10 @@ export default function MarketingPage() {
   React.useEffect(() => {
     const update = () => {
       try {
-        const mq = window.matchMedia('(min-width: 900px)');
+        const mq = window.matchMedia('(min-width: 768px)');
         setIsDesktop(mq.matches);
       } catch {
-        setIsDesktop((window.innerWidth || 0) >= 900);
+        setIsDesktop((window.innerWidth || 0) >= 768);
       }
     };
     update();
@@ -159,7 +157,7 @@ export default function MarketingPage() {
       }}
     >
       <style jsx global>{`
-        @media (max-width: 900px){
+        @media (max-width: 767px){
           .marketing-scroll{ -ms-overflow-style: none; scrollbar-width: none; }
           .marketing-scroll::-webkit-scrollbar{ width:0; height:0; display:none; }
           html.mobile-no-scrollbar, body.mobile-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
@@ -169,7 +167,7 @@ export default function MarketingPage() {
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
         .marketing-scroll{ scroll-snap-type: y mandatory; }
         .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); }
-        @media (max-width: 899px){
+        @media (max-width: 767px){
           .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); }
         }
       `}</style>

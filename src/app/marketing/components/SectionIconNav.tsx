@@ -94,7 +94,7 @@ export function SectionIconNav() {
       setTipFor(null);
       if (tipTimer.current) { window.clearTimeout(tipTimer.current); tipTimer.current = null; }
     };
-    const opts: AddEventListenerOptions = { passive: true } as any;
+      const opts: AddEventListenerOptions = { passive: true };
     window.addEventListener('touchstart', hide, opts);
     return () => {
       window.removeEventListener('touchstart', hide as any);
