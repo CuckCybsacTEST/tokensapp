@@ -133,7 +133,9 @@ export function SectionIconNav() {
                 showTip(it.id);
                 const scroller = document.querySelector('.marketing-scroll') as HTMLElement | null;
                 scroller?.classList.add('no-snap');
-                window.setTimeout(() => { scroller?.classList.remove('no-snap'); }, 600);
+                const isMobile = window.innerWidth < 768;
+                const delay = isMobile ? 750 : 500; // cubrir animación de barra en móviles altos
+                window.setTimeout(() => { scroller?.classList.remove('no-snap'); }, delay);
               }}
               aria-label={`Ir a ${it.label}`}
               className={`h-9 w-10 flex items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? 'bg-white/15' : 'bg-white/6 hover:bg-white/12'}`}
