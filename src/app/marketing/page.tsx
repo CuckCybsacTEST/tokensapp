@@ -166,8 +166,7 @@ export default function MarketingPage() {
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
-        .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
-  .marketing-scroll.no-snap{ scroll-snap-type: none !important; }
+  .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
         .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); scroll-margin-top: 8px; }
         @media (max-width: 767px){
           .marketing-scroll{ scroll-padding-top: 16px; }
