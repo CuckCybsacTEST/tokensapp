@@ -39,7 +39,7 @@ export function BottomIconBar() {
   return (
     <div
       ref={ref}
-      className={`fixed inset-x-0 bottom-0 z-50 md:hidden transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      className={`fixed inset-x-0 bottom-0 z-[60] md:hidden transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       style={{
         background: 'linear-gradient(0deg, rgba(10,10,15,0.86), rgba(10,10,15,0.6) 60%, rgba(10,10,15,0))',
         backdropFilter: 'blur(12px)',

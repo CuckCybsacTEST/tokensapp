@@ -21,7 +21,7 @@ export function SpotifySection() {
       className={`relative overflow-hidden flex flex-col ${tallMobile ? 'justify-center pt-12' : 'justify-start pt-10'} md:justify-center pb-16 md:pt-16 md:pb-20 transition-[justify-content,padding] duration-300`}
     >
 
-  <div className="container mx-auto max-w-5xl px-4 md:px-8 relative z-[50] w-full">
+  <div className="container mx-auto max-w-5xl px-4 md:px-8 relative z-[30] w-full">
         {/* Agregamos margen lateral extra para evitar interferencia con los dots */}
         <SectionTitle
           kicker="Sigue nuestras playlists"

@@ -172,7 +172,7 @@ export function BirthdaySection() {
               </div>
             )}
             {showHint && (
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-2 text-[10px] font-medium text-white/70 backdrop-blur-sm bg-white/5 px-2.5 py-1.5 rounded-full shadow-sm border border-white/10 animate-pulse">
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-2 text-[10px] font-medium text-white/70 backdrop-blur-sm bg-white/5 px-2.5 py-1.5 rounded-full shadow-sm border border-white/10 animate-pulse pointer-events-none">
                 <span>Desliza</span>
                 <svg viewBox="0 0 24 24" className="h-3 w-3"><path fill="currentColor" d="M8.12 4.47 6.7 5.88 13.82 13l-7.12 7.12 1.41 1.41L16.64 13 8.12 4.47Z"/></svg>
               </div>
