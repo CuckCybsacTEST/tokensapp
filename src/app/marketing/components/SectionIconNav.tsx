@@ -62,10 +62,7 @@ export function SectionIconNav() {
     return () => obs.disconnect();
   }, [items]);
 
-  // Navegación por hash: confiamos en el navegador + CSS scroll-behavior
-  const goHash = (id: string) => {
-    try { history.pushState(null, '', `#${id}`); } catch { location.hash = `#${id}`; }
-  };
+  // Navegación por hash: dejamos que el navegador maneje el scroll del anchor
 
   const labelMap: Record<string, string> = {
     shows: 'Shows',
@@ -132,10 +129,22 @@ export function SectionIconNav() {
             )}
             <a
               href={`#${it.id}`}
-              onClick={() => { showTip(it.id); goHash(it.id); }}
+              onClick={(e) => {
+                e.preventDefault();
+                showTip(it.id);
+                const el = document.getElementById(it.id);
+                if (!el) return;
+                // Desplazar a inicio suavemente
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Pequeño empuje para superar umbral del snap en móviles altos
+                window.requestAnimationFrame(() => {
+                  setTimeout(() => { try { window.scrollBy({ top: 18, behavior: 'smooth' }); } catch {} }, 180);
+                });
+                el.focus?.({ preventScroll: true });
+              }}
               aria-label={`Ir a ${it.label}`}
               className={`h-9 w-10 flex items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? 'bg-white/15' : 'bg-white/6 hover:bg-white/12'}`}
-              style={{ backdropFilter: 'blur(6px)' }}
+              style={{ backdropFilter: 'blur(6px)', touchAction: 'manipulation' }}
             >
               <IconById id={it.id} />
             </a>
