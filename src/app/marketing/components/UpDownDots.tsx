@@ -183,7 +183,11 @@ export function UpDownDots() {
 
   if (!mounted) return null;
   return createPortal(
-    <div className="fixed top-1/2 -translate-y-1/2 z-[1000] pointer-events-auto select-none flex flex-col items-center gap-4" style={wrapStyle} aria-label="Navegación por secciones">
+    <div
+      className="fixed top-1/2 -translate-y-1/2 pointer-events-auto select-none flex flex-col items-center gap-4"
+      style={{ ...wrapStyle, zIndex: 2147483647 }}
+      aria-label="Navegación por secciones"
+    >
   <Dot dir="up" disabled={disableUp} />
   {!isLast && <Dot dir="down" />}
     </div>,
