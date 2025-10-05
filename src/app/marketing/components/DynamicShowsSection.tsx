@@ -12,6 +12,8 @@ export interface PublicShow {
   imageWebpPath?: string;
   imageBlurData?: string;
   slot?: number | null; // derivado internamente; no siempre presente
+  endsAt?: string | null;
+  isExpired?: boolean;
 }
 
 interface ApiResp { ok: boolean; shows: PublicShow[] }
@@ -34,11 +36,8 @@ export function DynamicShowsSection({
   const r = await fetch(endpoint, { cache: 'no-store' });
         const j: ApiResp = await r.json();
         if (!r.ok || !j?.ok) throw new Error('Error');
-        let list = [...(j.shows || [])];
-        const cutoff = Date.now() - 24*60*60*1000; // tolerancia -1d
-        list = list.filter(s => new Date(s.startsAt).getTime() >= cutoff);
-  // Orden ascendente por fecha (independiente del orden original orientado a slots)
-        list.sort((a,b)=> new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    // Respetar el orden entregado por el API (ya prioriza slots y limita a 4)
+    const list = [...(j.shows || [])];
         if (!cancelled) setShows(limit ? list.slice(0, limit) : list);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Fallo cargando shows');
@@ -69,15 +68,16 @@ export function DynamicShowsSection({
 
   return (
     <section
-      className={`relative flex min-h-[var(--app-vh,100svh)] flex-col justify-center pt-10 md:pt-12 pb-8 md:pb-10 ${className}`}
+      className={`shows-wrap relative flex flex-col justify-center pt-10 md:pt-12 pb-8 md:pb-10 ${className}`}
+      style={{ minHeight: 'var(--app-vh, 100svh)' }}
     >
     <div className="container mx-auto max-w-7xl px-4 md:px-8">
-  <div className="mb-9 md:mb-14 flex flex-col items-center text-center gap-3 md:gap-4">
+  <div className="shows-header mb-9 md:mb-14 flex flex-col items-center text-center gap-3 md:gap-4">
           <h2 aria-describedby="shows-subtitle shows-subtitle-mobile" className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ textShadow: '0 4px 18px rgba(255,255,255,0.15)' }}>Próximos Shows</h2>
           <ShowsSubtitle />
         </div>
-        {/* Grid responsiva */}
-        <div className="grid gap-6 md:gap-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+  {/* Grid responsiva */}
+        <div className="shows-grid grid gap-6 md:gap-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {shows.map((s, idx) => {
             const starts = new Date(s.startsAt);
             const dateHuman = starts.toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit', month: 'short' });
@@ -112,36 +112,72 @@ export function DynamicShowsSection({
                       style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0))' }}
                     />
                     <div className="absolute inset-0 bg-black/10" />
+                    {s.isExpired && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* Capa tenue con degradado suave */}
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.15))' }} />
+                      </div>
+                    )}
                     <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none transition-opacity duration-500 group-hover/card:from-black/70" />
-                    <div className="absolute inset-0 flex flex-col justify-end p-3 md:p-4">
-                      <div className="opacity-100 translate-y-0 md:translate-y-4 md:opacity-0 group-hover/card:opacity-100 group-hover/card:translate-y-0 transition-all duration-500 ease-out">
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="inline-block rounded-full text-[10px] font-medium px-2 py-1 bg-black/40 backdrop-blur-sm border border-white/10 text-white shadow">
-                            {dateHuman}
-                          </span>
-                          {s.slot && <span className="text-[10px] font-medium px-2 py-1 rounded bg-black/30 backdrop-blur-sm border border-white/10 text-white">Slot {s.slot}</span>}
-                        </div>
-                        <h3 className="text-xs sm:text-sm md:text-base font-semibold md:font-bold leading-snug mb-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] line-clamp-3">
-                          {s.title}
-                        </h3>
-                        <div className="flex w-full gap-2 max-[380px]:flex-col max-[380px]:gap-1">
-                          <a
-                            href="/marketing/cumpleanos"
-                            className="relative flex items-center justify-center gap-1 rounded-full flex-1 py-1.5 px-4 text-[11px] font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[--ring-color] overflow-hidden whitespace-nowrap tracking-wide min-w-0 max-[420px]:py-1.5 max-[360px]:px-3"
-                            style={{ background: `${brand.primary}E6`, boxShadow: `0 4px 14px -6px ${brand.primary}` }}
-                          >
-                            {/* Ícono ticket */}
-                            <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0 opacity-90"><path fill="currentColor" d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v2.25a.75.75 0 0 1-.75.75 2.25 2.25 0 0 0 0 4.5.75.75 0 0 1 .75.75V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2.75A.75.75 0 0 1 4.75 13a2.25 2.25 0 0 0 0-4.5A.75.75 0 0 1 4 7.25V7Z"/></svg>
-                            <span className="truncate max-[340px]:text-[10px]">Reserva</span>
-                            {/* Micro efecto highlight (no pulse intrusivo) */}
-                            <span className="pointer-events-none absolute inset-0 opacity-0 md:group-hover/card:opacity-0 animate-[ping_4s_linear_infinite] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_60%)]" />
-                          </a>
+                    {!s.isExpired ? (
+                      <div className="absolute inset-0 flex flex-col justify-end p-3 md:p-4">
+                        <div className="opacity-100 translate-y-0 md:translate-y-4 md:opacity-0 group-hover/card:opacity-100 group-hover/card:translate-y-0 transition-all duration-500 ease-out">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="inline-block rounded-full text-[10px] font-medium px-2 py-1 bg-black/40 backdrop-blur-sm border border-white/10 text-white shadow">
+                              {dateHuman}
+                            </span>
+                            {s.slot && <span className="text-[10px] font-medium px-2 py-1 rounded bg-black/30 backdrop-blur-sm border border-white/10 text-white">Slot {s.slot}</span>}
+                          </div>
+                          <h3 className="text-xs sm:text-sm md:text-base font-semibold md:font-bold leading-snug mb-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] line-clamp-3">
+                            {s.title}
+                          </h3>
+                          <div className="flex w-full gap-2 max-[380px]:flex-col max-[380px]:gap-1">
+                            <a
+                              href="/marketing/cumpleanos"
+                              className="relative flex items-center justify-center gap-1 rounded-full flex-1 py-1.5 px-4 text-[11px] font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[--ring-color] overflow-hidden whitespace-nowrap tracking-wide min-w-0 max-[420px]:py-1.5 max-[360px]:px-3"
+                              style={{ background: `${brand.primary}E6`, boxShadow: `0 4px 14px -6px ${brand.primary}` }}
+                            >
+                              {/* Ícono ticket */}
+                              <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0 opacity-90"><path fill="currentColor" d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v2.25a.75.75 0 0 1-.75.75 2.25 2.25 0 0 0 0 4.5.75.75 0 0 1 .75.75V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-2.75A.75.75 0 0 1 4.75 13a2.25 2.25 0 0 0 0-4.5A.75.75 0 0 1 4 7.25V7Z"/></svg>
+                              <span className="truncate max-[340px]:text-[10px]">Reserva</span>
+                              <span className="pointer-events-none absolute inset-0 opacity-0 md:group-hover/card:opacity-0 animate-[ping_4s_linear_infinite] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_60%)]" />
+                            </a>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="hidden md:block absolute inset-x-0 bottom-0 p-3 md:p-4 pointer-events-none select-none group-hover/card:opacity-0 transition-opacity duration-300">
-                      <h3 className="text-[11px] md:text-sm font-medium text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] line-clamp-2">{s.title}</h3>
-                    </div>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-4">
+                        <div className="w-full max-w-[90%] sm:max-w-sm md:max-w-md text-center rounded-xl backdrop-blur-[2px] bg-black/30 border border-white/15 p-3 md:p-4 shadow">
+                          <div className="mb-2 flex items-center justify-center gap-2">
+                            <span className="text-[11px] md:text-xs font-semibold text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+                              {dateHuman}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded bg-white/18 text-white/95 border border-white/20">
+                              <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5v5l4 2-.7 1.3L11 12V7h2z"/></svg>
+                              Realizado
+                            </span>
+                          </div>
+                          <h3 className="text-sm md:text-base font-bold leading-snug mb-3 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
+                            {s.title}
+                          </h3>
+                          <div className="flex w-full justify-center">
+                            <a
+                              href="#galeria"
+                              className="inline-flex items-center justify-center gap-1 rounded-full py-1.5 px-5 text-[11px] font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[--ring-color]"
+                              style={{ background: 'rgba(255,255,255,0.2)', boxShadow: '0 4px 14px -6px rgba(0,0,0,0.55)' }}
+                            >
+                              <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0 opacity-90"><path fill="currentColor" d="M4 5h16v14H4V5zm2 2v10h12V7H6zm2 8l3-4 2 3 2-3 3 4H8zm8-7a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
+                              Fotos
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!s.isExpired && (
+                      <div className="hidden md:block absolute inset-x-0 bottom-0 p-3 md:p-4 pointer-events-none select-none group-hover/card:opacity-0 transition-opacity duration-300">
+                        <h3 className="text-[11px] md:text-sm font-medium text-white/90 drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)] line-clamp-2">{s.title}</h3>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -149,6 +185,15 @@ export function DynamicShowsSection({
           })}
         </div>
       </div>
+      <style jsx>{`
+        /* Compactar en móviles de poca altura (ej. 740px) */
+        @media (max-width: 899px) and (max-height: 740px) {
+          .shows-wrap { padding-top: 0.75rem; padding-bottom: calc(0.75rem + var(--bottom-bar-h, 56px)); }
+          .shows-header { margin-bottom: 1rem !important; }
+          .shows-header h2 { font-size: 1.5rem; }
+          .shows-grid { gap: 1rem !important; }
+        }
+      `}</style>
     </section>
   );
 }

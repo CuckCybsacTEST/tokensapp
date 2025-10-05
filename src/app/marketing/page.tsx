@@ -23,6 +23,7 @@ import { Footer } from './components/Footer';
 import { SectionDivider } from './components/SectionDivider';
 import { BackToTop } from './components/BackToTop';
 import { UpDownDots } from './components/UpDownDots';
+import { BottomIconBar } from './components/BottomIconBar';
 
 // Importar identificadores centralizados
 import { SECTIONS } from './constants/sections';
@@ -92,6 +93,22 @@ export default function MarketingPage() {
 
   const [showNavButtons, setShowNavButtons] = React.useState(false);
   const [currentSection, setCurrentSection] = React.useState('');
+  const [isDesktop, setIsDesktop] = React.useState(false);
+
+  React.useEffect(() => {
+    const update = () => {
+      try {
+        const mq = window.matchMedia('(min-width: 900px)');
+        setIsDesktop(mq.matches);
+      } catch {
+        setIsDesktop((window.innerWidth || 0) >= 900);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); };
+  }, []);
 
   React.useEffect(() => {
     const hero = document.getElementById('hero');
@@ -152,6 +169,9 @@ export default function MarketingPage() {
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
         .marketing-scroll{ scroll-snap-type: y mandatory; }
         .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); }
+        @media (max-width: 899px){
+          .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); }
+        }
       `}</style>
       {/* Patrón sutil */}
       <div aria-hidden className="pointer-events-none fixed inset-0 opacity-[0.07]" style={{
@@ -197,7 +217,10 @@ export default function MarketingPage() {
       <Footer />
       {/* Floating Back to Top button */}
       <BackToTop />
-  {showNavButtons && <UpDownDots />}
+  {/* Mantener dots sólo en desktop/tablet; en móvil usamos la barra de iconos */}
+  {showNavButtons && isDesktop && <UpDownDots />}
+  {/* Barra inferior por iconos para móvil */}
+  <BottomIconBar />
     </div>
   );
 }

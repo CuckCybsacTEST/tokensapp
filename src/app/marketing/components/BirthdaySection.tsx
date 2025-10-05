@@ -87,7 +87,7 @@ export function BirthdaySection() {
   },[]);
 
   return (
-    <section id="cumple" className="birthday-wrap relative overflow-hidden flex flex-col justify-start pt-6 md:pt-10 pb-10 md:pb-12">
+  <section id="cumple" className="birthday-wrap relative overflow-hidden flex flex-col justify-start pt-6 md:pt-10 pb-10 md:pb-12" style={{ minHeight: 'calc(var(--app-vh, 100svh))' }}>
       <div
         className="absolute inset-0 z-0 opacity-10"
         style={{backgroundImage:`radial-gradient(circle at 12% 88%, ${brand.secondary}33 0%, transparent 40%),radial-gradient(circle at 88% 18%, ${brand.primary}22 0%, transparent 30%)`}}
@@ -103,7 +103,7 @@ export function BirthdaySection() {
   <div className="mt-3 md:mt-4 flex flex-col gap-6 md:gap-6">
           {/* Mobile slider */}
           <div className="sm:hidden -mx-4 px-6 relative">
-            <div ref={sliderRef} className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth gap-6 pb-4" style={{scrollPadding:'0 24px'}}>
+            <div ref={sliderRef} className="packs-slider flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pb-2" style={{scrollPadding:'0 24px'}}>
               {(loading && packs.length===0) && [0,1,2].map(i => (
                 <div key={`skel-m-${i}`} data-pack-slide className="w-full flex-shrink-0 snap-center">
                   <div className="max-w-[340px] mx-auto rounded-xl p-4 flex flex-col border border-white/10 bg-white/5 animate-pulse h-full" />
@@ -154,7 +154,7 @@ export function BirthdaySection() {
               })}
             </div>
             {!loading && decorated.length>1 && (
-              <div className="mt-3 flex justify-center gap-2">
+              <div className="mt-3 packs-dots flex justify-center gap-2">
                 {decorated.map((_,i)=>{
                   const active = i===activeIdx;
                   return (
@@ -164,7 +164,7 @@ export function BirthdaySection() {
                         const target = el.querySelectorAll('[data-pack-slide]')[i] as HTMLElement;
                         if(target) el.scrollTo({left: target.offsetLeft - (el.clientWidth - target.clientWidth)/2, behavior:'smooth'});
                       }}
-                      className={`h-3 w-3 rounded-full transition-all ${active? 'scale-110':'opacity-60 hover:opacity-90'}`}
+                      className={`dot h-3 w-3 rounded-full transition-all ${active? 'scale-110':'opacity-60 hover:opacity-90'}`}
                       style={{background: active? brand.primary : 'rgba(255,255,255,0.35)', boxShadow: active?`0 0 0 4px ${brand.primary}22`:undefined}}
                     />
                   );
@@ -231,12 +231,12 @@ export function BirthdaySection() {
             <div className="text-xs text-amber-300">{error} — mostrando versión estática.</div>
           )}
 
-          <div className="mt-1">
+          <div className="mt-1 services-inc">
             <div className="text-sm font-semibold mb-2 opacity-90 hidden md:block">Servicios incluidos</div>
             <ServicesIncluded items={incluidos} />
           </div>
 
-          <div className="mt-1 w-full flex justify-center">
+          <div className="mt-1 w-full flex justify-center personalize-cta">
             <Link href="/marketing/cumpleanos" className="rounded-lg px-5 py-2 font-semibold text-sm" style={{background:`${brand.primary}AA`, boxShadow:`0 6px 16px -6px ${brand.primary}`}}>Personalizar mi Pack</Link>
           </div>
         </div>
@@ -250,6 +250,25 @@ export function BirthdaySection() {
           @media (min-height: 740px) {
             .birthday-wrap { min-height: 100svh; }
           }
+        }
+        /* Asegurar espacio para la barra inferior en pantallas pequeñas */
+        @media (max-width: 899px) {
+          .birthday-wrap { padding-bottom: calc(3.25rem + var(--bottom-bar-h, 56px)); }
+        }
+        /* Compactar en móviles de poca altura (ej. 740px) */
+        @media (max-width: 899px) && (max-height: 740px) {
+          .birthday-wrap { padding-top: 0.75rem; padding-bottom: calc(1rem + var(--bottom-bar-h, 56px)); }
+        }
+        /* Ocultar completamente scrollbar del carrusel móvil */
+        .packs-slider { -ms-overflow-style: none; scrollbar-width: none; }
+        .packs-slider::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+        /* Ajustes extra para pantallas de poca altura */
+        @media (max-width: 899px) and (max-height: 740px) {
+          .services-inc { display: none; }
+          .packs-dots { margin-top: 0.25rem; }
+          .packs-dots .dot { width: 0.5rem !important; height: 0.5rem !important; }
+          .personalize-cta { margin-top: 0.4rem; margin-bottom: calc(var(--bottom-bar-h, 56px) + 6px); }
         }
       `}</style>
     </section>

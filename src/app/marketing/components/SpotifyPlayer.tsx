@@ -50,7 +50,7 @@ export function SpotifyPlayer({ idOrUrl, showFollowButton = true, className }: P
   const { playlistUrl, embedUrl } = computeSpotifyUrls(idOrUrl);
 
   return (
-    <div className={className ?? 'mx-auto w-[86%] sm:w-[82%] md:w-[92%] max-w-xl flex flex-col items-center pr-[26px] sm:pr-[36px] md:pr-0'}>
+    <div className={className ?? 'mx-auto w-[94%] sm:w-[92%] md:w-[92%] lg:w-[86%] xl:w-[80%] max-w-3xl flex flex-col items-center'}>
       <motion.div
         className="player-frame rounded-2xl overflow-hidden w-full border"
         initial={{ opacity: 0, y: 16 }}

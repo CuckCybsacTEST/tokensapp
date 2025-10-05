@@ -55,6 +55,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@tabler/icons-react": "^3.35.0",
     "@zxing/browser": "^0.1.5",
     "archiver": "^6.0.2",
     "bcryptjs": "^3.0.2",

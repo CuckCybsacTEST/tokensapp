@@ -427,11 +427,14 @@ export async function archive(_id: string, ctx?: { actorRole?: string }) {
 
 export async function listPublic() {
   const now = new Date();
+  const graceMs = 24 * 60 * 60 * 1000; // 24h de tolerancia para que no desaparezca inmediatamente
+  const endsAfter = new Date(now.getTime() - graceMs);
   // Traer publicados activos (o expirados muy recientemente?) – sólo activos (endsAt null o > now)
   const shows = await prisma.show.findMany({
     where: {
       status: 'PUBLISHED',
-      OR: [ { endsAt: null }, { endsAt: { gt: now } } ],
+      // Incluir activos y los que terminaron recientemente (gracia 24h)
+      OR: [ { endsAt: null }, { endsAt: { gt: endsAfter } } ],
     },
     orderBy: [
       // Primero los que tienen slot (para luego ordenar manual si necesario)
@@ -443,7 +446,22 @@ export async function listPublic() {
   // Reordenar: todos los slotted en orden 1..4 luego los no slotted por startsAt desc
   const slotted = shows.filter(s => s.slot != null).sort((a,b)=> (a.slot! - b.slot!));
   const unslotted = shows.filter(s => s.slot == null).sort((a,b)=> b.startsAt.getTime() - a.startsAt.getTime());
-  const final = [...slotted, ...unslotted].slice(0,4);
+  const primary = [...slotted, ...unslotted].slice(0,4);
+
+  // Si hay menos de 4 activos+gracia, completar con los más recientes expirados publicados
+  let final = primary;
+  if (primary.length < 4) {
+    const need = 4 - primary.length;
+    const expired = await prisma.show.findMany({
+      where: { status: 'PUBLISHED', endsAt: { lte: now } },
+      orderBy: [ { slot: 'asc' }, { endsAt: 'desc' }, { startsAt: 'desc' } ],
+      take: 12,
+    });
+    const usedIds = new Set(primary.map(s => s.id));
+    const candidates = expired.filter(s => !usedIds.has(s.id));
+    final = [...primary, ...candidates.slice(0, need)];
+  }
+
   return final.map((s, idx) => ({
     id: s.id,
     title: s.title,
@@ -456,5 +474,6 @@ export async function listPublic() {
     endsAt: s.endsAt ? s.endsAt.toISOString() : null,
     order: s.slot ?? (slotted.length + idx + 1),
     updatedAt: s.updatedAt.toISOString(),
+    isExpired: !!(s.endsAt && s.endsAt.getTime() <= now.getTime()),
   }));
 }
