@@ -1,21 +1,17 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { brand } from './styles/brand';
 
 // Importamos los componentes UI reutilizables
-import { SectionTitle } from './components/ui/SectionTitle';
-import { ScrollX } from './components/ui/ScrollX';
-import { Stars } from './components/ui/Stars';
+// import { SectionTitle } from './components/ui/SectionTitle';
 
 // Importamos los componentes de sección
-// Reemplazamos Navbar por OverlayNav flotante
 import { TopNavBar } from './components/TopNavBar';
 import { Hero } from './components/Hero';
 import { DynamicShowsSection } from './components/DynamicShowsSection';
 import { BirthdaySection } from './components/BirthdaySection';
-import { QrSection } from './components/QrSection';
+// import { QrSection } from './components/QrSection';
 import { GallerySection } from './components/GallerySection';
 import { SpotifySection } from './components/SpotifySection';
 // import { TestimonialsSection } from './components/TestimonialsSection';
@@ -26,34 +22,13 @@ import { BlogSection } from './components/BlogSection';
 import { Footer } from './components/Footer';
 import { SectionDivider } from './components/SectionDivider';
 import { BackToTop } from './components/BackToTop';
-import { MinimalNavButtons } from './components/MinimalNavButtons';
+import { UpDownDots } from './components/UpDownDots';
 
 // Importar identificadores centralizados
 import { SECTIONS } from './constants/sections';
 
 // Datos estructurados para la landing page
 // -----------------------------------------
-
-// Características
-const features = [
-  { icon: '🔥', title: 'Experiencias únicas', description: 'Eventos temáticos que elevan cada momento.' },
-  { icon: '⚡', title: 'Tecnología QR', description: 'Integramos códigos QR para interacción y dinamismo.' },
-  { icon: '🎧', title: 'Música curada', description: 'Playlists y DJs seleccionados para cada ambiente.' },
-  { icon: '🛰️', title: 'Conectividad', description: 'Infraestructura preparada para experiencias digitales.' },
-  { icon: '💡', title: 'Innovación', description: 'A/B tests rápidos de conceptos para el público.' },
-  { icon: '🛡️', title: 'Fiabilidad', description: 'Arquitectura estable y escalable.' },
-];
-
-
-// Cócteles
-const cocktails = [
-  { name: "Virgo Glow", base: "Vodka · Maracuyá", color: "#F8E16B" },
-  { name: "Rugido", base: "Whisky · Ginger", color: "#E65353" },
-  { name: "Big Bang Shot", base: "Tequila · Blue Curaçao", color: "#4FA6FF" },
-  { name: "Cadena Perpetua", base: "Ron · Cola · Limón", color: "#9AE6B4" },
-  { name: "Almas Perdidas", base: "Jäger · Energizante", color: "#B794F4" },
-  { name: "Re-Bajona Mix", base: "Pisco · Fresa", color: "#FF8FA3" },
-];
 
 // Galería de imágenes
 const gallery = [
@@ -63,13 +38,6 @@ const gallery = [
   { src: '#', alt: 'Bar' },
   { src: '#', alt: 'Escenario' },
   { src: '#', alt: 'Experiencia QR' },
-];
-
-// Testimonios
-const testimonials = [
-  { name: "Camila", text: "La mejor vibra de Go Lounge!. Los cócteles 🔥 y la música nunca baja.", rating: 5 },
-  { name: "Diego", text: "Festejé mi cumple y los QR para invitados fueron un golazo.", rating: 5 },
-  { name: "Mariana", text: "Staff atento y DJs con energía. Volvería mil veces.", rating: 4 },
 ];
 
 // Posts del blog
@@ -129,13 +97,18 @@ export default function MarketingPage() {
     const hero = document.getElementById('hero');
     if (!hero) return;
 
+    // Estado inicial: si ya hay scroll, mostrar los dots
+    try { setShowNavButtons(window.scrollY > 8); } catch {}
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          setShowNavButtons(!entry.isIntersecting);
+          // Mostrar dots cuando el hero deja de cubrir casi toda la pantalla
+          const ratio = entry.intersectionRatio ?? 0;
+          setShowNavButtons(ratio < 0.96);
         });
       },
-      { threshold: 0.1 }
+      { threshold: [0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 0.96] }
     );
 
     observer.observe(hero);
@@ -176,6 +149,9 @@ export default function MarketingPage() {
           html.mobile-no-scrollbar::-webkit-scrollbar, body.mobile-no-scrollbar::-webkit-scrollbar { width:0; height:0; display:none; }
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
+        /* Scroll snap para que cada sección llene el viewport y quede alineada */
+        .marketing-scroll{ scroll-snap-type: y mandatory; }
+        .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); }
       `}</style>
       {/* Patrón sutil */}
       <div aria-hidden className="pointer-events-none fixed inset-0 opacity-[0.07]" style={{
@@ -189,31 +165,31 @@ export default function MarketingPage() {
       
       {/* Componentes de secciones principales */}
   {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-      <div id="shows" data-section="shows" style={{ minHeight: '100vh', padding: '2rem 0', backgroundColor: 'transparent' }}>
+  <div id="shows" data-section="shows" tabIndex={-1} role="region" aria-label="Estelares" className="snap-section">
         <DynamicShowsSection />
       </div>
       <SectionDivider className="my-10 sm:my-14" />
-      <div id="cumple" data-section="cumple">
+  <div id="cumple" data-section="cumple" tabIndex={-1} role="region" aria-label="Cumpleaños" className="snap-section">
         <BirthdaySection />
       </div>
       <SectionDivider className="my-10 sm:my-14" />
-      <div id="spotify" data-section="spotify">
+  <div id="spotify" data-section="spotify" tabIndex={-1} role="region" aria-label="Spotify" className="snap-section">
         <SpotifySection />
       </div>
       <SectionDivider className="my-12 sm:my-16" />
-      <div id="galeria" data-section="galeria">
+  <div id="galeria" data-section="galeria" tabIndex={-1} role="region" aria-label="Galería" className="snap-section">
         <GallerySection gallery={gallery} />
       </div>
       <SectionDivider className="my-12 sm:my-16 z-30" />
-      <div id="faq" data-section="faq">
+  <div id="faq" data-section="faq" tabIndex={-1} role="region" aria-label="Preguntas frecuentes" className="snap-section">
         <FaqSection faq={faq} />
       </div>
       <SectionDivider className="my-10 sm:my-14" />
-      <div id="blog" data-section="blog">
+  <div id="blog" data-section="blog" tabIndex={-1} role="region" aria-label="Blog" className="snap-section">
         <BlogSection blogPosts={blogPosts} />
       </div>
       <SectionDivider className="my-10 sm:my-14" />
-      <div id="mapa" data-section="mapa">
+  <div id="mapa" data-section="mapa" tabIndex={-1} role="region" aria-label="Mapa" className="snap-section">
         <MapSection />
       </div>
       
@@ -221,7 +197,7 @@ export default function MarketingPage() {
       <Footer />
       {/* Floating Back to Top button */}
       <BackToTop />
-      {showNavButtons && <MinimalNavButtons />}
+  {showNavButtons && <UpDownDots />}
     </div>
   );
 }

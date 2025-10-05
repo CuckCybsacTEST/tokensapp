@@ -67,9 +67,10 @@ export const Footer: React.FC<FooterProps> = () => {
         <motion.div className="text-sm" style={{ color: "#FFFFFFB3" }} variants={fadeInUp}>
           <p className="font-semibold mb-2" style={{ color: "#fff" }}>Enlaces rápidos</p>
           <ul className="space-y-1">
+            <li><a href="#shows" className="hover:underline">✨ Estelares</a></li>
             <li><a href="#galeria" className="hover:underline">📸 Galería</a></li>
-            <li><a href="#testimonios" className="hover:underline">💬 Testimonios</a></li>
-            <li><a href="#reservas" className="hover:underline">📅 Reservas</a></li>
+            <li><a href="#spotify" className="hover:underline">🎧 Spotify</a></li>
+            <li><a href="#blog" className="hover:underline">� Blog</a></li>
             <li><a href="#mapa" className="hover:underline">📍 Ubicación</a></li>
           </ul>
         </motion.div>

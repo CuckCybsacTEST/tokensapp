@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Go Lounge Team" }],
   creator: "Go Lounge!",
   publisher: "Go Lounge!",
+  // Base para resolver URLs absolutas en OpenGraph/Twitter
+  metadataBase: new URL('https://golounge.pe'),
   // Configuración de robots
   robots: {
     index: true,
@@ -33,10 +35,10 @@ export const metadata: Metadata = {
   siteName: 'Go Lounge!',
     images: [
       {
-        url: 'https://qrplatform.pe/og-image.jpg',
+        url: '/icons-golounge/web/og-image.jpg',
         width: 1200,
         height: 630,
-  alt: 'Go Lounge! - Experiencias interactivas',
+        alt: 'Go Lounge! - Experiencias interactivas',
       }
     ],
   },
@@ -45,7 +47,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
   title: 'Go Lounge! - Experiencias interactivas',
   description: 'Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.',
-    images: ['https://qrplatform.pe/twitter-image.jpg'],
+  images: ['/icons-golounge/web/twitter-image.jpg'],
   },
   // Aseguramos que los motores de búsqueda entienden que esta es una página independiente
   alternates: {
@@ -120,12 +122,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           {children}
         </main>
         
-        {/* Script para habilitar PWA: usar script existente en public/sw.js */}
+        {/* Script para habilitar PWA (gateado por NEXT_PUBLIC_PWA=1) para evitar duplicado con root layout */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Registra service worker para PWA si está disponible
-              if ('serviceWorker' in navigator) {
+              // Registra service worker sólo si está activo NEXT_PUBLIC_PWA
+              (function(){
+                var pwaFlag = (typeof window !== 'undefined' && (window['NEXT_PUBLIC_PWA']==='1')) || (typeof window !== 'undefined' && window.process && window.process.env && window.process.env.NEXT_PUBLIC_PWA==='1');
+                if ('serviceWorker' in navigator && pwaFlag) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(
                     function(registration) {
@@ -136,7 +140,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                     }
                   );
                 });
-              }
+                }
+              })();
             `
           }}
         />

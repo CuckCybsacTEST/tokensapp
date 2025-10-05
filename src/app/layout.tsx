@@ -29,6 +29,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   {/* Theme colors (light/dark) usando la paleta brand */}
   <meta name="theme-color" content="#FF4D2E" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0E0606" media="(prefers-color-scheme: dark)" />
+  {/* PWA: meta moderno para web app capable (evitar warning deprecado) */}
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="color-scheme" content="dark light" />
@@ -43,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   <meta name="apple-mobile-web-app-title" content="Go Lounge" />
   <meta name="description" content="Experiencias con tecnología QR: shows, rewards y más." />
       </head>
-      <body className="min-h-full w-full antialiased transition-colors duration-150">
+      <body className="min-h-full w-full antialiased transition-colors duration-150 theme-hydrated">
         <script dangerouslySetInnerHTML={{__html:`document.documentElement.classList.add('theme-hydrated');document.body.classList.add('theme-hydrated');`}} />
         <ThemeProvider>
           {children}
