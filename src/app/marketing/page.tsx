@@ -155,10 +155,13 @@ export default function MarketingPage() {
         }
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
         .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
-        .snap-section{ scroll-snap-align: start; min-height: var(--app-vh, 100svh); scroll-margin-top: 8px; }
+  .snap-section{ scroll-snap-align: start; scroll-snap-stop: always; min-height: var(--app-vh, 100svh); scroll-margin-top: 8px; }
+  /* Margen extra para la sección Spotify, mejora aterrizaje de ancla en Chrome móvil */
+  .snap-section#spotify { scroll-margin-top: 28px; }
         @media (max-width: 767px){
           .marketing-scroll{ scroll-padding-top: 16px; }
           .snap-section{ min-height: calc(var(--app-vh, 100svh) - var(--bottom-bar-h, 56px)); scroll-margin-top: 16px; }
+          .snap-section#spotify { scroll-margin-top: 32px; }
         }
         /* Preferir 100svh cuando esté disponible para estabilizar viewport móvil */
         @supports (height: 1svh) {
