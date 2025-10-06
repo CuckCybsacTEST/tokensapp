@@ -24,7 +24,7 @@ export function TopNavBar() {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: inHero ? 1 : 0, y: inHero ? 0 : -8 }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
-      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-3 md:px-6 h-12 md:h-14 select-none ${inHero ? '' : 'pointer-events-none'}`}
+  className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-3 md:px-6 h-12 md:h-14 select-none ${inHero ? '' : 'pointer-events-none'}`}
       style={{
         background: 'linear-gradient(180deg, rgba(10,10,15,0.85), rgba(10,10,15,0.55) 70%, rgba(10,10,15,0))',
         backdropFilter: 'blur(12px)',
@@ -61,7 +61,7 @@ export function TopNavBar() {
           className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
           style={{
             color: '#ffffffb0',
-            ['--ring-color' as any]: `${brand.primary}55`
+            ['--ring-color' as unknown as string]: `${brand.primary}55`
           }}
           aria-label="Ir a login usuarios"
         >
@@ -72,7 +72,7 @@ export function TopNavBar() {
           className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
           style={{
             color: '#ffffff80',
-            ['--ring-color' as any]: `${brand.primary}40`
+            ['--ring-color' as unknown as string]: `${brand.primary}40`
           }}
           aria-label="Ir a panel admin"
         >

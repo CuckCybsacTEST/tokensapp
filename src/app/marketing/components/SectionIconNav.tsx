@@ -1,31 +1,71 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SECTIONS } from '../constants/sections';
-import {
-  IconStar,
-  IconCake,
-  IconBrandSpotify,
-  IconPhoto,
-  IconHelpCircle,
-  IconNews,
-  IconMap,
-  IconCircleDot,
-} from '@tabler/icons-react';
 import { brand } from '../styles/brand';
 
 type SectionItem = { id: string; label: string };
 
 function IconById({ id }: { id: string }) {
-  const props = { size: 22, stroke: 1.9, className: 'text-white opacity-95' } as const;
+  const cls = 'h-[22px] w-[22px] text-white opacity-95';
   switch (id) {
-    case 'shows': return <IconStar {...props} aria-hidden />;
-    case 'cumple': return <IconCake {...props} aria-hidden />;
-    case 'spotify': return <IconBrandSpotify {...props} aria-hidden />;
-    case 'galeria': return <IconPhoto {...props} aria-hidden />;
-    case 'faq': return <IconHelpCircle {...props} aria-hidden />;
-    case 'blog': return <IconNews {...props} aria-hidden />;
-    case 'mapa': return <IconMap {...props} aria-hidden />;
-    default: return <IconCircleDot {...props} aria-hidden />;
+    case 'shows':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15 9 22 9 17 14 19 22 12 18 5 22 7 14 2 9 9 9" />
+        </svg>
+      );
+    case 'cumple':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2c1.5 2-1 3-1 4s1 2 1 2 1-1 1-2-2-2-1-4z"/>
+          <rect x="4" y="8" width="16" height="10" rx="2"/>
+          <path d="M4 14h16"/>
+        </svg>
+      );
+    case 'spotify':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M7 9c3-1 7-1 10 1"/>
+          <path d="M7 12c3-1 6-1 9 1"/>
+          <path d="M7 15c2-.5 4-.5 6 .5"/>
+        </svg>
+      );
+    case 'galeria':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2"/>
+          <path d="M3 15l4-4 5 5 3-3 3 3"/>
+        </svg>
+      );
+    case 'faq':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9 10a3 3 0 1 1 5 2c-.8.6-1 1-1 2"/>
+          <circle cx="12" cy="17" r=".5"/>
+        </svg>
+      );
+    case 'blog':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h16v16H4z"/>
+          <path d="M7 8h10M7 12h10M7 16h6"/>
+        </svg>
+      );
+    case 'mapa':
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 21s7-4.35 7-10A7 7 0 0 0 5 11c0 5.65 7 10 7 10z"/>
+          <circle cx="12" cy="11" r="2"/>
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="2" />
+        </svg>
+      );
   }
 }
 
