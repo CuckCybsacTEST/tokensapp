@@ -281,8 +281,15 @@ export function DynamicShowsSection({
         .shows-card {
           aspect-ratio: 1080/1920;
         }
+        /* Teléfonos ~375x780: reducción proporcional extra (doble que el ajuste anterior) */
+        @media (max-width: 400px) and (min-height: 741px) and (max-height: 780px) {
+          .shows-grid {
+            transform: scale(0.895);
+            transform-origin: top center;
+          }
+        }
         /* Compactar en móviles de poca altura (ej. 740px) */
-        @media (max-width: 767px) and (max-height: 740px) {
+  @media (max-width: 767px) and (max-height: 740px) {
           .shows-wrap {
             padding-top: calc(0.75rem + var(--top-bar-h, 0px));
             padding-bottom: 0.75rem;
@@ -295,16 +302,34 @@ export function DynamicShowsSection({
           }
           .shows-grid {
             gap: 1rem !important;
+            /* Ajuste fino para 360x740 y similares */
+            transform: scale(0.915);
+            transform-origin: top center;
           }
-          /* Reducir altura aparente de las tarjetas para evitar corte en ~740px */
-          .shows-card {
-            aspect-ratio: 1080/1600 !important;
-          }
+          /* Mantener proporción fija 1080/1920: sin override del aspect-ratio */
         }
-        /* En móviles, reservar espacio adicional para las burbujas del menú inferior */
+        /* Aún más compacto en alturas muy bajas */
+        @media (max-width: 767px) and (max-height: 680px) {
+          .shows-grid { transform: scale(0.89); transform-origin: top center; }
+        }
+        @media (max-width: 767px) and (max-height: 620px) {
+          .shows-grid { transform: scale(0.81); transform-origin: top center; }
+        }
+        @media (max-width: 767px) and (max-height: 600px) {
+          .shows-grid { transform: scale(0.80); transform-origin: top center; }
+        }
+        /* En móviles con más altura, aprovechar haciéndolas un poco más altas */
+        @media (max-width: 767px) and (min-height: 800px) {
+          .shows-card { aspect-ratio: 1080/1800; }
+        }
+        @media (max-width: 767px) and (min-height: 900px) {
+          .shows-card { aspect-ratio: 1080/1920; }
+        }
+        /* En móviles, reservar espacio adicional y centrar verticalmente */
         @media (max-width: 767px) {
           .shows-wrap {
             padding-top: calc(1rem + var(--top-bar-h, 0px));
+            min-height: calc(100vh - var(--top-bar-h, 0px) - var(--bottom-indicator-h, 56px));
           }
           .shows-header {
             margin-bottom: 1.25rem;
@@ -312,6 +337,22 @@ export function DynamicShowsSection({
           .shows-grid {
             gap: 1.25rem;
           }
+        }
+        @supports (height: 1svh) {
+          @media (max-width: 767px) {
+            .shows-wrap { min-height: calc(100svh - var(--top-bar-h, 0px) - var(--bottom-indicator-h, 56px)); }
+          }
+        }
+        @supports (height: 1dvh) {
+          @media (max-width: 767px) {
+            .shows-wrap { min-height: calc(100dvh - var(--top-bar-h, 0px) - var(--bottom-indicator-h, 56px)); }
+          }
+        }
+        /* Teléfonos muy angostos: bajar gaps para ganar aire vertical */
+        @media (max-width: 380px) {
+          .shows-grid { gap: 0.9rem; }
+          .shows-header { margin-bottom: 0.9rem; }
+          /* Sin override: mantener 1080/1920 */
         }
       `}</style>
     </section>

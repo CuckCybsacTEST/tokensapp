@@ -277,7 +277,9 @@ export default function MarketingPage() {
             flex: 0 0 100%;
             scroll-snap-align: start;
             scroll-snap-stop: always;
-            overflow-y: auto;
+            overflow-y: hidden; /* Bloquear scroll vertical dentro del slide */
+            overscroll-behavior-y: contain;
+            touch-action: pan-x; /* Priorizar desplazamiento horizontal */
             -ms-overflow-style: none;
             scrollbar-width: none;
           }
