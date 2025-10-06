@@ -182,7 +182,7 @@ export function BirthdaySection() {
                             active ? { scale: 1, opacity: 1 } : { scale: 0.93, opacity: 0.82 }
                           }
                           transition={{ type: "spring", stiffness: 200, damping: 22 }}
-                          className={`max-w-[340px] mx-auto rounded-xl p-4 flex flex-col border backdrop-blur-sm ${c.featured ? "bg-white/12 border-white/20 shadow-[0_16px_48px_-18px_rgba(255,255,255,0.25)]" : "bg-white/6 border-white/10"}`}
+                          className={`pack-card max-w-[340px] mx-auto rounded-xl p-4 flex flex-col border backdrop-blur-sm ${c.featured ? "bg-white/12 border-white/20 shadow-[0_16px_48px_-18px_rgba(255,255,255,0.25)]" : "bg-white/6 border-white/10"}`}
                           style={{
                             boxShadow: active
                               ? `0 14px 42px -18px ${c.accent}90`
@@ -437,6 +437,22 @@ export function BirthdaySection() {
         </div>
       </div>
       <style jsx>{`
+        /* Packs mobile: garantizar que cada tarjeta entre completa en viewport */
+        @media (max-width: 767px) {
+          .pack-card {
+            /* Altura máxima: alto de pantalla - barra superior - dock inferior - holguras internas aprox. */
+            max-height: calc(100svh - var(--top-bar-h, 0px) - var(--bottom-indicator-h, 56px) - 120px);
+            /* Seguridad por si el navegador no soporta svh */
+            max-height: calc(100vh - var(--top-bar-h, 0px) - var(--bottom-indicator-h, 56px) - 120px);
+          }
+        }
+        /* En pantallas muy bajas, escalar ligeramente para que no se corte */
+        @media (max-width: 767px) and (max-height: 720px) {
+          .pack-card { transform-origin: center top; transform: scale(0.98); }
+        }
+        @media (max-width: 767px) and (max-height: 680px) {
+          .pack-card { transform-origin: center top; transform: scale(0.95); }
+        }
         /* En pantallas altas, centrar verticalmente la sección de Cumple */
         @media (min-height: 740px) {
           .birthday-wrap {

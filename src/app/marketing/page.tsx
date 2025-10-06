@@ -268,9 +268,10 @@ export default function MarketingPage() {
             background: transparent;
           }
           @supports (height: 1svh) {
-            #mobile-pager {
-              height: 100svh;
-            }
+            #mobile-pager { height: 100svh; }
+          }
+          @supports (height: 1dvh) {
+            #mobile-pager { height: 100dvh; }
           }
           #mobile-pager > .snap-section {
             flex: 0 0 100%;
@@ -289,7 +290,8 @@ export default function MarketingPage() {
           #mobile-pager > .snap-section {
             /* Altura previa: no compensar con la barra superior en mobile */
             padding-top: 8px;
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px + var(--bottom-indicator-h, 56px));
+            /* Evitar doble conteo: var(--bottom-indicator-h) ya incluye safe-area cuando se mide */
+            padding-bottom: calc(8px + var(--bottom-indicator-h, 56px));
           }
           /* Ocultar divisores entre slides en móvil para evitar "huecos" horizontales */
           #mobile-pager .section-divider {
