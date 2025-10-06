@@ -61,6 +61,9 @@ export function HeroVideo({
           aria-hidden
         />
       )}
+      <style jsx>{`
+        video { object-fit: cover; width: 100%; height: 100%; }
+      `}</style>
     </>
   );
 }

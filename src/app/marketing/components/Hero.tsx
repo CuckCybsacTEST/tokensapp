@@ -56,6 +56,12 @@ export function Hero() {
       {/* Scroll-down button (componente) */}
       {showScroll && <ScrollDownToShows />}
       
+      <style jsx>{`
+        /* Asegurar que el hero siempre ocupe el alto visible del viewport */
+        #hero { min-height: 100vh; }
+        @supports (height: 1svh) { #hero { min-height: 100svh; } }
+        @supports (height: 1dvh) { #hero { min-height: 100dvh; } }
+      `}</style>
     </section>
   );
 }

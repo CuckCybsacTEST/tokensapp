@@ -293,6 +293,16 @@ export default function MarketingPage() {
             /* Evitar doble conteo: var(--bottom-indicator-h) ya incluye safe-area cuando se mide */
             padding-bottom: calc(8px + var(--bottom-indicator-h, 56px));
           }
+          /* Hero: pantalla completa real, sin rellenos adicionales */
+          #mobile-pager > #hero.snap-section {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          /* Hero: que ocupe el alto completo sin padding extra del slide */
+          #mobile-pager > #hero.snap-section {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
           /* Ocultar divisores entre slides en móvil para evitar "huecos" horizontales */
           #mobile-pager .section-divider {
             display: none !important;
@@ -422,6 +432,23 @@ export default function MarketingPage() {
 }
 
 function MobileIndicatorDock() {
+  const [inHero, setInHero] = React.useState(true);
+
+  // Detectar si el hero está visible para ocultar completamente el dock
+  React.useEffect(() => {
+    const hero = document.getElementById("hero");
+    if (!hero) {
+      setInHero(false);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => setInHero(e.isIntersecting)),
+      { threshold: 0.6 }
+    );
+    obs.observe(hero);
+    return () => obs.disconnect();
+  }, []);
+
   React.useEffect(() => {
     const apply = () => {
       const el = document.getElementById("mobile-indicator-dock");
@@ -438,6 +465,9 @@ function MobileIndicatorDock() {
     };
   }, []);
 
+  // No renderizar el dock cuando el hero está en pantalla para evitar el hueco
+  if (inHero) return null;
+
   return (
     <div
       id="mobile-indicator-dock"
@@ -451,7 +481,7 @@ function MobileIndicatorDock() {
       }}
     >
       {/* En el dock, renderizamos el indicador completo, sin ocultarlo en el Hero */}
-  <MobilePagerIndicator hideOnHero />
+      <MobilePagerIndicator />
     </div>
   );
 }
