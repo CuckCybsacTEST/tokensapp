@@ -24,7 +24,7 @@ type HeroVideoProps = {
  */
 export function HeroVideo({
   className = "absolute inset-0 w-full h-full object-cover",
-  poster = "/posters/in.png",
+  poster,
   sources,
   autoPlay = true,
   loop = true,
@@ -48,7 +48,7 @@ export function HeroVideo({
         loop={loop}
         muted={muted}
         playsInline={playsInline}
-        poster={poster}
+        {...(poster ? { poster } : {})}
       >
         {list.map((s, i) => (
           <source key={i} src={s.src} type={s.type || "video/mp4"} media={s.media} />
