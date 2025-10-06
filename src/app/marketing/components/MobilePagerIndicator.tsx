@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { SECTIONS } from "../constants/sections";
+import { brand } from "../styles/brand";
 
 // Mapa estático de labels por id para evitar hooks condicionales
 const SECTION_LABELS: Map<string, string> = new Map(
@@ -205,6 +206,17 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
   const show = currentId !== "hero";
   const displayIds = ids.filter((id) => id !== "hero");
 
+  // Etiquetas amigables para las burbujas (si no está, cae al label del map)
+  const DISPLAY_LABELS: Record<string, string> = {
+    shows: "Shows",
+    cumple: "Cumples",
+    spotify: "Música",
+    galeria: "Galería",
+    faq: "FAQs",
+    blog: "Blog",
+    mapa: "Contacto",
+  };
+
   function scrollToId(id: string) {
     if (typeof document === "undefined") return;
     const pager = document.getElementById("mobile-pager") as HTMLElement | null;
@@ -217,29 +229,84 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
   }
 
   const pill = (
-    <div
-      className="flex w-full items-center justify-around gap-3 px-2.5 py-2.5 border-y border-white/10"
-      style={{
-        background: "linear-gradient(180deg, rgba(10,10,15,0.92), rgba(10,10,15,0.75))",
-        backdropFilter: "blur(10px)",
-      }}
-    >
+    <div className="indicator-dock">
       {displayIds.map((id) => {
         const isActive = id === currentId;
+        const label = DISPLAY_LABELS[id] || SECTION_LABELS.get(id) || id;
         return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => scrollToId(id)}
-            title={SECTION_LABELS.get(id) || id}
-            aria-label={SECTION_LABELS.get(id) || id}
-            className={`transition-transform focus:outline-none ${isActive ? "scale-[1.08]" : "scale-100"} cursor-pointer select-none`}
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <Icon id={id} active={isActive} />
-          </button>
+          <div key={id} className="item">
+            <button
+              type="button"
+              onClick={() => scrollToId(id)}
+              title={label}
+              aria-label={label}
+              className={`btn ${isActive ? "active" : ""}`}
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <Icon id={id} active={isActive} />
+              <span aria-hidden className={`dot ${isActive ? "on" : ""}`} />
+            </button>
+            {isActive && (
+              <div className="bubble" role="status" aria-live="polite">
+                <span className="bubble-text">{label}</span>
+                <span className="bubble-arrow" />
+              </div>
+            )}
+          </div>
         );
       })}
+      <style jsx>{`
+        .indicator-dock {
+          display: flex;
+          width: 100%;
+          align-items: center;
+          justify-content: space-around;
+          gap: 10px;
+          padding: 8px 12px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          background: linear-gradient(180deg, rgba(10,10,15,0.94), rgba(10,10,15,0.78));
+          backdrop-filter: blur(10px);
+          position: relative;
+        }
+        .indicator-dock:before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(60% 120% at 50% 0%, ${brand.primary}18, transparent 60%),
+                      radial-gradient(60% 120% at 50% 100%, ${brand.secondary}12, transparent 60%);
+          pointer-events: none;
+        }
+        .item { position: relative; display: flex; align-items: center; justify-content: center; }
+        .btn {
+          height: 36px; width: 36px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+          color: #ffffff99; border: 1px solid rgba(255,255,255,0.12);
+          background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+          box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+          transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease, border-color .2s ease;
+        }
+        .btn:hover { box-shadow: 0 6px 16px -8px ${brand.primary}88; color: #fff; border-color: rgba(255,255,255,0.18); }
+        .btn.active {
+          color: #fff;
+          background: linear-gradient(135deg, ${brand.primary}66, ${brand.secondary}55);
+          border-color: ${brand.withOpacity(brand.primary, 0.35)};
+          box-shadow: 0 8px 22px -12px ${brand.primary}aa, inset 0 0 14px ${brand.primary}22;
+          transform: scale(1.05);
+        }
+        .dot { position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 9999px; background: rgba(255,255,255,0.3); opacity: 0; transition: opacity .2s ease, transform .2s ease; }
+        .dot.on { opacity: 1; background: linear-gradient(135deg, ${brand.primary}, ${brand.secondary}); box-shadow: 0 0 0 4px ${brand.primary}22; }
+        .bubble {
+          position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%) translateY(6px);
+          background: linear-gradient(135deg, ${brand.primary}E6, ${brand.secondary}E0);
+          border: 1px solid rgba(255,255,255,0.18);
+          padding: 6px 10px; border-radius: 9999px; box-shadow: 0 10px 28px -16px ${brand.primary}AA;
+          color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.2px; white-space: nowrap;
+          opacity: 0; animation: bubble-in .25s ease forwards;
+        }
+        .bubble-text { position: relative; z-index: 2; text-shadow: 0 1px 8px rgba(0,0,0,0.25); }
+        .bubble-arrow { position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: inherit; border-bottom: inherit; border-right: inherit; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35)); }
+        @keyframes bubble-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+      `}</style>
     </div>
   );
 
