@@ -1,7 +1,7 @@
 "use client";
-import React from 'react';
-import { motion } from 'framer-motion';
-import SpotifyEmbed from './SpotifyEmbed';
+import React from "react";
+import { motion } from "framer-motion";
+import SpotifyEmbed from "./SpotifyEmbed";
 
 type Props = {
   idOrUrl?: string; // opcional: sobreescribe el ID/URL que viene del env
@@ -9,21 +9,26 @@ type Props = {
   className?: string;
 };
 
-const DEFAULT_PLAYLIST = '4TAACGmKK7QuPDIa1MXp4M';
+const DEFAULT_PLAYLIST = "4TAACGmKK7QuPDIa1MXp4M";
 
 function isSpotifyUrl(url: string): boolean {
-  try { const u = new URL(url); return u.protocol === 'https:' && u.hostname === 'open.spotify.com'; } catch { return false; }
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && u.hostname === "open.spotify.com";
+  } catch {
+    return false;
+  }
 }
 
 function extractPlaylistId(input?: string | null): string | null {
   if (!input) return null;
   const trimmed = input.trim();
-  if (trimmed.startsWith('http')) {
+  if (trimmed.startsWith("http")) {
     if (!isSpotifyUrl(trimmed)) return null;
     try {
       const u = new URL(trimmed);
-      const parts = u.pathname.split('/').filter(Boolean);
-      const idx = parts.findIndex(p => p === 'playlist');
+      const parts = u.pathname.split("/").filter(Boolean);
+      const idx = parts.findIndex((p) => p === "playlist");
       if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
     } catch {}
     return null;
@@ -41,7 +46,8 @@ function computeSpotifyUrls(idOrUrl?: string) {
   const playlistUrl = `https://open.spotify.com/playlist/${id}`;
   const embedUrl = `https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`;
 
-  const finalPlaylistUrl = legacyProfileUrl && isSpotifyUrl(legacyProfileUrl) ? legacyProfileUrl : playlistUrl;
+  const finalPlaylistUrl =
+    legacyProfileUrl && isSpotifyUrl(legacyProfileUrl) ? legacyProfileUrl : playlistUrl;
   const finalEmbedUrl = legacyEmbedUrl && isSpotifyUrl(legacyEmbedUrl) ? legacyEmbedUrl : embedUrl;
   return { playlistUrl: finalPlaylistUrl, embedUrl: finalEmbedUrl };
 }
@@ -50,14 +56,23 @@ export function SpotifyPlayer({ idOrUrl, showFollowButton = true, className }: P
   const { playlistUrl, embedUrl } = computeSpotifyUrls(idOrUrl);
 
   return (
-    <div className={className ?? 'mx-auto w-[94%] sm:w-[92%] md:w-[92%] lg:w-[86%] xl:w-[80%] max-w-3xl flex flex-col items-center'}>
+    <div
+      className={
+        className ??
+        "mx-auto w-[94%] sm:w-[92%] md:w-[92%] lg:w-[86%] xl:w-[80%] max-w-3xl flex flex-col items-center"
+      }
+    >
       <motion.div
         className="player-frame rounded-2xl overflow-hidden w-full border"
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.65 }}
-        style={{ background: '#0B0D10', borderColor: 'rgba(255,255,255,0.12)', boxShadow: '0 16px 40px -18px rgba(0,0,0,0.6)' }}
+        style={{
+          background: "#0B0D10",
+          borderColor: "rgba(255,255,255,0.12)",
+          boxShadow: "0 16px 40px -18px rgba(0,0,0,0.6)",
+        }}
       >
         <SpotifyEmbed
           embedUrl={embedUrl}
@@ -84,7 +99,11 @@ export function SpotifyPlayer({ idOrUrl, showFollowButton = true, className }: P
             rel="noopener noreferrer"
             aria-label="Abrir playlist en Spotify (se abre en una nueva pestaña)"
             className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-xs md:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/50"
-            style={{ background: '#1DB954', boxShadow: '0 10px 24px -12px rgba(29,185,84,0.7)', color: '#ffffff' }}
+            style={{
+              background: "#1DB954",
+              boxShadow: "0 10px 24px -12px rgba(29,185,84,0.7)",
+              color: "#ffffff",
+            }}
           >
             Seguir en Spotify <span aria-hidden>↗</span>
           </a>
@@ -93,7 +112,9 @@ export function SpotifyPlayer({ idOrUrl, showFollowButton = true, className }: P
 
       {/* Ajuste responsive de altura para pantallas angostas */}
       <style jsx>{`
-  .player-frame { border-width: 1px; }
+        .player-frame {
+          border-width: 1px;
+        }
         /* heights handled by SpotifyEmbed */
       `}</style>
     </div>

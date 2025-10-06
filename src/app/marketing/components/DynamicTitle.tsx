@@ -1,9 +1,9 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 export function DynamicTitle() {
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const styles = `
         @keyframes dynamicColor {
           0% { color: #ffffff; }
@@ -14,8 +14,8 @@ export function DynamicTitle() {
         }
       `;
 
-      const styleSheet = document.createElement('style');
-      styleSheet.type = 'text/css';
+      const styleSheet = document.createElement("style");
+      styleSheet.type = "text/css";
       styleSheet.innerText = styles;
       document.head.appendChild(styleSheet);
     }
@@ -28,7 +28,7 @@ export function DynamicTitle() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.3 }}
         className="text-[40px] md:text-[72px] font-black leading-[0.95] tracking-tight animate-color-change"
-        style={{ textShadow: '0 0 14px #FFFFFF70, 0 0 28px #FFFFFF40' }}
+        style={{ textShadow: "0 0 14px #FFFFFF70, 0 0 28px #FFFFFF40" }}
       >
         EL LOUNGE
       </motion.h1>
@@ -37,7 +37,7 @@ export function DynamicTitle() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.45 }}
         className="text-sm md:text-base font-medium opacity-80"
-        style={{ color: '#FFFFFFB8' }}
+        style={{ color: "#FFFFFFB8" }}
       >
         by ktdral
       </motion.span>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 type HeroVideoProps = {
   className?: string;
@@ -23,21 +23,21 @@ type HeroVideoProps = {
  * - Acepta poster y className para cubrir el contenedor
  */
 export function HeroVideo({
-  className = 'absolute inset-0 w-full h-full object-cover',
-  poster = '/posters/in.png',
+  className = "absolute inset-0 w-full h-full object-cover",
+  poster = "/posters/in.png",
   sources,
   autoPlay = true,
   loop = true,
   muted = true,
   playsInline = true,
   showOverlay = true,
-  overlayColor = 'rgba(0,0,0,0.5)',
+  overlayColor = "rgba(0,0,0,0.5)",
   overlayBlur = 12,
 }: HeroVideoProps) {
   const defaultSources = [
-    { src: '/videos/videohero-1080p.mp4', type: 'video/mp4', media: '(min-width: 1280px)' },
-    { src: '/videos/videohero-720p.mp4', type: 'video/mp4', media: '(min-width: 768px)' },
-    { src: '/videos/videohero-480p.mp4', type: 'video/mp4', media: '(max-width: 767px)' },
+    { src: "/videos/videohero-1080p.mp4", type: "video/mp4", media: "(min-width: 1280px)" },
+    { src: "/videos/videohero-720p.mp4", type: "video/mp4", media: "(min-width: 768px)" },
+    { src: "/videos/videohero-480p.mp4", type: "video/mp4", media: "(max-width: 767px)" },
   ];
   const list = sources && sources.length ? sources : defaultSources;
   return (
@@ -51,7 +51,7 @@ export function HeroVideo({
         poster={poster}
       >
         {list.map((s, i) => (
-          <source key={i} src={s.src} type={s.type || 'video/mp4'} media={s.media} />
+          <source key={i} src={s.src} type={s.type || "video/mp4"} media={s.media} />
         ))}
       </video>
       {showOverlay && (

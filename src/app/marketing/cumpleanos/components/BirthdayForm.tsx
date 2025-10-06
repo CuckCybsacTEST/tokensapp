@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { brand } from '../../styles/brand';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { brand } from "../../styles/brand";
 
 export function BirthdayForm() {
   // Estado para el formulario
   const [form, setForm] = useState({
-    name: '',
-    whatsapp: '',
+    name: "",
+    whatsapp: "",
     guests: 10,
-    date: '',
-    time: '',
+    date: "",
+    time: "",
   });
 
   // Estado para manejar el envío del formulario
@@ -22,7 +22,7 @@ export function BirthdayForm() {
   // Manejador para los cambios en los campos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   // Manejador para el envío del formulario
@@ -33,11 +33,11 @@ export function BirthdayForm() {
 
     try {
       // Simulamos un envío de formulario con un delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Aquí iría la lógica para enviar los datos a un endpoint
       console.log("Datos del formulario:", form);
-      
+
       setSubmitted(true);
     } catch (err) {
       setError("Ocurrió un error al enviar el formulario. Por favor intenta nuevamente.");
@@ -54,12 +54,12 @@ export function BirthdayForm() {
       transition={{ duration: 0.7, delay: 0.3 }}
       className="w-full max-w-2xl mx-auto"
     >
-      <div 
+      <div
         className="rounded-xl backdrop-blur-sm p-6 md:p-8"
-        style={{ 
+        style={{
           background: "rgba(0,0,0,0.3)",
           border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: `0 20px 40px -20px ${brand.primary}50`
+          boxShadow: `0 20px 40px -20px ${brand.primary}50`,
         }}
       >
         <h3 className="text-2xl font-bold mb-6 text-center">Reserva tu celebración</h3>
@@ -69,14 +69,15 @@ export function BirthdayForm() {
             <div className="text-4xl mb-4">✨</div>
             <h4 className="text-xl font-bold mb-2">¡Gracias por tu reserva!</h4>
             <p className="opacity-80 mb-6">
-              Hemos recibido tu solicitud y nos pondremos en contacto contigo a la brevedad para confirmar los detalles.
+              Hemos recibido tu solicitud y nos pondremos en contacto contigo a la brevedad para
+              confirmar los detalles.
             </p>
             <button
               onClick={() => setSubmitted(false)}
               className="px-6 py-2 rounded-full transition-all"
-              style={{ 
+              style={{
                 background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
-                boxShadow: `0 4px 20px -5px ${brand.primary}`
+                boxShadow: `0 4px 20px -5px ${brand.primary}`,
               }}
             >
               Realizar otra reserva
@@ -99,11 +100,11 @@ export function BirthdayForm() {
                   placeholder="¿Quién celebra?"
                   required
                   className="w-full rounded-lg px-4 py-3 bg-transparent border focus:ring-1 focus:outline-none"
-                  style={{ 
+                  style={{
                     borderColor: "rgba(255,255,255,0.1)",
                     color: "#fff",
                     transition: "all 0.2s ease",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                   }}
                 />
               </div>
@@ -182,9 +183,7 @@ export function BirthdayForm() {
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-opacity-20 text-red-300 bg-red-900">
-                  {error}
-                </div>
+                <div className="p-3 rounded-lg bg-opacity-20 text-red-300 bg-red-900">{error}</div>
               )}
 
               <div className="pt-4">
@@ -192,16 +191,16 @@ export function BirthdayForm() {
                   type="submit"
                   disabled={isSubmitting}
                   className="w-full px-6 py-3 rounded-lg font-medium transition-all"
-                  style={{ 
+                  style={{
                     background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
                     boxShadow: `0 4px 20px -5px ${brand.primary}`,
-                    opacity: isSubmitting ? 0.7 : 1
+                    opacity: isSubmitting ? 0.7 : 1,
                   }}
                 >
-                  {isSubmitting ? 'Enviando...' : 'Reservar Ahora'}
+                  {isSubmitting ? "Enviando..." : "Reservar Ahora"}
                 </button>
               </div>
-              
+
               <p className="text-sm opacity-60 text-center mt-4">
                 Te contactaremos para confirmar disponibilidad y coordinar detalles adicionales.
               </p>

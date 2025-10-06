@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export default function FooterGate() {
   useEffect(() => {
-    const footer = document.querySelector<HTMLElement>('.roulette-footer');
+    const footer = document.querySelector<HTMLElement>(".roulette-footer");
     if (!footer) return;
 
     // Garantizar oculto al hidratar
-    footer.style.display = 'none';
+    footer.style.display = "none";
 
-    const check = () => !document.querySelector('.roulette-loading-overlay');
+    const check = () => !document.querySelector(".roulette-loading-overlay");
 
     let rafId = 0;
     let timer: number | null = null;
@@ -18,7 +18,7 @@ export default function FooterGate() {
     const tick = () => {
       if (check()) {
         // Mostrar cuando no exista overlay de loader
-        footer.style.display = '';
+        footer.style.display = "";
         if (timer) window.clearInterval(timer);
         return;
       }

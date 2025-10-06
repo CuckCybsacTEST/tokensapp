@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { DynamicTitle } from './DynamicTitle';
-import { HeroVideo } from './HeroVideo';
-import { BirthdaySearch } from './BirthdaySearch';
-import ScrollDownToShows from './ScrollDownToShows';
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { DynamicTitle } from "./DynamicTitle";
+import { HeroVideo } from "./HeroVideo";
+import { BirthdaySearch } from "./BirthdaySearch";
+import ScrollDownToShows from "./ScrollDownToShows";
 
 export function Hero() {
   const [showScroll, setShowScroll] = useState(true);
@@ -13,15 +13,15 @@ export function Hero() {
     function onScroll() {
       setShowScroll(window.scrollY <= 40);
     }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
     <section
       id="hero"
-      className="relative overflow-hidden flex items-center justify-center w-full pt-10 md:pt-12"
-  style={{ minHeight: '100vh' }}
+      className="relative overflow-hidden flex items-center justify-center w-full pt-0 md:pt-12"
+      style={{ minHeight: '100vh' }}
     >
       {/* Video background with adaptive resolution + overlay */}
       <HeroVideo showOverlay overlayBlur={10} />
@@ -36,7 +36,7 @@ export function Hero() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.5 }}
             className="mt-3 max-w-xl mx-auto text-base md:text-lg opacity-90"
-            style={{ color: '#FFFFFFDD' }}
+            style={{ color: "#FFFFFFDD" }}
           >
             Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.
           </motion.p>
@@ -54,9 +54,16 @@ export function Hero() {
       </div>
 
       {/* Scroll-down button (componente) */}
-      {showScroll && (
-        <ScrollDownToShows />
-      )}
+      {showScroll && <ScrollDownToShows />}
+        <style jsx>{`
+          @media (max-width: 767px){
+            #hero{
+              /* Reservar espacio para la barra superior fija (h-12 ≈ 48px) + safe-area */
+              min-height: calc(100svh - 48px - env(safe-area-inset-top, 0px));
+              padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
+            }
+          }
+        `}</style>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
 
 interface SectionContainerProps {
   children: ReactNode;
@@ -6,12 +6,9 @@ interface SectionContainerProps {
   id?: string;
 }
 
-function SectionContainer({ children, className = '', id }: SectionContainerProps) {
+function SectionContainer({ children, className = "", id }: SectionContainerProps) {
   return (
-    <section 
-      id={id}
-      className={`w-full max-w-6xl mx-auto ${className}`}
-    >
+    <section id={id} className={`w-full max-w-6xl mx-auto ${className}`}>
       {children}
     </section>
   );

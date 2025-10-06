@@ -1,9 +1,9 @@
 "use client";
 
-import React from 'react';
-import { brand } from '../styles/brand';
-import { Footer } from '../components/Footer';
-import { BackToTop } from '../components/BackToTop';
+import React from "react";
+import { brand } from "../styles/brand";
+import { Footer } from "../components/Footer";
+import { BackToTop } from "../components/BackToTop";
 
 export default function BlogPage() {
   return (
@@ -17,11 +17,18 @@ export default function BlogPage() {
     >
       <section className="relative py-24 md:py-32 px-4 md:px-8">
         <div className="container mx-auto max-w-5xl text-center">
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight" style={{ textShadow: `0 0 14px ${brand.primary}55` }}>
+          <h1
+            className="text-3xl md:text-5xl font-black tracking-tight"
+            style={{ textShadow: `0 0 14px ${brand.primary}55` }}
+          >
             Blog
           </h1>
-          <p className="mt-3 text-base md:text-lg opacity-85 max-w-2xl mx-auto" style={{ color: brand.text.secondary }}>
-            Estamos preparando contenido con tips, historias de cabina, coctelería y experiencias QR.
+          <p
+            className="mt-3 text-base md:text-lg opacity-85 max-w-2xl mx-auto"
+            style={{ color: brand.text.secondary }}
+          >
+            Estamos preparando contenido con tips, historias de cabina, coctelería y experiencias
+            QR.
           </p>
 
           <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-8 md:p-12 max-w-3xl mx-auto">
