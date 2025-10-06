@@ -281,12 +281,9 @@ export function DynamicShowsSection({
         .shows-card {
           aspect-ratio: 1080/1920;
         }
-        /* Teléfonos ~375x780: reducción proporcional extra (doble que el ajuste anterior) */
+        /* Teléfonos ~375x780: reducción proporcional extra (nuevo ajuste) */
         @media (max-width: 400px) and (min-height: 741px) and (max-height: 780px) {
-          .shows-grid {
-            transform: scale(0.895);
-            transform-origin: top center;
-          }
+          .shows-grid { transform: scale(0.875); transform-origin: top center; }
         }
         /* Compactar en móviles de poca altura (ej. 740px) */
   @media (max-width: 767px) and (max-height: 740px) {
@@ -302,21 +299,21 @@ export function DynamicShowsSection({
           }
           .shows-grid {
             gap: 1rem !important;
-            /* Ajuste fino para 360x740 y similares */
-            transform: scale(0.915);
+            /* Ajuste adicional en la misma proporción */
+            transform: scale(0.895);
             transform-origin: top center;
           }
           /* Mantener proporción fija 1080/1920: sin override del aspect-ratio */
         }
         /* Aún más compacto en alturas muy bajas */
         @media (max-width: 767px) and (max-height: 680px) {
-          .shows-grid { transform: scale(0.89); transform-origin: top center; }
+          .shows-grid { transform: scale(0.87); transform-origin: top center; }
         }
         @media (max-width: 767px) and (max-height: 620px) {
-          .shows-grid { transform: scale(0.81); transform-origin: top center; }
+          .shows-grid { transform: scale(0.77); transform-origin: top center; }
         }
         @media (max-width: 767px) and (max-height: 600px) {
-          .shows-grid { transform: scale(0.80); transform-origin: top center; }
+          .shows-grid { transform: scale(0.76); transform-origin: top center; }
         }
         /* En móviles con más altura, aprovechar haciéndolas un poco más altas */
         @media (max-width: 767px) and (min-height: 800px) {

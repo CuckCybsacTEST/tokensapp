@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SECTIONS } from "../constants/sections";
 import { brand } from "../styles/brand";
 
@@ -163,6 +163,8 @@ function Icon({ id, active }: { id: string; active: boolean }) {
 export function MobilePagerIndicator({ integrated = false, hideOnHero = false }: { integrated?: boolean; hideOnHero?: boolean }) {
   const [ids, setIds] = useState<string[]>([]); // ids en orden, incluido hero si existe
   const [active, setActive] = useState(0); // índice en 'ids'
+  const [showBubble, setShowBubble] = useState(false); // visibilidad temporal de la burbuja
+  const bubbleTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const isMobile =
@@ -199,9 +201,7 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
     };
   }, []);
 
-  // No devolver antes de declarar hooks; usamos funciones/constantes sin hooks para evitar orden variable
-  if (!ids.length) return null;
-
+  // Calcular sección actual aun si ids está vacío
   const currentId = ids[active];
   const show = currentId !== "hero";
   const displayIds = ids.filter((id) => id !== "hero");
@@ -216,6 +216,17 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
     blog: "Blog",
     mapa: "Contacto",
   };
+
+  // Mostrar la burbuja brevemente cuando cambia la sección activa
+  useEffect(() => {
+    if (!show) return; // si estamos en hero no mostrar
+    setShowBubble(true);
+    if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current);
+    bubbleTimer.current = window.setTimeout(() => setShowBubble(false), 1000);
+    return () => {
+      if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current);
+    };
+  }, [currentId, show]);
 
   function scrollToId(id: string) {
     if (typeof document === "undefined") return;
@@ -246,7 +257,7 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
               <Icon id={id} active={isActive} />
               <span aria-hidden className={`dot ${isActive ? "on" : ""}`} />
             </button>
-            {isActive && (
+            {isActive && showBubble && (
               <div className="bubble" role="status" aria-live="polite">
                 <span className="bubble-text">{label}</span>
                 <span className="bubble-arrow" />
@@ -311,7 +322,7 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
   );
 
   if (integrated) {
-    if (!show) return null;
+    if (!show || displayIds.length === 0) return null;
     return (
       <div className="md:hidden w-full select-none" aria-label="Indicador de sección (móvil)">
         {pill}
@@ -320,7 +331,7 @@ export function MobilePagerIndicator({ integrated = false, hideOnHero = false }:
   }
 
   // No integrado (dock inferior): permitir ocultar en hero si se solicita
-  if (hideOnHero && !show) return null;
+  if ((hideOnHero && !show) || displayIds.length === 0) return null;
   return (
     <div className="md:hidden w-full select-none" aria-label="Indicador de sección (móvil)">
       {pill}

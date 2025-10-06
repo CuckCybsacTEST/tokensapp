@@ -437,6 +437,10 @@ export function BirthdaySection() {
         </div>
       </div>
       <style jsx>{`
+        /* Alta moderada (~780px): reducción sutil (mitad del último ajuste) para evitar corte */
+        @media (max-width: 767px) and (min-height: 741px) and (max-height: 780px) {
+          .pack-card { transform-origin: center top; transform: scale(0.992); }
+        }
         /* Packs mobile: garantizar que cada tarjeta entre completa en viewport */
         @media (max-width: 767px) {
           .pack-card {
