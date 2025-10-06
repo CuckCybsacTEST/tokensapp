@@ -26,6 +26,7 @@ export function TopNavBar() {
   }, []);
 
   return (
+    <>
     <motion.nav
       initial={{ opacity: 0, y: -10 }}
   animate={{ opacity: 1, y: 0 }}
@@ -103,10 +104,10 @@ export function TopNavBar() {
           >
             Carta
           </a>
-          {/* Ofertas destacado: gradiente de marca */}
+          {/* Ofertas destacado: gradiente de marca + animación sutil */}
           <a
             href="#ofertas"
-            className="inline-flex items-center rounded-full px-3.5 py-1.5 text-[11px] md:text-[12px] font-bold tracking-wide shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
+            className="offer-cta inline-flex items-center rounded-full px-3.5 py-1.5 text-[11px] md:text-[12px] font-bold tracking-wide shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
             style={{
               background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
               color: "#fff",
@@ -126,7 +127,29 @@ export function TopNavBar() {
           background: `linear-gradient(90deg, transparent, ${brand.primary}66, transparent)`,
         }}
       />
-    </motion.nav>
+  </motion.nav>
+  <style jsx>{`
+      /* Animación sutil para invitar al clic: respiración de glow + leve bounce */
+      .offer-cta {
+        position: relative;
+        animation: offer-glow 3.6s ease-in-out infinite;
+        transform-origin: center;
+      }
+      .offer-cta:hover {
+        animation-play-state: paused; /* Evitar distracción cuando el usuario ya está encima */
+      }
+      .offer-cta:focus-visible {
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.25), 0 0 0 6px ${brand.primary}55;
+      }
+      @keyframes offer-glow {
+        0% { box-shadow: 0 10px 24px -12px ${brand.primary}AA; transform: translateY(0); }
+        35% { box-shadow: 0 14px 28px -12px ${brand.primary}CC; transform: translateY(-1px); }
+        70% { box-shadow: 0 10px 24px -12px ${brand.primary}AA; transform: translateY(0); }
+        85% { transform: translateY(-0.5px); }
+        100% { transform: translateY(0); }
+      }
+    `}</style>
+    </>
   );
 }
 

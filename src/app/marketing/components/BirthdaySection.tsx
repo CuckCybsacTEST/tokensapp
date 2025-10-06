@@ -150,11 +150,10 @@ export function BirthdaySection() {
 
         <div className="mt-3 md:mt-4 flex flex-col gap-6 md:gap-6">
           {/* Mobile slider */}
-          <div className="sm:hidden -mx-4 px-6 relative">
+          <div className="sm:hidden px-4 relative">
             <div
               ref={sliderRef}
               className="packs-slider flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-6 pb-2"
-              style={{ scrollPadding: "0 24px" }}
             >
               {loading &&
                 packs.length === 0 &&
@@ -162,7 +161,7 @@ export function BirthdaySection() {
                   <div
                     key={`skel-m-${i}`}
                     data-pack-slide
-                    className="w-full flex-shrink-0 snap-center"
+                    className="w-full flex-shrink-0 snap-center snap-always"
                   >
                     <div className="max-w-[340px] mx-auto rounded-xl p-4 flex flex-col border border-white/10 bg-white/5 animate-pulse h-full" />
                   </div>
@@ -173,7 +172,7 @@ export function BirthdaySection() {
                   .map((c, i) => {
                     const active = i === activeIdx;
                     return (
-                      <div key={c.key} data-pack-slide className="w-full flex-shrink-0 snap-center">
+                      <div key={c.key} data-pack-slide className="w-full flex-shrink-0 snap-center snap-always">
                         <motion.div
                           initial={{ opacity: 0, y: 16 }}
                           whileInView={{ opacity: 1, y: 0 }}
@@ -437,7 +436,11 @@ export function BirthdaySection() {
         </div>
       </div>
       <style jsx>{`
-        /* Alta moderada (~780px): reducción sutil (mitad del último ajuste) para evitar corte */
+        /* Asegurar centrado al hacer snap (soporte amplio) */
+        @media (max-width: 767px) {
+          .packs-slider { scroll-padding-left: 24px; scroll-padding-right: 24px; }
+        }
+        /* Alta moderada (~780px): reducción un poco mayor para asegurar que no se corte */
         @media (max-width: 767px) and (min-height: 741px) and (max-height: 780px) {
           .pack-card { transform-origin: center top; transform: scale(0.992); }
         }
