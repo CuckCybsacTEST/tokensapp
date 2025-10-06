@@ -177,7 +177,7 @@ export function BirthdaySearch() {
               <div className="px-3 py-2 text-sm text-white/60">No hay resultados</div>
             )}
             {!loading && !err && items.length > 0 && (
-              <div id={listboxId} role="listbox" aria-label="Resultados" className="max-h-[50vh] sm:max-h-64 overflow-y-auto custom-scrollbar">
+              <div id={listboxId} role="listbox" aria-label="Resultados" className="results-list max-h-[55svh] sm:max-h-64 overflow-y-auto custom-scrollbar">
                 {items.map((it, idx) => {
                   const href = `/marketing/birthdays/public?rid=${encodeURIComponent(it.id)}`;
                   const selected = idx === activeIndex;
@@ -188,22 +188,22 @@ export function BirthdaySearch() {
                       role="option"
                       aria-selected={selected}
                       href={href}
-                      className={`flex items-center gap-3 px-2.5 py-2 sm:py-1.5 text-[13px] transition-colors group ${selected ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                      className={`flex items-center gap-2.5 px-2.5 py-1.75 sm:py-1.5 text-[12.5px] transition-colors group ${selected ? 'bg-white/10' : 'hover:bg-white/10'}`}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => setOpen(false)}
                     >
                       <span className="flex-1 flex flex-col">
-                        <span className="font-medium group-hover:text-amber-300 transition-colors">{it.celebrantName}</span>
-                        <span className="text-[11px] text-white/45">{it.date}{it.documento ? ` • ${it.documento}` : ''}</span>
+                        <span className="font-medium group-hover:text-amber-300 transition-colors leading-tight">{it.celebrantName}</span>
+                        <span className="text-[10.5px] text-white/45 leading-tight">{it.date}{it.documento ? ` • ${it.documento}` : ''}</span>
                       </span>
                       {it.status && (
-                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70">{statusLabel(it.status)}</span>
+                        <span className="text-[8.5px] px-1.75 py-[2px] rounded-full bg-white/10 border border-white/15 text-white/70">{statusLabel(it.status)}</span>
                       )}
                       {it.hasCards && (
                         <button
                           type="button"
                           onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); window.location.href = `/marketing/birthdays/${encodeURIComponent(it.id)}/qrs?mode=admin`; }}
-                          className="text-[10px] sm:text-[9px] px-2.5 py-[3px] rounded-full bg-emerald-600/20 border border-emerald-400/30 text-emerald-300 hover:bg-emerald-600/30 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 transition-colors"
+                          className="text-[9.5px] sm:text-[9px] px-2 py-[2px] rounded-full bg-emerald-600/20 border border-emerald-400/30 text-emerald-300 hover:bg-emerald-600/30 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 transition-colors"
                           title="Ver tarjetas QR"
                           aria-label="Ver tarjetas QR"
                         >
@@ -225,42 +225,45 @@ export function BirthdaySearch() {
           position: relative;
           display: flex;
           align-items: center;
-          gap: 0.9rem;
+          gap: 0.7rem;
           width: 100%;
-          padding: 0.6rem 0.9rem;
-          border-radius: 999px;
-          background: linear-gradient(145deg,#3d0f11 0%,#2a0b0d 34%,#150606 70%,#050303 100%);
-          border: 1px solid rgba(var(--glow-orange),0.35);
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.05),
-            0 0 12px -2px rgba(var(--glow-orange),0.35),
-            0 4px 24px -8px rgba(var(--glow-orange),0.45);
-          backdrop-filter: blur(14px) saturate(135%);
+          padding: 0.5rem 0.85rem;
+          border-radius: 18px;
+          background: linear-gradient(145deg,#341012 0%,#220b0d 40%,#140607 78%,#050303 100%);
+          border: 1px solid rgba(var(--glow-orange),0.28);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.04),
+            0 0 10px -3px rgba(var(--glow-orange),0.28),
+            0 3px 20px -10px rgba(var(--glow-orange),0.38);
+          backdrop-filter: blur(10px) saturate(125%);
           transition: box-shadow .45s cubic-bezier(.4,.14,.2,1), border-color .4s, background .6s;
         }
+        @media (max-width: 767px) {
+          .lounge-search { padding: 0.48rem 0.8rem; gap: 0.65rem; border-radius: 16px; }
+        }
         @media (min-width: 640px) {
-          .lounge-search { padding: 0.6rem 1rem; }
+          .lounge-search { padding: 0.58rem 0.95rem; border-radius: 20px; }
         }
         .lounge-search.focused {
-          border-color: rgba(var(--glow-orange),0.6);
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.07),
-            0 0 22px 2px rgba(var(--glow-orange),0.55),
-            0 6px 30px -6px rgba(var(--glow-orange),0.55),
-            0 0 48px -4px rgba(var(--glow-orange),0.35);
+          border-color: rgba(var(--glow-orange),0.5);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.06),
+            0 0 18px 0px rgba(var(--glow-orange),0.5),
+            0 6px 26px -8px rgba(var(--glow-orange),0.5),
+            0 0 36px -6px rgba(var(--glow-orange),0.3);
         }
         .lounge-search-input {
           flex:1;
           background: transparent;
           outline: none;
           border: none;
-          font-size: 0.92rem;
+          font-size: 0.9rem;
           font-weight: 300;
           letter-spacing: .3px;
           color: #ffffff;
-          padding-right: .25rem;
+          padding-right: .2rem;
           transition: color .4s;
         }
         @media (max-width: 639px) {
-          .lounge-search-input { font-size: 0.9rem; }
+          .lounge-search-input { font-size: 0.88rem; }
         }
         .lounge-search-input:focus, .lounge-search-input:focus-visible {
           outline: none !important;
@@ -270,35 +273,38 @@ export function BirthdaySearch() {
         .lounge-search-input::-moz-focus-inner { border:0; }
         .lounge-search-input { -webkit-tap-highlight-color: transparent; }
         .lounge-search-input::placeholder {
-          color: rgba(255,255,255,0.38);
+          color: rgba(255,255,255,0.36);
           font-weight: 300;
           transition: color .4s, opacity .4s;
         }
-        .lounge-search.focused .lounge-search-input::placeholder { color: rgba(255,255,255,0.25); }
-        .lounge-search.has-value .lounge-search-input::placeholder { color: rgba(255,255,255,0.18); }
+        .lounge-search.focused .lounge-search-input::placeholder { color: rgba(255,255,255,0.24); }
+        .lounge-search.has-value .lounge-search-input::placeholder { color: rgba(255,255,255,0.16); }
         .lounge-chip-clear {
           position: relative;
-          font-size: .7rem;
+          font-size: .66rem;
           line-height: 1;
-          padding: 0.45rem 0.9rem;
+          padding: 0.38rem 0.72rem;
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.16);
-          background: rgba(255,255,255,0.07);
-          color: rgba(255,255,255,0.70);
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.065);
+          color: rgba(255,255,255,0.72);
           cursor: pointer;
           font-weight: 500;
           letter-spacing: .4px;
-          backdrop-filter: blur(8px) saturate(160%);
+          backdrop-filter: blur(6px) saturate(140%);
           transition: background .35s, color .35s, box-shadow .45s;
         }
         @media (min-width: 640px) {
-          .lounge-chip-clear { font-size: .68rem; padding: 0.45rem 0.9rem; }
+          .lounge-chip-clear { font-size: .66rem; padding: 0.42rem 0.82rem; }
         }
         .lounge-chip-clear:hover {
           background: linear-gradient(135deg,#ff4d2e,#ff7a2b 70%);
           color: #fff;
           box-shadow: 0 4px 14px -4px rgba(255,100,40,0.55), 0 0 0 1px rgba(255,255,255,0.08);
         }
+
+        /* Separadores sutiles entre resultados */
+        .results-list > a + a { border-top: 1px solid rgba(255,255,255,0.06); }
       `}</style>
     </div>
   );
