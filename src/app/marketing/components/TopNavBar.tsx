@@ -28,9 +28,9 @@ export function TopNavBar() {
   return (
     <motion.nav
       initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: inHero ? 1 : 0, y: inHero ? 0 : -8 }}
+  animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-3 md:px-6 h-12 md:h-14 select-none ${inHero ? "" : "pointer-events-none"}`}
+  className={`fixed top-0 inset-x-0 z-50 flex items-center justify-between px-3 md:px-6 h-12 md:h-14 select-none`}
       style={{
         background:
           "linear-gradient(180deg, rgba(10,10,15,0.85), rgba(10,10,15,0.55) 70%, rgba(10,10,15,0))",

@@ -453,17 +453,17 @@ export function BirthdaySection() {
             }
           }
         }
-        /* Asegurar espacio para la barra superior en pantallas pequeñas */
+        /* Ajuste de padding en móviles: ya reservamos barra superior a nivel global, aquí solo dar un respiro mínimo */
         @media (max-width: 767px) {
           .birthday-wrap {
-            padding-top: calc(3.25rem + var(--top-bar-h, 0px));
+            padding-top: 0.75rem;
           }
         }
         /* Compactar en móviles de poca altura (ej. 740px) */
         @media (max-width: 767px) and (max-height: 740px) {
           .birthday-wrap {
-            padding-top: calc(0.75rem + var(--top-bar-h, 0px));
-            padding-bottom: 1rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.75rem;
           }
         }
         /* Ocultar completamente scrollbar del carrusel móvil */

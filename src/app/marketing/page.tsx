@@ -181,6 +181,8 @@ export default function MarketingPage() {
       }}
     >
       <style jsx global>{`
+  :root { --top-bar-h: 48px; --bottom-indicator-h: 56px; }
+  @media (min-width: 768px){ :root { --top-bar-h: 56px; } }
         /* Ocultar scrollbars en mobile para el contenedor principal */
         @media (max-width: 767px) {
           .marketing-scroll {
@@ -285,8 +287,9 @@ export default function MarketingPage() {
           }
           /* Evitar que el contenido quede bajo la barra superior y la barra inferior de indicadores */
           #mobile-pager > .snap-section {
-            padding-top: calc(8px + var(--top-bar-h, 0px));
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px + var(--bottom-indicator-h, 0px));
+            /* Altura previa: no compensar con la barra superior en mobile */
+            padding-top: 8px;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px + var(--bottom-indicator-h, 56px));
           }
           /* Ocultar divisores entre slides en móvil para evitar "huecos" horizontales */
           #mobile-pager .section-divider {
@@ -442,6 +445,7 @@ function MobileIndicatorDock() {
         background: "linear-gradient(0deg, rgba(10,10,15,0.9), rgba(10,10,15,0.6))",
         WebkitBackdropFilter: "blur(12px)",
         backdropFilter: "blur(12px)",
+        minHeight: "var(--bottom-indicator-h, 56px)",
       }}
     >
       {/* En el dock, renderizamos el indicador completo, sin ocultarlo en el Hero */}

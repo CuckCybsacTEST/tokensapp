@@ -101,7 +101,7 @@ export function DynamicShowsSection({
     <section
       className={`shows-wrap relative flex flex-col justify-center pt-10 md:pt-12 pb-8 md:pb-10 overflow-x-hidden ${className}`}
     >
-      <div className="container mx-auto max-w-7xl px-4 sm:px-6 md:px-8 w-full">
+  <div className="mx-auto w-full px-4 sm:px-6 md:px-8 max-w-[640px] sm:max-w-[680px] md:max-w-7xl">
         <div className="shows-header mb-9 md:mb-14 flex flex-col items-center text-center gap-3 md:gap-4">
           <h2
             aria-describedby="shows-subtitle shows-subtitle-mobile"
@@ -131,8 +131,7 @@ export function DynamicShowsSection({
                 className="group"
               >
                 <div
-                  className="relative w-full overflow-hidden rounded-xl shadow-lg border border-white/10 bg-[linear-gradient(135deg,#3d0a0a,#5c1111)] group/card"
-                  style={{ aspectRatio: "1080/1920" }}
+                  className="shows-card relative w-full overflow-hidden rounded-xl shadow-lg border border-white/10 bg-[linear-gradient(135deg,#3d0a0a,#5c1111)] group/card"
                 >
                   <div className="absolute inset-0">
                     {s.imageWebpPath && (
@@ -278,6 +277,10 @@ export function DynamicShowsSection({
         </div>
       </div>
       <style jsx>{`
+        /* Aspect ratio base para las tarjetas */
+        .shows-card {
+          aspect-ratio: 1080/1920;
+        }
         /* Compactar en móviles de poca altura (ej. 740px) */
         @media (max-width: 767px) and (max-height: 740px) {
           .shows-wrap {
@@ -292,6 +295,10 @@ export function DynamicShowsSection({
           }
           .shows-grid {
             gap: 1rem !important;
+          }
+          /* Reducir altura aparente de las tarjetas para evitar corte en ~740px */
+          .shows-card {
+            aspect-ratio: 1080/1600 !important;
           }
         }
         /* En móviles, reservar espacio adicional para las burbujas del menú inferior */

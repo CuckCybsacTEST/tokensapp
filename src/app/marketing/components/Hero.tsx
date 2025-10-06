@@ -55,15 +55,7 @@ export function Hero() {
 
       {/* Scroll-down button (componente) */}
       {showScroll && <ScrollDownToShows />}
-        <style jsx>{`
-          @media (max-width: 767px){
-            #hero{
-              /* Reservar espacio para la barra superior fija (h-12 ≈ 48px) + safe-area */
-              min-height: calc(100svh - 48px - env(safe-area-inset-top, 0px));
-              padding-top: calc(env(safe-area-inset-top, 0px) + 48px);
-            }
-          }
-        `}</style>
+      
     </section>
   );
 }
