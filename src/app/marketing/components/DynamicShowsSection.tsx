@@ -187,14 +187,14 @@ export function DynamicShowsSection({
       <style jsx>{`
         /* Compactar en móviles de poca altura (ej. 740px) */
         @media (max-width: 767px) and (max-height: 740px) {
-          .shows-wrap { padding-top: 0.75rem; padding-bottom: calc(0.75rem + var(--bottom-bar-h, 56px)); }
+          .shows-wrap { padding-top: calc(0.75rem + var(--top-bar-h, 0px)); padding-bottom: 0.75rem; }
           .shows-header { margin-bottom: 1rem !important; }
           .shows-header h2 { font-size: 1.5rem; }
           .shows-grid { gap: 1rem !important; }
         }
         /* En móviles, reservar espacio adicional para las burbujas del menú inferior */
         @media (max-width: 767px) {
-          .shows-wrap { padding-bottom: calc(1rem + var(--bottom-bar-h, 56px) + 28px); }
+          .shows-wrap { padding-top: calc(1rem + var(--top-bar-h, 0px)); }
           .shows-header { margin-bottom: 1.25rem; }
           .shows-grid { gap: 1.25rem; }
         }

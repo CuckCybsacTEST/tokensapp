@@ -251,13 +251,13 @@ export function BirthdaySection() {
             .birthday-wrap { min-height: 100svh; }
           }
         }
-        /* Asegurar espacio para la barra inferior en pantallas pequeñas */
+        /* Asegurar espacio para la barra superior en pantallas pequeñas */
         @media (max-width: 767px) {
-          .birthday-wrap { padding-bottom: calc(3.25rem + var(--bottom-bar-h, 56px)); }
+          .birthday-wrap { padding-top: calc(3.25rem + var(--top-bar-h, 0px)); }
         }
         /* Compactar en móviles de poca altura (ej. 740px) */
         @media (max-width: 767px) and (max-height: 740px) {
-          .birthday-wrap { padding-top: 0.75rem; padding-bottom: calc(1rem + var(--bottom-bar-h, 56px)); }
+          .birthday-wrap { padding-top: calc(0.75rem + var(--top-bar-h, 0px)); padding-bottom: 1rem; }
         }
         /* Ocultar completamente scrollbar del carrusel móvil */
         .packs-slider { -ms-overflow-style: none; scrollbar-width: none; }
@@ -268,7 +268,7 @@ export function BirthdaySection() {
           .services-inc { display: none; }
           .packs-dots { margin-top: 0.25rem; }
           .packs-dots .dot { width: 0.5rem !important; height: 0.5rem !important; }
-          .personalize-cta { margin-top: 0.4rem; margin-bottom: calc(var(--bottom-bar-h, 56px) + 6px); }
+          .personalize-cta { margin-top: 0.4rem; }
         }
       `}</style>
     </section>

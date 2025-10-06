@@ -151,12 +151,12 @@ export default function MarketingPage() {
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
         /* Scroll snap para que cada sección llene el viewport y quede alineada */
-        .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: 8px; }
-        .snap-section{ scroll-snap-align: start; scroll-snap-stop: always; min-height: 100vh; scroll-margin-top: 8px; }
+        .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: calc(8px + var(--top-bar-h, 0px)); }
+        .snap-section{ scroll-snap-align: start; scroll-snap-stop: always; min-height: 100vh; scroll-margin-top: calc(8px + var(--top-bar-h, 0px)); }
         @supports (height: 1svh){ .snap-section{ min-height: 100svh; } }
         @media (max-width: 767px){
-          .marketing-scroll{ scroll-padding-top: 12px; }
-          .snap-section{ scroll-margin-top: 12px; }
+          .marketing-scroll{ scroll-padding-top: calc(12px + var(--top-bar-h, 0px)); }
+          .snap-section{ scroll-margin-top: calc(12px + var(--top-bar-h, 0px)); }
         }
       `}</style>
       {/* Patrón sutil */}

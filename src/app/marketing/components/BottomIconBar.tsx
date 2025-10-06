@@ -16,13 +16,13 @@ export function BottomIconBar() {
     return () => obs.disconnect();
   }, []);
 
-  // Exponer altura en variable CSS --bottom-bar-h
+  // Exponer altura en variable CSS --top-bar-h
   useEffect(() => {
     const updateVar = () => {
       const el = ref.current;
       if (!el) return;
       const h = el.offsetHeight || 0;
-      document.documentElement.style.setProperty('--bottom-bar-h', h + 'px');
+      document.documentElement.style.setProperty('--top-bar-h', h + 'px');
     };
     updateVar();
     const ro = new ResizeObserver(() => updateVar());
@@ -39,19 +39,19 @@ export function BottomIconBar() {
   return (
     <div
       ref={ref}
-      className={`fixed inset-x-0 bottom-0 z-[60] md:hidden transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      className={`fixed inset-x-0 top-0 z-[60] md:hidden transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       style={{
-        background: 'linear-gradient(0deg, rgba(10,10,15,0.86), rgba(10,10,15,0.6) 60%, rgba(10,10,15,0))',
+        background: 'linear-gradient(180deg, rgba(10,10,15,0.86), rgba(10,10,15,0.6) 60%, rgba(10,10,15,0))',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)'
       }}
-      aria-label="Barra inferior de navegación por secciones (móvil)"
+      aria-label="Barra superior de navegación por secciones (móvil)"
     >
+      {/* Safe area top */}
+      <div aria-hidden className="h-[calc(env(safe-area-inset-top,0px))]" />
       <div className="px-2 py-2">
         <SectionIconNav />
       </div>
-      {/* Safe area bottom */}
-      <div aria-hidden className="h-[calc(env(safe-area-inset-bottom,0px))]" />
     </div>
   );
 }
