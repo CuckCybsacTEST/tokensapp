@@ -21,7 +21,7 @@ import { Footer } from './components/Footer';
 import { SectionDivider } from './components/SectionDivider';
 import { BackToTop } from './components/BackToTop';
 import { UpDownDots } from './components/UpDownDots';
-import { BottomIconBar } from './components/BottomIconBar';
+// navegación móvil por iconos eliminada
 
 // Importar identificadores centralizados
 import { SECTIONS } from './constants/sections';
@@ -133,6 +133,28 @@ export default function MarketingPage() {
     return () => observer.disconnect();
   }, []);
 
+  // Móvil: al cargar con hash (#id) o si cambia el hash, desplazar el pager horizontal
+  React.useEffect(() => {
+    const applyHash = () => {
+      try {
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (!isMobile) return;
+        const hash = (window.location.hash || '').replace('#','');
+        if (!hash) return;
+        const pager = document.getElementById('mobile-pager');
+        const target = hash ? document.getElementById(hash) : null;
+        if (pager && target) {
+          const index = Array.from(pager.children).indexOf(target);
+          const width = pager.clientWidth;
+          if (index >= 0) pager.scrollTo({ left: index * width, behavior: 'instant' as ScrollBehavior });
+        }
+      } catch {}
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, []);
+
   return (
     <div
       className="min-h-screen w-full text-white overflow-x-hidden relative marketing-scroll"
@@ -143,6 +165,7 @@ export default function MarketingPage() {
       }}
     >
       <style jsx global>{`
+        /* Ocultar scrollbars en mobile para el contenedor principal */
         @media (max-width: 767px){
           .marketing-scroll{ -ms-overflow-style: none; scrollbar-width: none; }
           .marketing-scroll::-webkit-scrollbar{ width:0; height:0; display:none; }
@@ -150,13 +173,24 @@ export default function MarketingPage() {
           html.mobile-no-scrollbar::-webkit-scrollbar, body.mobile-no-scrollbar::-webkit-scrollbar { width:0; height:0; display:none; }
           body.mobile-no-scrollbar { overscroll-behavior: contain; }
         }
-        /* Scroll snap para que cada sección llene el viewport y quede alineada */
-        .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: calc(8px + var(--top-bar-h, 0px)); }
-        .snap-section{ scroll-snap-align: start; scroll-snap-stop: always; min-height: 100vh; scroll-margin-top: calc(8px + var(--top-bar-h, 0px)); }
+        /* Desktop: scroll vertical con snap Y */
+        @media (min-width: 768px){
+          .marketing-scroll{ scroll-snap-type: y mandatory; scroll-padding-top: calc(8px + var(--top-bar-h, 0px)); }
+          .snap-section{ scroll-snap-align: start; scroll-snap-stop: always; min-height: 100vh; scroll-margin-top: calc(8px + var(--top-bar-h, 0px)); }
+        }
         @supports (height: 1svh){ .snap-section{ min-height: 100svh; } }
-        @media (max-width: 767px){
+        @media (min-width: 768px){
           .marketing-scroll{ scroll-padding-top: calc(12px + var(--top-bar-h, 0px)); }
           .snap-section{ scroll-margin-top: calc(12px + var(--top-bar-h, 0px)); }
+        }
+        /* Mobile: pager horizontal */
+        @media (max-width: 767px){
+          #mobile-pager { display:flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; height: 100vh; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+          @supports(height: 1svh){ #mobile-pager { height: 100svh; } }
+          #mobile-pager > .snap-section { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; overflow-y: auto; -ms-overflow-style: none; scrollbar-width: none; }
+          #mobile-pager > .snap-section::-webkit-scrollbar{ width:0; height:0; display:none; }
+          /* Evitar que el contenido quede bajo la barra superior móvil */
+          #mobile-pager > .snap-section { padding-top: calc(8px + var(--top-bar-h, 0px)); }
         }
       `}</style>
       {/* Patrón sutil */}
@@ -170,33 +204,35 @@ export default function MarketingPage() {
       <Hero />
       
       {/* Componentes de secciones principales */}
-  {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-  <div id="shows" data-section="shows" tabIndex={-1} role="region" aria-label="Estelares" className="snap-section">
-        <DynamicShowsSection />
-      </div>
-      <SectionDivider className="my-10 sm:my-14" />
-  <div id="cumple" data-section="cumple" tabIndex={-1} role="region" aria-label="Cumpleaños" className="snap-section">
-        <BirthdaySection />
-      </div>
-      <SectionDivider className="my-10 sm:my-14" />
-  <div id="spotify" data-section="spotify" tabIndex={-1} role="region" aria-label="Spotify" className="snap-section">
-        <SpotifySection />
-      </div>
-      <SectionDivider className="my-12 sm:my-16" />
-  <div id="galeria" data-section="galeria" tabIndex={-1} role="region" aria-label="Galería" className="snap-section">
-        <GallerySection gallery={gallery} />
-      </div>
-      <SectionDivider className="my-12 sm:my-16 z-30" />
-  <div id="faq" data-section="faq" tabIndex={-1} role="region" aria-label="Preguntas frecuentes" className="snap-section">
-        <FaqSection faq={faq} />
-      </div>
-      <SectionDivider className="my-10 sm:my-14" />
-  <div id="blog" data-section="blog" tabIndex={-1} role="region" aria-label="Blog" className="snap-section">
-        <BlogSection blogPosts={blogPosts} />
-      </div>
-      <SectionDivider className="my-10 sm:my-14" />
-  <div id="mapa" data-section="mapa" tabIndex={-1} role="region" aria-label="Mapa" className="snap-section">
-        <MapSection />
+      <div id="mobile-pager">
+        {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
+        <div id="shows" data-section="shows" tabIndex={-1} role="region" aria-label="Estelares" className="snap-section">
+          <DynamicShowsSection />
+        </div>
+        <SectionDivider className="my-10 sm:my-14" />
+        <div id="cumple" data-section="cumple" tabIndex={-1} role="region" aria-label="Cumpleaños" className="snap-section">
+          <BirthdaySection />
+        </div>
+        <SectionDivider className="my-10 sm:my-14" />
+        <div id="spotify" data-section="spotify" tabIndex={-1} role="region" aria-label="Spotify" className="snap-section">
+          <SpotifySection />
+        </div>
+        <SectionDivider className="my-12 sm:my-16" />
+        <div id="galeria" data-section="galeria" tabIndex={-1} role="region" aria-label="Galería" className="snap-section">
+          <GallerySection gallery={gallery} />
+        </div>
+        <SectionDivider className="my-12 sm:my-16 z-30" />
+        <div id="faq" data-section="faq" tabIndex={-1} role="region" aria-label="Preguntas frecuentes" className="snap-section">
+          <FaqSection faq={faq} />
+        </div>
+        <SectionDivider className="my-10 sm:my-14" />
+        <div id="blog" data-section="blog" tabIndex={-1} role="region" aria-label="Blog" className="snap-section">
+          <BlogSection blogPosts={blogPosts} />
+        </div>
+        <SectionDivider className="my-10 sm:my-14" />
+        <div id="mapa" data-section="mapa" tabIndex={-1} role="region" aria-label="Mapa" className="snap-section">
+          <MapSection />
+        </div>
       </div>
       
       {/* Footer Component */}
@@ -205,8 +241,7 @@ export default function MarketingPage() {
       <BackToTop />
   {/* Mantener dots sólo en desktop/tablet; en móvil usamos la barra de iconos */}
   {showNavButtons && isDesktop && <UpDownDots />}
-  {/* Barra inferior por iconos para móvil */}
-  <BottomIconBar />
+  {/* Navegación por iconos móvil eliminada para dejar scroll intuitivo */}
     </div>
   );
 }
