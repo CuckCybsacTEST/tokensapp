@@ -228,28 +228,36 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         const chosenPrizeId = pickWeighted(weighted);
         const chosenMeta = remainingArr.find((r) => r.prizeId === chosenPrizeId)!;
         const weightSnapshot = chosenMeta.remaining;
-  // Asignar token real: en two-phase sólo marca reveal (revealedAt + assignedPrizeId); en legacy marca redeemedAt directo
+        // Manejar slots virtuales (no consumen token real)
+        const isVirtualRetry = chosenPrizeId === 'virtual:retry';
+        const isVirtualLose = chosenPrizeId === 'virtual:lose';
+        let action: 'RETRY' | 'LOSE' | undefined = undefined;
         let consumedTokenId: string | null = null;
         let revealedAt: Date | null = null;
-        try {
-          // Seleccionar token disponible del premio
-          const token = await tx.token.findFirst({ where: { batchId: session.batchId, prizeId: chosenPrizeId, disabled: false, OR: twoPhase ? [{ revealedAt: null }] : [{ redeemedAt: null }] }, select: { id: true } });
-          if (token) {
-            if (twoPhase) {
-              revealedAt = new Date();
-              const upd = await tx.token.update({
-                where: { id: token.id },
-                data: { revealedAt, assignedPrizeId: chosenPrizeId },
-                select: { id: true }
-              });
-              consumedTokenId = upd.id;
-            } else {
-              const upd = await tx.token.update({ where: { id: token.id }, data: { redeemedAt: new Date() }, select: { id: true } });
-              consumedTokenId = upd.id;
+        if (isVirtualRetry || isVirtualLose) {
+          action = isVirtualRetry ? 'RETRY' : 'LOSE';
+          // Sólo registrar el spin; no tocar tokens
+        } else {
+          try {
+            // Seleccionar token disponible del premio
+            const token = await tx.token.findFirst({ where: { batchId: session.batchId, prizeId: chosenPrizeId, disabled: false, OR: twoPhase ? [{ revealedAt: null }] : [{ redeemedAt: null }] }, select: { id: true } });
+            if (token) {
+              if (twoPhase) {
+                revealedAt = new Date();
+                const upd = await tx.token.update({
+                  where: { id: token.id },
+                  data: { revealedAt, assignedPrizeId: chosenPrizeId },
+                  select: { id: true }
+                });
+                consumedTokenId = upd.id;
+              } else {
+                const upd = await tx.token.update({ where: { id: token.id }, data: { redeemedAt: new Date() }, select: { id: true } });
+                consumedTokenId = upd.id;
+              }
             }
-          }
-        } catch { /* noop */ }
-  await tx.rouletteSpin.create({ data: { sessionId: session.id, prizeId: chosenPrizeId, order: nextOrder, weightSnapshot, tokenId: consumedTokenId } });
+          } catch { /* noop */ }
+        }
+        await tx.rouletteSpin.create({ data: { sessionId: session.id, prizeId: chosenPrizeId, order: nextOrder, weightSnapshot, tokenId: consumedTokenId } });
         chosenMeta.remaining -= 1;
         const remainingAfter = remainingArr.reduce((a, r) => a + r.remaining, 0);
         const finishedNow = remainingArr.every((r) => r.remaining === 0);
@@ -279,7 +287,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
           const distribution = computeDistribution(snapshot, session.spinsHistory, chosenPrizeId);
           deferredLogs.push({ type: 'ROULETTE_FINISH', message: 'Ruleta finalizada', metadata: { sessionId: session.id, totalSpins: nextOrder, distribution } });
         }
-        if (twoPhase) {
+        if (twoPhase && !isVirtualRetry && !isVirtualLose) {
           return {
             status: 200,
             body: {
@@ -293,10 +301,11 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
               remaining: remainingResponse,
               timestamps: { revealedAt },
               _logs: deferredLogs,
+              action,
             }
           } as const;
         }
-        return { status: 200, body: { chosen: { prizeId: chosenPrizeId, label: chosenMeta.label, color: chosenMeta.color, tokenId: consumedTokenId }, order: nextOrder, finished: finishedNow, remaining: remainingResponse, _logs: deferredLogs } } as const;
+        return { status: 200, body: { chosen: { prizeId: chosenPrizeId, label: chosenMeta.label, color: chosenMeta.color, tokenId: consumedTokenId }, order: nextOrder, finished: finishedNow, remaining: remainingResponse, _logs: deferredLogs, action } } as const;
       } else if ((snapshot as any).mode === 'BY_TOKEN' && (snapshot as any).tokens) {
         const tokensAll = (snapshot as any).tokens as SnapshotToken[];
         const consumed = session.spinsHistory.length; // tokens consumidos = spins previos

@@ -127,8 +127,26 @@ export async function POST(req: NextRequest) {
     }
     return apiError('NOT_ELIGIBLE', 'Número de premios no elegible', { prizes: elements.length }, 400);
   }
-  const maxSpins = elements.reduce((a, e) => a + e.count, 0);
-  const snapshot = { mode: "BY_PRIZE" as const, prizes: elements, createdAt: new Date().toISOString() };
+  // Optional: add virtual default slots (retry/lose) if enabled and we have room (<=10 real prizes)
+  let finalElements = elements.slice();
+  try {
+    const enableSlots = String(process.env.ROULETTE_DEFAULT_SLOTS || "0").trim() === "1";
+    if (enableSlots && elements.length >= 2 && elements.length <= 10) {
+      const retryWeight = Math.max(1, Number(process.env.ROULETTE_RETRY_WEIGHT || 1) || 1);
+      const loseWeight = Math.max(1, Number(process.env.ROULETTE_LOSE_WEIGHT || 1) || 1);
+      const retryColor = (process.env.ROULETTE_RETRY_COLOR || "#3BA7F0").trim();
+      const loseColor = (process.env.ROULETTE_LOSE_COLOR || "#8A8A8A").trim();
+      // Append two virtual elements
+      finalElements.push(
+        { prizeId: "virtual:retry", label: "Nuevo intento", color: retryColor, count: retryWeight },
+        { prizeId: "virtual:lose", label: "Piña", color: loseColor, count: loseWeight },
+      );
+    }
+  } catch {}
+
+  // Compute spins total including virtuals if present
+  const maxSpins = finalElements.reduce((a, e) => a + e.count, 0);
+  const snapshot = { mode: "BY_PRIZE" as const, prizes: finalElements, createdAt: new Date().toISOString() };
   const session = await (prisma as any).rouletteSession.create({
     data: { batchId: batch.id, mode: "BY_PRIZE", status: "ACTIVE", spins: 0, maxSpins, meta: JSON.stringify(snapshot) },
     select: { id: true },
@@ -136,9 +154,9 @@ export async function POST(req: NextRequest) {
   await logEvent("ROULETTE_CREATE", "Ruleta creada", {
     batchId: batch.id,
     sessionId: session.id,
-    prizes: elements.length,
+    prizes: finalElements.length,
     totalTokens: maxSpins,
     mode: "BY_PRIZE",
   });
-  return apiOk({ sessionId: session.id, elements, mode: 'BY_PRIZE', maxSpins }, 201);
+  return apiOk({ sessionId: session.id, elements: finalElements, mode: 'BY_PRIZE', maxSpins }, 201);
 }
