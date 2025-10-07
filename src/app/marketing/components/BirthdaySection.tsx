@@ -135,7 +135,7 @@ export function BirthdaySection() {
           backgroundImage: `radial-gradient(circle at 12% 88%, ${brand.secondary}33 0%, transparent 40%),radial-gradient(circle at 88% 18%, ${brand.primary}22 0%, transparent 30%)`,
         }}
       />
-      <div className="container mx-auto max-w-7xl px-4 md:px-8 relative z-10 w-full">
+  <div className="birthday-inner container mx-auto max-w-7xl px-4 md:px-8 relative z-10 w-full">
         <SectionTitle
           kicker="CON EL TÍO LOUNGE..."
           title="Celebra tu cumple en grande"
@@ -475,6 +475,28 @@ export function BirthdaySection() {
               min-height: 100svh;
             }
           }
+        }
+        /* Desktop: centrar y escalar ligeramente para dar aire arriba/abajo */
+        @media (min-width: 768px) {
+          .birthday-wrap { align-items: center; justify-content: center; }
+          .birthday-inner { transform-origin: center center; will-change: transform; }
+        }
+        /* Escalado por altura en desktop: menor altura -> mayor reducción */
+        @media (min-width: 768px) and (max-height: 720px) {
+          .birthday-inner { transform: scale(0.82); }
+        }
+        @media (min-width: 768px) and (min-height: 721px) and (max-height: 820px) {
+          .birthday-inner { transform: scale(0.86); }
+        }
+        @media (min-width: 768px) and (min-height: 821px) and (max-height: 920px) {
+          .birthday-inner { transform: scale(0.90); }
+        }
+        @media (min-width: 768px) and (min-height: 921px) and (max-height: 1080px) {
+          .birthday-inner { transform: scale(0.94); }
+        }
+        /* Muy alto: mantener un leve respiro */
+        @media (min-width: 768px) and (min-height: 1081px) {
+          .birthday-inner { transform: scale(0.98); }
         }
         /* Ajuste de padding en móviles: ya reservamos barra superior a nivel global, aquí solo dar un respiro mínimo */
         @media (max-width: 767px) {
