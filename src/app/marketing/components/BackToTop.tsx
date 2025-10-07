@@ -16,6 +16,11 @@ export function BackToTop() {
   }, []);
 
   const handleClick = () => {
+    const hero = document.getElementById("hero");
+    if (hero) {
+      hero.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

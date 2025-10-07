@@ -99,7 +99,7 @@ export function DynamicShowsSection({
 
   return (
     <section
-      className={`shows-wrap relative flex flex-col justify-center pt-10 md:pt-12 pb-8 md:pb-10 overflow-x-hidden ${className}`}
+      className={`shows-wrap relative flex flex-col items-center justify-center pt-8 md:pt-0 pb-8 md:pb-0 overflow-x-hidden ${className}`}
     >
   <div className="mx-auto w-full px-4 sm:px-6 md:px-8 max-w-[640px] sm:max-w-[680px] md:max-w-7xl">
         <div className="shows-header mb-9 md:mb-14 flex flex-col items-center text-center gap-3 md:gap-4">
@@ -280,6 +280,20 @@ export function DynamicShowsSection({
         /* Aspect ratio base para las tarjetas */
         .shows-card {
           aspect-ratio: 1080/1920;
+        }
+        /* Desktop: ocupar todo el alto visible y centrar verticalmente (el contenedor ya es flex/justify-center) */
+        @media (min-width: 768px) {
+          .shows-wrap { min-height: 100vh; }
+        }
+        @supports (height: 1svh) {
+          @media (min-width: 768px) {
+            .shows-wrap { min-height: 100svh; }
+          }
+        }
+        @supports (height: 1dvh) {
+          @media (min-width: 768px) {
+            .shows-wrap { min-height: 100dvh; }
+          }
         }
         /* Teléfonos ~375x780: reducción proporcional extra (nuevo ajuste) */
         @media (max-width: 400px) and (min-height: 741px) and (max-height: 780px) {

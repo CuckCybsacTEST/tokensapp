@@ -17,11 +17,25 @@ export function UpDownDots() {
   const [atTop, setAtTop] = useState(true);
   const [heroAlmostFull, setHeroAlmostFull] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(false);
   const [atEnd, setAtEnd] = useState(false);
   const [atLastSection, setAtLastSection] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Observar el hero para ocultar completamente los dots cuando sea visible
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const hero = document.getElementById("hero");
+    if (!hero) return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => setHeroVisible(e.isIntersecting)),
+      { threshold: 0.6 }
+    );
+    obs.observe(hero);
+    return () => obs.disconnect();
   }, []);
 
   const getSectionElement = (index: number) => {
@@ -159,8 +173,8 @@ export function UpDownDots() {
   const scrollTo = (direction: "up" | "down") => {
     if (typeof window === "undefined") return;
     const cur = currentIndex();
-    // Si estamos en el índice 0 pero no en el tope absoluto, subir al inicio del hero
-    if (direction === "up" && cur === 0 && window.scrollY > 0.5) {
+    // Si estamos en el índice 0 o el hero está visible, subir al inicio del hero
+    if (direction === "up" && (cur <= 0 || heroVisible)) {
       const hero = getSectionElement(0);
       hero?.scrollIntoView({ behavior: "smooth", block: "start" });
       hero?.focus?.({ preventScroll: true });
@@ -199,10 +213,11 @@ export function UpDownDots() {
   );
 
   // Desactivar en bordes
-  const disableUp = idx <= 0 && atTop && heroAlmostFull;
+  // Deshabilitar "up" solo mientras el Hero esté visible; fuera de Hero siempre debe permitir volver al Hero
+  const disableUp = heroVisible;
   const isLast = idx >= getLastPresentIndex() || atEnd || atLastSection;
 
-  if (!mounted) return null;
+  if (!mounted || heroVisible) return null;
   return createPortal(
     <div
       className="fixed top-1/2 -translate-y-1/2 pointer-events-auto select-none flex flex-col items-center gap-4"

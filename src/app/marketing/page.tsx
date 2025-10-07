@@ -117,12 +117,11 @@ export default function MarketingPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          // Mostrar dots cuando el hero deja de cubrir casi toda la pantalla
-          const ratio = entry.intersectionRatio ?? 0;
-          setShowNavButtons(ratio < 0.96);
+          // En desktop: ocultar los dots mientras el hero esté visible en cualquier proporción
+          setShowNavButtons(!entry.isIntersecting);
         });
       },
-      { threshold: [0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 0.96] }
+      { threshold: [0, 0.01, 0.1, 0.5, 0.9, 1] }
     );
 
     observer.observe(hero);
@@ -214,13 +213,11 @@ export default function MarketingPage() {
         @media (min-width: 768px) {
           .marketing-scroll {
             scroll-snap-type: y mandatory;
-            scroll-padding-top: calc(8px + var(--top-bar-h, 0px));
           }
           .snap-section {
             scroll-snap-align: start;
             scroll-snap-stop: always;
             min-height: 100vh;
-            scroll-margin-top: calc(8px + var(--top-bar-h, 0px));
           }
         }
         @supports (height: 1svh) {
@@ -229,12 +226,8 @@ export default function MarketingPage() {
           }
         }
         @media (min-width: 768px) {
-          .marketing-scroll {
-            scroll-padding-top: calc(12px + var(--top-bar-h, 0px));
-          }
-          .snap-section {
-            scroll-margin-top: calc(12px + var(--top-bar-h, 0px));
-          }
+          .marketing-scroll { /* sin offset: cada sección ocupa pantalla completa */ }
+          .snap-section { /* sin margin de snap */ }
         }
         /* Mobile: pager horizontal */
         @media (max-width: 767px) {
@@ -351,7 +344,7 @@ export default function MarketingPage() {
         >
           <DynamicShowsSection />
         </div>
-        {isDesktop && <SectionDivider className="my-10 sm:my-14" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="cumple"
           data-section="cumple"
@@ -362,7 +355,7 @@ export default function MarketingPage() {
         >
           <BirthdaySection />
         </div>
-        {isDesktop && <SectionDivider className="my-10 sm:my-14" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="spotify"
           data-section="spotify"
@@ -373,7 +366,7 @@ export default function MarketingPage() {
         >
           <SpotifySection />
         </div>
-        {isDesktop && <SectionDivider className="my-12 sm:my-16" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="galeria"
           data-section="galeria"
@@ -384,7 +377,7 @@ export default function MarketingPage() {
         >
           <GallerySection gallery={gallery} />
         </div>
-        {isDesktop && <SectionDivider className="my-12 sm:my-16 z-30" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="faq"
           data-section="faq"
@@ -395,7 +388,7 @@ export default function MarketingPage() {
         >
           <FaqSection faq={faq} />
         </div>
-        {isDesktop && <SectionDivider className="my-10 sm:my-14" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="blog"
           data-section="blog"
@@ -406,7 +399,7 @@ export default function MarketingPage() {
         >
           <BlogSection blogPosts={blogPosts} />
         </div>
-        {isDesktop && <SectionDivider className="my-10 sm:my-14" />}
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div
           id="mapa"
           data-section="mapa"
@@ -422,10 +415,10 @@ export default function MarketingPage() {
   {/* Indicador de sección fijo abajo (solo móvil) */}
   {!isDesktop && <MobileIndicatorDock />}
 
-      {/* Footer Component: solo desktop */}
-      {isDesktop && <Footer />}
-      {/* Floating Back to Top button */}
-      <BackToTop />
+  {/* Footer Component: solo desktop */}
+  {isDesktop && <Footer />}
+  {/* Floating Back to Top button (solo desktop) */}
+  {isDesktop && <BackToTop />}
       {/* Mantener dots sólo en desktop/tablet; en móvil usamos la barra de iconos */}
       {showNavButtons && isDesktop && <UpDownDots />}
       {/* Navegación por iconos móvil eliminada para dejar scroll intuitivo */}

@@ -10,23 +10,129 @@ import { brand } from "../styles/brand";
 export function TopNavBar() {
   const [inHero, setInHero] = useState(true);
   useEffect(() => {
-    const hero = document.getElementById("hero");
-    if (!hero) {
-      setInHero(false);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => setInHero(e.isIntersecting));
-      },
-      { threshold: 0.25 }
-    );
-    obs.observe(hero);
-    return () => obs.disconnect();
+    let obs: IntersectionObserver | null = null;
+    let mo: MutationObserver | null = null;
+    let observedEl: Element | null = null;
+    let cancelled = false;
+    let raf = 0;
+
+    const computeInitial = (el: Element | null) => {
+      if (!el) return;
+      try {
+        const r = el.getBoundingClientRect();
+        const vh = window.innerHeight || 1;
+        const visible = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+        setInHero(visible > 0.5);
+      } catch {}
+    };
+
+    const computeHeroVisible = () => {
+      const el = document.getElementById("hero");
+      if (!el) return;
+      try {
+        const r = el.getBoundingClientRect();
+        const vh = window.innerHeight || 1;
+        const visible = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+        const ratio = visible / Math.max(1, r.height);
+        const next = ratio > 0.01; // cualquier solape
+        setInHero((prev) => (prev === next ? prev : next));
+      } catch {}
+    };
+
+    const attachObserver = (el: Element) => {
+      if (obs) {
+        try { if (observedEl) obs.unobserve(observedEl); } catch {}
+        obs.disconnect();
+      }
+      // Umbral muy sensible para considerar "en hero" cualquier solapamiento
+      obs = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.target === el) {
+              const ratio = e.intersectionRatio || 0;
+              setInHero(!!e.isIntersecting && ratio > 0.001);
+            }
+          }
+        },
+        { threshold: [0, 0.001, 0.01, 0.05, 0.1, 0.5, 1] }
+      );
+      obs.observe(el);
+      observedEl = el;
+      computeInitial(el);
+    };
+
+    const ensureObserved = (attempt = 0) => {
+      if (cancelled) return;
+      const el = document.getElementById("hero");
+      if (!el) {
+        if (attempt < 20) {
+          // Reintentar durante ~1.6s para soportar montajes diferidos
+          setTimeout(() => ensureObserved(attempt + 1), 80);
+        } else {
+          // Fallback: si estamos prácticamente arriba, asumimos hero visible
+          try {
+            setInHero((window.scrollY || 0) < 40);
+          } catch {
+            setInHero(false);
+          }
+        }
+        return;
+      }
+      if (el !== observedEl) {
+        attachObserver(el);
+      } else {
+        computeInitial(el);
+      }
+    };
+
+    // Primera conexión
+    ensureObserved();
+
+    // Vigilar cambios en el DOM (el #hero cambia de lugar entre mobile/desktop en el primer render)
+    try {
+      mo = new MutationObserver(() => {
+        const el = document.getElementById("hero");
+        if (el && el !== observedEl) {
+          attachObserver(el);
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    } catch {}
+
+    // Recalcular en resize/orientation por cambios de layout
+    const onResize = () => {
+      const el = document.getElementById("hero");
+      if (el && el !== observedEl) {
+        attachObserver(el);
+      } else if (el) {
+        computeInitial(el);
+      } else {
+        ensureObserved(1);
+      }
+      // Recalcular de inmediato visibilidad
+      computeHeroVisible();
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(computeHeroVisible);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      window.removeEventListener("scroll", onScroll as any);
+      cancelAnimationFrame(raf);
+      if (obs) obs.disconnect();
+      if (mo) mo.disconnect();
+    };
   }, []);
 
   return (
-    <>
     <motion.nav
       initial={{ opacity: 0, y: -10 }}
   animate={{ opacity: 1, y: 0 }}
@@ -127,8 +233,7 @@ export function TopNavBar() {
           background: `linear-gradient(90deg, transparent, ${brand.primary}66, transparent)`,
         }}
       />
-  </motion.nav>
-  <style jsx>{`
+      <style jsx>{`
       /* Animación sutil para invitar al clic: respiración de glow + leve bounce */
       .offer-cta {
         position: relative;
@@ -148,8 +253,8 @@ export function TopNavBar() {
         85% { transform: translateY(-0.5px); }
         100% { transform: translateY(0); }
       }
-    `}</style>
-    </>
+      `}</style>
+    </motion.nav>
   );
 }
 
