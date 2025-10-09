@@ -58,12 +58,15 @@ export default function PrizeManager({
   batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; count: number; expired: number; valid: number }> }>;
 }) {
   const [prizes, setPrizes] = useState(initialPrizes);
-  function updatePrizes(updater: (prev: any[]) => any[]) {
-    setPrizes((prev) => {
-      const next = updater(prev);
-      onPrizesUpdated?.(next);
-      return next;
-    });
+  async function updatePrizesWithRefresh() {
+    try {
+      const res = await fetch('/api/prizes');
+      if (res.ok) {
+        const list = await res.json();
+        setPrizes(list);
+        onPrizesUpdated?.(list);
+      }
+    } catch {}
   }
   const empty = {
     id: undefined,
@@ -108,15 +111,13 @@ export default function PrizeManager({
             body: JSON.stringify({
               label: form.label,
               color: form.color || undefined,
-              // descripción eliminada
               stock: form.stock === "" ? undefined : Number(form.stock),
             }),
           });
           if (!res.ok) throw new Error("Error creando");
-          const created = await res.json();
-          updatePrizes((p) => [...p, created]);
           setMessage("Premio creado");
           reset();
+          await updatePrizesWithRefresh();
         } else {
           const res = await fetch(`/api/prizes/${form.id}`, {
             method: "PATCH",
@@ -124,15 +125,13 @@ export default function PrizeManager({
             body: JSON.stringify({
               label: form.label,
               color: form.color || null,
-              // descripción eliminada
               stock: form.stock === "" ? null : Number(form.stock),
               active: form.active,
             }),
           });
           if (!res.ok) throw new Error("Error actualizando");
-          const updated = await res.json();
-          updatePrizes((p) => p.map((x) => (x.id === updated.id ? updated : x)));
           setMessage("Premio actualizado");
+          await updatePrizesWithRefresh();
         }
       } catch (err: any) {
         setMessage(err.message || "Fallo");
@@ -161,16 +160,18 @@ export default function PrizeManager({
     if (!window.confirm(confirmMsg)) return;
     setDeletingId(id);
     setMessage(null);
-    // Optimistic removal with rollback
-    const prev = prizes;
-    const next = prev.filter((x) => x.id !== id);
-    updatePrizes(() => next);
+  // Optimistic removal with rollback
+  const prev = prizes;
+  const next = prev.filter((x) => x.id !== id);
+  setPrizes(next);
+  onPrizesUpdated?.(next);
     try {
       const res = await fetch(`/api/prizes/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         // Rollback
-        updatePrizes(() => prev);
+        setPrizes(prev);
+        onPrizesUpdated?.(prev);
         if (err?.code === "PRIZE_IN_USE") {
           setMessage(
             `No se puede eliminar: hay tokens asociados (por premio: ${err?.details?.tokensByPrize ?? 0}, por asignación: ${err?.details?.tokensByAssigned ?? 0})`
@@ -178,16 +179,18 @@ export default function PrizeManager({
         } else if (err?.message) {
           setMessage(err.message);
         } else {
-          setMessage("Error eliminando");
+          setMessage("Fallo eliminando");
         }
-        return;
+      } else {
+        setMessage("Premio eliminado");
+        await updatePrizesWithRefresh();
       }
-      // Si el que se elimina está en edición, limpiar el formulario
       if (form.id === id) reset();
       setMessage("Premio eliminado");
     } catch (e: any) {
-      // Rollback
-      updatePrizes(() => prev);
+  // Rollback
+  setPrizes(prev);
+  onPrizesUpdated?.(prev);
       setMessage(e?.message || "Fallo eliminando");
     } finally {
       setDeletingId(null);
@@ -421,7 +424,7 @@ export default function PrizeManager({
                                       }
                                     }
                                   }
-                                } else if (window.__ALL_TOKENS__) {
+                                } else if (typeof window !== 'undefined' && window.__ALL_TOKENS__) {
                                   // Vista 'Todos': usar allTokens para comparar expiración real
                                   const tokens = window.__ALL_TOKENS__.filter(t => t.prizeId === p.id);
                                   const totalCount = tokens.length;

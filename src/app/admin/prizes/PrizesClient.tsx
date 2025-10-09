@@ -160,7 +160,7 @@ export default function PrizesClient({
   <SystemPrizesControls />
 
   {/* Primero: gestión/creación de premios */}
-  <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
+  <PrizeManager key={JSON.stringify(prizes.map(p=>p.id+':'+p.stock))} initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
 
   {/* Luego: generación de tokens (si hay premios) */}
   {hasPrizes && (
