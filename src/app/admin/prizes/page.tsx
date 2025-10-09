@@ -27,40 +27,37 @@ async function getPrizesWithLastBatch(): Promise<{
 
   const prizeIds = prizes.map((p: BasePrize) => p.id);
 
-  // OPT: Limitamos el número de tokens escaneados para encontrar último batch por premio.
-  const tokens = await prisma.token.findMany({
+  // Último lote por premio (robusto): usamos distinct por prizeId ordenado por createdAt desc
+  const lastTokens = await prisma.token.findMany({
     where: { prizeId: { in: prizeIds } },
-    orderBy: { createdAt: 'desc' },
-    take: prizeIds.length * 6, // heurística: suficiente para encontrar el último batch de cada premio
-    select: {
-      prizeId: true,
-      batch: { select: { id: true, description: true, createdAt: true } },
-      revealedAt: true,
-      deliveredAt: true,
-    },
+    orderBy: [{ prizeId: 'asc' }, { createdAt: 'desc' }],
+    distinct: ['prizeId'],
+    select: { prizeId: true, batch: { select: { id: true, description: true, createdAt: true } } },
   });
-
   const lastBatch: LastBatchMap = {};
-  const revealedCount: Record<string, number> = {};
-  const deliveredCount: Record<string, number> = {};
-  const seenBatchPerPrize = new Set<string>();
-
-  for (const t of tokens) {
-    if (t.batch && !seenBatchPerPrize.has(t.prizeId)) {
-      seenBatchPerPrize.add(t.prizeId);
+  for (const t of lastTokens) {
+    if (t.batch) {
       lastBatch[t.prizeId] = {
         id: t.batch.id,
         name: t.batch.description || t.batch.id,
         createdAt: t.batch.createdAt,
       };
     }
-    if (t.revealedAt && !t.deliveredAt) {
-      revealedCount[t.prizeId] = (revealedCount[t.prizeId] || 0) + 1;
-    }
-    if (t.deliveredAt) {
-      deliveredCount[t.prizeId] = (deliveredCount[t.prizeId] || 0) + 1;
-    }
   }
+
+  // Agregados correctos para mostrador: revelados (pendientes) y consumidos (entregados o legacy redeemed)
+  const revealedAgg = await prisma.token.groupBy({
+    by: ['prizeId'],
+    where: { prizeId: { in: prizeIds }, revealedAt: { not: null }, deliveredAt: null },
+    _count: { _all: true },
+  });
+  const deliveredAgg = await prisma.token.groupBy({
+    by: ['prizeId'],
+    where: { prizeId: { in: prizeIds }, OR: [{ deliveredAt: { not: null } }, { redeemedAt: { not: null } }] },
+    _count: { _all: true },
+  });
+  const revealedCount: Record<string, number> = Object.fromEntries(revealedAgg.map(r => [r.prizeId, r._count._all]));
+  const deliveredCount: Record<string, number> = Object.fromEntries(deliveredAgg.map(r => [r.prizeId, r._count._all]));
 
   const enriched: PrizeWithStats[] = prizes.map((p: BasePrize) => ({
     ...p,

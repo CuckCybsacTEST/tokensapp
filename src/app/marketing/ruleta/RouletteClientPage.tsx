@@ -5,6 +5,7 @@ import NewRoulette from "@/components/roulette/NewRoulette";
 import RouletteHeading from "@/components/roulette/RouletteHeading";
 import { RouletteElement } from "@/components/roulette/types";
 import { motion, AnimatePresence } from "framer-motion";
+import RetryOverlay from "@/components/roulette/RetryOverlay";
 import SmartPreloader from "@/components/common/SmartPreloader";
 import { perfMark, perfMeasure, perfSummarize, perfCheckBudget } from "@/lib/perf";
 import CanvasConfetti from "@/components/visual/CanvasConfetti";
@@ -41,7 +42,14 @@ interface TokenShape {
   disabled: boolean;
   availableFrom?: string | null;
   batchId?: string;
+  reservedByRetry?: boolean;
   prize: { id: string; key: string; label: string; color: string | null; active: boolean };
+  realToken?: {
+    id: string;
+    revealedAt?: string | null;
+    deliveredAt?: string | null;
+    redeemedAt?: string | null;
+  };
 }
 
 interface RouletteClientPageProps {
@@ -54,6 +62,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     perfMark("page_mount");
   }, []);
   const [loading, setLoading] = useState(true);
+  // Token activo en UI (permite cambiar sin navegación dura)
+  const [activeTokenId, setActiveTokenId] = useState<string>(tokenId);
+  // Bandera para transición suave (no mostrar overlay)
+  const [softSwitch, setSoftSwitch] = useState(false);
+  const [pendingAutoSpin, setPendingAutoSpin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<TokenShape | null>(null);
   const [elements, setElements] = useState<RouletteElement[]>([]);
@@ -65,6 +78,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [delivering, setDelivering] = useState(false);
   const [deliverError, setDeliverError] = useState<string | null>(null);
   const [lowMotion, setLowMotion] = useState(false);
+  // Overlay minimal para RETRY (oculta cabeceras y copia mientras cambia el token)
+  const [retryOverlayOpen, setRetryOverlayOpen] = useState(false);
+  // Suprime la UI de "premio revelado" cuando el resultado es RETRY
+  const [suppressRevealed, setSuppressRevealed] = useState(false);
+  // Suprime el loader durante la transición RETRY (entre overlay y auto-spin)
+  const [suppressLoader, setSuppressLoader] = useState(false);
+  // Marca cuándo se abrió el overlay para garantizar visibilidad mínima (~1s)
+  const retryOverlayOpenedAt = useRef<number | null>(null);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
@@ -120,6 +141,17 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
   useEffect(() => {
     if (!token) return;
+    if (suppressRevealed) return; // no mostrar panel si estamos en transición de RETRY
+    const isReserved = !!token.reservedByRetry;
+    // Si el token es un bi-token y tiene realToken, revisa el estado del real
+    const realTokenUsed = isReserved && token.realToken && (token.realToken.revealedAt || token.realToken.deliveredAt || token.realToken.redeemedAt);
+    if (isReserved && realTokenUsed) {
+      // No mostrar panel de premio revelado, solo el mensaje especial
+      setPhase("READY");
+      setPrizeIndex(null);
+      setPrizeWon(null);
+      return;
+    }
     if (token.deliveredAt || token.redeemedAt) {
       setPhase("DELIVERED");
       return;
@@ -135,26 +167,36 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         }
       }
     }
-  }, [token, elements, phase]);
+  }, [token, elements, phase, suppressRevealed]);
 
   useEffect(() => {
-    if (!tokenId) {
+    // Si el prop cambia (navegación externa), sincroniza estado base
+    setActiveTokenId(tokenId || "");
+  }, [tokenId]);
+
+  useEffect(() => {
+    if (!activeTokenId) {
       setError("No se ha proporcionado un token");
       setLoading(false);
       return;
     }
 
-    // Reset UI state on token change to avoid showing previous token's state
-    setLoading(true);
-    setError(null);
-    setToken(null);
-    setElements([]);
-    setPhase("READY");
-    setPrizeIndex(null);
-    setPrizeWon(null);
-    setShowConfetti(false);
-    setDelivering(false);
-    setDeliverError(null);
+    // Reset UI sólo para carga dura; en suave mantenemos UI y cambiamos al final
+    if (!softSwitch) {
+      // No mostrar loader si estamos en transición RETRY
+      if (!suppressLoader) setLoading(true);
+      setError(null);
+      setToken(null);
+      setElements([]);
+      setPhase("READY");
+      setPrizeIndex(null);
+      setPrizeWon(null);
+      setShowConfetti(false);
+      setDelivering(false);
+      setDeliverError(null);
+    } else {
+      setError(null);
+    }
 
     let abort = false;
     const minPromise = new Promise<void>((resolve) => setTimeout(resolve, MIN_LOADER_MS));
@@ -167,7 +209,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
         const doFetch = async () => {
-          const response = await fetch(`/api/tokens/${tokenId}/roulette-data`, {
+          const response = await fetch(`/api/tokens/${activeTokenId}/roulette-data`, {
             signal: controller.signal,
             cache: "no-store",
           });
@@ -208,18 +250,26 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         }
 
         if (abort) return;
-        setToken(data.token);
-
-        // Verificamos si hay elementos antes de intentar mapearlos
-        if (data.elements && Array.isArray(data.elements)) {
-          // Convertimos los elementos del backend al formato que espera la ruleta
-          const rouletteElements = data.elements.map((e: any, index: number) => ({
-            label: e.label,
-            // Usamos un array de colores predefinidos para asegurar que cada segmento tenga un color distinto
-            color: e.color || getSegmentColor(index),
-            prizeId: e.prizeId,
-          }));
-          setElements(rouletteElements);
+        // En transición suave, aplicamos cambios al final de golpe
+        const applyData = () => {
+          setToken(data.token);
+          if (data.elements && Array.isArray(data.elements)) {
+            const rouletteElements = data.elements.map((e: any, index: number) => ({
+              label: e.label,
+              color: e.color || getSegmentColor(index),
+              prizeId: e.prizeId,
+            }));
+            setElements(rouletteElements);
+          }
+        };
+        if (softSwitch) {
+          applyData();
+          // Listo para auto-giro tras soft load
+          setPhase("READY");
+          setPendingAutoSpin(true);
+          // El cierre del overlay ahora se gestiona por un efecto cuando la ruleta está lista (elements>=2)
+        } else {
+          applyData();
         }
       } catch (err) {
         if (!abort) {
@@ -229,7 +279,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       } finally {
         await minPromise;
         if (!abort) {
-          setLoading(false);
+          if (!softSwitch) setLoading(false);
+          // Si fue softSwitch, evitamos overlay; limpiamos bandera
+          if (softSwitch) setSoftSwitch(false);
           perfMark("loader_hidden");
           perfMeasure("load_total", "load_start", "loader_hidden");
           // Presupuesto de carga
@@ -243,11 +295,23 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     return () => {
       abort = true;
     };
-  }, [tokenId]);
+  }, [activeTokenId, softSwitch]);
+
+  // Cerrar overlay de RETRY sólo cuando la ruleta esté lista (elements>=2) y se cumpla visibilidad mínima (~1s)
+  const rouletteReady = !!token && elements.length >= 2 && phase === 'READY';
+  useEffect(() => {
+    if (!retryOverlayOpen) return;
+    if (!rouletteReady) return;
+    const openedAt = retryOverlayOpenedAt.current || Date.now();
+    const elapsed = Date.now() - openedAt;
+    const remain = Math.max(0, 1000 - elapsed);
+    const t = setTimeout(() => setRetryOverlayOpen(false), remain);
+    return () => clearTimeout(t);
+  }, [retryOverlayOpen, rouletteReady]);
 
   const handleSpin = async () => {
     if (phase !== "READY") return;
-    if (!tokenId) return;
+    if (!activeTokenId) return;
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase("SPINNING");
     perfMark("spin_start");
@@ -271,7 +335,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       }
     } catch {}
     try {
-      const response = await fetch(`/api/token/${tokenId}/reveal`, { method: "POST" });
+  const response = await fetch(`/api/token/${activeTokenId}/reveal`, { method: "POST" });
       if (!response.ok) throw new Error(`Error ${response.status}: ${await response.text()}`);
       const data = await response.json();
       // Guardamos revealedAt pero dejamos que la animación termine (onSpinEnd)
@@ -281,6 +345,12 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       const winIndex = elements.findIndex((e) => e.prizeId === data.prizeId);
       if (winIndex < 0) throw new Error("Premio no encontrado en la ruleta");
       setPrizeIndex(winIndex);
+      // Si el backend indica RETRY, guardamos nextTokenId para transición suave
+      if (data?.action === 'RETRY' && data?.nextTokenId) {
+        setNextTokenId(data.nextTokenId);
+      } else {
+        setNextTokenId(null);
+      }
       // La animación del componente NewRoulette usará prizeIndex y disparará handleSpinEnd
     } catch (err) {
       console.error("Error al girar:", err);
@@ -290,11 +360,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   };
 
   const confirmDeliver = async () => {
-    if (!tokenId) return;
+    if (!activeTokenId) return;
     setDeliverError(null);
     setDelivering(true);
     try {
-      const res = await fetch(`/api/token/${tokenId}/deliver`, { method: "POST" });
+      const res = await fetch(`/api/token/${activeTokenId}/deliver`, { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = body?.error || body?.message || `Error ${res.status}`;
@@ -320,11 +390,38 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     }
   };
 
+  const [nextTokenId, setNextTokenId] = useState<string|null>(null);
   const handleSpinEnd = (prize: RouletteElement) => {
     perfMark("spin_end");
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
     perfCheckBudget("spin_duration", lowMotion ? 3600 : 6200, "spin");
+    // Si hay RETRY, no mostramos modal; hacemos transición suave al siguiente token
+    if (nextTokenId) {
+  // Mostrar overlay minimal que tapa el contenido
+      setRetryOverlayOpen(true);
+      try { retryOverlayOpenedAt.current = Date.now(); } catch {}
+      setSuppressRevealed(true);
+      // Asegurar que no aparezca overlay de loader
+      setLoading(false);
+  setSuppressLoader(true);
+      setShowConfetti(false);
+      setPrizeIndex(null);
+      setPrizeWon(null);
+      setPhase('READY');
+      // Ejecutar el soft switch bajo overlay
+      setTimeout(() => {
+        try {
+          const newUrl = `/marketing/ruleta?tokenId=${encodeURIComponent(nextTokenId!)}`;
+          window.history.replaceState(null, "", newUrl);
+        } catch {}
+        setSoftSwitch(true);
+        setPendingAutoSpin(true);
+        setActiveTokenId(nextTokenId!);
+      }, 120);
+      // El cierre del overlay se realiza en la carga del nuevo token (softSwitch)
+      return;
+    }
     setPrizeWon(prize);
     setPhase("REVEALED_MODAL");
     setShowConfetti(true);
@@ -351,9 +448,38 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
     // Importante: NO auto-canjear. La confirmación de entrega debe hacerla el STAFF.
     // En el flujo two-phase, sólo revelamos aquí; el canje/entrega se confirma desde interfaces de staff.
+
+    // (no RETRY)
   };
 
-  if (loading) {
+  // Auto-giro tras transición suave
+  useEffect(() => {
+    if (!pendingAutoSpin) return;
+    const t = setTimeout(() => {
+      if (phase === 'READY' && elements.length >= 2) {
+        handleSpin();
+        // Ya vamos a girar: permitir UI normal para el nuevo ciclo
+        setSuppressLoader(false);
+        setSuppressRevealed(false);
+      }
+      setPendingAutoSpin(false);
+    }, 550);
+    return () => clearTimeout(t);
+  }, [pendingAutoSpin, phase, elements.length]);
+
+  // Al cambiar de token (softSwitch), desactivar supresión del panel para el nuevo ciclo
+  useEffect(() => {
+    if (!activeTokenId) return;
+    // permitir paneles normales para el nuevo token; no afecta RETRY in-flight
+    setSuppressRevealed(false);
+  }, [activeTokenId]);
+
+  // (sin aviso toast)
+
+  if (retryOverlayOpen) {
+    return <RetryOverlay open={true} />;
+  }
+  if (loading && !suppressLoader && !retryOverlayOpen) {
     return (
       <div
         className="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none"
@@ -367,24 +493,24 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   }
 
   if (error) {
-    // Comprobar si el error está relacionado con tokens desactivados para mostrar un mensaje más amigable
-    const isTokensDisabledError =
-      error.includes("desactivado") || error.includes("fuera de servicio");
+    // Clasificación de errores: priorizar TWO_PHASE_DISABLED para no confundir con "desactivado"
     const isTwoPhaseDisabledError = error.includes("TWO_PHASE_DISABLED");
+    const isTokensDisabledError =
+      (!isTwoPhaseDisabledError && (error.includes("El sistema de tokens está temporalmente desactivado") || error.includes("fuera de servicio"))) || false;
 
-    const boxTone = isTokensDisabledError
+    const boxTone = isTwoPhaseDisabledError
       ? {
-          box: "bg-amber-500/10 border-amber-500/30",
-          title: "text-amber-300",
-          heading: "Cargando el drop",
-          msg: "Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.",
+          box: "bg-indigo-500/10 border-indigo-500/30",
+          title: "text-indigo-300",
+          heading: "Modo de 1 fase activo",
+          msg: "Este entorno no tiene habilitado el flujo de 2 fases (reveal → deliver). Activa TWO_PHASE_REDEMPTION=1 y reinicia el servidor para probar la ruleta.",
         }
-      : isTwoPhaseDisabledError
+      : isTokensDisabledError
         ? {
-            box: "bg-indigo-500/10 border-indigo-500/30",
-            title: "text-indigo-300",
-            heading: "Modo de 1 fase activo",
-            msg: "Este entorno no tiene habilitado el flujo de 2 fases (reveal → deliver). Activa TWO_PHASE_REDEMPTION=1 y reinicia el servidor para probar la ruleta.",
+            box: "bg-amber-500/10 border-amber-500/30",
+            title: "text-amber-300",
+            heading: "Cargando el drop",
+            msg: "Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.",
           }
         : {
             box: "bg-red-500/10 border-red-500/30",
@@ -425,7 +551,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     );
   }
 
-  if (token?.disabled) {
+  // Evitar mostrar pantallas de token no disponible/expirado durante transición RETRY
+  const transitionGuardActive = retryOverlayOpen || suppressLoader || pendingAutoSpin || softSwitch;
+  const allowRestrictedScreens = !transitionGuardActive && phase === "READY";
+
+  if (allowRestrictedScreens && token?.disabled) {
     let availableText: string | null = null;
     try {
       if (token.availableFrom) {
@@ -458,7 +588,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     );
   }
 
-  if (new Date(token?.expiresAt || 0) < new Date()) {
+  if (allowRestrictedScreens && new Date(token?.expiresAt || 0) < new Date()) {
     return (
       <div className="text-center py-16 max-w-md mx-auto">
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
@@ -469,27 +599,81 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     );
   }
 
-  const showRevealedPanel = phase === "REVEALED_PANEL" || (token?.revealedAt && phase === "READY");
-
-  // (El fallback prizeWon se maneja ahora en el efecto unificado anterior)
+  // Si el token es un bi-token (retry) y el real ya fue revelado/entregado/redimido, suprime el panel de premio revelado
+  const isReserved = !!token?.reservedByRetry;
+  const realTokenUsed = isReserved && token?.realToken && (token.realToken.revealedAt || token.realToken.deliveredAt || token.realToken.redeemedAt);
+  const showRevealedPanel = !retryOverlayOpen && !suppressRevealed && (phase === "REVEALED_PANEL" || (token?.revealedAt && phase === "READY")) && !(isReserved && realTokenUsed);
 
   // Render principal
 
+  // UI especial para tokens reservados (bi-token), cuando no hay ruleta disponible o ya fue usado
+  const shouldShowReservedPanel = (isReserved && (token?.disabled || elements.length < 2) && !retryOverlayOpen && phase === 'READY') || (isReserved && realTokenUsed);
+
   return (
-    <div className="relative">
-      <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
-        <RouletteHeading
-          kicker="Premios exclusivos"
-          title="Ruleta de Premios"
-          subtitle="Gira la ruleta y descubre qué premio te ha tocado"
-          onHeight={(h) => setRouletteHeadingHeight(h)}
-        />
-      </div>
+    <div className={`relative ${retryOverlayOpen ? 'pointer-events-none' : ''}`} aria-hidden={retryOverlayOpen ? true : undefined} style={{ opacity: retryOverlayOpen ? 0 : 1 }}>
+      {!retryOverlayOpen && !shouldShowReservedPanel && (
+        <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
+          <RouletteHeading
+            kicker="Premios exclusivos"
+            title="Ruleta de Premios"
+            subtitle="Gira la ruleta y descubre qué premio te ha tocado"
+            onHeight={(h) => setRouletteHeadingHeight(h)}
+          />
+        </div>
+      )}
       {/* Confetti animation */}
       <Confetti active={showConfetti} lowMotion={lowMotion} />
 
+      {/* Estado: Token reservado (bi-token) */}
+      {shouldShowReservedPanel && (
+        <div className="px-4">
+          <div className="mx-auto max-w-md text-center py-10 sm:py-12">
+            <div
+              className="rounded-2xl p-6 sm:p-7 border shadow-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(14,16,22,0.85), rgba(10,12,18,0.85))',
+                borderColor: 'rgba(255,255,255,0.12)'
+              }}
+            >
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-violet-500 to-indigo-400 animate-pulse" />
+                <div className="text-white/90 text-base sm:text-lg font-semibold tracking-wide">Token reservado</div>
+              </div>
+              {realTokenUsed ? (
+                <>
+                  <p className="mt-3 text-white/70 text-sm sm:text-base leading-relaxed">
+                    Este <span className="text-white/90">Nuevo intento</span> ya fue utilizado porque el premio real fue revelado o entregado. No es posible volver a usarlo.
+                  </p>
+                  <div className="mt-5">
+                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs border border-white/10 text-white/70">
+                      <span className="inline-block w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                      Retry usado
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 text-white/70 text-sm sm:text-base leading-relaxed">
+                    Este QR está apartado para un <span className="text-white/90">Nuevo intento</span>. No participa de la ruleta ni se imprime por separado.
+                  </p>
+                  <p className="mt-2 text-white/60 text-xs sm:text-sm">
+                    Si acabas de obtener <span className="text-white/80">Retry</span>, el staff usará este código automáticamente cuando corresponda.
+                  </p>
+                  <div className="mt-5">
+                    <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs border border-white/10 text-white/70">
+                      <span className="inline-block w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                      Reservado (bi-token)
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ruleta solo en READY / SPINNING */}
-      {(phase === "READY" || phase === "SPINNING") && (
+      {(phase === "READY" || phase === "SPINNING") && !shouldShowReservedPanel && (
         <div className="flex items-center justify-center py-6 sm:py-8 min-h-[400px] sm:min-h-[500px]">
           <NewRoulette
             elements={elements}
@@ -504,14 +688,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       )}
 
       {/* Contador de giros */}
-      {spinCounter != null && (
+      {spinCounter != null && !shouldShowReservedPanel && (
         <div className="mt-3 text-center text-xs sm:text-sm text-white/60 select-none tracking-wide">
           Giro #{spinCounter}
         </div>
       )}
 
       {/* Panel permanente tras cerrar modal */}
-      {showRevealedPanel && prizeWon && (
+  {showRevealedPanel && prizeWon && (
         <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
           <div
             className="rounded-lg p-5 sm:p-6 border"
@@ -539,9 +723,39 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         </div>
       )}
 
-      {/* Modal con el premio ganado - usando AnimatePresence para animaciones de salida */}
-      <AnimatePresence>
-        {prizeWon && phase === "REVEALED_MODAL" && (
+  {/* Modal con el premio ganado - usando AnimatePresence para animaciones de salida */}
+  <AnimatePresence>
+            {/* Overlay minimal para RETRY */}
+            {retryOverlayOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9999] flex items-center justify-center"
+                aria-modal="true"
+                role="dialog"
+              >
+                <div className="absolute inset-0" style={{ background: 'rgba(6,7,10,0.92)', backdropFilter: 'blur(8px)' }} />
+                <motion.div
+                  initial={{ scale: 0.92, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.98, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                  className="relative z-10 rounded-2xl px-5 py-4 sm:px-6 sm:py-5 shadow-2xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(20,20,28,0.95), rgba(18,18,24,0.95))',
+                    border: '1px solid rgba(255,255,255,0.12)'
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#5B86E5] to-[#36D1DC] animate-pulse" />
+                    <div className="text-white/90 text-sm sm:text-base font-medium">Nuevo intento</div>
+                  </div>
+                  <div className="mt-1 text-white/60 text-xs sm:text-sm">Preparando tu siguiente giro…</div>
+                </motion.div>
+              </motion.div>
+            )}
+  {prizeWon && phase === "REVEALED_MODAL" && !(isReserved && realTokenUsed) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}

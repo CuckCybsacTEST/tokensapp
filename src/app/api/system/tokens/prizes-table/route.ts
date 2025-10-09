@@ -25,16 +25,36 @@ export async function GET(req: NextRequest) {
 
     // Últimos batches (limit 8) para tabs
     const recentBatches = await prisma.batch.findMany({
-      orderBy:{ createdAt:'desc'},
+      orderBy: { createdAt: 'desc' },
       take: 8,
-      select:{ id:true, description:true, tokens:{ select:{ prizeId:true }, take: 2000 } }
+      select: {
+        id: true,
+        description: true,
+        tokens: {
+          select: { prizeId: true, expiresAt: true },
+          take: 2000
+        }
+      }
     });
-    const batchPrizeStats = recentBatches.map(b=>({ batchId: b.id, description: b.description, prizes: Object.entries(b.tokens.reduce((m: Record<string, number>, t)=>{ m[t.prizeId]=(m[t.prizeId]||0)+1; return m;},{})).map(([prizeId,count])=>({ prizeId, count })) }));
+    const now = new Date();
+    const batchPrizeStats = recentBatches.map(b => ({
+      batchId: b.id,
+      description: b.description,
+      prizes: Object.entries(
+        b.tokens.reduce((m: Record<string, { count: number; expired: number; valid: number }>, t) => {
+          if (!m[t.prizeId]) m[t.prizeId] = { count: 0, expired: 0, valid: 0 };
+          m[t.prizeId].count++;
+          if (t.expiresAt < now) m[t.prizeId].expired++;
+          else m[t.prizeId].valid++;
+          return m;
+        }, {})
+      ).map(([prizeId, stats]) => ({ prizeId, count: stats.count, expired: stats.expired, valid: stats.valid }))
+    }));
 
     // Prizes con contadores agregados (emittedTotal ya está; sumar revealed y delivered)
     const prizes = await prisma.prize.findMany({
       orderBy:{ key:'asc' },
-      select:{ id:true, key:true, label:true, color:true, active:true, emittedTotal:true }
+      select:{ id:true, key:true, label:true, color:true, active:true, emittedTotal:true, stock:true }
     });
 
     // Aggregate revealed / delivered counts
@@ -61,10 +81,19 @@ export async function GET(req: NextRequest) {
       emittedTotal: p.emittedTotal || 0,
       revealedCount: revealedMap.get(p.id) || 0,
       deliveredCount: deliveredMap.get(p.id) || 0,
-      lastBatch: lastBatchByPrize[p.id] || null,
+      lastBatch: (
+        (p.key === 'retry' || p.key === 'lose')
+          ? (p.stock === 0 ? lastBatchByPrize[p.id] : null)
+          : (p.emittedTotal > 0 ? lastBatchByPrize[p.id] : null)
+      ),
     }));
 
-    return NextResponse.json({ ok:true, prizes: prizeRows, batches: batchPrizeStats });
+    // Envío todos los tokens emitidos para cálculo global de expirados en el frontend
+    const allTokens = await prisma.token.findMany({
+      select: { id: true, prizeId: true, expiresAt: true },
+      where: { batchId: { in: recentBatches.map(b => b.id) } }
+    });
+    return NextResponse.json({ ok:true, prizes: prizeRows, batches: batchPrizeStats, allTokens });
   } catch (e:any) {
     console.error('prizes-table error', e);
     return err('INTERNAL', e?.message || 'internal error', 500);

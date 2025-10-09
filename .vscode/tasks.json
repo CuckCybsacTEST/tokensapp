@@ -444,6 +444,53 @@
 			"label": "Typecheck TS (adhoc) via npm",
 			"type": "shell",
 			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck TS (adhoc)",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"group": "build"
+		},
+		{
+			"label": "Typecheck TS (adhoc) via npm",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck TS (adhoc) via npm",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck TS (adhoc) - loader suppress",
+			"type": "shell",
+			"command": "npm run -s typecheck",
+			"group": "build"
+		},
+		{
+			"label": "Typecheck quick",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck quick 2",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck quick 3",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck quick 5",
+			"type": "shell",
+			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Typecheck quick 6",
+			"type": "shell",
+			"command": "npm run -s typecheck"
 		}
 	]
 }

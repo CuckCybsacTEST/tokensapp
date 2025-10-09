@@ -48,6 +48,25 @@ export default async function BatchDetailPage({ params }: { params: { id: string
   const { batch, session } = data;
   const templateId = (data as any)?.template?.id || undefined;
 
+  // Precalcular tokens reservados por bi-token (cualquier retry que apunte a ellos)
+  const tokenIds = (batch.tokens as any[]).map(t => t.id);
+  let reservedSet = new Set<string>();
+  if (tokenIds.length) {
+    try {
+      // Cualquier token funcional al que apunte un retry se considera reservado para UI
+      const reservedLinks = await prisma.token.findMany({
+        where: {
+          prize: { is: { key: 'retry' } },
+          pairedNextTokenId: { in: tokenIds },
+        },
+        select: { pairedNextTokenId: true },
+      });
+      reservedSet = new Set((reservedLinks || []).map(r => r.pairedNextTokenId!).filter(Boolean));
+    } catch {
+      reservedSet = new Set();
+    }
+  }
+
   const stats = computeBatchStats(batch.tokens as any);
   const eligiblePrizeCount = stats.prizeStats.length;
   const eligibleByPrize = eligiblePrizeCount >= 2 && eligiblePrizeCount <= 12; // BY_PRIZE reglas
@@ -212,6 +231,14 @@ export default async function BatchDetailPage({ params }: { params: { id: string
             redeemedAt: t.redeemedAt ? new Date(t.redeemedAt).toISOString() : null,
             revealedAt: t.revealedAt ? new Date(t.revealedAt).toISOString() : null,
             deliveredAt: t.deliveredAt ? new Date(t.deliveredAt).toISOString() : null,
+            pairedNextTokenId: t.pairedNextTokenId ?? null,
+            pairedNextPrizeLabel: (t.pairedNextTokenId
+              ? (() => {
+                  const next = (batch.tokens as any[]).find(x => x.id === t.pairedNextTokenId);
+                  return next?.prize?.label || null;
+                })()
+              : null),
+            reservedByRetry: reservedSet.has(t.id),
           }))}
         />
       )}

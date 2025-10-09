@@ -45,9 +45,17 @@ export async function GET(req: Request) {
     // chunkSize: número de tokens procesados por iteración (default 100)
     const chunkSize = Math.max(1, Number(url.searchParams.get('chunkSize') || '100'));
 
-    // Cargar tokens desde la base de datos
+    // Cargar tokens desde la base de datos, excluyendo tokens reservados por bi-token (pareados por 'retry')
+    const reservedRows = await (prisma as any).$queryRaw<Array<{ id: string }>>`
+      SELECT tFunc.id as id
+      FROM "Token" tRetry
+      JOIN "Prize" pRetry ON pRetry.id = tRetry."prizeId"
+      JOIN "Token" tFunc ON tFunc.id = tRetry."pairedNextTokenId"
+      WHERE pRetry.key = 'retry' AND tFunc."batchId" = ${batchId}
+    `;
+  const reservedIdArr: string[] = Array.from(new Set((reservedRows || []).map((r: { id: string }) => r.id)));
     const tokens = await prisma.token.findMany({
-      where: { batchId },
+      where: { batchId, id: { notIn: reservedIdArr } },
       select: { id: true }
     });
 

@@ -38,7 +38,9 @@ export default function PurgeBatchesClient() {
 
   const redeemedMap = useMemo(()=>{
     const m = new Map<string, number>();
-    if (dryRun) for (const r of dryRun.summary.redeemed) m.set(r.batchId, r._count._all);
+    if (dryRun && Array.isArray(dryRun.summary.redeemed)) {
+      for (const r of dryRun.summary.redeemed) m.set(r.batchId, r._count._all);
+    }
     return m;
   }, [dryRun]);
 
@@ -78,7 +80,7 @@ export default function PurgeBatchesClient() {
     } catch (e: any) { setError(e.message || String(e)); }
   }
 
-  const anyRedeemed = useMemo(()=> dryRun ? dryRun.summary.redeemed.some(r=>r._count._all>0) : false, [dryRun]);
+  const anyRedeemed = useMemo(()=> dryRun && Array.isArray(dryRun.summary.redeemed) ? dryRun.summary.redeemed.some(r=>r._count._all>0) : false, [dryRun]);
 
   async function executePurge() {
     if (!dryRun) return;

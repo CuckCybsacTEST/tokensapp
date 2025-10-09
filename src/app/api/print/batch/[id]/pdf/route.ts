@@ -77,8 +77,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   } else if (prisma) {
       // fallback: attempt to load from DB by batch id (Prisma uses camelCase fields)
       try {
-        const rows = await prisma.token.findMany({ where: { batchId }, select: { id: true } });
-  tokens = rows.map((r: any) => ({ token_id: r.id, redeem_url: `https://example.com/r/${r.id}` }));
+        const reservedRows: Array<{ id: string }> = await prisma.$queryRaw`SELECT tFunc.id as id FROM "Token" tRetry JOIN "Prize" pRetry ON pRetry.id = tRetry."prizeId" JOIN "Token" tFunc ON tFunc.id = tRetry."pairedNextTokenId" WHERE pRetry.key = 'retry' AND tFunc."batchId" = ${batchId}`;
+        const reservedIdArr: string[] = Array.from(new Set((reservedRows || []).map((r: any) => r.id)));
+        const rows = await prisma.token.findMany({ where: { batchId, id: { notIn: reservedIdArr } }, select: { id: true } });
+        tokens = rows.map((r: any) => ({ token_id: r.id, redeem_url: `https://example.com/r/${r.id}` }));
       } catch (e) {
         console.error('prisma token load failed', e);
       }

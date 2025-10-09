@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 
 import {
   generateBatchCore,
+  generateBatchPlanned,
   InsufficientStockError,
   RaceConditionError,
 } from "@/lib/batch/generateBatchCore";
@@ -63,7 +64,21 @@ const singleHourSchema = z.object({
   name: z.string().min(1).max(120).optional(),
 });
 
-const schema = z.union([legacySchema, byDaysSchema, singleDaySchema, singleHourSchema]);
+const plannedCountsSchema = z.object({
+  mode: z.literal('plannedCounts'),
+  items: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().min(0) })).min(1),
+  includeQr: z.boolean().optional().default(true),
+  lazyQr: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120).optional(),
+  expirationDays: z
+    .number()
+    .int()
+    .positive()
+    .refine((v) => ALLOWED_EXPIRATION.has(v), { message: "INVALID_EXPIRATION" })
+    .optional(),
+});
+
+const schema = z.union([legacySchema, byDaysSchema, singleDaySchema, singleHourSchema, plannedCountsSchema]);
 
 export async function POST(req: Request) {
   // Rate limit per IP (same window/limit as redeem) to prevent abuse of auto generation
@@ -90,7 +105,7 @@ export async function POST(req: Request) {
   }
 
   // Normalize inputs for downstream logic, keeping legacy behavior intact.
-  let mode: "byDays" | "singleDay" | 'singleHour' = "byDays";
+  let mode: "byDays" | "singleDay" | 'singleHour' | 'plannedCounts' = "byDays";
   let expirationDays: number | null = null;
   let includeQr = true;
   let lazyQr = false;
@@ -123,7 +138,7 @@ export async function POST(req: Request) {
       singleDayEnd = dt.endOf("day");
       // For now, generate with a 1-day expiration; post-processing will adjust to endOfDay.
       expirationDays = 1;
-    } else {
+    } else if (parsed.data.mode === 'singleHour') {
       // singleHour
       mode = 'singleHour';
       includeQr = parsed.data.includeQr;
@@ -147,6 +162,17 @@ export async function POST(req: Request) {
       }
       // Internamente seguimos usando expirationDays=1 para permitir firma coherente; será reemplazado con update.
       expirationDays = 1;
+    } else {
+      // plannedCounts
+      mode = 'plannedCounts';
+      includeQr = parsed.data.includeQr;
+      lazyQr = parsed.data.lazyQr;
+      providedName = parsed.data.name;
+      if (parsed.data.expirationDays == null) {
+        await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "INVALID_EXPIRATION" });
+        return apiError('INVALID_EXPIRATION', 'Expiración inválida', undefined, 400);
+      }
+      expirationDays = parsed.data.expirationDays;
     }
   } else {
     // Legacy payload without mode
@@ -157,36 +183,58 @@ export async function POST(req: Request) {
   }
   const name = (providedName || "Lote").trim().slice(0, 120);
 
-  // Fetch active prizes with stock > 0 (non-null) OR stock == null (unlimited?) -> per requirement only integer >0, so filter where stock not null & >0
-  const prizes = await prisma.prize.findMany({
-    where: { active: true, stock: { not: null, gt: 0 } },
-    select: { id: true, stock: true, key: true, label: true, color: true },
-  });
-  if (!prizes.length) {
-    await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "NO_ACTIVE_PRIZES" });
-    return apiError('NO_ACTIVE_PRIZES', 'No hay premios activos', undefined, 400);
-  }
-
-  // Validate each prize stock (integer > 0); if any invalid, return immediately
-  for (const p of prizes as Array<{ id: string; stock: number | null }>) {
-    if (typeof p.stock !== "number" || !Number.isInteger(p.stock) || p.stock <= 0) {
-      await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", {
-        reason: "INVALID_STOCK",
-        prizeId: p.id,
-      });
-      return apiError('INVALID_STOCK', 'Stock inválido', { prizeId: p.id }, 400);
+  // Assemble prizeRequests depending on mode
+  let prizeRequests: { prizeId: string; count: number; expirationDays: number }[] = [];
+  if (mode === 'plannedCounts') {
+    // Validate items against DB and compute pairing constraint
+    const pc = parsed.data as any;
+    const itemIds = (pc.items as any[]).map((i: any) => i.prizeId);
+    const prizeDefs = await prisma.prize.findMany({ where: { id: { in: itemIds } }, select: { id: true, key: true, active: true, label: true, color: true } });
+    const missing = itemIds.filter(id => !prizeDefs.some(p => p.id === id));
+    if (missing.length) {
+      await logEvent('BATCH_AUTO_FAIL', 'Auto batch fallo', { reason: 'PRIZE_NOT_FOUND', missing });
+      return apiError('PRIZE_NOT_FOUND', 'Premio no encontrado', { missing }, 400);
     }
+    // Pairing constraint: functional must be >= retry
+    const retryCount = (pc.items as any[]).reduce((a:number, it:any) => a + (prizeDefs.find(p=>p.id===it.prizeId)?.key === 'retry' ? it.count : 0), 0);
+    const functionalCount = (pc.items as any[]).reduce((a:number, it:any) => a + ((['retry','lose'].includes(prizeDefs.find(p=>p.id===it.prizeId)?.key || '')) ? 0 : it.count), 0);
+    if (retryCount > functionalCount) {
+      await logEvent('BATCH_AUTO_FAIL','Auto batch fallo',{ reason: 'PAIRING_INSUFFICIENT', retryCount, functionalCount });
+      return apiError('PAIRING_INSUFFICIENT','Stock insuficiente para parear retry con tokens funcionales',{ retryCount, functionalCount },400);
+    }
+    prizeRequests = (pc.items as any[]).map((it:any) => ({ prizeId: it.prizeId, count: it.count, expirationDays: expirationDays as number }));
+  } else {
+    // Fetch active prizes with stock > 0
+    const prizes = await prisma.prize.findMany({
+      where: { active: true, stock: { not: null, gt: 0 } },
+      select: { id: true, stock: true, key: true, label: true, color: true },
+    });
+    if (!prizes.length) {
+      await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "NO_ACTIVE_PRIZES" });
+      return apiError('NO_ACTIVE_PRIZES', 'No hay premios activos', undefined, 400);
+    }
+    // Validate stock values
+    for (const p of prizes as Array<{ id: string; stock: number | null }>) {
+      if (typeof p.stock !== "number" || !Number.isInteger(p.stock) || p.stock <= 0) {
+        await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", { reason: "INVALID_STOCK", prizeId: p.id });
+        return apiError('INVALID_STOCK', 'Stock inválido', { prizeId: p.id }, 400);
+      }
+    }
+    // Pairing constraint based on current active stocks
+    try {
+      const retryCount = prizes.filter((p: any) => p.key === 'retry').reduce((a: number, p: any) => a + (p.stock || 0), 0);
+      const functionalCount = prizes.filter((p: any) => p.key !== 'retry' && p.key !== 'lose').reduce((a: number, p: any) => a + (p.stock || 0), 0);
+      if (retryCount > functionalCount) {
+        await logEvent('BATCH_AUTO_FAIL', 'Auto batch fallo', { reason: 'PAIRING_INSUFFICIENT', retryCount, functionalCount });
+        return apiError('PAIRING_INSUFFICIENT', 'Stock insuficiente para parear retry con tokens funcionales', { retryCount, functionalCount }, 400);
+      }
+    } catch {}
+    // Build prizeRequests from stock
+    prizeRequests = prizes.map((p: { id: string; stock: number | null }) => ({ prizeId: p.id, count: p.stock as number, expirationDays: expirationDays as number }));
   }
-
-  // Build prizeRequests using full stock counts
-  const prizeRequests = prizes.map((p: { id: string; stock: number | null }) => ({
-    prizeId: p.id,
-    count: p.stock as number,
-    expirationDays,
-  }));
 
   // Enforce total tokens limit
-  const totalTokensRequested = prizeRequests.reduce((a: number, p: { count: number }) => a + p.count, 0);
+  const totalTokensRequested = prizeRequests.reduce((a: number, p: { count: number }) => a + (p.count || 0), 0);
   const max = parseInt(process.env.BATCH_MAX_TOKENS_AUTO || "10000");
   if (totalTokensRequested > max) {
     await logEvent("BATCH_AUTO_FAIL", "Auto batch fallo", {
@@ -199,8 +247,9 @@ export async function POST(req: Request) {
 
   let batch, tokens, meta, prizeEmittedTotals;
   try {
-    const res = await generateBatchCore(prizeRequests, {
-      description: name, // reuse description field as human-friendly name
+    const generator = mode === 'plannedCounts' ? generateBatchPlanned : generateBatchCore;
+    const res = await generator(prizeRequests, {
+      description: name,
       includeQr,
       lazyQr,
       expirationDays,
@@ -331,6 +380,7 @@ export async function POST(req: Request) {
     "prize_key",
     "prize_label",
     "prize_color",
+    "paired_next_token_id",
     "expires_at_iso",
     "expires_at_unix",
     "signature",
@@ -361,6 +411,7 @@ export async function POST(req: Request) {
     totalTokens: meta.totalTokens,
     qrMode: meta.qrMode,
     prizeEmittedTotals,
+    pairing: { strategy: 'retry->functional', excludes: ['retry','lose'] },
     ...(metaAny.windowMode ? { windowStartIso: metaAny.windowStartIso, windowEndIso: metaAny.windowEndIso, windowDurationMinutes: metaAny.windowDurationMinutes, windowMode: metaAny.windowMode } : {}),
   };
   const { archive, stream } = createZipStream();
@@ -385,6 +436,7 @@ export async function POST(req: Request) {
           t.prizeKey,
           t.prizeLabel,
           t.prizeColor ?? "",
+          (t as any).pairedNextTokenId || "",
           t.expiresAt.toISOString(),
           Math.floor(t.expiresAt.getTime() / 1000).toString(),
           t.signature,

@@ -229,9 +229,9 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         const chosenMeta = remainingArr.find((r) => r.prizeId === chosenPrizeId)!;
         const weightSnapshot = chosenMeta.remaining;
         // Manejar slots virtuales (no consumen token real)
-        const isVirtualRetry = chosenPrizeId === 'virtual:retry';
-        const isVirtualLose = chosenPrizeId === 'virtual:lose';
-        let action: 'RETRY' | 'LOSE' | undefined = undefined;
+  const isVirtualRetry = chosenPrizeId === 'virtual:retry';
+  const isVirtualLose = chosenPrizeId === 'virtual:lose';
+  let action: 'RETRY' | 'LOSE' | undefined = undefined;
         let consumedTokenId: string | null = null;
         let revealedAt: Date | null = null;
         if (isVirtualRetry || isVirtualLose) {
@@ -255,6 +255,12 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
                 consumedTokenId = upd.id;
               }
             }
+            // Si el premio es real pero corresponde a keys especiales retry/lose, setear action
+            try {
+              const prize = await tx.prize.findUnique({ where: { id: chosenPrizeId }, select: { key: true } });
+              if (prize?.key === 'retry') action = 'RETRY';
+              else if (prize?.key === 'lose') action = 'LOSE';
+            } catch { /* noop */ }
           } catch { /* noop */ }
         }
         await tx.rouletteSpin.create({ data: { sessionId: session.id, prizeId: chosenPrizeId, order: nextOrder, weightSnapshot, tokenId: consumedTokenId } });

@@ -13,6 +13,7 @@ export interface SpinResult {
   order: number;
   finished: boolean;
   remaining: { prizeId: string; count: number; label: string; color: string | null }[];
+  action?: 'RETRY' | 'LOSE';
 }
 
 interface Props {

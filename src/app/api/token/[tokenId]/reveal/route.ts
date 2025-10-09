@@ -20,10 +20,25 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
 
     const result = await prisma.$transaction(async (tx: any) => {
       const token = await tx.token.findUnique({ where: { id: tokenId }, include: { prize: true } });
-  if (!token) return { status: 404, body: { code: 'TOKEN_NOT_FOUND', message: 'Token no encontrado' } } as const;
-  if (token.disabled || !token.prize?.active) return { status: 410, body: { code: 'INACTIVE', message: 'Token inactivo' } } as const;
-  if (Date.now() > token.expiresAt.getTime()) return { status: 410, body: { code: 'EXPIRED', message: 'Token expirado' } } as const;
-  if (token.revealedAt) return { status: 409, body: { code: 'ALREADY_REVEALED', message: 'Ya revelado' } } as const;
+      if (!token) return { status: 404, body: { code: 'TOKEN_NOT_FOUND', message: 'Token no encontrado' } } as const;
+      // Allow reveal of a disabled token only if it was reserved by a revealed retry (paired bi-token)
+      if (token.disabled) {
+        const reservedByRetry = await tx.token.findFirst({
+          where: {
+            pairedNextTokenId: token.id,
+            revealedAt: { not: null },
+            prize: { is: { key: 'retry' } },
+          },
+          select: { id: true },
+        });
+        if (!reservedByRetry) {
+          return { status: 410, body: { code: 'INACTIVE', message: 'Token inactivo' } } as const;
+        }
+        // else: continue; this disabled token is reserved and allowed to reveal
+      }
+      if (!token.prize?.active) return { status: 410, body: { code: 'INACTIVE', message: 'Token inactivo' } } as const;
+      if (Date.now() > token.expiresAt.getTime()) return { status: 410, body: { code: 'EXPIRED', message: 'Token expirado' } } as const;
+      if (token.revealedAt) return { status: 409, body: { code: 'ALREADY_REVEALED', message: 'Ya revelado' } } as const;
 
       const revealedAt = new Date();
       const assignedPrizeId = requestedPrizeId || token.prizeId;
@@ -31,10 +46,71 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       // Set revealedAt + assignedPrizeId; clear delivered/redeemed mirror fields for canonical revealed state
       await tx.token.update({ where: { id: tokenId }, data: { revealedAt, assignedPrizeId, deliveredAt: null, redeemedAt: null, deliveredByUserId: null, deliveryNote: null } });
 
-      const updated = await tx.token.findUnique({ where: { id: tokenId }, select: { id: true, prizeId: true, assignedPrizeId: true, revealedAt: true } });
-  if (!updated) return { status: 500, body: { code: 'REVEAL_FAILED', message: 'Fallo al revelar' } } as const;
+      // Resolve action for retry/lose and optionally pre-select a next token (same batch)
+      let action: 'RETRY' | 'LOSE' | undefined;
+      let nextTokenId: string | null = null;
+      const prizeKey = token.prize?.key || null;
+      if (prizeKey === 'retry') {
+        action = 'RETRY';
+        // Prefer pairedNextTokenId when present (printed pairing)
+        if (token.pairedNextTokenId) {
+          const candidate = await tx.token.findUnique({ where: { id: token.pairedNextTokenId }, select: { id: true, redeemedAt: true, revealedAt: true, disabled: true, expiresAt: true, prize: { select: { key: true } } } });
+          if (candidate && !candidate.redeemedAt && !candidate.revealedAt && candidate.expiresAt > new Date() && candidate.prize?.key !== 'retry' && candidate.prize?.key !== 'lose') {
+            // Reserve by disabling immediately (non-printable, non-selectable by others)
+            await tx.token.update({ where: { id: candidate.id, revealedAt: null }, data: { disabled: true } });
+            // Ensure retry has the paired id persisted (idempotent)
+            if (!token.pairedNextTokenId) {
+              await tx.token.update({ where: { id: token.id }, data: { pairedNextTokenId: candidate.id } });
+            }
+            nextTokenId = candidate.id;
+          }
+        }
+        // Fallback dynamic selection if no valid pairing
+        if (!nextTokenId) {
+          const next = await tx.token.findFirst({
+            where: {
+              batchId: token.batchId,
+              id: { not: token.id },
+              redeemedAt: null,
+              revealedAt: null,
+              disabled: false,
+              expiresAt: { gt: new Date() },
+              prize: { is: { key: { notIn: ['retry', 'lose'] } } },
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            select: { id: true },
+          });
+          if (next?.id) {
+            // Reserve fallback by disabling immediately
+            await tx.token.update({ where: { id: next.id, revealedAt: null }, data: { disabled: true } });
+            // Persist fallback pairing on the retry to authorize reveal of disabled next
+            await tx.token.update({ where: { id: token.id }, data: { pairedNextTokenId: next.id } });
+            nextTokenId = next.id;
+          } else {
+            nextTokenId = null;
+          }
+        }
+      } else if (prizeKey === 'lose') {
+        action = 'LOSE';
+      }
 
-      return { status: 200, body: { phase: 'REVEALED', tokenId: updated.id, prizeId: updated.assignedPrizeId || updated.prizeId, timestamps: { revealedAt: updated.revealedAt } }, log: { type: 'TOKEN_REVEALED', message: 'Token revealed (public flow)', metadata: { tokenId: updated.id, assignedPrizeId: updated.assignedPrizeId } } } as const;
+      const updated = await tx.token.findUnique({ where: { id: tokenId }, select: { id: true, prizeId: true, assignedPrizeId: true, revealedAt: true } });
+      if (!updated) return { status: 500, body: { code: 'REVEAL_FAILED', message: 'Fallo al revelar' } } as const;
+
+      const responseBody: any = {
+        phase: 'REVEALED',
+        tokenId: updated.id,
+        prizeId: updated.assignedPrizeId || updated.prizeId,
+        timestamps: { revealedAt: updated.revealedAt },
+      };
+      if (action) responseBody.action = action;
+      if (action === 'RETRY') responseBody.nextTokenId = nextTokenId;
+
+      return {
+        status: 200,
+        body: responseBody,
+        log: { type: 'TOKEN_REVEALED', message: 'Token revealed (public flow)', metadata: { tokenId: updated.id, assignedPrizeId: updated.assignedPrizeId, action, nextTokenId, pairing: !!token.pairedNextTokenId } }
+      } as const;
     });
 
     if (result.status === 200 && (result as any).log) {

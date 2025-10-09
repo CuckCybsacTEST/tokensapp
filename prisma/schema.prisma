@@ -54,6 +54,8 @@ model Token {
   deliveryNote      String?
   ingestedAt        DateTime  @default(now())
   validFrom         DateTime?
+  // Pre-linked next token for "retry" control (optional, for printing determinism)
+  pairedNextTokenId String?
   assignedPrize     Prize?    @relation("AssignedPrize", fields: [assignedPrizeId], references: [id])
   batch             Batch     @relation(fields: [batchId], references: [id])
   prize             Prize     @relation(fields: [prizeId], references: [id])
@@ -67,6 +69,7 @@ model Token {
   @@index([batchId, deliveredAt])
   @@index([ingestedAt])
   @@index([validFrom])
+  @@index([pairedNextTokenId])
 }
 
 model SystemConfig {

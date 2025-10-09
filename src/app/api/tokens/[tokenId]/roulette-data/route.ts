@@ -11,6 +11,7 @@ export async function GET(
 ) {
   try {
     const tokenId = params.tokenId;
+    let bypassDisabled = false;
     
   // Verificar que el sistema está habilitado por interruptor Y dentro de ventana horaria
   const cfg = await getSystemConfig(true);
@@ -34,6 +35,20 @@ export async function GET(
       where: { id: tokenId },
       include: { prize: true },
     });
+
+    // Si es un bi-token (retry), buscar el token real asociado
+    let realToken = null;
+    if (token && token.prize.key === 'retry' && token.pairedNextTokenId) {
+      realToken = await prisma.token.findUnique({
+        where: { id: token.pairedNextTokenId },
+        select: {
+          id: true,
+          revealedAt: true,
+          deliveredAt: true,
+          redeemedAt: true,
+        },
+      });
+    }
     
     if (!token) {
       return apiError('NOT_FOUND','Token no encontrado',undefined,404);
@@ -44,8 +59,37 @@ export async function GET(
       return apiOk({ token: serializeToken(token), message: 'Token ya canjeado' });
     }
     
+    // Si el token está reservado por bi-token (referenciado por algún retry), bloquear acceso directo a ruleta
+    const reservedAny = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT t.id FROM "Token" t
+      JOIN "Prize" p ON p.id = t."prizeId"
+      WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id}
+      LIMIT 1
+    `;
+    if ((reservedAny as any[]).length > 0 && !token.disabled) {
+      const serialized = serializeToken(token) as any;
+      serialized.reservedByRetry = true;
+      return apiOk({ token: serialized, message: 'Token inactivo' });
+    }
+
     if (token.disabled || !token.prize.active) {
-      return apiOk({ token: serializeToken(token), message: 'Token inactivo' });
+      if (token.disabled) {
+        // Bypass: permitir ruleta si este token est reservado por un retry ya revelado
+        const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT t.id FROM "Token" t
+          JOIN "Prize" p ON p.id = t."prizeId"
+          WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id} AND t."revealedAt" IS NOT NULL
+          LIMIT 1
+        `;
+        if (rows.length > 0) {
+          // continuar flujo de ruleta pese a disabled
+          bypassDisabled = true;
+        } else {
+          return apiOk({ token: serializeToken(token), message: 'Token inactivo' });
+        }
+      } else {
+        return apiOk({ token: serializeToken(token), message: 'Token inactivo' });
+      }
     }
     
     if (Date.now() > token.expiresAt.getTime()) {
@@ -65,9 +109,9 @@ export async function GET(
     });
     
     const prizeIds = groups.map((g) => g.prizeId);
-    const prizeDetails = await prisma.prize.findMany({ where: { id: { in: prizeIds } } });
+  const prizeDetails = await prisma.prize.findMany({ where: { id: { in: prizeIds } }, select: { id: true, key: true, label: true, color: true, active: true } });
     
-    const elements = groups.map((g) => {
+    let elements = groups.map((g) => {
       const p = prizeDetails.find((pd) => pd.id === g.prizeId)!;
       return { prizeId: p.id, label: p.label, color: p.color || null, count: g._count._all };
     });
@@ -82,11 +126,28 @@ export async function GET(
       });
     }
     
-    // Reglas: la ruleta sólo es válida con 2 o más elementos
+    // Eliminado: ya no se añaden slots virtuales; sólo premios reales del lote.
+
+    // Reglas: la ruleta sólo es válida con 2 o más elementos (tras añadir virtuales si aplicaba)
     if (elements.length < 2) {
       return apiError('NOT_ENOUGH_ELEMENTS','La ruleta requiere al menos 2 premios disponibles.',{ token: serializeToken(token), elements, status: 'not-enough-elements' },400);
     }
-    return apiOk({ token: serializeToken(token), elements });
+    const serialized = serializeToken(token);
+    if (bypassDisabled) {
+      (serialized as any).disabled = false;
+      (serialized as any).reservedByRetry = true;
+      (serialized as any).availableFrom = null;
+    }
+    // Si existe realToken, adjuntarlo al objeto serializado
+    if (realToken) {
+      (serialized as any).realToken = {
+        id: realToken.id,
+        revealedAt: realToken.revealedAt ? realToken.revealedAt.toISOString() : null,
+        deliveredAt: realToken.deliveredAt ? realToken.deliveredAt.toISOString() : null,
+        redeemedAt: realToken.redeemedAt ? realToken.redeemedAt.toISOString() : null,
+      };
+    }
+    return apiOk({ token: serialized, elements });
   } catch (error) {
     console.error("API error:", error);
     return apiError('INTERNAL_ERROR', 'Error procesando la solicitud', null, 500);

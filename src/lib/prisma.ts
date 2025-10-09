@@ -38,6 +38,10 @@ const datasourceUrl = process.env.DATABASE_URL!; // garantizado por ensureDataba
 
 export const prisma = global._prisma || new PrismaClient({
   datasources: { db: { url: datasourceUrl } },
+  transactionOptions: {
+    maxWait: 10_000, // ms to wait for a transaction slot
+    timeout: 60_000, // ms before interactive transaction times out
+  },
 });
 
 if (process.env.NODE_ENV !== "production") {

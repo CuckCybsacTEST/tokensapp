@@ -12,6 +12,7 @@ export default function RouletteSessionClient({ sessionId }: { sessionId: string
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
+  const [tip, setTip] = useState<string|null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -51,6 +52,18 @@ export default function RouletteSessionClient({ sessionId }: { sessionId: string
     }
     setElements(data.remaining.map((r: any) => ({ prizeId: r.prizeId, label: r.label, color: r.color, count: r.count })));
     setFinished(data.finished);
+    // Manejar acciones virtuales
+    if (data.action === 'RETRY') {
+      // Giro inmediato sin intervención; breve tip opcional
+      setTip('Nuevo intento…');
+      setTimeout(() => setTip(null), 1200);
+      // Cadena: volver a girar (evitar bucles infinitos si sólo quedan virtuales)
+      // Protección: si ya no hay elementos reales y sólo virtuales, el backend igual decrece y finalizará.
+      try { await spinWrapper(); } catch {}
+    } else if (data.action === 'LOSE') {
+      setTip('Hoy no tuviste suerte');
+      setTimeout(() => setTip(null), 1800);
+    }
     return data;
   }, [sessionId]);
 
@@ -68,6 +81,9 @@ export default function RouletteSessionClient({ sessionId }: { sessionId: string
         />
       </div>
       <div className="flex-1 space-y-4">
+        {tip && (
+          <div className="rounded bg-amber-100 text-amber-900 text-xs px-2 py-1 inline-block">{tip}</div>
+        )}
         <div className="text-sm">
           <strong>Spins:</strong>
           <ol className="mt-2 space-y-1 text-xs">

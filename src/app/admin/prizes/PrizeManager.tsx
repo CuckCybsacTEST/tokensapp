@@ -55,7 +55,7 @@ export default function PrizeManager({
   initialPrizes: any[];
   onPrizesUpdated?: (prizes: any[]) => void;
   lastBatch?: Record<string, { id: string; name: string; createdAt: Date } | undefined>;
-  batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; count: number }> }>;
+  batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; count: number; expired: number; valid: number }> }>;
 }) {
   const [prizes, setPrizes] = useState(initialPrizes);
   function updatePrizes(updater: (prev: any[]) => any[]) {
@@ -323,7 +323,8 @@ export default function PrizeManager({
                         <th>Key</th>
                         <th>Label</th>
                         <th>Color</th>
-                        <th>Lote</th>
+                        <th>Stock</th>
+                        <th>{label === 'Pendientes / Disponibles' ? 'Último lote' : 'Lote'}</th>
                         <th>Emitidos</th>
                         <th>Revelados</th>
                         <th>Consumidos</th>
@@ -341,15 +342,27 @@ export default function PrizeManager({
                             </span>
                           </td>
                           <td>
-                            {p.color && (
-                              <span className="inline-flex items-center gap-2">
-                                <span
-                                  className="h-4 w-4 rounded border"
-                                  style={{ background: p.color }}
-                                  title={p.color}
-                                />
-                                <span className="text-xs text-slate-500">{p.color}</span>
-                              </span>
+                            <div className="flex items-center gap-3">
+                              {p.color && (
+                                <span className="inline-flex items-center gap-2">
+                                  <span
+                                    className="h-4 w-4 rounded border"
+                                    style={{ background: p.color }}
+                                    title={p.color}
+                                  />
+                                  <span className="text-xs text-slate-500">{p.color}</span>
+                                </span>
+                              )}
+                              {(p.key === 'retry' || p.key === 'lose') && (
+                                <span className="badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" title="Premio del sistema (ruleta)">Sistema</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-xs">
+                            {p.stock == null ? (
+                              <span className="badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" title="Stock ilimitado">∞</span>
+                            ) : (
+                              <span className="badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" title="Stock disponible">{p.stock}</span>
                             )}
                           </td>
                           <td className="text-xs">
@@ -391,18 +404,49 @@ export default function PrizeManager({
                             </span>
                           </td>
                           <td>
-                            <span
-                              className="badge-danger"
-                              title={p.active ? "Se marcaba como activo anteriormente" : "Premio inactivo"}
-                            >Sí</span>
+                            {(() => {
+                              // Validación robusta para expirados
+                              if (batchPrizeStats && batchPrizeStats.length > 0) {
+                                if (activeBatch !== 'ALL') {
+                                  const batch = batchPrizeStats.find(b => b.batchId === activeBatch);
+                                  if (batch) {
+                                    const prizeStats = batch.prizes.find(pr => pr.prizeId === p.id);
+                                    if (prizeStats) {
+                                      const expirados = Number(prizeStats.expired) || 0;
+                                      const total = Number(prizeStats.count) || 0;
+                                      if (total > 0 && expirados === total) {
+                                        return <span className="badge-danger" title="Todos los tokens expirados">Sí</span>;
+                                      } else if (total > 0) {
+                                        return <span className="badge border-slate-300 bg-slate-100 text-slate-700">No</span>;
+                                      }
+                                    }
+                                  }
+                                } else if (window.__ALL_TOKENS__) {
+                                  // Vista 'Todos': usar allTokens para comparar expiración real
+                                  const tokens = window.__ALL_TOKENS__.filter(t => t.prizeId === p.id);
+                                  const totalCount = tokens.length;
+                                  const totalExpired = tokens.filter(t => new Date(t.expiresAt) < new Date()).length;
+                                  if (totalCount > 0 && totalExpired === totalCount) {
+                                    return <span className="badge-danger" title="Todos los tokens expirados">Sí</span>;
+                                  } else if (totalCount > 0) {
+                                    return <span className="badge border-slate-300 bg-slate-100 text-slate-700">No</span>;
+                                  }
+                                }
+                              }
+                              // Fallback: muestra 'Sí' si prize está inactivo o stock es 0
+                              return <span className="badge-danger" title={p.active ? "Se marcaba como activo anteriormente" : "Premio inactivo"}>Sí</span>;
+                            })()}
                           </td>
                           <td className="text-right space-x-2">
                             {(() => {
                               const inUse = Boolean(lastBatch?.[p.id]) || (p.emittedTotal ?? 0) > 0;
-                              const disableDelete = inUse || !!deletingId;
-                              const title = inUse
-                                ? "No se puede eliminar: hay tokens asociados a este premio"
-                                : "Eliminar premio";
+                              const isSystem = p.key === 'retry' || p.key === 'lose';
+                              const disableDelete = inUse || isSystem || !!deletingId;
+                              const title = isSystem
+                                ? "No se puede eliminar: premio del sistema"
+                                : inUse
+                                  ? "No se puede eliminar: hay tokens asociados a este premio"
+                                  : "Eliminar premio";
                               return (
                                 <>
                                   {showEdit && (

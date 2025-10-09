@@ -11,6 +11,7 @@ interface PrizeRow {
   revealedCount: number;
   deliveredCount: number;
   lastBatch?: { id: string; name: string } | null;
+  stock?: number | null;
 }
 interface BatchTab { batchId: string; description: string | null; prizes: { prizeId: string; count: number }[] }
 
@@ -81,17 +82,23 @@ export default function PrizesTableClient({ onBatchChange }: { onBatchChange?: (
               <thead className="bg-slate-50 dark:bg-slate-700/40 text-soft">
                 <tr>
                   <th className="text-left px-2 py-1 w-[38%]">Label</th>
-                  <th className="text-left px-2 py-1 w-[32%]">Lote</th>
+                  <th className="text-left px-2 py-1 w-[32%]">Último lote</th>
                   <th className="text-right px-2 py-1 w-[15%]">Emitidos</th>
                   <th className="text-right px-2 py-1 w-[15%]">Consumidos</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map(p=>{
+                  let batchName = '';
+                  if (p.key === 'retry' || p.key === 'lose') {
+                    batchName = (p.stock === 0 && p.lastBatch) ? p.lastBatch.name : '';
+                  } else {
+                    batchName = p.emittedTotal > 0 && p.lastBatch ? p.lastBatch.name : '';
+                  }
                   return (
                     <tr key={p.id} className="border-t border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="px-2 py-1 font-semibold uppercase tracking-wide truncate" title={p.label}>{p.label}</td>
-                      <td className="px-2 py-1 text-[10px] font-mono truncate" title={p.lastBatch ? p.lastBatch.name : ''}>{p.lastBatch ? p.lastBatch.name : '—'}</td>
+                      <td className="px-2 py-1 text-[10px] font-mono truncate" title={batchName}>{batchName}</td>
                       <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-success font-semibold">{p.emittedTotal}</span></td>
                       <td className="px-2 py-1 text-right"><span className="inline-block min-w-[2.5rem] text-right text-danger font-semibold">{p.deliveredCount}</span></td>
                     </tr>

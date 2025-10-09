@@ -11,12 +11,17 @@ export type TokenLight = {
   redeemedAt: string | null; // ISO | null
   revealedAt: string | null; // ISO | null
   deliveredAt: string | null; // ISO | null
+  pairedNextTokenId?: string | null; // for retry bi-token
+  pairedNextPrizeLabel?: string | null; // label of the paired next token's prize
+  reservedByRetry?: boolean; // true si este token está deshabilitado por estar reservado por un retry revelado
 };
 
 function statusOf(t: TokenLight): { label: string; cls: string } {
   if (t.deliveredAt) return { label: "Entregado", cls: "badge border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-800 dark:text-emerald-200" };
   if (t.redeemedAt) return { label: "Canjeado", cls: "badge border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-800 dark:text-emerald-200" };
   if (t.revealedAt) return { label: "Revelado", cls: "badge border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-800 dark:text-amber-200" };
+  // Si está reservado por retry, priorizamos mostrarlo así aún si disabled=false (para auditar inconsistencias)
+  if (t.reservedByRetry) return { label: "Reservado (bi-token)", cls: "badge border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-600 dark:bg-violet-800 dark:text-violet-200" };
   if (t.disabled) return { label: "Deshabilitado", cls: "badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" };
   const exp = new Date(t.expiresAt).getTime();
   if (exp < Date.now()) return { label: "Expirado", cls: "badge-danger" };
@@ -76,6 +81,7 @@ export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
               <th>QR</th>
               <th>ID</th>
               <th>Premio</th>
+              <th>Bi-token</th>
               <th>Estado</th>
               <th>Expira</th>
             </tr>
@@ -98,6 +104,29 @@ export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
                       <span className="truncate max-w-[200px]" title={t.prizeLabel}>{t.prizeLabel}</span>
                       {t.prizeKey && <span className="text-[10px] text-slate-500">{t.prizeKey}</span>}
                     </div>
+                  </td>
+                  {/* Bi-token pairing info: only meaningful for retry tokens */}
+                  <td className="text-xs whitespace-nowrap">
+                    {t.prizeKey === 'retry' ? (
+                      t.pairedNextTokenId ? (
+                        <div className="flex flex-col">
+                          <span className="truncate max-w-[200px]" title={t.pairedNextPrizeLabel || undefined}>
+                            {t.pairedNextPrizeLabel || '(sin label)'}
+                          </span>
+                          <a
+                            className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline"
+                            href={`/admin/token/${t.pairedNextTokenId}`}
+                            title={t.pairedNextTokenId}
+                          >
+                            {t.pairedNextTokenId.slice(0, 8)}…
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">dinámico</span>
+                      )
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </td>
                   <td><span className={st.cls}>{st.label}</span></td>
                   <td className="whitespace-nowrap">{new Date(t.expiresAt).toLocaleString()}</td>
