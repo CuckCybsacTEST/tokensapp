@@ -17,10 +17,10 @@ export default async function BirthdayInvitePage({ params }: { params: { code: s
   const { ok, data } = await fetchToken(code, rawCookie);
   if (!ok) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-2xl font-bold mb-2">Invitación no válida</h1>
-        <p className="text-sm opacity-80 mb-4">Puede que el código haya expirado o sea incorrecto.</p>
-        <a href="/marketing" className="rounded px-4 py-2 font-semibold bg-violet-600">Ir al inicio</a>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-br from-orange-600 via-orange-400 to-yellow-300 text-black">
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg">Invitación no válida</h1>
+        <p className="text-base opacity-80 mb-4">Puede que el código haya expirado o sea incorrecto.</p>
+        <a href="/marketing" className="rounded-lg px-5 py-2 font-semibold bg-black text-orange-300 shadow-lg hover:bg-orange-700 transition">Ir al inicio</a>
       </div>
     );
   }
@@ -29,22 +29,22 @@ export default async function BirthdayInvitePage({ params }: { params: { code: s
   const isStaff = !isPublic; // by construction of API
   const firstName = isPublic ? token.celebrantName : token.celebrantName.split(/\s+/)[0];
   return (
-    <div className="min-h-screen flex flex-col px-4 py-8 items-center bg-black text-white">
-      <div className="w-full max-w-xl">
-        <a href="/marketing" className="inline-block text-xs opacity-70 hover:opacity-100">← Volver</a>
-        <h1 className="mt-3 text-3xl font-extrabold">Acceso {token.isHost ? 'Cumpleañero' : 'Invitado'}</h1>
-        <p className="mt-1 opacity-80 text-sm">Fiesta de {firstName}{!isPublic && token.celebrantName !== firstName ? ` (${token.celebrantName})` : ''}</p>
+    <div className="min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-br from-orange-600 via-orange-400 to-yellow-300 text-black">
+      <div className="w-full max-w-xl mx-auto rounded-2xl shadow-2xl bg-black/80 p-6 md:p-10 flex flex-col items-center">
+        <a href="/marketing" className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-orange-300">← Volver</a>
+        <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight text-orange-300 drop-shadow-lg text-center">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
+        <p className="mt-2 text-lg md:text-xl font-semibold text-orange-200 text-center">Fiesta de {firstName}{!isPublic && token.celebrantName !== firstName ? ` (${token.celebrantName})` : ''}</p>
         {!isPublic && (
-          <p className="mt-0.5 opacity-60 text-xs">Pack: {token.packName || '–'} {token.packBottle ? `· 🍾 ${token.packBottle}` : ''} · Límite invitados: {token.packGuestLimit || '—'}</p>
+          <p className="mt-1 opacity-80 text-sm text-orange-100 text-center">Pack: {token.packName || '–'} {token.packBottle ? `· 🍾 ${token.packBottle}` : ''} · Límite invitados: {token.packGuestLimit || '—'}</p>
         )}
         {isPublic && (
-          <div className="mt-4 rounded border border-white/10 bg-white/5 p-4 text-sm leading-relaxed">
-            {data.message}
+          <div className="mt-4 rounded-xl border border-orange-400/30 bg-orange-100/10 p-4 text-base leading-relaxed text-orange-100 shadow-lg">
+            {typeof data.message === 'string' ? data.message.replace(/^Esta es la fiesta de [^.]+\. /, '') : data.message}
           </div>
         )}
         {!isPublic && data.reservation && (
-          <div className="mt-4 grid gap-2 text-sm bg-white/5 p-4 rounded border border-white/10">
-            <div><span className="font-semibold">Cumpleañero:</span> {token.celebrantName}</div>
+          <div className="mt-4 grid gap-2 text-base bg-orange-100/10 p-4 rounded-xl border border-orange-400/30 shadow-lg">
+            <div><span className="font-semibold text-orange-200">Cumpleañero:</span> {token.celebrantName}</div>
             <div className="grid grid-cols-2 gap-2 text-xs opacity-80">
               <div>DNI: {data.reservation.documento}</div>
               <div>Tel: {data.reservation.phone}</div>
@@ -54,20 +54,23 @@ export default async function BirthdayInvitePage({ params }: { params: { code: s
             <div className="text-xs opacity-70">Reserva: {data.reservation.reservationId} · Estado: {data.reservation.statusReservation}</div>
           </div>
         )}
-        <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4 text-xs">
-          <div className="font-semibold mb-1">Estado del token</div>
-          <div>Código: <span className="font-mono">{token.code}</span></div>
-          <div>Tipo: {token.isHost ? 'Host' : 'Invitado'} {token.multiUse ? `(multi-uso ${token.multiUse.used}/${token.multiUse.max})` : '(1 uso)'}</div>
-          <div>Estado: {token.status}</div>
-          <div>Vence: {token.expiresAt ? new Date(token.expiresAt).toLocaleString() : '–'}</div>
+        <div className="mt-6 rounded-xl border border-orange-400/30 bg-orange-100/10 p-4 text-base shadow-lg w-full">
+          <div className="font-semibold mb-2 text-orange-200 text-lg">Estado del token</div>
+          <div className="mb-1">Código: <span className="font-mono text-orange-300 text-lg">{token.code}</span></div>
+          {/* Oculta el tipo */}
+          {/* <div className="mb-1">Tipo: <span className="font-semibold">{token.isHost ? 'Host' : 'Invitado'}</span> {token.multiUse ? <span className="text-xs">(multi-uso {token.multiUse.used}/{token.multiUse.max})</span> : <span className="text-xs">(1 uso)</span>}</div> */}
+          <div className="mb-1">Estado: <span className="font-semibold">{token.status}</span></div>
+          <div className="mb-1">Vence: <span className="font-semibold">{token.expiresAt ? new Date(token.expiresAt).toLocaleString() : '–'}</span></div>
           {isPublic && token.multiUse && (
-            <div className="mt-1 opacity-70">Capacidad del código: hasta {token.multiUse.max} invitados.</div>
+            <div className="mt-1 opacity-80">1 cumpleañero</div>
           )}
-            {isStaff && (
+          {isStaff && (
+            <div className="mt-2">
               <StaffValidateControls code={token.code} isHost={token.isHost} multiUse={token.multiUse} initialStatus={token.status} />
-            )}
+            </div>
+          )}
         </div>
-  <div className="mt-8 text-center text-xs opacity-50">© 2025 Go Lounge!</div>
+        <div className="mt-8 text-center text-xs opacity-70 text-orange-200">© 2025 Go Lounge!</div>
       </div>
     </div>
   );

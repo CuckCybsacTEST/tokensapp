@@ -16,7 +16,7 @@ export default function PurgeBirthdayCardsPage(){
     setLoading(true); setErr(null); setResult(null);
     try {
       // pedir más grande para facilitar selección
-      const res = await fetch('/api/admin/birthdays?page=1&pageSize=200');
+  const res = await fetch('/api/admin/birthdays?page=1&pageSize=100');
       const j = await res.json();
       if(!res.ok) throw new Error(j?.code||j?.message||res.status);
       const list: ReservationLite[] = (j.items||[]).map((r:any)=>({ id:r.id, celebrantName:r.celebrantName, date:r.date?.slice? r.date.slice(0,10):r.date, timeSlot:r.timeSlot, status:r.status, cardsReady:r.cardsReady }));
@@ -39,10 +39,9 @@ export default function PurgeBirthdayCardsPage(){
       const res = await fetch('/api/admin/birthdays/purge-cards', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ reservationIds: ids }) });
       const j = await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(j?.code||j?.message||res.status);
-      setResult(`Purgadas ${ids.length} reservas (archivos borrados: ${j.filesRemoved||0})`);
-      // actualizar flags localmente
-      setItems(prev=> prev.map(r=> ids.includes(r.id) ? { ...r, cardsReady:false } : r));
-      setSelected({});
+  setResult(`Purgadas ${ids.length} reservas (archivos borrados: ${j.filesRemoved||0})`);
+  setSelected({});
+  await load(); // recarga desde backend para reflejar estado real
     } catch(e:any){ setErr(String(e?.message||e)); }
     finally { setBusy(false); }
   }

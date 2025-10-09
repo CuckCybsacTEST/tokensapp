@@ -165,12 +165,17 @@ export async function listReservations(
   if (toCheckFs.length) {
     await Promise.all(toCheckFs.map(async r => {
       try {
+        // Si la reserva está aprobada, intenta generar las tarjetas automáticamente
+        if (r.status === 'approved') {
+          const baseUrl = process.env.PUBLIC_BASE_URL || '';
+          try { await (await import('./cards')).ensureBirthdayCards(r.id, baseUrl); } catch {}
+        }
         const relDir = path.resolve(process.cwd(), 'public', 'birthday-cards', r.id);
         const host = path.join(relDir, 'host.png');
         const guest = path.join(relDir, 'guest.png');
         const hostOk = await fs.promises.access(host).then(()=>true).catch(()=>false);
         const guestOk = await fs.promises.access(guest).then(()=>true).catch(()=>false);
-        if (hostOk && guestOk) (r as any).cardsReady = true;
+        if (hostOk || guestOk) (r as any).cardsReady = true;
       } catch {}
     }));
   }

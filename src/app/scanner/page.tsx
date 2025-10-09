@@ -313,126 +313,125 @@ export default function ScannerPage() {
   }, [handleResult]);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Scanner</h1>
-      {banner && (
-        <div className={`mb-4 text-sm ${banner.variant === 'success' ? 'alert-success' : 'alert-danger'}`}>{banner.message}</div>
-      )}
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-yellow-300 px-2 py-8">
+      <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white/80 backdrop-blur-lg p-6 flex flex-col items-center">
+        <h1 className="mb-2 text-3xl font-extrabold text-orange-700 tracking-tight text-center drop-shadow">Escáner de Cumpleañeros</h1>
+        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea el QR de la persona o usa un póster para registrar entrada/salida.</p>
 
-      {/* Panel para ingresar código cuando se escanea un QR GLOBAL (póster) */}
-      {awaitingCode && (
-        <div className="mb-4 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="mb-2 text-sm text-soft">
-            Modo: <span className={mode === "IN" ? "text-success" : "text-warning"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="Código de persona"
-              className="input max-w-xs"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  submitCode();
-                }
-              }}
-            />
-            <button
-              className="btn"
-              disabled={code.trim().toUpperCase().length < 4}
-              onClick={submitCode}
-            >
-              Registrar
-            </button>
-            <button
-              className="btn-outline"
-              onClick={() => {
-                setAwaitingCode(false);
-                setCode("");
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+        {banner && (
+          <div className={`mb-4 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{banner.message}</div>
+        )}
 
-      <div className="relative mx-auto w-full max-w-sm sm:max-w-2xl aspect-square sm:aspect-video overflow-hidden rounded-lg border border-gray-200 bg-black shadow-sm">
-        <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
-
-        {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
-        {!overlay && !cameraError && (
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-4 top-4 h-6 w-6 border-l-2 border-t-2 border-success"></div>
-            <div className="absolute right-4 top-4 h-6 w-6 border-r-2 border-t-2 border-success"></div>
-            <div className="absolute left-4 bottom-4 h-6 w-6 border-l-2 border-b-2 border-success"></div>
-            <div className="absolute right-4 bottom-4 h-6 w-6 border-r-2 border-b-2 border-success"></div>
+        {awaitingCode && (
+          <div className="mb-4 w-full rounded-xl border border-orange-200 bg-white/90 p-4 shadow flex flex-col items-center">
+            <div className="mb-2 text-base text-orange-700 font-semibold">
+              Modo: <span className={mode === "IN" ? "text-green-600" : "text-yellow-600"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
+            </div>
+            <div className="flex items-center gap-2 w-full justify-center">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="Código de persona"
+                className="input max-w-xs text-lg font-bold text-center border-orange-300 focus:border-orange-500 focus:ring-orange-400"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitCode();
+                  }
+                }}
+              />
+              <button
+                className="btn bg-orange-500 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-orange-600"
+                disabled={code.trim().toUpperCase().length < 4}
+                onClick={submitCode}
+              >
+                Registrar
+              </button>
+              <button
+                className="btn-outline border-orange-300 text-orange-700 px-4 py-2 rounded-lg"
+                onClick={() => {
+                  setAwaitingCode(false);
+                  setCode("");
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
 
-        {overlay && (
-          <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3 text-white">
-            <div>
-              <div className="text-lg font-semibold leading-tight">{overlay.person.name}</div>
-              <div className="text-xs opacity-90">{overlay.person.code}</div>
+        <div className="relative mx-auto w-full max-w-xs sm:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-orange-300 bg-black shadow-lg">
+          <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
+
+          {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
+          {!overlay && !cameraError && (
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-4 top-4 h-8 w-8 border-l-4 border-t-4 border-orange-400 rounded-tl-xl"></div>
+              <div className="absolute right-4 top-4 h-8 w-8 border-r-4 border-t-4 border-orange-400 rounded-tr-xl"></div>
+              <div className="absolute left-4 bottom-4 h-8 w-8 border-l-4 border-b-4 border-orange-400 rounded-bl-xl"></div>
+              <div className="absolute right-4 bottom-4 h-8 w-8 border-r-4 border-b-4 border-orange-400 rounded-br-xl"></div>
             </div>
-            {overlay.lastScanAt && (
-              <div className="text-right text-xs opacity-90">
-                Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
+          )}
+
+          {overlay && (
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 text-white rounded-2xl">
+              <div>
+                <div className="text-xl font-bold leading-tight drop-shadow-lg">{overlay.person.name}</div>
+                <div className="text-base opacity-90 font-mono">{overlay.person.code}</div>
               </div>
-            )}
-          </div>
-        )}
-        {cameraError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-4 text-center text-white">
-            <div>
-              <p className="mb-2 font-medium">No se pudo acceder a la cámara</p>
-              <p className="text-sm opacity-90">
-                Concede permiso de cámara al navegador o sube una imagen del QR.
-              </p>
+              {overlay.lastScanAt && (
+                <div className="text-right text-sm opacity-90">
+                  Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
+                </div>
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+          {cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 text-center text-white rounded-2xl">
+              <div>
+                <p className="mb-2 font-bold text-lg">No se pudo acceder a la cámara</p>
+                <p className="text-base opacity-90">
+                  Concede permiso de cámara al navegador o sube una imagen del QR.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-      <div className="mt-4 flex flex-col gap-3">
-        <p className="text-sm text-soft">
-          Consejo: acércate al QR y mantén la cámara estable. Si el navegador te pide permiso de cámara,
-          acepta para poder escanear. En caso de problemas, puedes subir una foto del QR.
-        </p>
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50 active:shadow">
-          Subir imagen del QR
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onFileSelect(e.target.files?.[0] || null)}
-          />
-        </label>
-        {cameraError && (
-          <button
-            className="w-fit rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:bg-gray-50"
-            onClick={() => {
-              // intentar reintentar cámara (re-montar lógica)
-              setCameraError(null);
-              readerRef.current?.reset();
-              // parar media stream si existe
-              const v = videoRef.current;
-              if (v) {
-                try {
-                  const s = v.srcObject as MediaStream | undefined;
-                  s?.getTracks().forEach((t) => t.stop());
-                } catch {}
-              }
-              // disparar nuevamente el efecto cambiando cooldown (trigger render)
-              setCooldownUntil((c) => c);
-            }}
-          >
-            Reintentar cámara
-          </button>
-        )}
+        <div className="mt-6 flex flex-col gap-4 w-full items-center">
+          <p className="text-base text-orange-900 text-center font-medium">
+            Consejo: acércate al QR y mantén la cámara estable. Si el navegador te pide permiso de cámara, acepta para poder escanear. En caso de problemas, puedes subir una foto del QR.
+          </p>
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border-2 border-orange-300 bg-white px-4 py-2 text-base font-semibold text-orange-700 shadow hover:bg-orange-50 active:shadow">
+            Subir imagen del QR
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onFileSelect(e.target.files?.[0] || null)}
+            />
+          </label>
+          {cameraError && (
+            <button
+              className="w-fit rounded-xl border-2 border-orange-300 bg-white px-4 py-2 text-base font-semibold text-orange-700 shadow hover:bg-orange-50"
+              onClick={() => {
+                setCameraError(null);
+                readerRef.current?.reset();
+                const v = videoRef.current;
+                if (v) {
+                  try {
+                    const s = v.srcObject as MediaStream | undefined;
+                    s?.getTracks().forEach((t) => t.stop());
+                  } catch {}
+                }
+                setCooldownUntil((c) => c);
+              }}
+            >
+              Reintentar cámara
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

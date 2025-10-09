@@ -36,7 +36,19 @@ export async function GET(req: NextRequest) {
       page: searchParams.get('page') || undefined,
       pageSize: searchParams.get('pageSize') || undefined,
     });
-    if (!parsed.success) return apiError('INVALID_QUERY', 'Validation failed', parsed.error.flatten(), 400);
+    if (!parsed.success) {
+      // Extrae detalles legibles para el usuario
+      const details = parsed.error.flatten();
+      let userMsg = 'La consulta enviada es inválida.';
+      if (details && details.fieldErrors) {
+    const fieldErrors = details.fieldErrors as Record<string, string[]>;
+    const fields = Object.keys(fieldErrors).filter(k => fieldErrors[k]?.length);
+        if (fields.length) {
+          userMsg += ' Campos con error: ' + fields.join(', ');
+        }
+      }
+      return apiError('INVALID_QUERY', userMsg, details, 400);
+    }
 
     const f = parsed.data;
     const dateFrom = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00.000Z') : undefined;
