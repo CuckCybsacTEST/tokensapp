@@ -12,7 +12,14 @@ type BatchPrizeStat = {
   batchId: string;
   description: string;
   createdAt: Date;
-  prizes: Array<{ prizeId: string; label: string; color: string | null; count: number }>;
+  prizes: Array<{
+    prizeId: string;
+    label: string;
+    color: string | null;
+    count: number;
+    expired: number;
+    valid: number;
+  }>;
 };
 
 async function getPrizesWithLastBatch(): Promise<{
@@ -88,6 +95,8 @@ async function getPrizesWithLastBatch(): Promise<{
         label: p?.label || row.prizeId,
         color: p?.color || null,
         count: row._count._all,
+        expired: 0, // valor por defecto
+        valid: 0    // valor por defecto
       });
     }
     for (const b of recentBatches) {
