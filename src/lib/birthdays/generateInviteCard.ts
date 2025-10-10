@@ -8,11 +8,13 @@ function clamp(n: number, min: number, max: number) { return Math.min(max, Math.
 function escapeXml(s: string) { return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] as string)); }
 function formatFecha(iso: string) {
   try {
-    const d = new Date(iso);
+    let d = new Date(iso);
     if (isNaN(d.getTime())) return '';
-    const dia = d.getDate().toString().padStart(2,'0');
-    const mes = d.toLocaleDateString('es-PE',{ month:'long'}).toLowerCase();
-  return `${dia} ${mes}`;
+    // Ajustar a Lima (UTC-5)
+    d = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+    const dia = d.getUTCDate().toString().padStart(2,'0');
+    const mes = d.toLocaleDateString('es-PE',{ month:'long', timeZone: 'America/Lima' }).toLowerCase();
+    return `${dia} ${mes}`;
   } catch { return ''; }
 }
 

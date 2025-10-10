@@ -31,7 +31,12 @@ function ReservarCumplePageInner() {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+        // Calcular fecha actual en Lima (UTC-5)
+        const now = new Date();
+        // Convertir a UTC-5
+        const limaMs = now.getTime() - 5 * 60 * 60 * 1000;
+        const lima = new Date(limaMs);
+        return `${lima.getUTCFullYear()}-${String(lima.getUTCMonth() + 1).padStart(2, "0")}-${String(lima.getUTCDate()).padStart(2, "0")}`;
   });
   const [timeSlot, setTimeSlot] = useState("20:00");
   const [packId, setPackId] = useState<string>("");
@@ -167,7 +172,8 @@ function ReservarCumplePageInner() {
         body: JSON.stringify({ clientSecret }),
       });
       const j2 = await res2.json().catch(() => ({}));
-      if (!res2.ok || !j2?.ok) {
+      // Si la respuesta tiene items (tokens), se considera éxito
+      if (!res2.ok || (!j2?.ok && !Array.isArray(j2?.items))) {
         const msg2 = humanizeError(j2?.code, j2?.message || "No se pudieron generar los QRs");
         throw new Error(msg2);
       }
@@ -272,7 +278,17 @@ function ReservarCumplePageInner() {
               type="date"
               className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               value={date}
-              min={date}
+              min={(() => {
+                // Calcular fecha actual en Lima (UTC-5)
+                const now = new Date();
+                // Convertir a UTC-5
+                const limaMs = now.getTime() - 5 * 60 * 60 * 1000;
+                const lima = new Date(limaMs);
+                const yyyy = lima.getUTCFullYear();
+                const mm = String(lima.getUTCMonth() + 1).padStart(2, "0");
+                const dd = String(lima.getUTCDate()).padStart(2, "0");
+                return `${yyyy}-${mm}-${dd}`;
+              })()}
               onChange={(e) => setDate(e.target.value)}
             />
             {/* Sugerencia removida según requerimiento */}

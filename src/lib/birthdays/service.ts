@@ -69,13 +69,22 @@ export async function createReservation(input: CreateReservationInput): Promise<
   assertNonEmpty(input.packId, 'packId');
   assertPositive(input.guestsPlanned, 'guestsPlanned');
 
+  // Si la fecha es string (YYYY-MM-DD), convertir a Date en Lima (UTC-5)
+  let dateObj: Date;
+  const dateStr = (input.date as any)?.toString?.() ?? input.date;
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    // Crear Date en Lima (UTC-5) usando string con offset
+    dateObj = new Date(`${dateStr}T00:00:00-05:00`);
+  } else {
+    dateObj = new Date(input.date);
+  }
   const created = await prisma.birthdayReservation.create({
     data: {
       celebrantName: input.celebrantName.trim(),
       phone: input.phone.trim(),
       documento: input.documento.trim(),
       email: input.email || null,
-      date: input.date,
+      date: dateObj,
       timeSlot: input.timeSlot.trim(),
       packId: input.packId,
       guestsPlanned: input.guestsPlanned,
@@ -253,11 +262,20 @@ export async function generateInviteTokens(
   const expUtcMs = Date.UTC(y, m, d + 1, 5, 1, 0, 0); // 00:01 Lima = 05:01 UTC
   const exp = new Date(expUtcMs);
   // Hora actual en Lima (aprox) para validar que no sea pasado.
+  // Permitir generación de tokens si la fecha de la reserva es igual o mayor al día actual en Lima
   const { y: cy, m: cm, d: cd } = toLimaDateParts(nowDt);
-  const nowLimaApproxUtcMs = Date.UTC(cy, cm, cd, nowDt.getUTCHours(), nowDt.getUTCMinutes(), nowDt.getUTCSeconds(), nowDt.getUTCMilliseconds());
-  if (exp.getTime() <= nowDt.getTime()) {
-    throw new Error('RESERVATION_DATE_PAST');
-  }
+  // Si la fecha de la reserva es menor al día actual en Lima, es pasada
+  // Comparar solo año, mes y día
+    // Ajustar la fecha de la reserva sumando 5 horas (UTC-5)
+    const reservaLima = new Date(reservation.date.getTime() + 5 * 60 * 60 * 1000);
+    const yLima = reservaLima.getUTCFullYear();
+    const mLima = reservaLima.getUTCMonth();
+    const dLima = reservaLima.getUTCDate();
+    console.error('[BIRTHDAYS] Fecha reserva (ajustada Lima):', { reservaDate: reservaLima, yLima, mLima, dLima });
+    console.error('[BIRTHDAYS] Fecha actual Lima:', { now: nowDt, cy, cm, cd });
+    if (yLima < cy || (yLima === cy && mLima < cm) || (yLima === cy && mLima === cm && dLima < cd)) {
+      throw new Error('RESERVATION_DATE_PAST');
+    }
 
   const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Attempt to claim generation by setting tokensGeneratedAt only if currently null (and optional optimistic lock on updatedAt)

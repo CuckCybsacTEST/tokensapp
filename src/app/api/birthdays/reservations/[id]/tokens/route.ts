@@ -20,21 +20,38 @@ function toSafeDto(t: any) {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   // Feature flag
   const cors = corsHeadersFor(req as unknown as Request);
-  if (!isBirthdaysEnabledPublic()) return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
+  if (!isBirthdaysEnabledPublic()) {
+    return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
+  }
 
   try {
     const body = await req.json().catch(() => ({}));
-    const clientSecret = body?.clientSecret as string | undefined;
-    if (!clientSecret) return apiError('INVALID_BODY', 'clientSecret required', undefined, 400, cors);
+    const clientSecret = body && typeof body.clientSecret === 'string' ? body.clientSecret : undefined;
+    if (!clientSecret) {
+      console.error('[BIRTHDAYS] POST /tokens error: clientSecret missing', { body: JSON.stringify(body) });
+      return apiError('INVALID_BODY', 'clientSecret required', undefined, 400, cors);
+    }
 
     const ver = verifyClientSecret(clientSecret);
-    if (!ver.ok) return apiError(ver.code, 'Unauthorized', undefined, ver.code === 'EXPIRED' ? 401 : 403, cors);
-    if (ver.rid !== params.id) return apiError('INVALID', 'Unauthorized', undefined, 403, cors);
+    if (!ver.ok) {
+      console.error('[BIRTHDAYS] POST /tokens error: clientSecret invalid', { clientSecret, ver });
+      return apiError(ver.code || 'INVALID', 'Unauthorized', undefined, ver.code === 'EXPIRED' ? 401 : 403, cors);
+    }
+    if (ver.rid !== params.id) {
+      console.error('[BIRTHDAYS] POST /tokens error: clientSecret reservation mismatch', { clientSecret, ver, params });
+      return apiError('INVALID', 'Unauthorized', undefined, 403, cors);
+    }
 
     // Generate idempotently (service already handles idempotencia)
-    const tokens = await generateInviteTokens(params.id, { force: false }, 'PUBLIC');
-    return apiOk({ ok: true, items: tokens.map(toSafeDto) }, 200, cors);
+    try {
+      const tokens = await generateInviteTokens(params.id, { force: false }, 'PUBLIC');
+      return apiOk({ ok: true, items: tokens.map(toSafeDto) }, 200, cors);
+    } catch (e) {
+      console.error('[BIRTHDAYS] POST /tokens error: generateInviteTokens failed', { error: e instanceof Error ? e.message : String(e), params });
+      return apiError('TOKENS_GENERATE_ERROR', 'Failed to generate tokens', undefined, 500, cors);
+    }
   } catch (e) {
+    console.error('[BIRTHDAYS] POST /tokens error: unexpected', { error: e instanceof Error ? e.message : String(e), params });
     return apiError('TOKENS_GENERATE_ERROR', 'Failed to generate tokens', undefined, 500, cors);
   }
 }
