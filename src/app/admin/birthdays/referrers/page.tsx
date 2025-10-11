@@ -74,10 +74,17 @@ export default function AdminReferrersPage() {
 
       const method = editingId ? 'PUT' : 'POST';
 
+      const payload = {
+        name: formData.name.trim(),
+        slug: formData.slug.trim(),
+        ...(formData.email.trim() && { email: formData.email.trim() }),
+        ...(formData.phone.trim() && { phone: formData.phone.trim() }),
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -145,7 +152,7 @@ export default function AdminReferrersPage() {
 
   // Generate link
   const generateLink = (slug: string) => {
-    return `${window.location.origin}/colaborador/${slug}`;
+    return `${window.location.origin}/cumpleaños/${slug}`;
   };
 
   if (loading) {

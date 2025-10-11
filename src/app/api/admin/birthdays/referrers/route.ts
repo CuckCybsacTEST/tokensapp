@@ -7,8 +7,17 @@ import { corsHeadersFor } from '@/lib/cors';
 const CreateReferrerSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug debe contener solo letras minúsculas, números y guiones'),
-  email: z.string().email().optional().nullable(),
-  phone: z.string().optional().nullable(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+}).refine((data) => {
+  // Si se proporciona email, debe ser válido
+  if (data.email && data.email.trim()) {
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email.trim());
+  }
+  return true;
+}, {
+  message: 'Email debe ser válido',
+  path: ['email'],
 });
 
 const UpdateReferrerSchema = z.object({
@@ -44,8 +53,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
     const parsed = CreateReferrerSchema.safeParse(body);
     if (!parsed.success) {
+      console.log('Validation failed:', parsed.error.flatten());
       return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
     }
 
