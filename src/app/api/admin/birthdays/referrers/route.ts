@@ -1,0 +1,81 @@
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { apiOk, apiError } from '@/lib/apiError';
+import { z } from 'zod';
+import { corsHeadersFor } from '@/lib/cors';
+
+const CreateReferrerSchema = z.object({
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug debe contener solo letras minúsculas, números y guiones'),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+});
+
+const UpdateReferrerSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug debe contener solo letras minúsculas, números y guiones').optional(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  active: z.boolean().optional(),
+});
+
+export async function GET(req: NextRequest) {
+  const cors = corsHeadersFor(req as unknown as Request);
+
+  try {
+    const referrers = await prisma.birthdayReferrer.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { reservations: true }
+        }
+      }
+    });
+
+    return apiOk({ referrers }, 200, cors);
+  } catch (error) {
+    console.error('Error fetching referrers:', error);
+    return apiError('INTERNAL_ERROR', 'Failed to fetch referrers', undefined, 500, cors);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const cors = corsHeadersFor(req as unknown as Request);
+
+  try {
+    const body = await req.json();
+    const parsed = CreateReferrerSchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
+    }
+
+    const { name, slug, email, phone } = parsed.data;
+
+    // Verificar que el slug sea único
+    const existing = await prisma.birthdayReferrer.findUnique({
+      where: { slug }
+    });
+    if (existing) {
+      return apiError('SLUG_EXISTS', 'Slug already exists', undefined, 400, cors);
+    }
+
+    // Generar código único
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const referrer = await prisma.birthdayReferrer.create({
+      data: {
+        name: name.trim(),
+        slug: slug.trim().toLowerCase(),
+        code,
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        active: true,
+      }
+    });
+
+    return apiOk({ referrer }, 201, cors);
+  } catch (error) {
+    console.error('Error creating referrer:', error);
+    return apiError('CREATE_ERROR', 'Failed to create referrer', undefined, 500, cors);
+  }
+}
