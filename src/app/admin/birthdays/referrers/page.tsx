@@ -152,7 +152,7 @@ export default function AdminReferrersPage() {
 
   // Generate link
   const generateLink = (slug: string) => {
-    return `${window.location.origin}/cumpleaños/${slug}`;
+    return `${window.location.origin}/cumpleanos/${slug}`;
   };
 
   if (loading) {

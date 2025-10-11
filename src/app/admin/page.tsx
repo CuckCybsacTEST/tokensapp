@@ -87,6 +87,7 @@ export default async function AdminDashboard() {
           <div className="flex flex-wrap gap-2">
             <a href="/admin/birthdays" className="btn">Reservas</a>
             <a href="/admin/birthdays/referrers" className="btn">Referrers</a>
+            <a href="/admin/birthdays/referrers/metrics" className="btn">Métricas</a>
           </div>
         </div>
 
