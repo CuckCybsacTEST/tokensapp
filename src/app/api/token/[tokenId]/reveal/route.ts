@@ -77,7 +77,7 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
               expiresAt: { gt: new Date() },
               prize: { is: { key: { notIn: ['retry', 'lose'] } } },
             },
-            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            orderBy: { id: 'asc' },
             select: { id: true },
           });
           if (next?.id) {

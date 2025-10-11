@@ -113,7 +113,7 @@ export async function GET(
     
     let elements = groups.map((g) => {
       const p = prizeDetails.find((pd) => pd.id === g.prizeId)!;
-      return { prizeId: p.id, label: p.label, color: p.color || null, count: g._count._all };
+      return { prizeId: p.id, label: p.label, color: p.color || null, count: g._count._all, key: p.key };
     });
     
     // Garantizar que el premio de este token esté incluido (p.ej. ya consumido en reveal/deliver legacy)
@@ -123,6 +123,7 @@ export async function GET(
         label: token.prize.label,
         color: token.prize.color || null,
         count: 1,
+        key: token.prize.key,
       });
     }
     

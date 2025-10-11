@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useTransition } from 'react';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus }:{ code:string; isHost:boolean; multiUse: any; initialStatus: string }) {
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt }:{ code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null }) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
   const [max, setMax] = useState(multiUse?.max ?? (multiUse ? 0 : 1));
@@ -39,8 +39,8 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
         setConsumedOnce(true);
         // Modal de confirmación
         const msg = isHost
-          ? 'Cumpleañer@ registrado. ¡Disfruta tu celebración!'
-          : 'Invitado registrado. ¡Bienvenid@ a la fiesta!';
+          ? 'Muestra este código al ingresar y disfruta de tu noche!'
+          : 'Muestra este código al ingresar y disfruta de tu noche!';
         setModalMessage(msg);
         setShowModal(true);
       } catch(e:any) {
@@ -53,17 +53,55 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
   const already = status === 'redeemed' && !multiUse;
   const disableButton = pending || exhausted || already || consumedOnce;
   return (
-    <div className="mt-4 border-t border-white/10 pt-3 space-y-2">
-      <div className="text-[11px] uppercase tracking-wide font-semibold opacity-70">Validación Staff</div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={validate} disabled={disableButton} className="px-3 py-1 rounded bg-emerald-600 disabled:opacity-40 text-xs font-semibold">
-          {pending ? 'Validando…' : isHost ? (hostArrivedAt ? 'Marcar llegada (listo)' : 'Marcar llegada') : exhausted ? 'Agotado' : consumedOnce ? 'Registrado' : 'Consumir'}
+    <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg">
+      <div className="text-sm font-semibold text-[#FF4D2E] mb-3 text-center">Validación de Ingreso</div>
+      
+      {/* Botón principal prominente */}
+      <div className="flex justify-center mb-4">
+        <button 
+          onClick={validate} 
+          disabled={disableButton} 
+          className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 ${
+            disableButton 
+              ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+              : 'bg-[#FF4D2E] hover:bg-[#FF7A3C] active:scale-95 shadow-lg hover:shadow-xl'
+          } text-white`}
+        >
+          {pending ? 'Validando…' : isHost ? (hostArrivedAt ? '✅ Llegada Registrada' : '🚪 Marcar Llegada') : exhausted ? '❌ Agotado' : consumedOnce ? '✅ Registrado' : '✅ Registrar Ingreso'}
         </button>
-        <div className="text-[11px] opacity-70">Estado: {status}{multiUse ? ` (${used}/${max})` : ''}</div>
-        {isHost && hostArrivedAt && <div className="text-[11px] text-emerald-300">Llegó: {hostArrivedAt.toLocaleTimeString()}</div>}
-        {!isHost && <div className="text-[11px] opacity-70">Ingresos invitados: {guestArrivals}</div>}
       </div>
-      {err && <div className="text-[11px] text-red-300">{err}</div>}
+
+      {/* Información de estado */}
+      <div className="grid grid-cols-1 gap-2 text-sm">
+        <div className="flex justify-between items-center">
+          <span className="text-white/70">Estado:</span>
+          <span className={`font-medium ${status === 'active' ? 'text-green-400' : status === 'redeemed' ? 'text-blue-400' : 'text-yellow-400'}`}>
+            {status === 'active' && multiUse ? 'Disponible' : status}{multiUse && status !== 'active' ? ` (${used}/${max})` : ''}
+          </span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-white/70">Vence:</span>
+          <span className="font-medium text-yellow-300">{expiresAt ? new Date(expiresAt).toLocaleString() : '–'}</span>
+        </div>
+        
+        {isHost && hostArrivedAt && (
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Llegada:</span>
+            <span className="text-emerald-300 font-medium">{hostArrivedAt.toLocaleTimeString()}</span>
+          </div>
+        )}
+        
+        {!isHost && (
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Invitados:</span>
+            <span className="text-blue-300 font-medium">{guestArrivals} ingresos</span>
+          </div>
+        )}
+      </div>
+
+      {err && <div className="mt-3 text-sm text-red-300 bg-red-900/20 border border-red-800/40 rounded p-2">{err}</div>}
+      
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="bg-slate-900 border border-emerald-600/40 rounded-lg p-6 w-full max-w-sm text-center space-y-4">

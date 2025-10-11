@@ -70,6 +70,7 @@ model Token {
   @@index([ingestedAt])
   @@index([validFrom])
   @@index([pairedNextTokenId])
+  @@index([batchId, revealedAt, redeemedAt, disabled, expiresAt])
 }
 
 model SystemConfig {
@@ -261,7 +262,9 @@ model BirthdayReservation {
   updatedAt         DateTime           @updatedAt
   hostArrivedAt     DateTime?          @db.Timestamp(6)
   guestArrivals     Int                @default(0)
+  referrerId        String?
   pack              BirthdayPack       @relation(fields: [packId], references: [id])
+  referrer          BirthdayReferrer?  @relation(fields: [referrerId], references: [id])
   courtesyItems     CourtesyItem[]
   inviteTokens      InviteToken[]
   photoDeliveries   PhotoDeliverable[]
@@ -271,6 +274,23 @@ model BirthdayReservation {
   @@index([date, timeSlot])
   @@index([status])
   @@index([hostArrivedAt])
+  @@index([referrerId])
+}
+
+model BirthdayReferrer {
+  id            String                @id @default(cuid())
+  name          String                // Nombre del colaborador
+  slug          String                @unique // Slug personalizado para URLs (ej: ana-garcia)
+  code          String                @unique // Código generado único
+  email         String?
+  phone         String?
+  active        Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  reservations  BirthdayReservation[]
+
+  @@index([slug])
+  @@index([active])
 }
 
 model InviteToken {

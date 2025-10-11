@@ -62,6 +62,60 @@ function assertPositive(n: number, name: string) {
 
 // Services -------------------------------------------------------------------
 export async function createReservation(input: CreateReservationInput): Promise<ReservationWithRelations> {
+  // Validación de fecha: máximo 30 días en el futuro (hora Lima)
+  let reservaDateObj: Date;
+  const reservaDateRaw = (input.date as any)?.toString?.() ?? input.date;
+  if (typeof reservaDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(reservaDateRaw)) {
+    reservaDateObj = new Date(`${reservaDateRaw}T00:00:00-05:00`);
+  } else {
+    reservaDateObj = new Date(input.date);
+  }
+  const nowLima = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  const maxFuture = new Date(nowLima.getTime() + 30 * 24 * 60 * 60 * 1000);
+  if (reservaDateObj.getTime() > maxFuture.getTime()) {
+    throw new Error('DATE_TOO_FAR');
+  }
+  // Validación de formato DNI y WhatsApp
+  if (!/^\d{8}$/.test(input.documento)) {
+    throw new Error('INVALID_DNI');
+  }
+  if (!/^\d{9}$/.test(input.phone)) {
+    throw new Error('INVALID_WHATSAPP');
+  }
+
+  // Evitar reservas duplicadas por DNI en el mismo año
+  let year = 0;
+  if (typeof reservaDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(reservaDateRaw)) {
+    year = Number(reservaDateRaw.slice(0,4));
+  } else {
+    year = reservaDateObj.getFullYear();
+  }
+  const existing = await prisma.birthdayReservation.findFirst({
+    where: {
+      documento: input.documento,
+      date: {
+        gte: new Date(`${year}-01-01T00:00:00.000Z`),
+        lte: new Date(`${year}-12-31T23:59:59.999Z`)
+      }
+    }
+  });
+  if (existing) {
+    throw new Error('DUPLICATE_DNI_YEAR');
+  }
+
+  // Rate limiting por IP (máx 3 reservas por IP en 1 hora)
+  if (input.createdBy) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const count = await prisma.birthdayReservation.count({
+      where: {
+        createdBy: input.createdBy,
+        createdAt: { gte: oneHourAgo }
+      }
+    });
+    if (count >= 3) {
+      throw new Error('RATE_LIMITED');
+    }
+  }
   assertNonEmpty(input.celebrantName, 'celebrantName');
   assertNonEmpty(input.phone, 'phone');
   assertNonEmpty(input.documento, 'documento');

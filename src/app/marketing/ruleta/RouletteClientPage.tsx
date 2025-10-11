@@ -6,6 +6,7 @@ import RouletteHeading from "@/components/roulette/RouletteHeading";
 import { RouletteElement } from "@/components/roulette/types";
 import { motion, AnimatePresence } from "framer-motion";
 import RetryOverlay from "@/components/roulette/RetryOverlay";
+import LoseModal from "@/components/roulette/LoseModal";
 import SmartPreloader from "@/components/common/SmartPreloader";
 import { perfMark, perfMeasure, perfSummarize, perfCheckBudget } from "@/lib/perf";
 import CanvasConfetti from "@/components/visual/CanvasConfetti";
@@ -86,6 +87,10 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [suppressLoader, setSuppressLoader] = useState(false);
   // Marca cuándo se abrió el overlay para garantizar visibilidad mínima (~1s)
   const retryOverlayOpenedAt = useRef<number | null>(null);
+  // Bandera para transición de retry, para suprimir errores
+  const [isRetryTransition, setIsRetryTransition] = useState(false);
+  // Bandera para auto-spin en retry, para suprimir errores
+  const [isAutoSpin, setIsAutoSpin] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
@@ -136,6 +141,26 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     return () => {
       abort = true;
     };
+  }, []);
+
+  // Inicializar audio al montar para reducir delay en giro
+  useEffect(() => {
+    if (!winAudioRef.current) {
+      const a = new Audio("/win-sound.mp3");
+      a.volume = 0.5;
+      winAudioRef.current = a;
+      // Intentar primar (algunos navegadores requieren gesto; si falla, se ignora)
+      a.muted = true;
+      a.play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+        })
+        .catch(() => {
+          a.muted = false;
+        });
+    }
   }, []);
 
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
@@ -258,6 +283,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
               label: e.label,
               color: e.color || getSegmentColor(index),
               prizeId: e.prizeId,
+              key: e.key,
             }));
             setElements(rouletteElements);
           }
@@ -274,14 +300,18 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       } catch (err) {
         if (!abort) {
           console.error("Error cargando datos:", err);
-          setError(err instanceof Error ? err.message : "Error desconocido");
+          if (!softSwitch) setError(err instanceof Error ? err.message : "Error desconocido");
         }
       } finally {
         await minPromise;
         if (!abort) {
           if (!softSwitch) setLoading(false);
           // Si fue softSwitch, evitamos overlay; limpiamos bandera
-          if (softSwitch) setSoftSwitch(false);
+          if (softSwitch) {
+            setSoftSwitch(false);
+            setIsRetryTransition(false);
+            setRetryOverlayOpen(false); // Cerrar overlay después de carga completa
+          }
           perfMark("loader_hidden");
           perfMeasure("load_total", "load_start", "loader_hidden");
           // Presupuesto de carga
@@ -297,43 +327,13 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     };
   }, [activeTokenId, softSwitch]);
 
-  // Cerrar overlay de RETRY sólo cuando la ruleta esté lista (elements>=2) y se cumpla visibilidad mínima (~1s)
-  const rouletteReady = !!token && elements.length >= 2 && phase === 'READY';
-  useEffect(() => {
-    if (!retryOverlayOpen) return;
-    if (!rouletteReady) return;
-    const openedAt = retryOverlayOpenedAt.current || Date.now();
-    const elapsed = Date.now() - openedAt;
-    const remain = Math.max(0, 1000 - elapsed);
-    const t = setTimeout(() => setRetryOverlayOpen(false), remain);
-    return () => clearTimeout(t);
-  }, [retryOverlayOpen, rouletteReady]);
-
   const handleSpin = async () => {
     if (phase !== "READY") return;
     if (!activeTokenId) return;
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase("SPINNING");
     perfMark("spin_start");
-    // Lazy-init y primado de audio dentro de interacción de usuario
-    try {
-      if (!winAudioRef.current) {
-        const a = new Audio("/win-sound.mp3");
-        a.volume = 0.5;
-        winAudioRef.current = a;
-        // Intentar primar (algunos navegadores requieren gesto; si falla, se ignora)
-        a.muted = true;
-        a.play()
-          .then(() => {
-            a.pause();
-            a.currentTime = 0;
-            a.muted = false;
-          })
-          .catch(() => {
-            a.muted = false;
-          });
-      }
-    } catch {}
+    // Audio ya inicializado en useEffect
     try {
   const response = await fetch(`/api/token/${activeTokenId}/reveal`, { method: "POST" });
       if (!response.ok) throw new Error(`Error ${response.status}: ${await response.text()}`);
@@ -354,7 +354,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       // La animación del componente NewRoulette usará prizeIndex y disparará handleSpinEnd
     } catch (err) {
       console.error("Error al girar:", err);
-      setError(err instanceof Error ? err.message : "Error al girar la ruleta");
+      if (!isAutoSpin) setError(err instanceof Error ? err.message : "Error al girar la ruleta");
       setPhase("READY");
     }
   };
@@ -399,6 +399,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     // Si hay RETRY, no mostramos modal; hacemos transición suave al siguiente token
     if (nextTokenId) {
   // Mostrar overlay minimal que tapa el contenido
+      setIsRetryTransition(true);
       setRetryOverlayOpen(true);
       try { retryOverlayOpenedAt.current = Date.now(); } catch {}
       setSuppressRevealed(true);
@@ -418,12 +419,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         setSoftSwitch(true);
         setPendingAutoSpin(true);
         setActiveTokenId(nextTokenId!);
-      }, 120);
+      }, 300);
       // El cierre del overlay se realiza en la carga del nuevo token (softSwitch)
       return;
     }
     setPrizeWon(prize);
-    setPhase("REVEALED_MODAL");
     setShowConfetti(true);
     // Incrementar contador local tras completar un giro exitoso
     setSpinCounter((c) => (c == null ? SPIN_BASE_OFFSET + 1 : c + 1));
@@ -438,7 +438,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setShowConfetti(false);
     }, 5000); // Detiene el confetti después de 5 segundos
 
-    // Reproducir efecto de sonido (lazy, si está inicializado)
+    // Reproducir efecto de sonido (ya inicializado)
     try {
       if (winAudioRef.current) {
         winAudioRef.current.currentTime = 0;
@@ -446,10 +446,10 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       }
     } catch {}
 
-    // Importante: NO auto-canjear. La confirmación de entrega debe hacerla el STAFF.
-    // En el flujo two-phase, sólo revelamos aquí; el canje/entrega se confirma desde interfaces de staff.
-
-    // (no RETRY)
+    // Delay antes de mostrar el modal para que el usuario vea el premio en la ruleta
+    setTimeout(() => {
+      setPhase("REVEALED_MODAL");
+    }, 1500); // 1.5 segundos de delay
   };
 
   // Auto-giro tras transición suave
@@ -457,7 +457,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     if (!pendingAutoSpin) return;
     const t = setTimeout(() => {
       if (phase === 'READY' && elements.length >= 2) {
-        handleSpin();
+        setIsAutoSpin(true);
+        handleSpin().finally(() => setIsAutoSpin(false));
         // Ya vamos a girar: permitir UI normal para el nuevo ciclo
         setSuppressLoader(false);
         setSuppressRevealed(false);
@@ -602,7 +603,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   // Si el token es un bi-token (retry) y el real ya fue revelado/entregado/redimido, suprime el panel de premio revelado
   const isReserved = !!token?.reservedByRetry;
   const realTokenUsed = isReserved && token?.realToken && (token.realToken.revealedAt || token.realToken.deliveredAt || token.realToken.redeemedAt);
-  const showRevealedPanel = !retryOverlayOpen && !suppressRevealed && (phase === "REVEALED_PANEL" || (token?.revealedAt && phase === "READY")) && !(isReserved && realTokenUsed);
+  const showRevealedPanel = !retryOverlayOpen && !suppressRevealed && (phase === "REVEALED_PANEL" || (token?.revealedAt && phase === "READY")) && !(isReserved && realTokenUsed) && !(prizeWon && prizeWon.key === 'lose');
 
   // Render principal
 
@@ -755,7 +756,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                 </motion.div>
               </motion.div>
             )}
-  {prizeWon && phase === "REVEALED_MODAL" && !(isReserved && realTokenUsed) && (
+  {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key !== 'lose' && !(isReserved && realTokenUsed) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -903,6 +904,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal específico para lose/piña */}
+      {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key === 'lose' && <LoseModal open={true} />}
     </div>
   );
 }

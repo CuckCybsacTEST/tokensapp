@@ -29,11 +29,11 @@ export default function RetryOverlay({ open }: { open: boolean }) {
               border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#5B86E5] to-[#36D1DC] animate-pulse" />
-              <div className="text-white/90 text-sm sm:text-base font-medium">Nuevo intento</div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#5B86E5] to-[#36D1DC] animate-pulse flex items-center justify-center text-3xl">🔄</div>
+              <div className="text-white/90 text-lg sm:text-2xl font-bold mt-2">Nuevo intento</div>
+              <div className="mt-2 text-white/70 text-sm sm:text-base">Preparando tu siguiente giro…</div>
             </div>
-            <div className="mt-1 text-white/60 text-xs sm:text-sm">Preparando tu siguiente giro…</div>
           </motion.div>
         </motion.div>
       )}
