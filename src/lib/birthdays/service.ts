@@ -29,6 +29,7 @@ export type CreateReservationInput = {
   timeSlot: string;
   packId: string;
   guestsPlanned: number;
+  referrerId?: string;
   createdBy?: string;
 };
 
@@ -132,6 +133,17 @@ export async function createReservation(input: CreateReservationInput): Promise<
   } else {
     dateObj = new Date(input.date);
   }
+  // Validar referrerId si se proporciona
+  if (input.referrerId) {
+    const referrer = await prisma.birthdayReferrer.findUnique({
+      where: { id: input.referrerId },
+      select: { id: true, active: true },
+    });
+    if (!referrer || !referrer.active) {
+      throw new Error('INVALID_REFERRER');
+    }
+  }
+
   const created = await prisma.birthdayReservation.create({
     data: {
       celebrantName: input.celebrantName.trim(),
@@ -144,6 +156,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
       guestsPlanned: input.guestsPlanned,
       status: 'pending_review',
       createdBy: input.createdBy || null,
+      referrerId: input.referrerId || null,
     },
     include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
   });

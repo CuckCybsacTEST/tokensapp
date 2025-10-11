@@ -16,6 +16,7 @@ const CreateReservationSchema = z.object({
   timeSlot: z.string().min(1).max(20),
   packId: z.string().min(1),
   guestsPlanned: z.number().int().min(1).max(200),
+  referrerId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
     }
-    const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned } = parsed.data;
+    const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned, referrerId } = parsed.data;
     const dt = new Date(date + 'T00:00:00.000Z');
     if (!isFinite(dt.getTime())) return apiError('INVALID_DATE', 'invalid date', undefined, 400);
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       timeSlot,
       packId,
       guestsPlanned,
+      referrerId,
     });
 
     // Build a safe DTO (omit heavy relations and internal fields not needed client-side)

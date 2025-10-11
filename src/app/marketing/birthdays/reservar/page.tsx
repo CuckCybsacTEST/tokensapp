@@ -43,6 +43,7 @@ function ReservarCumplePageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [phase, setPhase] = useState<"idle" | "creating" | "generating">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [referrerId, setReferrerId] = useState<string | null>(null);
 
   // Preselect from query (support aliases from marketing cards: basic/chispa, plus/fuego, elite/estrella)
   useEffect(() => {
@@ -70,6 +71,27 @@ function ReservarCumplePageInner() {
       if (match) setPackId(match.id);
     }
   }, [params, packs]);
+
+  // Capture referrer from query param
+  useEffect(() => {
+    const ref = params?.get("ref");
+    if (ref && ref.trim()) {
+      // Validate referrer exists and is active
+      fetch(`/api/birthdays/referrers/${ref}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.referrer && data.referrer.active) {
+            setReferrerId(data.referrer.id);
+          }
+        })
+        .catch(err => {
+          console.warn('Invalid referrer:', err);
+          setReferrerId(null);
+        });
+    } else {
+      setReferrerId(null);
+    }
+  }, [params]);
 
   // Fetch packs
   useEffect(() => {
@@ -150,6 +172,7 @@ function ReservarCumplePageInner() {
         timeSlot,
         packId,
         guestsPlanned,
+        ...(referrerId && { referrerId }),
       };
       const res = await fetch("/api/birthdays/reservations", {
         method: "POST",
