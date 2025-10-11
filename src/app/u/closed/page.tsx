@@ -13,8 +13,8 @@ function localYMD(): string {
 
 function ClosedPageInner() {
   const params = useSearchParams();
-  const day = params.get("day") || localYMD();
-  const scanId = params.get("scanId") || "";
+  const day = params ? params.get("day") || localYMD() : localYMD();
+  const scanId = params ? params.get("scanId") || "" : "";
   const time = useMemo(() => new Date().toLocaleTimeString(), []);
   
 

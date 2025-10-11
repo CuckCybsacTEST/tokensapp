@@ -91,8 +91,8 @@ function TaskCommentBox({ day, taskId }: { day: string; taskId: string }) {
 function ChecklistPageInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const day = params.get("day");
-  const mode = params.get("mode"); // opcional, solo hint de UI
+  const day = params ? params.get("day") : null;
+  const mode = params ? params.get("mode") : null; // opcional, solo hint de UI
   const [recent, setRecent] = useState<Recent>(null);
   // Estado real del día actual según última marca de asistencia
   const [lastTodayType, setLastTodayType] = useState<"IN" | "OUT" | null>(null);

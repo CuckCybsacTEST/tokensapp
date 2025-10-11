@@ -65,15 +65,19 @@ export default function PurgeBatchesClient() {
   function toggle(id: string) {
     setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
-  function selectNone() { setSelected(new Set()); }
-  function selectAll() { setSelected(new Set(batches.map(b=>b.id))); }
-  function selectLatest(n: number) { setSelected(new Set(batches.slice(0,n).map(b=>b.id))); }
+  
+  const selectNone = useCallback(() => { setSelected(new Set()); }, []);
+  const selectAll = useCallback(() => { setSelected(new Set(batches.map(b=>b.id))); }, [batches]);
+  const selectLatest = useCallback((n: number) => { setSelected(new Set(batches.slice(0,n).map(b=>b.id))); }, [batches]);
 
   async function runDry() {
     if (!purgeOrphansOnly && !selected.size) return;
     setDryRun(null); setResult(null); setError(null);
     try {
-      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: Array.from(selected), options: { dryRun: true, deleteUnusedPrizes, purgeOrphansOnly } }) });
+      const body = purgeOrphansOnly 
+        ? { options: { dryRun: true, deleteUnusedPrizes, purgeOrphansOnly } }
+        : { batchIds: Array.from(selected), options: { dryRun: true, deleteUnusedPrizes, purgeOrphansOnly } };
+      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error dry-run');
       setDryRun(j);
@@ -88,7 +92,10 @@ export default function PurgeBatchesClient() {
     if (confirmText !== 'PURGE') { setError('Debes escribir PURGE para confirmar.'); return; }
     setError(null);
     try {
-      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ batchIds: dryRun.batchIds, options: { dryRun: false, deleteUnusedPrizes, purgeOrphansOnly } }) });
+      const body = purgeOrphansOnly 
+        ? { options: { dryRun: false, deleteUnusedPrizes, purgeOrphansOnly } }
+        : { batchIds: dryRun.batchIds, options: { dryRun: false, deleteUnusedPrizes, purgeOrphansOnly } };
+      const r = await fetch('/api/admin/batches/purge', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error purge');
       setResult(j);
@@ -134,10 +141,10 @@ export default function PurgeBatchesClient() {
       {error && <div className="bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 p-3 rounded text-xs">{error}</div>}
       <div className="flex flex-wrap gap-2 items-center text-xs">
         <button onClick={load} disabled={loading} className="btn-outline !px-2 !py-1">Refrescar</button>
-        <button onClick={selectAll} className="btn-outline !px-2 !py-1">Seleccionar todo</button>
-        <button onClick={()=>selectLatest(5)} className="btn-outline !px-2 !py-1">Latest 5</button>
-        <button onClick={()=>selectLatest(10)} className="btn-outline !px-2 !py-1">Latest 10</button>
-        <button onClick={selectNone} className="btn-outline !px-2 !py-1">Limpiar selección</button>
+        <button onClick={selectAll} disabled={purgeOrphansOnly || batches.length === 0} className="btn-outline !px-2 !py-1">Seleccionar todo</button>
+        <button onClick={()=>selectLatest(5)} disabled={purgeOrphansOnly || batches.length === 0} className="btn-outline !px-2 !py-1">Latest 5</button>
+        <button onClick={()=>selectLatest(10)} disabled={purgeOrphansOnly || batches.length === 0} className="btn-outline !px-2 !py-1">Latest 10</button>
+        <button onClick={selectNone} disabled={selected.size === 0} className="btn-outline !px-2 !py-1">Limpiar selección</button>
         <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={deleteUnusedPrizes} disabled={purgeOrphansOnly} onChange={e=>setDeleteUnusedPrizes(e.target.checked)} /> <span>Eliminar prizes huérfanos</span></label>
         <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={purgeOrphansOnly} onChange={e=>{ setPurgeOrphansOnly(e.target.checked); setSelected(new Set()); setDryRun(null); setResult(null); }} /> <span>Solo purgar prizes huérfanos</span></label>
         <label className="inline-flex items-center gap-1 cursor-pointer select-none"><input type="checkbox" checked={force} onChange={e=>setForce(e.target.checked)} /> <span>FORCE</span></label>
@@ -192,7 +199,7 @@ export default function PurgeBatchesClient() {
       )}
       <div className="flex flex-col gap-3 border rounded p-4 bg-slate-50 dark:bg-slate-800/30">
         <div className="flex gap-2 flex-wrap items-center">
-          <button disabled={!selected.size} onClick={runDry} className="btn !px-3 !py-1 text-xs">Dry-run</button>
+          <button disabled={(!purgeOrphansOnly && !selected.size)} onClick={runDry} className="btn !px-3 !py-1 text-xs">Dry-run</button>
           <div className="text-[11px] text-slate-600 dark:text-slate-400">Seleccionados: {selected.size}</div>
           {dryRun && !result && <>
             <input value={confirmText} onChange={e=>setConfirmText(e.target.value)} placeholder="Escribe PURGE" className="input !h-7 !text-[11px]" />

@@ -91,20 +91,23 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Próximamente: Gestión de Carta y Pedidos */}
+        {/* Gestión de Restaurante */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-center mb-3">
-            <div className="mr-3 p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6M9 8h6M4 6h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+            <div className="mr-3 p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Gestión de Carta y Pedidos</h3>
-            <span className="ml-2 text-xs px-2 py-0.5 rounded bg-slate-700/60 text-slate-200">Próximamente</span>
+            <h3 className="text-lg font-semibold">Gestión de Restaurante</h3>
           </div>
-          
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
+            Administra mesas, carta del menú y pedidos del restaurante.
+          </p>
           <div className="flex flex-wrap gap-2">
-            <button className="btn opacity-60 cursor-not-allowed pointer-events-none" aria-disabled="true" title="Disponible próximamente">Próximamente</button>
+            <a href="/admin/tables" className="btn">Mesas</a>
+            <a href="/admin/menu" className="btn">Menú</a>
+            <a href="/orders" className="btn">Pedidos</a>
           </div>
         </div>
 

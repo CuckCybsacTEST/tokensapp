@@ -480,3 +480,153 @@ enum ShowStatus {
   PUBLISHED
   ARCHIVED
 }
+
+// ===== SISTEMA DE CARTA DIGITAL =====
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?   // emoji o icon name
+  order       Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@index([order])
+  @@index([active])
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  available   Boolean   @default(true)
+  featured    Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orderItems  OrderItem[]
+
+  @@index([categoryId])
+  @@index([available])
+  @@index([featured])
+  @@index([order])
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  number    Int      @unique
+  name      String?  // ej: "Terraza 01", "VIP 05"
+  zone      String?  // ej: "Terraza", "VIP", "Barra"
+  capacity  Int      @default(4)
+  active    Boolean  @default(true)
+  qrCode    String?  @unique // URL del QR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+
+  @@index([zone])
+  @@index([active])
+}
+
+enum StaffRole {
+  WAITER    // Mozo
+  CASHIER   // Caja
+  ADMIN     // Administrador
+  BARTENDER // Bartender
+}
+
+model Staff {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  name      String
+  role      StaffRole
+  active    Boolean    @default(true)
+  zones     String[]   // zonas asignadas: ["Terraza", "VIP"]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  orders    Order[]
+
+  @@index([role])
+  @@index([active])
+}
+
+enum OrderStatus {
+  PENDING     // Pendiente
+  CONFIRMED   // Confirmado por mozo
+  PREPARING   // En preparación
+  READY       // Listo para servir
+  DELIVERED   // Entregado
+  CANCELLED   // Cancelado
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  tableId     String
+  table       Table       @relation(fields: [tableId], references: [id])
+  staffId     String?     // mozo asignado
+  staff       Staff?      @relation(fields: [staffId], references: [id])
+  status      OrderStatus @default(PENDING)
+  total       Float       @default(0)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  confirmedAt DateTime?
+  readyAt     DateTime?
+  deliveredAt DateTime?
+  items       OrderItem[]
+
+  @@index([tableId])
+  @@index([staffId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  price     Float    // precio al momento del pedido
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum NotificationType {
+  ORDER_NEW        // Nuevo pedido
+  ORDER_CONFIRMED  // Pedido confirmado
+  ORDER_READY      // Pedido listo
+  ORDER_DELIVERED  // Pedido entregado
+  ORDER_CANCELLED  // Pedido cancelado
+  STAFF_ALERT      // Alerta a staff
+  SYSTEM_MESSAGE   // Mensaje del sistema
+}
+
+model Notification {
+  id        String            @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  recipient String?           // userId del destinatario (null = broadcast)
+  sender    String?           // userId del remitente
+  orderId   String?           // referencia a pedido si aplica
+  read      Boolean           @default(false)
+  readAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  @@index([recipient])
+  @@index([type])
+  @@index([read])
+  @@index([createdAt])
+}

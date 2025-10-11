@@ -58,7 +58,7 @@ export function SpotifyEmbed({ embedUrl, heights, className }: Props) {
         <iframe
           title="Spotify - player"
           className="sp-frame"
-          style={{ border: 0, width: "100%" }}
+          style={{ border: 0, width: "100%", backgroundColor: "#121212" }}
           src={embedUrl}
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           onLoad={() => setLoaded(true)}
@@ -78,13 +78,14 @@ export function SpotifyEmbed({ embedUrl, heights, className }: Props) {
           height: 100%;
           background: linear-gradient(
             90deg,
-            rgba(255, 255, 255, 0.06),
-            rgba(255, 255, 255, 0.1),
-            rgba(255, 255, 255, 0.06)
+            rgba(29, 185, 84, 0.08),
+            rgba(29, 185, 84, 0.15),
+            rgba(29, 185, 84, 0.08)
           );
           background-size: 200% 100%;
           animation: spShine 1.2s linear infinite;
           pointer-events: none;
+          border-radius: 12px;
         }
         @keyframes spShine {
           0% {

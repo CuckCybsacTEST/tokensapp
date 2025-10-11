@@ -6,6 +6,43 @@ Aplicación Next.js para generación de tokens con premios preasignados, QRs y c
 
 > Rebrand: el proyecto antes referenciado como "QR Prizes" / "QR Platform" ahora se denomina **Go Lounge!**. Cualquier referencia antigua en logs o eventos se mantiene para trazabilidad histórica.
 
+## 🍽️ Sistema de Menú Digital
+
+**¡NUEVO!** Sistema completo de menú digital para restaurante con comunicación en tiempo real.
+
+### Características Principales
+- ✅ **Menú Interactivo**: Carta digital con categorías y productos
+- ✅ **Pedidos en Tiempo Real**: Sistema de pedidos con Socket.IO
+- ✅ **Dashboard Staff**: Gestión de pedidos para mozos y caja
+- ✅ **Identificación de Mesa**: QR codes para mesas
+- ✅ **Notificaciones Live**: Actualizaciones instantáneas
+- ✅ **TypeScript**: Completamente tipado y validado
+
+### Acceso Rápido
+- **Menú Cliente**: `http://localhost:3000/menu`
+- **Dashboard Staff**: `http://localhost:3000/staff/dashboard`
+- **Documentación**: [`README-MENU.md`](./README-MENU.md)
+- **APIs**: [`docs/apis.md`](./docs/apis.md)
+- **Arquitectura**: [`docs/architecture.md`](./docs/architecture.md)
+- **Despliegue**: [`docs/deployment.md`](./docs/deployment.md)
+
+### Inicio Rápido Menú
+```bash
+# Instalar dependencias
+npm install
+
+# Configurar base de datos
+npx prisma generate
+npx prisma migrate deploy
+
+# Poblar datos del menú
+npx tsx scripts/seed-menu.ts
+npx tsx scripts/seed-tables.ts
+
+# Iniciar desarrollo
+npm run dev
+```
+
 ## Stack
 - Next.js (App Router)
 - Prisma + SQLite

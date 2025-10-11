@@ -14,10 +14,11 @@ type TokenDto = {
 };
 
 export default function QRsFinalesPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>() || {};
+  const id = (params && typeof params === 'object' && 'id' in params) ? params.id : "";
   const qs = useSearchParams();
-  const cs = qs.get("cs") || "";
-  const mode = qs.get("mode") || "";
+  const cs = qs ? qs.get("cs") || "" : "";
+  const mode = qs ? qs.get("mode") || "" : "";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

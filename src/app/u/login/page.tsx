@@ -7,7 +7,7 @@ export const fetchCache = 'force-no-store';
 
 function LoginClient() {
   const params = useSearchParams();
-  const next = params.get("next") || "/u";
+  const next = params ? params.get("next") || "/u" : "/u";
   const [dniOrUser, setDniOrUser] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

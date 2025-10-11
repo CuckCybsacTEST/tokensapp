@@ -10,6 +10,7 @@ export function PrintControlClient() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [batches, setBatches] = useState<any[]>([]);
+  const [batchTokenInfo, setBatchTokenInfo] = useState<Record<string, { total: number; printable: number }>>({});
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
@@ -111,6 +112,33 @@ export function PrintControlClient() {
         const batchesData = await batchesRes.json();
         if (!mounted) return;
         setBatches(batchesData);
+
+        // Calcular tokens imprimibles para cada batch
+        const tokenInfo: Record<string, { total: number; printable: number }> = {};
+        for (const batch of batchesData) {
+          const totalTokens = batch?.tokens?.length || 0;
+          try {
+            const reservedRes = await fetch('/api/admin/batches/reserved-tokens', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ batchId: batch.id })
+            });
+            if (reservedRes.ok) {
+              const reservedData = await reservedRes.json();
+              const reservedCount = reservedData.reservedIds?.length || 0;
+              tokenInfo[batch.id] = {
+                total: totalTokens,
+                printable: Math.max(0, totalTokens - reservedCount)
+              };
+            } else {
+              tokenInfo[batch.id] = { total: totalTokens, printable: totalTokens };
+            }
+          } catch (error) {
+            console.error(`Error calculating printable tokens for batch ${batch.id}:`, error);
+            tokenInfo[batch.id] = { total: totalTokens, printable: totalTokens };
+          }
+        }
+        if (mounted) setBatchTokenInfo(tokenInfo);
         
         // Si hay un lote preseleccionado, establecerlo
         if (preselectedBatchId && batchesData.some((b: any) => b.id === preselectedBatchId)) {
@@ -426,10 +454,10 @@ export function PrintControlClient() {
           <option value="">Seleccione un lote</option>
           {batches.map((batch) => {
             const label = formatBatchLabel(batch);
-            const count = Number(batch?.tokens?.length || 0);
+            const tokenInfo = batchTokenInfo[batch.id] || { total: batch?.tokens?.length || 0, printable: batch?.tokens?.length || 0 };
             return (
-              <option key={batch.id} value={batch.id} title={`${label} — ${batch.id}`}>
-                {label} ({count} tokens)
+              <option key={batch.id} value={batch.id} title={`${label} — ${batch.id} — Total: ${tokenInfo.total}, Imprimibles: ${tokenInfo.printable}`}>
+                {label} (Total: {tokenInfo.total}, Imprimibles: {tokenInfo.printable})
               </option>
             );
           })}
