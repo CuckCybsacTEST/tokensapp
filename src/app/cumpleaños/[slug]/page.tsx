@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 export default function CumpleañosPage() {
   const params = useParams();
   const router = useRouter();
-  const slug = params.slug as string;
+  const slug = params && typeof params === 'object' && 'slug' in params ? (params.slug as string) : "";
 
   useEffect(() => {
     if (!slug) {

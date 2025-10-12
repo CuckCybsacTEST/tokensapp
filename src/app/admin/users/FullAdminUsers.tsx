@@ -23,6 +23,104 @@ export default function FullAdminUsers() {
   const [nameEdit, setNameEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
   const [areaEdit, setAreaEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
   const [waEdit, setWaEdit] = useState<Record<string, { open: boolean; value: string; saving?: boolean }>>({});
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+
+  async function downloadUsersBackup() {
+    setMsg(null); setErr(null);
+    try {
+      setBackupLoading(true);
+      const res = await fetch('/api/admin/users/backup');
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `usuarios_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        setMsg('Backup descargado exitosamente');
+      } else {
+        const j = await res.json().catch(()=>({}));
+        const back = j?.message || res.status;
+        setErr(`Error al descargar backup: ${back}`);
+      }
+    } catch (e: any) {
+      setErr(`Error de red: ${String(e?.message || e)}`);
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  async function uploadUsersBackup() {
+    if (!restoreFile) {
+      setErr('Selecciona un archivo de backup primero');
+      return;
+    }
+
+    // Confirmación de seguridad
+    const confirmed = confirm(
+      '⚠️ ADVERTENCIA: Esta acción puede modificar datos existentes.\n\n' +
+      '• Los usuarios existentes serán actualizados (excepto contraseñas)\n' +
+      '• Los usuarios nuevos serán creados con contraseña dummy\n' +
+      '• Se recomienda hacer un backup antes de proceder\n\n' +
+      '¿Estás seguro de que quieres continuar?'
+    );
+
+    if (!confirmed) return;
+
+    setMsg(null); setErr(null);
+    try {
+      setRestoreLoading(true);
+
+      // Leer el archivo
+      const text = await restoreFile.text();
+      let backupData;
+      try {
+        backupData = JSON.parse(text);
+      } catch (e) {
+        setErr('El archivo no es un JSON válido');
+        return;
+      }
+
+      // Validar estructura básica
+      if (!backupData.metadata || !backupData.users || !Array.isArray(backupData.users)) {
+        setErr('El archivo no tiene la estructura esperada de backup');
+        return;
+      }
+
+      // Enviar a la API
+      const formData = new FormData();
+      formData.append('backup', restoreFile);
+
+      const res = await fetch('/api/admin/users/backup', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setMsg(`Backup restaurado exitosamente. ${result.processed} usuarios procesados, ${result.created} creados, ${result.updated} actualizados.`);
+        setRestoreFile(null);
+        // Limpiar el input file
+        const fileInput = document.getElementById('backup-file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        // Recargar la lista
+        loadUsers();
+      } else {
+        const j = await res.json().catch(()=>({}));
+        const back = j?.message || res.status;
+        setErr(`Error al restaurar backup: ${back}`);
+      }
+    } catch (e: any) {
+      setErr(`Error de red: ${String(e?.message || e)}`);
+    } finally {
+      setRestoreLoading(false);
+    }
+  }
 
   async function loadUsers() {
     try {
@@ -145,7 +243,59 @@ export default function FullAdminUsers() {
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold flex items-center justify-between">
         <span>Usuarios (Admin)</span>
-        <span className="text-xs font-normal text-slate-500">Gestión de colaboradores (rol, nombre, credenciales)</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <input
+              id="backup-file"
+              type="file"
+              accept=".json"
+              onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+              className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <button
+              onClick={uploadUsersBackup}
+              disabled={restoreLoading || !restoreFile}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+            >
+              {restoreLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Restaurando...
+                </>
+              ) : (
+                <>
+                  📤 Restaurar Backup
+                </>
+              )}
+            </button>
+          </div>
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-yellow-600 text-lg">⚠️</span>
+              <div className="text-sm text-yellow-800">
+                <strong>Advertencia:</strong> La restauración de backup puede modificar datos existentes.
+                Se recomienda hacer un backup antes de proceder. Los usuarios nuevos serán creados con contraseña temporal.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={downloadUsersBackup}
+            disabled={backupLoading}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+          >
+            {backupLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Generando...
+              </>
+            ) : (
+              <>
+                📥 Backup Usuarios
+              </>
+            )}
+          </button>
+          <span className="text-xs font-normal text-slate-500">Gestión de colaboradores (rol, nombre, credenciales)</span>
+        </div>
       </h1>
       {msg && <div className="border border-green-700 bg-green-950/30 text-green-200 rounded p-3 text-sm">{msg}</div>}
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}

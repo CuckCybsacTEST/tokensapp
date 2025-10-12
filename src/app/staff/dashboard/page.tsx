@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChefHat, Clock, CheckCircle, XCircle, Users, Bell, RefreshCw } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, XCircle, Users, Bell, RefreshCw, AlertCircle } from "lucide-react";
 import { useStaffSocket } from "../../../hooks/useSocket";
 
 interface Order {
@@ -24,11 +24,47 @@ interface Order {
   }>;
 }
 
+interface StaffProfile {
+  hasRestaurantAccess: boolean;
+  area: string | null;
+  restaurantRole: string | null;
+  staffId: string;
+  zones: string[];
+  permissions: {
+    canViewOrders: boolean;
+    canUpdateOrderStatus: boolean;
+    canAssignTables: boolean;
+    canCloseOrders: boolean;
+    canMarkReady: boolean;
+    allowedStatuses: string[];
+  };
+}
+
 export default function StaffDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
+  const [staffLoading, setStaffLoading] = useState<boolean>(true);
   const { socket, isConnected } = useStaffSocket();
+
+  const fetchStaffProfile = async () => {
+    try {
+      const response = await fetch("/api/staff/me");
+      if (response.ok) {
+        const data = await response.json();
+        setStaffProfile(data);
+      } else if (response.status === 401) {
+        // Usuario no autenticado, redirigir a login
+        window.location.href = "/u/login";
+        return;
+      }
+    } catch (error) {
+      console.error("Error fetching staff profile:", error);
+    } finally {
+      setStaffLoading(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -45,6 +81,17 @@ export default function StaffDashboard() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    // Validar permisos antes de actualizar
+    if (!staffProfile?.permissions.canUpdateOrderStatus) {
+      alert("No tienes permisos para cambiar el estado de los pedidos");
+      return;
+    }
+
+    if (!staffProfile.permissions.allowedStatuses.includes(newStatus)) {
+      alert(`No puedes cambiar el estado a ${newStatus}`);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
@@ -116,8 +163,14 @@ export default function StaffDashboard() {
   const readyOrders = orders.filter(o => o.status === "READY").length;
 
   useEffect(() => {
-    fetchOrders();
+    fetchStaffProfile();
   }, []);
+
+  useEffect(() => {
+    if (staffProfile?.hasRestaurantAccess) {
+      fetchOrders();
+    }
+  }, [staffProfile]);
 
   useEffect(() => {
     if (socket) {
@@ -146,10 +199,35 @@ export default function StaffDashboard() {
     }
   }, [socket]);
 
+  if (staffLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-xl">Cargando perfil...</div>
+      </div>
+    );
+  }
+
+  if (!staffProfile?.hasRestaurantAccess) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-white mb-2">Acceso Restringido</h1>
+          <p className="text-gray-400 mb-4">
+            Tu área actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
+          </p>
+          <p className="text-gray-500 text-sm">
+            Solo usuarios de Caja, Barra o Mozos pueden acceder al dashboard de restaurante.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Cargando dashboard...</div>
+        <div className="text-white text-xl">Cargando pedidos...</div>
       </div>
     );
   }
@@ -160,7 +238,12 @@ export default function StaffDashboard() {
       <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard Personal</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard de Restaurante</h1>
+              <p className="text-sm text-gray-400">
+                Área: {staffProfile?.area} | Rol: {staffProfile?.restaurantRole}
+              </p>
+            </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
@@ -298,40 +381,42 @@ export default function StaffDashboard() {
               </div>
 
               {/* Acciones */}
-              <div className="flex gap-2 mt-4">
-                {order.status === "PENDING" && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, "PREPARING")}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Iniciar PreparaciÃ³n
-                  </button>
-                )}
-                {order.status === "PREPARING" && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, "READY")}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Marcar como Listo
-                  </button>
-                )}
-                {order.status === "READY" && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, "DELIVERED")}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Marcar como Entregado
-                  </button>
-                )}
-                {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
-                  <button
-                    onClick={() => updateOrderStatus(order.id, "CANCELLED")}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                )}
-              </div>
+              {staffProfile?.permissions.canUpdateOrderStatus && (
+                <div className="flex gap-2 mt-4">
+                  {order.status === "PENDING" && staffProfile.permissions.allowedStatuses.includes("PREPARING") && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "PREPARING")}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Iniciar Preparación
+                    </button>
+                  )}
+                  {order.status === "PREPARING" && staffProfile.permissions.allowedStatuses.includes("READY") && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "READY")}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Marcar como Listo
+                    </button>
+                  )}
+                  {order.status === "READY" && staffProfile.permissions.allowedStatuses.includes("DELIVERED") && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "DELIVERED")}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Marcar como Entregado
+                    </button>
+                  )}
+                  {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CANCELLED") && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "CANCELLED")}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

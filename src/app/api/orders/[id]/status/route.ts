@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
+import { mapAreaToStaffRole, getStaffPermissions } from "@/lib/staff-roles";
+import { isValidArea } from "@/lib/areas";
 
 const prisma = new PrismaClient();
 
@@ -8,6 +11,51 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Verificar autenticación
+    const cookie = getUserSessionCookieFromRequest(request);
+    const session = await verifyUserSessionCookie(cookie);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      );
+    }
+
+    // Obtener perfil del usuario
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      include: { person: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // Validar que tenga acceso al restaurante
+    const userArea = user.person?.area;
+    const validArea = userArea && isValidArea(userArea) ? userArea : null;
+    const restaurantRole = mapAreaToStaffRole(validArea);
+
+    if (!restaurantRole) {
+      return NextResponse.json(
+        { error: "No tienes acceso al sistema de restaurante" },
+        { status: 403 }
+      );
+    }
+
+    const permissions = getStaffPermissions(restaurantRole);
+
+    if (!permissions.canUpdateOrderStatus) {
+      return NextResponse.json(
+        { error: "No tienes permisos para actualizar estados de pedidos" },
+        { status: 403 }
+      );
+    }
+
     const { status } = await request.json();
     console.log("🔄 Recibido status:", status, "para order:", params.id);
 
@@ -15,6 +63,14 @@ export async function PATCH(
       return NextResponse.json(
         { error: "Status is required" },
         { status: 400 }
+      );
+    }
+
+    // Validar que el estado esté permitido para este rol
+    if (!permissions.allowedStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `No tienes permisos para cambiar el estado a ${status}` },
+        { status: 403 }
       );
     }
 
@@ -50,10 +106,10 @@ export async function PATCH(
     // Actualizar el estado del pedido
     const updatedOrder = await prisma.order.update({
       where: {
-  id: params.id,
+        id: params.id,
       },
       data: {
-        status: status,
+        status: dbStatus,
         updatedAt: new Date(),
       },
       include: {
