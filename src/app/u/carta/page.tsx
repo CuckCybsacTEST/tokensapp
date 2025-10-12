@@ -40,7 +40,7 @@ interface StaffProfile {
   };
 }
 
-export default function StaffDashboard() {
+export default function CartaDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -50,7 +50,7 @@ export default function StaffDashboard() {
 
   const fetchStaffProfile = async () => {
     try {
-      const response = await fetch("/api/staff/me");
+      const response = await fetch("/api/carta/me");
       if (response.ok) {
         const data = await response.json();
         setStaffProfile(data);

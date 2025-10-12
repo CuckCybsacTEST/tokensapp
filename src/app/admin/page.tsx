@@ -91,7 +91,7 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Gestión de Restaurante */}
+        {/* Gestión de la Carta */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-center mb-3">
             <div className="mr-3 p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
@@ -99,15 +99,15 @@ export default async function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Gestión de Restaurante</h3>
+            <h3 className="text-lg font-semibold">Gestión de la Carta</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
-            Administra mesas, carta del menú y pedidos del restaurante.
+            Administra mesas, carta del menú y pedidos.
           </p>
           <div className="flex flex-wrap gap-2">
-            <a href="/u/restaurant/tables" className="btn">Mesas</a>
-            <a href="/u/restaurant/menu" className="btn">Menú</a>
-            <a href="/u/restaurant" className="btn">Dashboard</a>
+            <a href="/u/carta/tables" className="btn">Mesas</a>
+            <a href="/u/carta/menu" className="btn">Menú</a>
+            <a href="/u/carta" className="btn">Dashboard</a>
           </div>
         </div>
 

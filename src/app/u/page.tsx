@@ -23,8 +23,8 @@ export default async function UHome() {
   // Mostrar control de tokens a cualquier STAFF (antes solo Caja)
   const isStaff = session.role === 'STAFF';
 
-  // Verificar acceso al restaurante
-  let hasRestaurantAccess = false;
+  // Verificar acceso a la carta
+  let hasCartaAccess = false;
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
@@ -32,8 +32,8 @@ export default async function UHome() {
     });
     const userArea = user?.person?.area;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
-    const restaurantRole = mapAreaToStaffRole(validArea);
-    hasRestaurantAccess = !!restaurantRole;
+    const cartaRole = mapAreaToStaffRole(validArea);
+    hasCartaAccess = !!cartaRole;
   } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
@@ -115,9 +115,9 @@ export default async function UHome() {
                 </Link>
               )}
               {session.role === 'STAFF' && (
-                hasRestaurantAccess ? (
-                  <Link href="/u/restaurant" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
-                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Dashboard Restaurante</div>
+                hasCartaAccess ? (
+                  <Link href="/u/carta" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Dashboard de la Carta</div>
                   </Link>
                 ) : (
                   <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
