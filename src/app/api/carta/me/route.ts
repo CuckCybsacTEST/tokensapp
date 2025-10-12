@@ -38,10 +38,14 @@ export async function GET(request: NextRequest) {
     const userArea = user.person?.area;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
     const restaurantRole = mapAreaToStaffRole(validArea);
-    const permissions = getStaffPermissions(restaurantRole);
+    
+    // Si es STAFF, darle acceso completo como ADMIN de restaurante
+    const isStaffUser = session.role === 'STAFF';
+    const effectiveRole = isStaffUser ? 'ADMIN' : restaurantRole;
+    const permissions = getStaffPermissions(effectiveRole);
 
-    // Si no tiene rol de restaurante, devolver acceso limitado
-    if (!restaurantRole) {
+    // Si no tiene rol de restaurante y no es STAFF, devolver acceso limitado
+    if (!restaurantRole && !isStaffUser) {
       return NextResponse.json({
         hasRestaurantAccess: false,
         area: validArea,
@@ -50,7 +54,8 @@ export async function GET(request: NextRequest) {
           canUpdateOrderStatus: false,
           canAssignTables: false,
           canCloseOrders: false,
-          canMarkReady: false
+          canMarkReady: false,
+          allowedStatuses: []
         }
       });
     }
@@ -66,17 +71,23 @@ export async function GET(request: NextRequest) {
         data: {
           userId: user.id,
           name: user.person?.name || user.username,
-          role: restaurantRole,
+          role: effectiveRole,
           zones: [], // Por defecto sin zonas asignadas
           active: true
         }
+      });
+    } else if (staffRecord.role !== effectiveRole) {
+      // Actualizar rol si cambió
+      staffRecord = await prisma.staff.update({
+        where: { id: staffRecord.id },
+        data: { role: effectiveRole }
       });
     }
 
     return NextResponse.json({
       hasRestaurantAccess: true,
       area: validArea,
-      restaurantRole,
+      restaurantRole: effectiveRole,
       staffId: staffRecord.id,
       zones: staffRecord.zones,
       permissions

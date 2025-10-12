@@ -33,7 +33,7 @@ export default async function UHome() {
     const userArea = user?.person?.area;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
     const cartaRole = mapAreaToStaffRole(validArea);
-    hasCartaAccess = !!cartaRole;
+    hasCartaAccess = !!cartaRole || session.role === 'STAFF';
   } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
@@ -122,7 +122,7 @@ export default async function UHome() {
                 ) : (
                   <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
                     <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">La Carta</div>
-                    <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Asigna un área (Caja, Barra, Mozos) para acceder</div>
+                    <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Acceso restringido</div>
                   </div>
                 )
               )}
