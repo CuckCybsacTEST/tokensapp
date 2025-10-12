@@ -105,9 +105,9 @@ export default async function AdminDashboard() {
             Administra mesas, carta del menú y pedidos del restaurante.
           </p>
           <div className="flex flex-wrap gap-2">
-            <a href="/admin/tables" className="btn">Mesas</a>
-            <a href="/admin/menu" className="btn">Menú</a>
-            <a href="/orders" className="btn">Pedidos</a>
+            <a href="/u/restaurant/tables" className="btn">Mesas</a>
+            <a href="/u/restaurant/menu" className="btn">Menú</a>
+            <a href="/u/restaurant" className="btn">Dashboard</a>
           </div>
         </div>
 

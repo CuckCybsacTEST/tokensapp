@@ -6,6 +6,8 @@ import { prisma } from '@/lib/prisma';
 import CommitmentModal from './CommitmentModal';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
 import AutoAttendanceCard from './AutoAttendanceCard';
+import { mapAreaToStaffRole } from '@/lib/staff-roles';
+import { isValidArea } from '@/lib/areas';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -20,6 +22,19 @@ export default async function UHome() {
 
   // Mostrar control de tokens a cualquier STAFF (antes solo Caja)
   const isStaff = session.role === 'STAFF';
+
+  // Verificar acceso al restaurante
+  let hasRestaurantAccess = false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      include: { person: { select: { area: true } } }
+    });
+    const userArea = user?.person?.area;
+    const validArea = userArea && isValidArea(userArea) ? userArea : null;
+    const restaurantRole = mapAreaToStaffRole(validArea);
+    hasRestaurantAccess = !!restaurantRole;
+  } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
   const cutoff = getConfiguredCutoffHour();
@@ -100,10 +115,16 @@ export default async function UHome() {
                 </Link>
               )}
               {session.role === 'STAFF' && (
-                <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
-                  <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">La Carta (próximamente)</div>
-                  <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Muy pronto disponible</div>
-                </div>
+                hasRestaurantAccess ? (
+                  <Link href="/u/restaurant" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Dashboard Restaurante</div>
+                  </Link>
+                ) : (
+                  <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">La Carta</div>
+                    <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Asigna un área (Caja, Barra, Mozos) para acceder</div>
+                  </div>
+                )
               )}
             </div>
           )}
