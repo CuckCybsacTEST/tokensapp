@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
+import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
 import { mapAreaToStaffRole, getStaffPermissions } from "@/lib/staff-roles";
 import { isValidArea } from "@/lib/areas";
 
@@ -11,45 +12,59 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificar autenticación
-    const cookie = getUserSessionCookieFromRequest(request);
-    const session = await verifyUserSessionCookie(cookie);
+    // Verificar autenticación con user_session o admin_session
+    const userCookie = getUserSessionCookieFromRequest(request);
+    const userSession = await verifyUserSessionCookie(userCookie);
+    
+    const adminCookie = getSessionCookieFromRequest(request);
+    const adminSession = await verifySessionCookie(adminCookie);
 
-    if (!session) {
+    if (!userSession && !adminSession) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
       );
     }
 
-    // Obtener perfil del usuario
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: { person: true }
-    });
+    let user = null;
+    let restaurantRole = null;
+    let validArea = null;
+    let permissions = null;
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
+    if (adminSession) {
+      // Si hay sesión de admin, darle acceso completo como ADMIN
+      restaurantRole = 'ADMIN';
+      permissions = getStaffPermissions('ADMIN');
+    } else if (userSession) {
+      // Obtener perfil del usuario
+      user = await prisma.user.findUnique({
+        where: { id: userSession.userId },
+        include: { person: true }
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "Usuario no encontrado" },
+          { status: 404 }
+        );
+      }
+
+      // Validar que tenga acceso al restaurante
+      const userArea = user.person?.area;
+      validArea = userArea && isValidArea(userArea) ? userArea : null;
+      restaurantRole = mapAreaToStaffRole(validArea);
+
+      if (!restaurantRole) {
+        return NextResponse.json(
+          { error: "No tienes acceso al sistema de restaurante" },
+          { status: 403 }
+        );
+      }
+
+      permissions = getStaffPermissions(restaurantRole);
     }
 
-    // Validar que tenga acceso al restaurante
-    const userArea = user.person?.area;
-    const validArea = userArea && isValidArea(userArea) ? userArea : null;
-    const restaurantRole = mapAreaToStaffRole(validArea);
-
-    if (!restaurantRole) {
-      return NextResponse.json(
-        { error: "No tienes acceso al sistema de restaurante" },
-        { status: 403 }
-      );
-    }
-
-    const permissions = getStaffPermissions(restaurantRole);
-
-    if (!permissions.canUpdateOrderStatus) {
+    if (!permissions || !permissions.canUpdateOrderStatus) {
       return NextResponse.json(
         { error: "No tienes permisos para actualizar estados de pedidos" },
         { status: 403 }
@@ -67,7 +82,7 @@ export async function PATCH(
     }
 
     // Validar que el estado esté permitido para este rol
-    if (!permissions.allowedStatuses.includes(status)) {
+    if (permissions && !permissions.allowedStatuses.includes(status)) {
       return NextResponse.json(
         { error: `No tienes permisos para cambiar el estado a ${status}` },
         { status: 403 }
@@ -85,20 +100,20 @@ export async function PATCH(
       );
     }
 
-    // Mapear status a formato de base de datos
+    // Mapear status a formato de base de datos (Prisma espera valores en inglés)
     const statusMapping: { [key: string]: string } = {
-      "PENDING": "pendiente",
-      "CONFIRMED": "confirmado", 
-      "PREPARING": "preparando",
-      "READY": "listo",
-      "DELIVERED": "entregado",
-      "CANCELLED": "cancelado",
-      "pendiente": "pendiente",
-      "confirmado": "confirmado",
-      "preparando": "preparando",
-      "listo": "listo",
-      "entregado": "entregado",
-      "cancelado": "cancelado"
+      "PENDING": "PENDING",
+      "CONFIRMED": "CONFIRMED", 
+      "PREPARING": "PREPARING",
+      "READY": "READY",
+      "DELIVERED": "DELIVERED",
+      "CANCELLED": "CANCELLED",
+      "pendiente": "PENDING",
+      "confirmado": "CONFIRMED",
+      "preparando": "PREPARING",
+      "listo": "READY",
+      "entregado": "DELIVERED",
+      "cancelado": "CANCELLED"
     };
 
     const dbStatus = statusMapping[status] || status;

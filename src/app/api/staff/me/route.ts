@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // Verificar autenticación con user_session o admin_session
     const userCookie = getUserSessionCookieFromRequest(request);
     const userSession = await verifyUserSessionCookie(userCookie);
-    
+
     const adminCookie = getSessionCookieFromRequest(request);
     const adminSession = await verifySessionCookie(adminCookie);
 
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       const userArea = user.person?.area;
       validArea = userArea && isValidArea(userArea) ? userArea : null;
       restaurantRole = mapAreaToStaffRole(validArea as any);
-      
+
       // Si es STAFF, darle acceso completo como ADMIN de restaurante
       isStaffUser = userSession.role === 'STAFF';
       effectiveRole = isStaffUser ? 'ADMIN' : restaurantRole;
@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
       area: validArea,
       restaurantRole: effectiveRole,
       staffId: staffRecord.id,
+      name: staffRecord.name,
       zones: staffRecord.zones,
       permissions
     });

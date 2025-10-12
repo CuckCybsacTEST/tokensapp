@@ -491,6 +491,11 @@
 			"label": "Typecheck quick 6",
 			"type": "shell",
 			"command": "npm run -s typecheck"
+		},
+		{
+			"label": "Test order status update",
+			"type": "shell",
+			"command": "powershell"
 		}
 	]
 }

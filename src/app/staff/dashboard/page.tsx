@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChefHat, Clock, CheckCircle, XCircle, Users, Bell, RefreshCw, AlertCircle } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, XCircle, Users, Bell, RefreshCw, AlertCircle, BarChart3, TrendingUp, DollarSign, Timer } from "lucide-react";
 import { useStaffSocket } from "../../../hooks/useSocket";
 
 interface Order {
@@ -46,12 +46,45 @@ interface StaffProfile {
   };
 }
 
-export default function CartaDashboard() {
+interface StaffMetrics {
+  id: string;
+  name: string;
+  role: string;
+  zones: string[];
+  metrics: {
+    totalOrders: number;
+    deliveredOrders: number;
+    pendingOrders: number;
+    cancelledOrders: number;
+    totalRevenue: number;
+    avgDeliveryTime: number;
+    ordersByStatus: Record<string, number>;
+    successRate: number;
+  };
+}
+
+interface MetricsSummary {
+  totalStaff: number;
+  totalOrders: number;
+  totalRevenue: number;
+  avgDeliveryTime: number;
+}
+
+export default function StaffDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [staffLoading, setStaffLoading] = useState<boolean>(true);
+  const [showMetrics, setShowMetrics] = useState<boolean>(false);
+  const [staffMetrics, setStaffMetrics] = useState<StaffMetrics[]>([]);
+  const [metricsSummary, setMetricsSummary] = useState<MetricsSummary | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
+  const [metricsFilters, setMetricsFilters] = useState({
+    dateFrom: "",
+    dateTo: "",
+    zone: ""
+  });
   const { socket, isConnected } = useStaffSocket();
 
   const getRoleDisplayName = (role: string | null) => {
@@ -77,7 +110,7 @@ export default function CartaDashboard() {
 
   const fetchStaffProfile = async () => {
     try {
-      const response = await fetch("/api/carta/me");
+      const response = await fetch("/api/staff/me");
       if (response.ok) {
         const data = await response.json();
         setStaffProfile(data);
@@ -104,6 +137,27 @@ export default function CartaDashboard() {
       console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStaffMetrics = async () => {
+    setMetricsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (metricsFilters.dateFrom) params.append("dateFrom", metricsFilters.dateFrom);
+      if (metricsFilters.dateTo) params.append("dateTo", metricsFilters.dateTo);
+      if (metricsFilters.zone) params.append("zone", metricsFilters.zone);
+
+      const response = await fetch(`/api/staff/metrics?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStaffMetrics(data.staffMetrics || []);
+        setMetricsSummary(data.summary);
+      }
+    } catch (error) {
+      console.error("Error fetching staff metrics:", error);
+    } finally {
+      setMetricsLoading(false);
     }
   };
 
@@ -266,20 +320,24 @@ export default function CartaDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#FF4D2E]">Carta y Pedidos</h1>
+              <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard de Restaurante</h1>
               <p className="text-sm text-gray-400">
                 👤 {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | Área: {getAreaDisplayName(staffProfile?.area)}
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <a
-                href="/u/menu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
+              <button
+                onClick={() => {
+                  setShowMetrics(!showMetrics);
+                  if (!showMetrics) {
+                    fetchStaffMetrics();
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors"
               >
-                👁️ VER CARTA INTERNA
-              </a>
+                <BarChart3 className="w-4 h-4" />
+                <span className="text-sm">Métricas</span>
+              </button>
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
                 <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
@@ -352,6 +410,207 @@ export default function CartaDashboard() {
             </div>
           </motion.div>
         </div>
+
+        {/* Staff Metrics Section */}
+        {showMetrics && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6"
+          >
+            <div className="bg-gray-800/50 rounded-lg p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Rendimiento del Personal
+                </h2>
+                <div className="flex items-center gap-4">
+                  {metricsLoading && <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />}
+                  <button
+                    onClick={fetchStaffMetrics}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+                  >
+                    Actualizar
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="mb-6 p-4 bg-gray-700/30 rounded-lg border border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Fecha Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={metricsFilters.dateFrom}
+                      onChange={(e) => setMetricsFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Fecha Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={metricsFilters.dateTo}
+                      onChange={(e) => setMetricsFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Zona
+                    </label>
+                    <select
+                      value={metricsFilters.zone}
+                      onChange={(e) => setMetricsFilters(prev => ({ ...prev, zone: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                    >
+                      <option value="">Todas las zonas</option>
+                      <option value="Terraza">Terraza</option>
+                      <option value="VIP">VIP</option>
+                      <option value="Interior">Interior</option>
+                      <option value="Bar">Bar</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => {
+                      setMetricsFilters({ dateFrom: "", dateTo: "", zone: "" });
+                      fetchStaffMetrics();
+                    }}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
+                  >
+                    Limpiar Filtros
+                  </button>
+                  <button
+                    onClick={fetchStaffMetrics}
+                    className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded text-sm transition-colors"
+                  >
+                    Aplicar Filtros
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary Cards */}
+              {metricsSummary && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-400 text-sm">Total Personal</p>
+                        <p className="text-2xl font-bold text-blue-400">{metricsSummary.totalStaff}</p>
+                      </div>
+                      <Users className="w-8 h-8 text-blue-400" />
+                    </div>
+                  </div>
+
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-400 text-sm">Pedidos Totales</p>
+                        <p className="text-2xl font-bold text-green-400">{metricsSummary.totalOrders}</p>
+                      </div>
+                      <ChefHat className="w-8 h-8 text-green-400" />
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-yellow-400 text-sm">Ingresos Totales</p>
+                        <p className="text-2xl font-bold text-yellow-400">${metricsSummary.totalRevenue.toFixed(2)}</p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-yellow-400" />
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-400 text-sm">Tiempo Promedio</p>
+                        <p className="text-2xl font-bold text-purple-400">{metricsSummary.avgDeliveryTime}min</p>
+                      </div>
+                      <Timer className="w-8 h-8 text-purple-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Staff Performance Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Mozo</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Rol</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Pedidos</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Entregados</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Pendientes</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Cancelados</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Éxito</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Tiempo Promedio</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffMetrics.map((staff) => (
+                      <tr key={staff.id} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="font-medium text-white">{staff.name}</p>
+                            <p className="text-xs text-gray-400">{staff.zones.join(", ")}</p>
+                          </div>
+                        </td>
+                        <td className="text-center py-3 px-4 text-gray-300 capitalize">
+                          {staff.role.toLowerCase()}
+                        </td>
+                        <td className="text-center py-3 px-4 text-white font-medium">
+                          {staff.metrics.totalOrders}
+                        </td>
+                        <td className="text-center py-3 px-4 text-green-400">
+                          {staff.metrics.deliveredOrders}
+                        </td>
+                        <td className="text-center py-3 px-4 text-yellow-400">
+                          {staff.metrics.pendingOrders}
+                        </td>
+                        <td className="text-center py-3 px-4 text-red-400">
+                          {staff.metrics.cancelledOrders}
+                        </td>
+                        <td className="text-center py-3 px-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            staff.metrics.successRate >= 80 ? 'bg-green-500/20 text-green-400' :
+                            staff.metrics.successRate >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {staff.metrics.successRate}%
+                          </span>
+                        </td>
+                        <td className="text-center py-3 px-4 text-purple-400">
+                          {staff.metrics.avgDeliveryTime}min
+                        </td>
+                        <td className="text-center py-3 px-4 text-blue-400 font-medium">
+                          ${staff.metrics.totalRevenue.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {staffMetrics.length === 0 && !metricsLoading && (
+                <div className="text-center py-8 text-gray-400">
+                  No hay datos de rendimiento disponibles
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Filtros */}
         <div className="mb-6">

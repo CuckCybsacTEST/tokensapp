@@ -15,11 +15,6 @@ interface Order {
     name?: string;
     number?: number;
   };
-  staff?: {
-    id: string;
-    name: string;
-    role: string;
-  };
   items: Array<{
     quantity: number;
     product: {
@@ -34,7 +29,6 @@ interface StaffProfile {
   area: string | null;
   restaurantRole: string | null;
   staffId: string;
-  name?: string;
   zones: string[];
   permissions: {
     canViewOrders: boolean;
@@ -46,7 +40,7 @@ interface StaffProfile {
   };
 }
 
-export default function CartaDashboard() {
+export default function RestaurantDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -54,30 +48,9 @@ export default function CartaDashboard() {
   const [staffLoading, setStaffLoading] = useState<boolean>(true);
   const { socket, isConnected } = useStaffSocket();
 
-  const getRoleDisplayName = (role: string | null) => {
-    switch (role) {
-      case 'WAITER': return 'Mozo';
-      case 'CASHIER': return 'Caja';
-      case 'BARTENDER': return 'Bartender';
-      case 'ADMIN': return 'Administrador';
-      default: return role || 'Usuario';
-    }
-  };
-
-  const getAreaDisplayName = (area: string | null) => {
-    switch (area) {
-      case 'bar': return 'Bar';
-      case 'caja': return 'Caja';
-      case 'cocina': return 'Cocina';
-      case 'terraza': return 'Terraza';
-      case 'vip': return 'VIP';
-      default: return area || 'General';
-    }
-  };
-
   const fetchStaffProfile = async () => {
     try {
-      const response = await fetch("/api/carta/me");
+      const response = await fetch("/api/staff/me");
       if (response.ok) {
         const data = await response.json();
         setStaffProfile(data);
@@ -266,20 +239,12 @@ export default function CartaDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#FF4D2E]">Carta y Pedidos</h1>
+              <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard de Restaurante</h1>
               <p className="text-sm text-gray-400">
-                👤 {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | Área: {getAreaDisplayName(staffProfile?.area)}
+                Área: {staffProfile?.area} | Rol: {staffProfile?.restaurantRole}
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <a
-                href="/u/menu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                👁️ VER CARTA INTERNA
-              </a>
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
                 <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
@@ -387,11 +352,6 @@ export default function CartaDashboard() {
                   <div className={`w-3 h-3 rounded-full ${getStatusColor(order.status)}`}></div>
                   <h3 className="text-lg font-semibold">Pedido #{order.id}</h3>
                   <span className="text-gray-400">Mesa {order.tableId}</span>
-                  {order.staff && (
-                    <span className="text-blue-400 text-sm">
-                      👤 {order.staff.name} ({order.staff.role})
-                    </span>
-                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(order.status)}

@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
+import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
+    // Obtener información del usuario autenticado
+    const userCookie = getUserSessionCookieFromRequest(request);
+    const userSession = await verifyUserSessionCookie(userCookie);
+    
+    const adminCookie = getSessionCookieFromRequest(request);
+    const adminSession = await verifySessionCookie(adminCookie);
+
+    if (!userSession && !adminSession) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      );
+    }
+
+    // Obtener el staffId
+    let staffId = null;
+    if (userSession) {
+      // Para usuarios colaboradores, buscar su registro de staff
+      const staff = await prisma.staff.findUnique({
+        where: { userId: userSession.userId }
+      });
+      staffId = staff?.id || null;
+    } else if (adminSession) {
+      // Para usuarios admin, buscar si tienen un registro de staff
+      // (aunque normalmente los admin no tienen registro de staff)
+      staffId = null;
+    }
+
     const body = await request.json();
     const { tableId, items, notes } = body;
 
@@ -59,6 +89,7 @@ export async function POST(request: NextRequest) {
       const newOrder = await tx.order.create({
         data: {
           tableId,
+          staffId,
           status: "PENDING",
           total,
           notes,
@@ -125,6 +156,8 @@ export async function GET(request: NextRequest) {
       orders = await prisma.order.findMany({
         where: { tableId },
         include: {
+          table: true,
+          staff: true,
           items: {
             include: {
               product: true,
@@ -138,6 +171,7 @@ export async function GET(request: NextRequest) {
       orders = await prisma.order.findMany({
         include: {
           table: true,
+          staff: true,
           items: {
             include: {
               product: true,

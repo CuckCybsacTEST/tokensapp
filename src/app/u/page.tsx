@@ -117,7 +117,7 @@ export default async function UHome() {
               {session.role === 'STAFF' && (
                 hasCartaAccess ? (
                   <Link href="/u/carta" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
-                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Dashboard de la Carta</div>
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Carta y Pedidos</div>
                   </Link>
                 ) : (
                   <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">

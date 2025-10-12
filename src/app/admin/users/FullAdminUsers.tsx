@@ -1,4 +1,4 @@
-"use client";
+t";
 import { useEffect, useState } from 'react';
 import { ALLOWED_AREAS } from '@/lib/areas';
 import { MONTHS_ES, buildBirthdaySubmission } from '@/lib/birthday';

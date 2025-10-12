@@ -59,7 +59,7 @@ export async function middleware(req: NextRequest) {
   }
   if (pathname === "/u/reset-password") return NextResponse.next();
 
-  // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin ADMIN
+  // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin (ADMIN/STAFF)
   if ((pathname === "/u" || pathname.startsWith("/u/")) && pathname !== '/u/register') {
     // Allow unauthenticated access for the public reset page
     if (pathname === '/u/reset-password') {
@@ -69,7 +69,7 @@ export async function middleware(req: NextRequest) {
     const adminSession = await verifySessionCookie(adminRaw);
     const uRaw = getUserCookieEdge(req as unknown as Request);
     const uSession = await verifyUserCookieEdge(uRaw);
-    const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN']).ok;
+    const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN', 'STAFF']).ok;
     const allowedByUser = !!uSession; // any valid collaborator
     if (!allowedByAdmin && !allowedByUser) {
       const isApi = pathname.startsWith('/api');
