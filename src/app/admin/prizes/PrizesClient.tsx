@@ -76,7 +76,7 @@ export default function PrizesClient({
         <div className="card-header flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Controles de ruleta</span>
-            <span className="text-[10px] text-slate-500">Premios del sistema: Nuevo intento (RETRY) y Piña (LOSE)</span>
+            <span className="text-[10px] text-slate-500">Premios del sistema: Nuevo intento (RETRY) y Sin premio (LOSE)</span>
           </div>
           <button
             type="button"
@@ -133,7 +133,7 @@ export default function PrizesClient({
             </div>
           ) : (
             <div className="p-3 rounded border border-dashed">
-              <div className="text-sm">No existe el premio de “piña”. Usa “Asegurar premios del sistema”.</div>
+              <div className="text-sm">No existe el premio de "sin premio". Usa "Asegurar premios del sistema".</div>
             </div>
           )}
         </div>

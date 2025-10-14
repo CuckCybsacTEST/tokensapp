@@ -7,7 +7,7 @@ export async function POST(_req: NextRequest) {
   try {
     const desired = [
       { key: 'retry', label: 'Nuevo intento', color: '#3BA7F0' }, // azul brillante
-      { key: 'lose', label: 'Piña', color: '#FFD600' }, // amarillo brillante
+      { key: 'lose', label: 'Sin premio', color: '#FFD600' }, // amarillo brillante
     ];
     const existing = await prisma.prize.findMany({ where: { key: { in: desired.map(d => d.key) } }, select: { key: true } });
     const existingKeys = new Set(existing.map(e => e.key));
