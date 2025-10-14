@@ -8,6 +8,7 @@ import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attend
 import AutoAttendanceCard from './AutoAttendanceCard';
 import { mapAreaToStaffRole } from '@/lib/staff-roles';
 import { isValidArea } from '@/lib/areas';
+import { StaffRole } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -23,8 +24,9 @@ export default async function UHome() {
   // Mostrar control de tokens a cualquier STAFF (antes solo Caja)
   const isStaff = session.role === 'STAFF';
 
-  // Verificar acceso a la carta
+  // Verificar acceso a la carta y determinar rol específico
   let hasCartaAccess = false;
+  let staffRole: StaffRole | null = null;
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
@@ -32,8 +34,8 @@ export default async function UHome() {
     });
     const userArea = user?.person?.area;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
-    const cartaRole = mapAreaToStaffRole(validArea);
-    hasCartaAccess = !!cartaRole || session.role === 'STAFF';
+    staffRole = mapAreaToStaffRole(validArea);
+    hasCartaAccess = !!staffRole || session.role === 'STAFF';
   } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)
@@ -116,12 +118,38 @@ export default async function UHome() {
               )}
               {session.role === 'STAFF' && (
                 hasCartaAccess ? (
-                  <Link href="/u/carta" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
-                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Carta y Pedidos</div>
-                  </Link>
+                  <div className="space-y-2">
+                    {/* Enlace principal según rol */}
+                    {staffRole === 'WAITER' ? (
+                      <Link href="/u/menu" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
+                        <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Carta</div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Ver menú y crear pedidos</div>
+                      </Link>
+                    ) : (
+                      <Link href="/u/carta" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
+                        <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Pedidos</div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Ver y gestionar pedidos</div>
+                      </Link>
+                    )}
+                    
+                    {/* Enlace secundario con icono de ojo */}
+                    <div className="flex justify-center">
+                      {staffRole === 'WAITER' ? (
+                        <Link href="/u/carta" className="inline-flex items-center gap-1 px-3 py-1 text-xs text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
+                          <span>👁️</span>
+                          <span>Ver pedidos</span>
+                        </Link>
+                      ) : (
+                        <Link href="/u/menu" className="inline-flex items-center gap-1 px-3 py-1 text-xs text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
+                          <span>👁️</span>
+                          <span>Ver carta</span>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 ) : (
                   <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
-                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">La Carta</div>
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">Carta y Pedidos</div>
                     <div className="mt-2 text-[11px] text-gray-400 dark:text-slate-500">Acceso restringido</div>
                   </div>
                 )
