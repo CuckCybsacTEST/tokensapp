@@ -8,24 +8,95 @@ interface RouletteSegmentsProps {
   scale?: number; // escala relativa al tamaño base 500px
 }
 
-// Heurística para dividir texto en dos líneas equilibradas
+// Heurística para dividir texto en líneas equilibradas (hasta 3 líneas para textos largos)
 function splitLabel(label: string): string[] {
   const clean = label.trim().replace(/\s+/g, ' ');
   if (clean.length <= 8) return [clean];
-  const parts = clean.split(' ');
-  if (parts.length === 1) {
-    // Palabra muy larga: cortar por la mitad aproximada
-    const mid = Math.ceil(clean.length / 2);
-    return [clean.slice(0, mid), clean.slice(mid)];
+  // Si hay precio en soles, separa la parte de precio
+  const solMatch = clean.match(/(.*?)(\s+S\/.*)/);
+  if (solMatch) {
+    // Agrupar conectores con la palabra siguiente
+    const beforePrice = solMatch[1].trim();
+    const price = solMatch[2].trim();
+    const connectorWordRegex = /\s+(\+|&|\*|\/|,)\s+/g;
+    let parts = [];
+    let lastIndex = 0;
+    let match;
+    const regex = /\s+(\+|&|\*|\/|,)\s+/g;
+    while ((match = regex.exec(beforePrice)) !== null) {
+      const prev = beforePrice.slice(lastIndex, match.index).trim();
+      const connector = match[1];
+      lastIndex = regex.lastIndex;
+      const nextSpace = beforePrice.indexOf(' ', lastIndex);
+      let nextWord;
+      if (nextSpace === -1) {
+        nextWord = beforePrice.slice(lastIndex).trim();
+        lastIndex = beforePrice.length;
+      } else {
+        nextWord = beforePrice.slice(lastIndex, nextSpace).trim();
+        lastIndex = nextSpace;
+      }
+      if (prev) parts.push(prev);
+      parts.push(connector + ' ' + nextWord);
+    }
+    if (lastIndex < beforePrice.length) {
+      const rest = beforePrice.slice(lastIndex).trim();
+      if (rest) parts.push(rest);
+    }
+    return [...parts, price];
   }
-  // Intentar todas las particiones y elegir la más balanceada por longitud
+  // Agrupar conectores con la palabra siguiente
+  const connectorWordRegex = /\s+(\+|&|\*|\/|,)\s+/g;
+  let parts = [];
+  let lastIndex = 0;
+  let match;
+  const regex = /\s+(\+|&|\*|\/|,)\s+/g;
+  while ((match = regex.exec(clean)) !== null) {
+    const prev = clean.slice(lastIndex, match.index).trim();
+    const connector = match[1];
+    lastIndex = regex.lastIndex;
+    const nextSpace = clean.indexOf(' ', lastIndex);
+    let nextWord;
+    if (nextSpace === -1) {
+      nextWord = clean.slice(lastIndex).trim();
+      lastIndex = clean.length;
+    } else {
+      nextWord = clean.slice(lastIndex, nextSpace).trim();
+      lastIndex = nextSpace;
+    }
+    if (prev) parts.push(prev);
+    parts.push(connector + ' ' + nextWord);
+  }
+  if (lastIndex < clean.length) {
+    const rest = clean.slice(lastIndex).trim();
+    if (rest) parts.push(rest);
+  }
+  // Si hay al menos 3 partes, forzar 3 líneas
+  if (parts.length >= 3) {
+    return parts;
+  }
+  // Si el texto es muy largo, dividir en 3 líneas aunque tenga pocas palabras
+  if (clean.length > 22) {
+    if (parts.length >= 2) {
+      const third = Math.ceil(parts.length / 3);
+      const l1 = parts.slice(0, third).join(' ');
+      const l2 = parts.slice(third, 2 * third).join(' ');
+      const l3 = parts.slice(2 * third).join(' ');
+      return [l1, l2, l3];
+    } else {
+      const mid1 = Math.floor(clean.length / 3);
+      const mid2 = Math.floor(2 * clean.length / 3);
+      return [clean.slice(0, mid1), clean.slice(mid1, mid2), clean.slice(mid2)];
+    }
+  }
+  // De lo contrario, 2 líneas como antes
   let best: { lines: string[]; score: number } | null = null;
-  for (let i = 1; i < parts.length; i++) {
-    const l1 = parts.slice(0, i).join(' ');
-    const l2 = parts.slice(i).join(' ');
+  const wordParts = clean.split(' ');
+  for (let i = 1; i < wordParts.length; i++) {
+    const l1 = wordParts.slice(0, i).join(' ');
+    const l2 = wordParts.slice(i).join(' ');
     const diff = Math.abs(l1.length - l2.length);
     const longest = Math.max(l1.length, l2.length);
-    // Penalizar líneas muy disparejas o una línea demasiado larga
     const score = diff + longest * 0.15;
     if (!best || score < best.score) best = { lines: [l1, l2], score };
   }
@@ -168,13 +239,27 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1 }: RouletteS
         // Siempre centrar el texto en el path
         const startOffset = "50%";
         const rawLabel = element.label || '';
-        const lines = splitLabel(rawLabel.toUpperCase());
+        // Usar labelLines del backend si está disponible, sino dividir localmente
+        let lines: string[];
+        if (element.labelLines && element.labelLines.length > 0) {
+          lines = element.labelLines;
+        } else {
+          lines = splitLabel(rawLabel.toUpperCase());
+        }
         // Font-size dinámico: base 12 * scale, pero reforzado para móviles (scale<0.8)
   const baseFs = 13 * scale; // aumentado de 12 a 13 para mejor legibilidad
         const fontSize = baseFs < 11 ? 11 : baseFs; // mínimo
-        // Si hay dos líneas, reducimos ligeramente para encajar
-        const lineFs = lines.length > 1 ? fontSize * 0.9 : fontSize;
-        const lineSpacing = lineFs * 0.95; // proximidad entre líneas
+        // Reducir fontSize para más líneas para encajar mejor
+        let lineFs;
+        if (lines.length === 4 || lines.length === 3) {
+          lineFs = fontSize * 0.75;
+        } else if (lines.length === 2) {
+          lineFs = fontSize * 0.9;
+        } else {
+          lineFs = fontSize;
+        }
+  // Espaciado más generoso para 3 líneas
+  const lineSpacing = lines.length > 2 ? lineFs * 1.15 : lineFs * 0.95;
         
         return (
           <text
@@ -189,25 +274,42 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1 }: RouletteS
               textShadow: "0 0 2px rgba(0,0,0,0.65)",
             }}
           >
-            {lines.map((ln, idx) => (
-              <textPath
-                key={idx}
-                href={`#${pathId}`}
-                startOffset={startOffset}
-                textAnchor="middle"
-                style={{
-                  dominantBaseline: 'middle',
-                  transform: needsFlip ? 'rotate(180deg)' : 'none',
-                  transformOrigin: 'center',
-                  transformBox: 'fill-box'
-                }}
-              >
-                <tspan
-                  x="0"
-                  dy={idx === 0 ? (lines.length > 1 ? `-${lineSpacing * 0.4}` : '0') : `${lineSpacing * 0.8}`}
-                >{ln}</tspan>
-              </textPath>
-            ))}
+            {lines.map((ln, idx) => {
+              let dyValue: string;
+              if (lines.length === 1) {
+                dyValue = '0';
+              } else if (lines.length === 2) {
+                dyValue = idx === 0 ? `-${lineSpacing * 0.4}` : `${lineSpacing * 0.8}`;
+              } else if (lines.length === 4) {
+                if (idx === 0) dyValue = `-${lineSpacing * 0.3}`;
+                else if (idx === 1) dyValue = `${lineSpacing * 1.0}`;
+                else if (idx === 2) dyValue = `${lineSpacing * 2.0}`;
+                else dyValue = `${lineSpacing * 3.0}`;
+              } else { // 3 líneas
+                if (idx === 0) dyValue = `-${lineSpacing * 0.55}`;
+                else if (idx === 1) dyValue = `${lineSpacing * 0.7}`;
+                else dyValue = `${lineSpacing * 1.8}`;
+              }
+              return (
+                <textPath
+                  key={idx}
+                  href={`#${pathId}`}
+                  startOffset={startOffset}
+                  textAnchor="middle"
+                  style={{
+                    dominantBaseline: 'middle',
+                    transform: needsFlip ? 'rotate(180deg)' : 'none',
+                    transformOrigin: 'center',
+                    transformBox: 'fill-box'
+                  }}
+                >
+                  <tspan
+                    x="0"
+                    dy={dyValue}
+                  >{ln}</tspan>
+                </textPath>
+              );
+            })}
           </text>
         );
       })}
