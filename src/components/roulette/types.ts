@@ -3,4 +3,5 @@ export interface RouletteElement {
   color: string;
   prizeId: string;
   key?: string;
+  labelLines?: string[]; // <-- Propiedad opcional para compatibilidad con el backend
 }
