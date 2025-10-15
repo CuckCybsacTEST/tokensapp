@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Plus, Minus, User, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Plus, Minus } from "lucide-react";
 import { useTableSocket } from "../../../hooks/useSocket";
 import Link from "next/link";
 
@@ -258,32 +258,16 @@ export default function StaffMenuPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header con información del staff */}
+      {/* Header */}
       <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/u/carta"
-                className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Volver
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-[#FF4D2E]">Carta Interna - Staff</h1>
-                <p className="text-sm text-gray-400">
-                  👤 {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | Área: {getAreaDisplayName(staffProfile?.area)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-sm">{isConnected ? 'Conectado' : 'Desconectado'}</span>
-              </div>
-            </div>
+          <div className="flex items-center justify-end">
+            <Link
+              href="/u/carta"
+              className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium"
+            >
+              Control de Pedidos
+            </Link>
           </div>
         </div>
       </div>

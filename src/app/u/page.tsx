@@ -118,35 +118,10 @@ export default async function UHome() {
               )}
               {session.role === 'STAFF' && (
                 hasCartaAccess ? (
-                  <div className="space-y-2">
-                    {/* Enlace principal según rol */}
-                    {staffRole === 'WAITER' ? (
-                      <Link href="/u/menu" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
-                        <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Carta</div>
-                        <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Ver menú y crear pedidos</div>
-                      </Link>
-                    ) : (
-                      <Link href="/u/carta" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
-                        <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Pedidos</div>
-                        <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Ver y gestionar pedidos</div>
-                      </Link>
-                    )}
-                    
-                    {/* Enlace secundario con icono de ojo */}
-                    <div className="flex justify-center">
-                      {staffRole === 'WAITER' ? (
-                        <Link href="/u/carta" className="inline-flex items-center gap-1 px-3 py-1 text-xs text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
-                          <span>👁️</span>
-                          <span>Ver pedidos</span>
-                        </Link>
-                      ) : (
-                        <Link href="/u/menu" className="inline-flex items-center gap-1 px-3 py-1 text-xs text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition-colors">
-                          <span>👁️</span>
-                          <span>Ver carta</span>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                  <Link href="/u/menu" className="block rounded-lg border border-orange-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800 text-center">
+                    <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-900 dark:text-slate-100">Gestión de carta y pedidos</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">Accede al menú y controla pedidos</div>
+                  </Link>
                 ) : (
                   <div className="block rounded-lg border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 text-center opacity-70 cursor-not-allowed select-none">
                     <div className="text-base font-medium leading-snug break-words whitespace-normal text-gray-500 dark:text-slate-400">Carta y Pedidos</div>
