@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChefHat, Clock, CheckCircle, XCircle, Users, Bell, RefreshCw, AlertCircle } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, XCircle, Users, RefreshCw, AlertCircle } from "lucide-react";
 import { useStaffSocket } from "../../../hooks/useSocket";
 
 interface Order {
@@ -53,27 +53,6 @@ export default function CartaDashboard() {
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [staffLoading, setStaffLoading] = useState<boolean>(true);
   const { socket, isConnected } = useStaffSocket();
-
-  const getRoleDisplayName = (role: string | null) => {
-    switch (role) {
-      case 'WAITER': return 'Mozo';
-      case 'CASHIER': return 'Caja';
-      case 'BARTENDER': return 'Bartender';
-      case 'ADMIN': return 'Administrador';
-      default: return role || 'Usuario';
-    }
-  };
-
-  const getAreaDisplayName = (area: string | null) => {
-    switch (area) {
-      case 'bar': return 'Bar';
-      case 'caja': return 'Caja';
-      case 'cocina': return 'Cocina';
-      case 'terraza': return 'Terraza';
-      case 'vip': return 'VIP';
-      default: return area || 'General';
-    }
-  };
 
   const fetchStaffProfile = async () => {
     try {
@@ -264,28 +243,13 @@ export default function CartaDashboard() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-[#FF4D2E]">Carta y Pedidos</h1>
-              <p className="text-sm text-gray-400">
-                👤 {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | Área: {getAreaDisplayName(staffProfile?.area)}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href="/u/menu"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                👁️ VER CARTA INTERNA
-              </a>
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-sm">{isConnected ? 'Conectado' : 'Desconectado'}</span>
-              </div>
-            </div>
+          <div className="flex items-center justify-end">
+            <a
+              href="/u/menu"
+              className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Ver carta
+            </a>
           </div>
         </div>
       </div>
