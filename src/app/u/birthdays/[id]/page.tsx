@@ -16,8 +16,8 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
     setLoading(true); setErr(null);
     try {
       const [rRes, tRes] = await Promise.all([
-        fetch(`/api/staff/birthdays/${encodeURIComponent(id)}`),
-        fetch(`/api/staff/birthdays/${encodeURIComponent(id)}/tokens`),
+        fetch(`/api/admin/birthdays/${encodeURIComponent(id)}`),
+        fetch(`/api/admin/birthdays/${encodeURIComponent(id)}/tokens`),
       ]);
       const r = await rRes.json().catch(()=>({}));
       const t = await tRes.json().catch(()=>({}));
@@ -28,11 +28,11 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
   }
   useEffect(()=>{ load(); }, [id]);
 
-  async function approve() { setBusy(true); setErr(null); try { const r=await fetch(`/api/staff/birthdays/${id}/approve`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
-  async function cancel() { if(!confirm('¿Cancelar?')) return; setBusy(true); setErr(null); try { const r=await fetch(`/api/staff/birthdays/${id}/cancel`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
-  async function complete() { setBusy(true); setErr(null); try { const r=await fetch(`/api/staff/birthdays/${id}/complete`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
-  async function genTokens(force=false) { setBusy(true); setErr(null); try { const url=`/api/staff/birthdays/${id}/tokens${force?'?force=1':''}`; const r=await fetch(url,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
-  function downloadCards(){ fetch(`/api/staff/birthdays/${id}/download-cards`).then(async r=>{ if(!r.ok) throw new Error('download'); const b=await r.blob(); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`reservation-${id}-invites.zip`; a.click(); URL.revokeObjectURL(url); }).catch(e=>setErr(String(e?.message||e))); }
+  async function approve() { setBusy(true); setErr(null); try { const r=await fetch(`/api/admin/birthdays/${id}/approve`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
+  async function cancel() { if(!confirm('¿Cancelar?')) return; setBusy(true); setErr(null); try { const r=await fetch(`/api/admin/birthdays/${id}/cancel`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
+  async function complete() { setBusy(true); setErr(null); try { const r=await fetch(`/api/admin/birthdays/${id}/complete`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
+  async function genTokens(force=false) { setBusy(true); setErr(null); try { const url=`/api/admin/birthdays/${id}/tokens${force?'?force=1':''}`; const r=await fetch(url,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
+  function downloadCards(){ fetch(`/api/admin/birthdays/${id}/download-cards`).then(async r=>{ if(!r.ok) throw new Error('download'); const b=await r.blob(); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`reservation-${id}-invites.zip`; a.click(); URL.revokeObjectURL(url); }).catch(e=>setErr(String(e?.message||e))); }
 
   if (loading && !resv) return <div className="p-4 text-sm text-slate-400">Cargando…</div>;
   if (err && !resv) return <div className="p-4 text-sm text-red-300">{err}</div>;

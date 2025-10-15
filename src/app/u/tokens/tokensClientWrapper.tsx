@@ -17,7 +17,7 @@ export default function TokensClientWrapper(){
     setLoading(true);setErr(null);
     try{ const r=await fetch(`/api/admin/daily-tokens?day=${d}`); const j=await r.json(); if(!r.ok) throw new Error(j.message||'Error'); setData(j); }catch(e:any){ setErr(e.message||String(e)); } finally{ setLoading(false);} }
   useEffect(()=>{load();},[]); // eslint-disable-line
-  const m=data?.metrics || { created:0, delivered:0, available:0, expired:0, rouletteSpins:0, breakdown:{active:0,revealedPending:0}};
+    const m=data?.metrics || { created:0, printedTokens:0, delivered:0, available:0, expired:0, rouletteSpins:0, totalSpins:0, retryRevealed:0, loseRevealed:0, distinctPrizesTotal:0, breakdown:{active:0,revealedPending:0}};
   return (
     <div className="space-y-6">
       {/* Métricas del día */}
@@ -40,12 +40,17 @@ export default function TokensClientWrapper(){
           </div>
         </div>
         {err && <div className="text-xs text-red-600 mb-2">{err}</div>}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard label="Tokens Creados" value={m.created} description="Total emitidos para el día" compact />
+          <StatCard label="Tokens Impresos" value={m.printedTokens} description="Tokens físicos impresos" compact color="text-purple-600" />
+          <StatCard label="Premios Distintos" value={m.distinctPrizesTotal} description="Premios únicos" compact color="text-green-600" />
+          <StatCard label="Tokens Revelados" value={m.breakdown.revealedPending} description="Revelados sin entregar" compact color="text-orange-600" />
           <StatCard label="Tokens Entregados" value={m.delivered} description="Entregados" compact color="text-emerald-600" />
-            <StatCard label="Tokens Sin Entregar" value={m.available} description="Revelados pend. + activos" compact color="text-indigo-600" />
-          <StatCard label="Tokens Expirados" value={m.expired} description="Expirados antes de entregar" compact color="text-amber-600" />
-          <StatCard label="Giros Ruleta" value={m.rouletteSpins} description="Total revelados" compact color="text-fuchsia-600" />
+          <StatCard label="Tokens Sin Entregar" value={m.available} description="Revelados pend. + activos" compact color="text-indigo-600" />
+          <StatCard label="Giros Ruleta" value={m.rouletteSpins} description="Giros con premio" compact color="text-fuchsia-600" />
+          <StatCard label="Giros Totales" value={m.totalSpins} description="Total de giros" compact color="text-cyan-600" />
+          <StatCard label="Nuevo Intento" value={m.retryRevealed} description="Giros para Nuevo Intento" compact color="text-blue-600" />
+          <StatCard label="Sin Premio" value={m.loseRevealed} description="Giros para Sin Premio" compact color="text-yellow-600" />
         </div>
       </div>
       {/* Tabla premios/batches */}

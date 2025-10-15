@@ -11,13 +11,18 @@ export const metadata = {
 
 export default async function ULayout({ children }: { children: React.ReactNode }) {
   // Cargar datos del colaborador (si hay sesión activa)
-  let me: { personName?: string | null; dni?: string | null } | null = null;
+  let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; role?: string | null } | null = null;
   try {
     const raw = cookies().get('user_session')?.value;
     const session = await verifyUserSessionCookie(raw);
     if (session) {
       const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
-      me = { personName: u?.person?.name ?? null, dni: u?.person?.dni ?? null };
+      me = { 
+        personName: u?.person?.name ?? null, 
+        dni: u?.person?.dni ?? null,
+        jobTitle: u?.person?.jobTitle ?? null,
+        role: u?.role ?? null
+      };
     }
   } catch {}
 
@@ -32,6 +37,9 @@ export default async function ULayout({ children }: { children: React.ReactNode 
                 <div className="font-medium text-slate-700 dark:text-slate-200">{me.personName || 'Usuario'}</div>
                 {typeof me.dni === 'string' && me.dni.trim() !== '' && (
                   <div className="opacity-80">DNI: <span className="font-mono">{me.dni}</span></div>
+                )}
+                {(me.jobTitle || me.role) && (
+                  <div className="opacity-80">{me.jobTitle || 'Sin puesto'} - {me.role || 'Sin rol'}</div>
                 )}
               </div>
             )}

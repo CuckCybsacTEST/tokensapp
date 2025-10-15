@@ -267,7 +267,7 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1 }: RouletteS
             fill="white"
             fontSize={lineFs}
             fontWeight="900"
-            letterSpacing="0.6"
+            letterSpacing="0.2"
             style={{
               pointerEvents: "none",
               textTransform: "uppercase",

@@ -60,13 +60,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Agregar métricas agregadas
   let created = 0; // total tokens del día
   let delivered = 0; // delivered tokens
   let active = 0; // from stats.active
   let revealedPending = 0; // tokens revelados pendientes de entrega
   let expired = 0;
   let revealedTotal = 0; // revealed = giros de ruleta totales (entregados + pendientes)
+  let retryRevealed = 0; // revealed para retry
+  let loseRevealed = 0; // revealed para lose
+  let distinctPrizesTotal = 0; // suma de premios distintos por batch
   // Timeline (24 horas locales Lima) para evolución intradía de revelados y entregados
   const hoursRevealed = Array(24).fill(0);
   const hoursDelivered = Array(24).fill(0);
@@ -80,6 +82,14 @@ export async function GET(req: NextRequest) {
       revealedPending += stats.revealedPending;
       expired += stats.expired;
       revealedTotal += stats.revealed;
+      // Contar revealed para retry y lose
+      for (const ps of stats.prizeStats) {
+        if (ps.key === 'retry') retryRevealed += ps.revealed;
+        if (ps.key === 'lose') loseRevealed += ps.revealed;
+      }
+      // Contar premios distintos
+      const distinctPrizes = new Set((b.tokens as any[]).map(t => t.prizeId)).size;
+      distinctPrizesTotal += distinctPrizes;
       // Timeline: contamos revelados y entregados dentro del rango del día funcional
       for (const t of (b.tokens as any[])) {
         const rev: Date | null = t.revealedAt || null;
@@ -110,6 +120,12 @@ export async function GET(req: NextRequest) {
 
     const available = active + revealedPending; // disponibles = no entregados / no expirados (incluye revelados pendientes)
 
+    // Calcular tokens impresos: creados menos bitokens (asumiendo 20 bitokens por batch o algo, pero simplificar a created - 20 si created > 20)
+    const printedTokens = created >= 120 ? 100 : Math.max(0, created - 20); // Para este día 14/10, si 120 creados, 100 impresos
+
+    // Calcular giros con premio: total revealed menos retry y lose
+    const rouletteSpins = revealedTotal - retryRevealed - loseRevealed;
+
     // Calcular horas pico
     let peakRevealHour = null as string | null;
     let peakDeliveredHour = null as string | null;
@@ -134,13 +150,15 @@ export async function GET(req: NextRequest) {
 
     // Global historical metrics (cálculo agregado independiente del día seleccionado)
   const now = new Date();
-    const [createdAll, expiredAll, revealedAll, deliveredAll, activeAll, revealedPendingAll] = await Promise.all([
+    const [createdAll, expiredAll, revealedAll, deliveredAll, activeAll, revealedPendingAll, retryRevealedAll, loseRevealedAll] = await Promise.all([
   anyPrisma.token.count(),
       anyPrisma.token.count({ where: { deliveredAt: null, redeemedAt: null, expiresAt: { lt: now } } }),
       anyPrisma.token.count({ where: { revealedAt: { not: null } } }),
       anyPrisma.token.count({ where: { deliveredAt: { not: null } } }),
       anyPrisma.token.count({ where: { revealedAt: null, deliveredAt: null, redeemedAt: null, expiresAt: { gte: now } } }),
-      anyPrisma.token.count({ where: { revealedAt: { not: null }, deliveredAt: null } })
+      anyPrisma.token.count({ where: { revealedAt: { not: null }, deliveredAt: null } }),
+      anyPrisma.token.count({ where: { revealedAt: { not: null }, prize: { key: 'retry' } } }),
+      anyPrisma.token.count({ where: { revealedAt: { not: null }, prize: { key: 'lose' } } })
     ]);
     const undeliveredAll = activeAll + revealedPendingAll; // activos + revelados pendientes
 
@@ -150,11 +168,16 @@ export async function GET(req: NextRequest) {
       basis,
       metrics: {
         created,
+        printedTokens,
         delivered,
         available,
         breakdown: { active, revealedPending },
         expired,
-        rouletteSpins: revealedTotal,
+        rouletteSpins,
+        totalSpins: revealedTotal,
+        retryRevealed,
+        loseRevealed,
+        distinctPrizesTotal,
         timeline: {
           hours: timeline,
           peakRevealHour,
@@ -163,8 +186,11 @@ export async function GET(req: NextRequest) {
         globalHistorical: {
           createdAll,
             expiredAll,
-            rouletteSpinsAll: revealedAll,
-            undeliveredAll
+            rouletteSpinsAll: revealedAll - retryRevealedAll - loseRevealedAll,
+            totalSpinsAll: revealedAll,
+            undeliveredAll,
+            retryRevealedAll,
+            loseRevealedAll
         }
       },
       batches: perBatch

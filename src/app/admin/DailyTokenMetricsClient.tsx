@@ -33,9 +33,9 @@ export default function DailyTokenMetricsClient() {
 
   useEffect(()=>{ load(day); },[]); // eslint-disable-line
 
-  const metrics = data?.metrics || { created:0, delivered:0, available:0, expired:0, rouletteSpins:0, breakdown:{active:0, revealedPending:0}, timeline:{hours:[], peakRevealHour:null, peakDeliveredHour:null}, globalHistorical:{ createdAll:0, expiredAll:0, rouletteSpinsAll:0, undeliveredAll:0 } } as any;
+  const metrics = data?.metrics || { created:0, printedTokens:0, delivered:0, available:0, expired:0, rouletteSpins:0, totalSpins:0, retryRevealed:0, loseRevealed:0, distinctPrizesTotal:0, breakdown:{active:0,revealedPending:0}, timeline:{hours:[], peakRevealHour:null, peakDeliveredHour:null}, globalHistorical:{ createdAll:0, expiredAll:0, rouletteSpinsAll:0, totalSpinsAll:0, undeliveredAll:0, retryRevealedAll:0, loseRevealedAll:0 } } as any;
   const timeline = metrics.timeline?.hours || [];
-  const gh = metrics.globalHistorical || { createdAll:0, expiredAll:0, rouletteSpinsAll:0, undeliveredAll:0 };
+  const gh = metrics.globalHistorical || { createdAll:0, expiredAll:0, rouletteSpinsAll:0, undeliveredAll:0, retryRevealedAll:0, loseRevealedAll:0 };
 
   return (
     <>
@@ -57,12 +57,18 @@ export default function DailyTokenMetricsClient() {
         </div>
       </div>
       {error && <div className="text-sm text-red-600 mb-3">{error}</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <StatCard label="Tokens Creados" value={metrics.created} description="Total emitidos para el día" compact icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-slate-400' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v12m6-6H6'/></svg>} />
+        <StatCard label="Tokens Impresos" value={metrics.printedTokens} description="Tokens físicos impresos (excluyendo bitokens)" compact color="text-purple-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-purple-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z'/></svg>} />
+        <StatCard label="Premios Distintos" value={metrics.distinctPrizesTotal} description="Total de premios únicos en batches del día" compact color="text-green-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-green-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' /></svg>} />
+        <StatCard label="Tokens Revelados" value={metrics.breakdown.revealedPending} description="Tokens revelados sin entregar" compact color="text-orange-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-orange-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' /></svg>} />
         <StatCard label="Tokens Entregados" value={metrics.delivered} description="Con entregadoAt" compact color="text-emerald-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-emerald-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7'/></svg>} />
         <StatCard label="Tokens Sin Entregar" value={metrics.available} description="Revelados pendientes y activos" compact color="text-indigo-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-indigo-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>} />
         <StatCard label="Tokens Expirados" value={metrics.expired} description="Expirados antes de entregar" compact color="text-amber-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>} />
-        <StatCard label="Giros Ruleta" value={metrics.rouletteSpins} description="Total revelados (entregados + pendientes)" compact color="text-fuchsia-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-fuchsia-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v2m6 6h2M4 12H2m15.07 4.93l1.42 1.42M6.51 6.51L5.09 5.09m12.02 0l1.42 1.42M6.51 17.49l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z' /></svg>} />
+        <StatCard label="Giros Ruleta" value={metrics.rouletteSpins} description="Giros con premio (excluyendo Nuevo Intento y Sin Premio)" compact color="text-fuchsia-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-fuchsia-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v2m6 6h2M4 12H2m15.07 4.93l1.42 1.42M6.51 6.51L5.09 5.09m12.02 0l1.42 1.42M6.51 17.49l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z' /></svg>} />
+        <StatCard label="Giros Totales" value={metrics.totalSpins} description="Total de giros (incluyendo Nuevo Intento y Sin Premio)" compact color="text-cyan-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-cyan-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v2m6 6h2M4 12H2m15.07 4.93l1.42 1.42M6.51 6.51L5.09 5.09m12.02 0l1.42 1.42M6.51 17.49l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z' /></svg>} />
+        <StatCard label="Nuevo Intento" value={metrics.retryRevealed} description="Giros revelados para Nuevo Intento" compact color="text-blue-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-blue-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' /></svg>} />
+        <StatCard label="Sin Premio" value={metrics.loseRevealed} description="Giros revelados para Sin Premio" compact color="text-yellow-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-yellow-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>} />
       </div>
       {data?.batches?.length ? (
         <div className="mt-6">
@@ -104,7 +110,7 @@ export default function DailyTokenMetricsClient() {
         </h2>
         <div className="text-xs text-slate-500">Fecha base seleccionada: {day}</div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-8 gap-4">
         <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
           <div className="text-[11px] font-medium text-slate-500 mb-0.5">Creados (Histórico)</div>
           <div className="text-base font-bold">{gh.createdAll}</div>
@@ -116,6 +122,14 @@ export default function DailyTokenMetricsClient() {
         <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
           <div className="text-[11px] font-medium text-slate-500 mb-0.5">Giros Ruleta (Histórico)</div>
           <div className="text-base font-bold text-fuchsia-600">{gh.rouletteSpinsAll}</div>
+        </div>
+        <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
+          <div className="text-[11px] font-medium text-slate-500 mb-0.5">Nuevo Intento (Histórico)</div>
+          <div className="text-base font-bold text-blue-600">{gh.retryRevealedAll}</div>
+        </div>
+        <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
+          <div className="text-[11px] font-medium text-slate-500 mb-0.5">Sin Premio (Histórico)</div>
+          <div className="text-base font-bold text-yellow-600">{gh.loseRevealedAll}</div>
         </div>
         <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
           <div className="text-[11px] font-medium text-slate-500 mb-0.5">Sin Entregar (Histórico)</div>

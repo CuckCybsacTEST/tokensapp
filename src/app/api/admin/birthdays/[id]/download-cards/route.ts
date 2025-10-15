@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiError } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
 import { prisma } from '@/lib/prisma';
 import { generateQrPngDataUrl } from '@/lib/qr';
 import { composeTemplateWithQr } from '@/lib/print/compose';
@@ -24,10 +25,16 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   // Authn/Authz
-  const cookie = getSessionCookieFromRequest(req as unknown as Request);
-  const session = await verifySessionCookie(cookie);
-  const authz = requireRole(session, ['ADMIN', 'STAFF']);
-  if (!authz.ok) return apiError(authz.error!, undefined, undefined, authz.error === 'UNAUTHORIZED' ? 401 : 403);
+  const adminCookie = getSessionCookieFromRequest(req as unknown as Request);
+  const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
+  const adminSession = await verifySessionCookie(adminCookie);
+  const userSession = await verifyUserSessionCookie(userCookie);
+  const session = adminSession || userSession;
+  if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
+  // Allow ADMIN/STAFF from admin session, or COLLAB/STAFF from user session
+  const isAdmin = adminSession?.role && ['ADMIN', 'STAFF'].includes(adminSession.role);
+  const isUser = userSession?.role && ['COLLAB', 'STAFF'].includes(userSession.role);
+  if (!isAdmin && !isUser) return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
   // RL: protect heavy export
   const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
