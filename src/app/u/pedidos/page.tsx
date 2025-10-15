@@ -77,7 +77,7 @@ export default function CartaDashboard() {
 
   const fetchStaffProfile = async () => {
     try {
-      const response = await fetch("/api/carta/me");
+      const response = await fetch("/api/pedidos/me");
       if (response.ok) {
         const data = await response.json();
         setStaffProfile(data);

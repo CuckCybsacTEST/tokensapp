@@ -105,7 +105,7 @@ export default function StaffMenuPage() {
 
   const fetchStaffProfile = async () => {
     try {
-      const response = await fetch("/api/carta/me");
+      const response = await fetch("/api/pedidos/me");
       if (response.ok) {
         const data = await response.json();
         setStaffProfile(data);
@@ -263,7 +263,7 @@ export default function StaffMenuPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-end">
             <Link
-              href="/u/carta"
+              href="/u/pedidos"
               className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium"
             >
               Control de Pedidos
