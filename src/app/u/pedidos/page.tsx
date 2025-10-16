@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChefHat, Clock, CheckCircle, XCircle, Users, RefreshCw, AlertCircle } from "lucide-react";
+import { ChefHat, Clock, CheckCircle, XCircle, Users, RefreshCw, AlertCircle, Edit, Trash2, Loader2 } from "lucide-react";
 import { useStaffSocket } from "../../../hooks/useSocket";
 
 interface Order {
@@ -13,6 +13,7 @@ interface Order {
   status: "PENDING" | "CONFIRMED" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
   total: number;
   createdAt: string;
+  updatedAt: string;
   table?: {
     name?: string;
     number?: number;
@@ -73,6 +74,7 @@ export default function CartaDashboard() {
       const response = await fetch("/api/pedidos/me");
       if (response.ok) {
         const data = await response.json();
+        console.log('👤 Perfil de staff cargado:', data);
         setStaffProfile(data);
       } else if (response.status === 401) {
         // Usuario no autenticado, redirigir a login
@@ -89,9 +91,13 @@ export default function CartaDashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [newOrderNotification, setNewOrderNotification] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [updatingOrders, setUpdatingOrders] = useState<Record<string, string | null>>({});
 
-  const fetchOrders = async (showLoading = true) => {
+  const fetchOrders = async (showLoading = true, showButtonLoading = false) => {
     if (showLoading) setLoading(true);
+    if (showButtonLoading) setRefreshing(true);
     try {
       const response = await fetch("/api/orders");
       if (response.ok) {
@@ -104,8 +110,15 @@ export default function CartaDashboard() {
       console.error("Error fetching orders:", error);
     } finally {
       if (showLoading) setLoading(false);
+      if (showButtonLoading) setRefreshing(false);
     }
   };
+
+  // Función wrapper para actualización manual (con loading del botón)
+  const handleManualRefresh = () => fetchOrders(false, true);
+
+  // Función wrapper para polling automático (sin loading del botón)
+  const handleAutoRefresh = () => fetchOrders(false, false);
 
   // Polling de respaldo cada 8 segundos si no hay socket conectado
   useEffect(() => {
@@ -119,17 +132,9 @@ export default function CartaDashboard() {
     }
   }, [socketConnected]);
 
-  // Polling agresivo cada 3 segundos cuando hay socket conectado (para máxima velocidad)
-  useEffect(() => {
-    if (socketConnected) {
-      console.log("⚡ Iniciando polling agresivo (3s)");
-      const interval = setInterval(() => {
-        fetchOrders(false);
-      }, 3000);
-
-      return () => clearInterval(interval);
-    }
-  }, [socketConnected]);
+  // Función helper para verificar si una acción específica está en progreso
+  const isUpdatingOrder = (orderId: string, action: string) => updatingOrders[orderId] === action;
+  const isAnyActionInProgress = (orderId: string) => !!updatingOrders[orderId];
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     // Validar permisos antes de actualizar
@@ -143,6 +148,7 @@ export default function CartaDashboard() {
       return;
     }
 
+    setUpdatingOrders(prev => ({ ...prev, [orderId]: newStatus }));
     try {
       const response = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
@@ -157,27 +163,19 @@ export default function CartaDashboard() {
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === orderId
-              ? { ...order, status: newStatus as Order['status'] }
+              ? { ...order, status: newStatus as Order['status'], updatedAt: new Date().toISOString() }
               : order
           )
         );
-
-        // Emitir actualizaciÃ³n a travÃ©s de Socket.IO
-        if (socket) {
-          const order = orders.find(o => o.id === orderId);
-          if (order) {
-            socket.emit("order-status-update", {
-              orderId: parseInt(orderId),
-              tableId: getOrderLocationId(order),
-              tableName: getOrderLocationName(order),
-              status: newStatus,
-              timestamp: new Date().toISOString(),
-            });
-          }
-        }
+      } else {
+        const error = await response.json();
+        alert(`Error al actualizar pedido: ${error.error}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      alert("Error al actualizar el pedido");
+    } finally {
+      setUpdatingOrders(prev => ({ ...prev, [orderId]: null }));
     }
   };
 
@@ -187,9 +185,35 @@ export default function CartaDashboard() {
       case "CONFIRMED": return "bg-blue-500";
       case "PREPARING": return "bg-orange-500";
       case "READY": return "bg-green-500";
-      case "DELIVERED": return "bg-gray-500";
+      case "DELIVERED": return "bg-purple-500";
       case "CANCELLED": return "bg-red-500";
       default: return "bg-gray-500";
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) {
+      return;
+    }
+
+    setDeletingOrderId(orderId);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+        alert("Pedido eliminado exitosamente");
+      } else {
+        const error = await response.json();
+        alert(`Error al eliminar pedido: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("Error al eliminar el pedido");
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -227,8 +251,29 @@ export default function CartaDashboard() {
     }
   };
 
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case "PENDING": return "Pendiente";
+      case "CONFIRMED": return "Confirmado";
+      case "PREPARING": return "Preparando";
+      case "READY": return "Listo";
+      case "DELIVERED": return "Entregado";
+      case "CANCELLED": return "Cancelado";
+      default: return status;
+    }
+  };
+
   const filteredOrders = selectedStatus === "all"
     ? orders
+        .slice()
+        .sort((a, b) => {
+          // Priorizar pedidos READY primero
+          if (a.status === "READY" && b.status !== "READY") return -1;
+          if (a.status !== "READY" && b.status === "READY") return 1;
+          
+          // Para pedidos con el mismo estado, ordenar por fecha de creación (más recientes primero)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })
     : orders.filter(order => order.status === selectedStatus);
 
   const pendingOrders = orders.filter(o => o.status === "PENDING").length;
@@ -264,7 +309,7 @@ export default function CartaDashboard() {
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === data.orderId?.toString() || order.id === data.orderId
-              ? { ...order, status: data.status, updatedAt: new Date() }
+              ? { ...order, status: data.status, updatedAt: new Date().toISOString() }
               : order
           )
         );
@@ -282,11 +327,19 @@ export default function CartaDashboard() {
         }, 500);
       });
 
+      // Listener para actualizaciones de inventario
+      socket.on("inventory-update", (data: any) => {
+        console.log("📦 Actualización de inventario recibida:", data);
+        // Aquí podríamos mostrar una notificación o actualizar algún estado relacionado con inventario
+        // Por ahora solo loggeamos para debugging
+      });
+
       return () => {
         socket.off("connect");
         socket.off("disconnect");
         socket.off("order-status-update");
         socket.off("new-order");
+        socket.off("inventory-update");
       };
     }
   }, [socket]);
@@ -354,6 +407,18 @@ export default function CartaDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {refreshing ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Actualizar
+              </button>
               <a
                 href="/u/mesas"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
@@ -447,7 +512,7 @@ export default function CartaDashboard() {
                     : "bg-white/10 text-white hover:bg-white/20"
                 }`}
               >
-                {status === "all" ? "Todos" : status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
+                {status === "all" ? "Todos" : getStatusText(status)}
               </button>
             ))}
           </div>
@@ -476,12 +541,12 @@ export default function CartaDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(order.status)}
-                  <span className="text-sm capitalize">{order.status}</span>
+                  <span className="text-sm">{getStatusText(order.status)}</span>
                 </div>
               </div>
 
               <div className="mb-4">
-                <h4 className="font-medium mb-2">Items:</h4>
+                <h4 className="font-medium mb-2">Productos:</h4>
                 <div className="space-y-1">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="text-sm text-gray-300">
@@ -492,52 +557,111 @@ export default function CartaDashboard() {
                 </div>
               </div>
 
+              {/* Total y acciones */}
               <div className="flex items-center justify-between">
-                <div className="text-lg font-bold text-[#FF4D2E]">
-                  Total: ${order.total}
+                <div className="text-xl font-bold text-[#FF4D2E]">
+                  Total: S/ {order.total.toFixed(2)}
                 </div>
-                <div className="text-sm text-gray-400">
-                  {new Date(order.createdAt).toLocaleTimeString()}
+                <div className="flex gap-2 flex-wrap">
+                  {staffProfile?.permissions.canUpdateOrderStatus && (
+                    <>
+                      {/* Botón CONFIRMAR - Solo para usuarios que pueden confirmar */}
+                      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CONFIRMED") && order.status === "PENDING" && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
+                          disabled={isAnyActionInProgress(order.id)}
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingOrder(order.id, "CONFIRMED") ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Confirmar"
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botón PREPARAR - Para usuarios que pueden preparar */}
+                      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("PREPARING") && order.status === "CONFIRMED" && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "PREPARING")}
+                          disabled={isAnyActionInProgress(order.id)}
+                          className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            ["PREPARING", "READY", "DELIVERED"].includes(order.status)
+                              ? "bg-orange-800 text-gray-300"
+                              : "bg-orange-600 hover:bg-orange-700 text-white focus:ring-orange-500"
+                          }`}
+                        >
+                          {isUpdatingOrder(order.id, "PREPARING") ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            ["PREPARING", "READY", "DELIVERED"].includes(order.status) ? "En preparación" : "Preparar"
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botón LISTO - Para usuarios que pueden marcar como listo */}
+                      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("READY") && order.status === "PREPARING" && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "READY")}
+                          disabled={isAnyActionInProgress(order.id)}
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingOrder(order.id, "READY") ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            ["READY", "DELIVERED"].includes(order.status) ? "Listo para recoger" : "Listo"
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botón ENTREGAR - Para usuarios que pueden entregar */}
+                      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("DELIVERED") && order.status === "READY" && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "DELIVERED")}
+                          disabled={isAnyActionInProgress(order.id)}
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingOrder(order.id, "DELIVERED") ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Entregar"
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botón CANCELAR - Para usuarios que pueden cancelar */}
+                      {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CANCELLED") && (
+                        <button
+                          onClick={() => updateOrderStatus(order.id, "CANCELLED")}
+                          disabled={isAnyActionInProgress(order.id)}
+                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingOrder(order.id, "CANCELLED") ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Cancelar"
+                          )}
+                        </button>
+                      )}
+                    </>
+                  )}
+
+                  {/* Botón de eliminar (solo para administradores) */}
+                  {staffProfile?.permissions.canCloseOrders && (
+                    <button
+                      onClick={() => deleteOrder(order.id)}
+                      disabled={deletingOrderId === order.id}
+                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-800 hover:bg-red-900 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {deletingOrderId === order.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {/* Acciones */}
-              {staffProfile?.permissions.canUpdateOrderStatus && (
-                <div className="flex gap-2 mt-4">
-                  {order.status === "PENDING" && staffProfile.permissions.allowedStatuses.includes("PREPARING") && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "PREPARING")}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Iniciar Preparación
-                    </button>
-                  )}
-                  {order.status === "PREPARING" && staffProfile.permissions.allowedStatuses.includes("READY") && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "READY")}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Marcar como Listo
-                    </button>
-                  )}
-                  {order.status === "READY" && staffProfile.permissions.allowedStatuses.includes("DELIVERED") && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "DELIVERED")}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Marcar como Entregado
-                    </button>
-                  )}
-                  {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CANCELLED") && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "CANCELLED")}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-              )}
             </motion.div>
           ))}
         </div>

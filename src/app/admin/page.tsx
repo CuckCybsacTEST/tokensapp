@@ -91,6 +91,27 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
+        {/* Gestión de Inventario */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Inventario</h3>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
+            Controla proveedores, stock de productos, alertas de inventario y unidades de medida.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/inventory/suppliers" className="btn">Proveedores</a>
+            <a href="/admin/inventory/stock" className="btn">Control de Stock</a>
+            <a href="/admin/inventory/alerts" className="btn">Alertas</a>
+            <a href="/admin/inventory/units" className="btn">Unidades</a>
+          </div>
+        </div>
+
         {/* Gestión de la Carta */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-center mb-3">
@@ -99,16 +120,16 @@ export default async function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Gestión de la Carta</h3>
+            <h3 className="text-lg font-semibold">Gestión de Restaurante</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
-            Administra mesas, carta del menú y pedidos.
+            Administra mesas, carta del menú, pedidos y operaciones del restaurante.
           </p>
           <div className="flex flex-wrap gap-2">
-            <a href="/u/carta/tables" className="btn">Gestión de Mesas</a>
-            <a href="/u/carta/menu" className="btn">Gestión de Menú</a>
-            <a href="/u/carta" className="btn">Central de Pedidos</a>
-            <a href="/menu" className="btn">Menú Público</a>
+            <a href="/admin/mesas" className="btn">Gestión de Mesas</a>
+            <a href="/admin/menu" className="btn">Gestión de Menú</a>
+            <a href="/admin/pedidos" className="btn">Panel de Pedidos</a>
+            <a href="/menu" className="btn-secondary text-xs px-3 py-2">Menú Público</a>
           </div>
         </div>
 

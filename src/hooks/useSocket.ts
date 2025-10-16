@@ -106,3 +106,15 @@ export function useServicePointSocket(servicePointId?: string) {
 
   return { socket, isConnected };
 }
+
+export function useTableSocket(tableId?: string) {
+  const { socket, isConnected } = useSocket();
+
+  useEffect(() => {
+    if (socket && isConnected && tableId) {
+      socket.emit("join-table", tableId);
+    }
+  }, [socket, isConnected, tableId]);
+
+  return { socket, isConnected };
+}

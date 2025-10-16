@@ -489,7 +489,7 @@ model Category {
   description String?
   icon        String?   // emoji o icon name
   order       Int       @default(0)
-  active      Boolean   @default(true)
+  active      Boolean  @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   products    Product[]
@@ -499,19 +499,38 @@ model Category {
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
-  available   Boolean   @default(true)
-  featured    Boolean   @default(false)
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  orderItems  OrderItem[]
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  price           Float     // Mantener columna existente para compatibilidad
+  basePrice       Float?    // Nuevo campo para precio base
+  image           String?
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id])
+  available       Boolean   @default(true)
+  featured        Boolean   @default(false)
+  order           Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Nuevos campos para escalabilidad
+  sku             String?   // Código de producto
+  barcode         String?   // Código de barras
+  taxRate         Float     @default(0.12) // IVA por defecto
+  costPrice       Float?    // Costo promedio de compra
+  minStock        Int       @default(0) // Stock mínimo
+  maxStock        Int?      // Stock máximo
+  unitOfMeasureId String?
+  unitOfMeasure   UnitOfMeasure? @relation(fields: [unitOfMeasureId], references: [id])
+
+  // Información nutricional/alérgenos
+  allergens       String?   // JSON array de alérgenos
+  nutritionalInfo String?   // JSON con info nutricional
+
+  // Relaciones
+  variants        ProductVariant[]
+  inventoryItems  InventoryItem[]
+  orderItems      OrderItem[]
 
   @@index([categoryId])
   @@index([available])
@@ -648,18 +667,25 @@ model Order {
 }
 
 model OrderItem {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  quantity  Int      @default(1)
-  price     Float    // precio al momento del pedido
-  notes     String?
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int      @default(1) // Cambiar a Float más tarde
+  price       Float    // Mantener columna existente para compatibilidad
+  unitPrice   Float?   // Nuevo campo para precio unitario
+  totalPrice  Float?   // Nuevo campo para precio total
+  notes       String?
+  variantId   String?  // Nuevo campo para variante
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
 }
 
 enum NotificationType {
@@ -688,4 +714,106 @@ model Notification {
   @@index([type])
   @@index([read])
   @@index([createdAt])
+}
+
+// ===== MODELOS DE INVENTARIO Y GESTIÓN AVANZADA =====
+
+// Unidades de medida (botella, copa, porción, kg, litro, etc.)
+model UnitOfMeasure {
+  id          String   @id @default(cuid())
+  name        String   // "Botella", "Copa", "Porción", "Kg", "Litro"
+  symbol      String   // "btl", "copa", "pz", "kg", "L"
+  type        String   // "volume", "weight", "count"
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  products    Product[]
+  variants    ProductVariant[]
+
+  @@index([type])
+  @@index([active])
+}
+
+// Proveedores para control de compras
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  taxId       String?  // RUC, NIT, etc.
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  inventoryItems InventoryItem[]
+
+  @@index([active])
+}
+
+// Variantes de producto (tamaños, presentaciones)
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String   // "250ml", "500ml", "1L", "Copa", "Botella"
+  multiplier  Float    @default(1.0) // Multiplicador de precio (1.0 = precio base, 2.0 = doble precio)
+  sku         String?  @unique
+  barcode     String?  @unique
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Unidad específica para esta variante
+  unitOfMeasureId String?
+  unitOfMeasure   UnitOfMeasure? @relation(fields: [unitOfMeasureId], references: [id])
+
+  // Relaciones
+  inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
+
+  @@index([productId])
+  @@index([active])
+  @@index([sku])
+  @@index([barcode])
+}
+
+// Control de inventario por lotes
+model InventoryItem {
+  id             String   @id @default(cuid())
+  productId      String?
+  product        Product? @relation(fields: [productId], references: [id])
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id])
+  supplierId     String?
+  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+
+  // Información del lote
+  batchNumber    String?  // Número de lote del proveedor
+  purchaseDate   DateTime
+  expiryDate     DateTime?
+  quantity       Float    // Cantidad en unidades del producto
+  unitCost       Float    // Costo unitario de compra
+  totalCost      Float    // Costo total = quantity * unitCost
+
+  // Control de stock
+  currentStock   Float    @default(0) // Stock actual disponible
+  reservedStock  Float    @default(0) // Stock reservado para pedidos
+  damagedStock   Float    @default(0) // Stock dañado/perdido
+
+  // Ubicación en almacén
+  location       String?  // "Estantería A1", "Refrigerado", etc.
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([supplierId])
+  @@index([expiryDate])
+  @@index([batchNumber])
 }

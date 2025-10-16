@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
     let effectiveRole: StaffRole | null = null;
     let isAdminUser = false;
 
-    if (adminSession) {
-      // Si hay sesión de admin, darle acceso completo como ADMIN
-      effectiveRole = 'ADMIN'; // Both ADMIN and STAFF admins get ADMIN access
+    if (adminSession && !userSession) {
+      // Si hay SOLO sesión de admin (sin sesión de usuario), darle acceso completo como ADMIN
+      effectiveRole = 'ADMIN';
       isAdminUser = true;
     } else if (userSession) {
-      // Obtener información del usuario colaborador
+      // Si hay sesión de usuario (incluso si también hay sesión admin), usar permisos basados en área
       user = await prisma.user.findUnique({
         where: { id: userSession.userId },
         include: {
@@ -55,13 +55,24 @@ export async function GET(request: NextRequest) {
       const userArea = user.person?.area;
       validArea = userArea && isValidArea(userArea) ? userArea : null;
       restaurantRole = mapAreaToStaffRole(validArea as any);
-      
-      // Si es STAFF, darle acceso completo como ADMIN de restaurante
+
+      // Si es STAFF, usar el rol derivado del área (no forzar ADMIN)
       isStaffUser = userSession.role === 'STAFF';
-      effectiveRole = isStaffUser ? 'ADMIN' : restaurantRole;
+      effectiveRole = restaurantRole; // Usar rol del área, no ADMIN
     }
 
-    const permissions = getStaffPermissions(effectiveRole || 'WAITER');
+        const permissions = getStaffPermissions(effectiveRole);
+
+    console.log('🔐 Permisos calculados para usuario:', {
+      userId: user?.id || 'admin',
+      userSessionRole: userSession?.role,
+      adminSession: !!adminSession,
+      isStaffUser,
+      isAdminUser,
+      effectiveRole,
+      area: validArea,
+      permissions
+    });
 
     // Si no tiene rol de restaurante y no es STAFF, devolver acceso limitado
     if (!restaurantRole && !isStaffUser && !isAdminUser) {
@@ -79,7 +90,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Para usuarios admin, no necesitamos registro en tabla Staff
+    // Para usuarios admin (sin sesión de usuario), no necesitamos registro en tabla Staff
     if (isAdminUser) {
       return NextResponse.json({
         hasRestaurantAccess: true,
@@ -91,37 +102,53 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Buscar o crear registro en tabla Staff para usuarios colaboradores
-    let staffRecord = await prisma.staff.findUnique({
-      where: { userId: user!.id }
-    });
-
-    if (!staffRecord) {
-      // Crear registro de staff automáticamente si no existe
-      staffRecord = await prisma.staff.create({
-        data: {
-          userId: user!.id,
-          name: user!.person?.name || user!.username,
-          role: effectiveRole!,
-          zones: [], // Por defecto sin zonas asignadas
-          active: true
-        }
+    // Para usuarios colaboradores (con sesión de usuario), buscar o crear registro en tabla Staff
+    if (user) {
+      let staffRecord = await prisma.staff.findUnique({
+        where: { userId: user.id }
       });
-    } else if (staffRecord.role !== effectiveRole) {
-      // Actualizar rol si cambió
-      staffRecord = await prisma.staff.update({
-        where: { id: staffRecord.id },
-        data: { role: effectiveRole! }
+
+      if (!staffRecord) {
+        // Crear registro de staff automáticamente si no existe
+        staffRecord = await prisma.staff.create({
+          data: {
+            userId: user.id,
+            name: user.person?.name || user.username,
+            role: effectiveRole!,
+            zones: [], // Por defecto sin zonas asignadas
+            active: true
+          }
+        });
+      } else if (staffRecord.role !== effectiveRole) {
+        // Actualizar rol si cambió
+        staffRecord = await prisma.staff.update({
+          where: { id: staffRecord.id },
+          data: { role: effectiveRole! }
+        });
+      }
+
+      return NextResponse.json({
+        hasRestaurantAccess: true,
+        area: validArea,
+        restaurantRole: effectiveRole,
+        staffId: staffRecord.id,
+        zones: staffRecord.zones,
+        permissions
       });
     }
 
+    // Fallback por si algo sale mal
     return NextResponse.json({
-      hasRestaurantAccess: true,
+      hasRestaurantAccess: false,
       area: validArea,
-      restaurantRole: effectiveRole,
-      staffId: staffRecord.id,
-      zones: staffRecord.zones,
-      permissions
+      permissions: {
+        canViewOrders: false,
+        canUpdateOrderStatus: false,
+        canAssignTables: false,
+        canCloseOrders: false,
+        canMarkReady: false,
+        allowedStatuses: []
+      }
     });
 
   } catch (error) {

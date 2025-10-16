@@ -22,7 +22,12 @@ interface LocationModalProps {
 }
 
 export default function LocationModal({ isOpen, onClose, onSave, location, title }: LocationModalProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    type: LocationType;
+    active: boolean;
+    order: number;
+  }>({
     name: "",
     type: LocationType.DINING,
     active: true,

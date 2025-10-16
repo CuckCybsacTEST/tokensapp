@@ -17,11 +17,34 @@ export default async function ULayout({ children }: { children: React.ReactNode 
     const session = await verifyUserSessionCookie(raw);
     if (session) {
       const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
+
+      // Try to read staff record (if the collaborator is registered as staff)
+      let staffRecord = null;
+      try {
+        staffRecord = await prisma.staff.findUnique({ where: { userId: u?.id } });
+      } catch (e) {
+        // ignore
+      }
+
+      // Map staff role to a human friendly label when available
+      const mapRoleLabel = (r: string | null | undefined) => {
+        if (!r) return null;
+        switch (r) {
+          case 'WAITER': return 'Mozos';
+          case 'BARTENDER': return 'Barra';
+          case 'CASHIER': return 'Caja';
+          case 'ADMIN': return 'Administrador';
+          default: return r;
+        }
+      };
+
+      const roleLabel = staffRecord?.role ? mapRoleLabel(staffRecord.role) : mapRoleLabel(u?.role ?? null);
+
       me = { 
         personName: u?.person?.name ?? null, 
         dni: u?.person?.dni ?? null,
         jobTitle: u?.person?.jobTitle ?? null,
-        role: u?.role ?? null
+        role: roleLabel ?? null
       };
     }
   } catch {}
@@ -39,7 +62,9 @@ export default async function ULayout({ children }: { children: React.ReactNode 
                   <div className="opacity-80">DNI: <span className="font-mono">{me.dni}</span></div>
                 )}
                 {(me.jobTitle || me.role) && (
-                  <div className="opacity-80">{me.jobTitle || 'Sin puesto'} - {me.role || 'Sin rol'}</div>
+                  <div className="opacity-80">
+                    {me.role ? me.role : (me.jobTitle || 'Sin puesto')}
+                  </div>
                 )}
               </div>
             )}

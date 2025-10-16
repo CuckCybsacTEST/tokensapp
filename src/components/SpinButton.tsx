@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./Button";
 import { Zap, Sparkles, RotateCcw } from "lucide-react";
 
-interface SpinButtonProps {
+export interface SpinButtonProps {
   onSpin: () => void;
   spinning?: boolean;
   disabled?: boolean;

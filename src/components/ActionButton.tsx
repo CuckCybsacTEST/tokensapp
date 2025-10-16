@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./Button";
 import { CheckCircle, XCircle, AlertCircle, Loader2, Zap } from "lucide-react";
 
-interface ActionButtonProps {
+export interface ActionButtonProps {
   onClick: () => void;
   children: React.ReactNode;
   loading?: boolean;

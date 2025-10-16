@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "success" | "warning" | "outline";
   size?: "sm" | "md" | "lg";
   loading?: boolean;

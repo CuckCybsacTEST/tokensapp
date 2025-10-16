@@ -168,6 +168,7 @@ export async function PATCH(
         items: {
           include: {
             product: true,
+            variant: true,
           },
         },
         table: true,
@@ -178,6 +179,60 @@ export async function PATCH(
         staff: true,
       },
     });
+
+    // Si el pedido se marca como entregado, reducir el stock del inventario
+    if (dbStatus === "DELIVERED") {
+      console.log("📦 Reduciendo stock del inventario para pedido entregado:", updatedOrder.id);
+      
+      for (const orderItem of updatedOrder.items) {
+        try {
+          // Buscar el item de inventario correspondiente
+          const inventoryItem = await prisma.inventoryItem.findFirst({
+            where: {
+              productId: orderItem.productId,
+              variantId: orderItem.variantId,
+              currentStock: {
+                gt: 0 // Solo items con stock disponible
+              }
+            },
+            orderBy: {
+              createdAt: 'asc' // FIFO: primero en entrar, primero en salir
+            }
+          });
+
+          if (inventoryItem) {
+            // Calcular el nuevo stock disponible
+            const quantityToReduce = orderItem.quantity;
+            const newCurrentStock = Math.max(0, inventoryItem.currentStock - quantityToReduce);
+
+            // Actualizar el stock del item de inventario
+            await prisma.inventoryItem.update({
+              where: { id: inventoryItem.id },
+              data: {
+                currentStock: newCurrentStock,
+                updatedAt: new Date(),
+              }
+            });
+
+            console.log(`✅ Stock reducido para ${orderItem.product.name}: ${inventoryItem.currentStock} → ${newCurrentStock} (reducido: ${quantityToReduce})`);
+            
+            // Emitir evento de actualización de inventario
+            emitSocketEvent("inventory-update", {
+              itemId: inventoryItem.id,
+              productId: inventoryItem.productId,
+              variantId: inventoryItem.variantId,
+              oldStock: inventoryItem.currentStock,
+              newStock: newCurrentStock,
+              reduced: quantityToReduce
+            });
+          } else {
+            console.warn(`⚠️ No se encontró item de inventario disponible para ${orderItem.product.name} (variant: ${orderItem.variant?.name || 'N/A'})`);
+          }
+        } catch (error) {
+          console.error(`❌ Error al reducir stock para ${orderItem.product.name}:`, error);
+        }
+      }
+    }
 
     // Emitir evento de socket para actualización en tiempo real
     emitOrderStatusUpdate({

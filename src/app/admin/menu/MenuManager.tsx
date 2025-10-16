@@ -17,6 +17,7 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
+  basePrice: number | null;
   image: string | null;
   categoryId: string;
   featured: boolean;
@@ -28,19 +29,37 @@ interface Product {
   };
 }
 
+interface ProductVariant {
+  id: string;
+  productId: string;
+  name: string;
+  multiplier: number;
+  sku: string | null;
+  barcode: string | null;
+  active: boolean;
+  product: {
+    id: string;
+    name: string;
+  };
+}
+
 export default function MenuManager() {
-  const [activeTab, setActiveTab] = useState<"categories" | "products">("categories");
+  const [activeTab, setActiveTab] = useState<"categories" | "products" | "variants">("categories");
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form states
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
+  const [showVariantForm, setShowVariantForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
   const [submittingCategory, setSubmittingCategory] = useState(false);
   const [submittingProduct, setSubmittingProduct] = useState(false);
+  const [submittingVariant, setSubmittingVariant] = useState(false);
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -59,15 +78,24 @@ export default function MenuManager() {
     order: "0",
   });
 
+  const [variantForm, setVariantForm] = useState({
+    productId: "",
+    name: "",
+    multiplier: "1.0",
+    sku: "",
+    barcode: "",
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [categoriesRes, productsRes] = await Promise.all([
+      const [categoriesRes, productsRes, variantsRes] = await Promise.all([
         fetch("/api/menu/categories"),
         fetch("/api/menu/products"),
+        fetch("/api/menu/variants"),
       ]);
 
       if (categoriesRes.ok) {
@@ -78,6 +106,11 @@ export default function MenuManager() {
       if (productsRes.ok) {
         const productsData = await productsRes.json();
         setProducts(productsData);
+      }
+
+      if (variantsRes.ok) {
+        const variantsData = await variantsRes.json();
+        setVariants(variantsData);
       }
     } catch (error) {
       console.error("Error fetching menu data:", error);
@@ -273,6 +306,118 @@ export default function MenuManager() {
     resetProductForm();
   };
 
+  const handleProductDelete = async (product: Product) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar el producto "${product.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/menu/products/${product.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || "Error al eliminar el producto");
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Error al eliminar el producto");
+    }
+  };
+
+  // Variant handlers
+  const handleVariantSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingVariant(true);
+
+    try {
+      const method = editingVariant ? "PUT" : "POST";
+      const body = editingVariant
+        ? { ...variantForm, id: editingVariant.id, active: true }
+        : { ...variantForm, active: true };
+
+      const response = await fetch("/api/menu/variants", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setShowVariantForm(false);
+        setEditingVariant(null);
+        resetVariantForm();
+      } else {
+        const error = await response.json();
+        alert(error.error || "Error al guardar la variante");
+      }
+    } catch (error) {
+      console.error("Error saving variant:", error);
+      alert("Error al guardar la variante");
+    } finally {
+      setSubmittingVariant(false);
+    }
+  };
+
+  const handleVariantEdit = (variant: ProductVariant) => {
+    setEditingVariant(variant);
+    setVariantForm({
+      productId: variant.productId,
+      name: variant.name,
+      multiplier: variant.multiplier.toString(),
+      sku: variant.sku || "",
+      barcode: variant.barcode || "",
+    });
+    setShowVariantForm(true);
+  };
+
+  const handleVariantDelete = async (variant: ProductVariant) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar la variante "${variant.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/menu/variants", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: variant.id, active: false }),
+      });
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        const error = await response.json();
+        alert(error.error || "Error al eliminar la variante");
+      }
+    } catch (error) {
+      console.error("Error deleting variant:", error);
+      alert("Error al eliminar la variante");
+    }
+  };
+
+  const resetVariantForm = () => {
+    setVariantForm({
+      productId: "",
+      name: "",
+      multiplier: "1.0",
+      sku: "",
+      barcode: "",
+    });
+  };
+
+  const cancelVariantEdit = () => {
+    setShowVariantForm(false);
+    setEditingVariant(null);
+    resetVariantForm();
+  };
+
   if (loading) {
     return <div>Cargando menú...</div>;
   }
@@ -297,6 +442,14 @@ export default function MenuManager() {
             className="border-b-2 border-transparent"
           >
             Productos ({products.length})
+          </Button>
+          <Button
+            onClick={() => setActiveTab("variants")}
+            variant={activeTab === "variants" ? "primary" : "outline"}
+            size="sm"
+            className="border-b-2 border-transparent"
+          >
+            Variantes ({variants.length})
           </Button>
         </nav>
       </div>
@@ -662,6 +815,12 @@ export default function MenuManager() {
                         >
                           Editar
                         </button>
+                        <button
+                          onClick={() => handleProductDelete(product)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Eliminar
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -672,6 +831,183 @@ export default function MenuManager() {
             {products.length === 0 && (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 No hay productos registrados
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Variants Tab */}
+      {activeTab === "variants" && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Variantes de Productos</h2>
+            <ActionButton
+              onClick={() => setShowVariantForm(true)}
+            >
+              Agregar Variante
+            </ActionButton>
+          </div>
+
+          {showVariantForm && (
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold mb-4">
+                {editingVariant ? "Editar Variante" : "Nueva Variante"}
+              </h3>
+
+              <form onSubmit={handleVariantSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Producto *
+                    </label>
+                    <select
+                      required
+                      value={variantForm.productId}
+                      onChange={(e) => setVariantForm({ ...variantForm, productId: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                    >
+                      <option value="">Seleccionar producto...</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Nombre de la variante *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ej: 250ml, Copa, Botella"
+                      value={variantForm.name}
+                      onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Multiplicador de precio
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={variantForm.multiplier}
+                      onChange={(e) => setVariantForm({ ...variantForm, multiplier: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      1.0 = precio base, 2.0 = doble precio
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      SKU (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={variantForm.sku}
+                      onChange={(e) => setVariantForm({ ...variantForm, sku: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Código de barras (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={variantForm.barcode}
+                      onChange={(e) => setVariantForm({ ...variantForm, barcode: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button type="submit" className="btn btn-primary">
+                    {editingVariant ? "Actualizar" : "Crear"} Variante
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelVariantEdit}
+                    className="btn btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                <thead className="bg-slate-50 dark:bg-slate-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                      Producto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                      Variante
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                      Multiplicador
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                      SKU
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                  {variants.map((variant) => (
+                    <tr key={variant.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                        {variant.product.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">
+                        {variant.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">
+                        {variant.multiplier}x
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">
+                        {variant.sku || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                        <button
+                          onClick={() => handleVariantEdit(variant)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleVariantDelete(variant)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {variants.length === 0 && (
+              <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                No hay variantes registradas
               </div>
             )}
           </div>

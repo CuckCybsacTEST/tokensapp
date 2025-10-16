@@ -43,25 +43,25 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: true,
         canCloseOrders: false,
         canMarkReady: false,
-        allowedStatuses: ['CONFIRMED', 'DELIVERED']
+        allowedStatuses: ['DELIVERED', 'CANCELLED'] // Puede entregar y cancelar, pero no confirmar
       };
     case 'CASHIER':
       return {
         canViewOrders: true,
         canUpdateOrderStatus: true,
         canAssignTables: false,
-        canCloseOrders: true,
+        canCloseOrders: false, // No puede eliminar
         canMarkReady: false,
-        allowedStatuses: ['DELIVERED', 'CANCELLED']
+        allowedStatuses: ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'] // Todo menos eliminar
       };
     case 'BARTENDER':
       return {
         canViewOrders: true,
         canUpdateOrderStatus: true,
         canAssignTables: false,
-        canCloseOrders: false,
+        canCloseOrders: false, // No puede eliminar
         canMarkReady: true,
-        allowedStatuses: ['PREPARING', 'READY']
+        allowedStatuses: ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'] // Puede confirmar, preparar, listo, entregar y cancelar
       };
     case 'ADMIN':
       return {

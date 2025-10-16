@@ -87,7 +87,6 @@ export default function StaffMenuPage() {
   const [selectedServicePoint, setSelectedServicePoint] = useState<ServicePoint | null>(null);
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [newOrderActivity, setNewOrderActivity] = useState<boolean>(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -124,17 +123,6 @@ export default function StaffMenuPage() {
   // Listener para actualizaciones en tiempo real
   useEffect(() => {
     if (socket) {
-      // Actualizar estado de conexión
-      socket.on("connect", () => {
-        console.log("🔌 Menú: Socket conectado");
-        setSocketConnected(true);
-      });
-
-      socket.on("disconnect", () => {
-        console.log("🔌 Menú: Socket desconectado");
-        setSocketConnected(false);
-      });
-
       // Listener para nuevos pedidos (útil para mostrar indicadores de actividad)
       socket.on("new-order", (orderData: any) => {
         console.log("🍽️ Menú: Nuevo pedido detectado:", orderData);
@@ -330,9 +318,9 @@ export default function StaffMenuPage() {
               <div className="flex items-center gap-4">
                 {/* Indicador de conexión */}
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-500'}`}></div>
                   <span className="text-xs text-gray-400">
-                    {socketConnected ? 'Conectado' : 'Sin conexión'}
+                    {isConnected ? 'Conectado' : 'Sin conexión'}
                   </span>
                 </div>
 
@@ -408,7 +396,7 @@ export default function StaffMenuPage() {
                     <p className="text-gray-400 text-sm mb-3">{product.description}</p>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className="text-[#FF4D2E] font-bold text-lg">${product.price.toFixed(2)}</span>
+                    <span className="text-[#FF4D2E] font-bold text-lg">s/ {product.price.toFixed(2)}</span>
                     <ActionButton
                       onClick={() => addToCart(product)}
                       size="sm"
@@ -485,7 +473,7 @@ export default function StaffMenuPage() {
                   <div key={item.product.id} className="flex items-center justify-between bg-gray-700 rounded-lg p-3">
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{item.product.name}</h4>
-                      <p className="text-[#FF4D2E] text-sm">${item.product.price.toFixed(2)}</p>
+                      <p className="text-[#FF4D2E] text-sm">s/ {item.product.price.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <QuickActionButton
@@ -510,7 +498,7 @@ export default function StaffMenuPage() {
                 <div className="mt-4 pt-4 border-t border-gray-600">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-semibold">Total:</span>
-                    <span className="text-xl font-bold text-[#FF4D2E]">${getTotal().toFixed(2)}</span>
+                    <span className="text-xl font-bold text-[#FF4D2E]">s/ {getTotal().toFixed(2)}</span>
                   </div>
                   <ActionButton
                     onClick={createOrder}
