@@ -263,8 +263,49 @@ export default function AdminPedidosPage() {
     }
   };
 
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case "PENDING": return "Pendiente";
+      case "CONFIRMED": return "Confirmado";
+      case "PREPARING": return "Preparando";
+      case "READY": return "Listo";
+      case "DELIVERED": return "Entregado";
+      case "CANCELLED": return "Cancelado";
+      default: return status;
+    }
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "PENDING": return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+      case "CONFIRMED": return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+      case "PREPARING": return "bg-orange-500/20 text-orange-400 border border-orange-500/30";
+      case "READY": return "bg-green-500/20 text-green-400 border border-green-500/30";
+      case "DELIVERED": return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
+      case "CANCELLED": return "bg-red-500/20 text-red-400 border border-red-500/30";
+      default: return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+    }
+  };
+
   const filteredOrders = selectedStatus === "all"
     ? orders
+        .slice()
+        .sort((a, b) => {
+          const hasReadyOrders = orders.some(order => order.status === "READY");
+          
+          // Si hay pedidos READY, priorizarlos primero
+          if (hasReadyOrders) {
+            if (a.status === "READY" && b.status !== "READY") return -1;
+            if (a.status !== "READY" && b.status === "READY") return 1;
+          } else {
+            // Si no hay pedidos READY, priorizar PENDING
+            if (a.status === "PENDING" && b.status !== "PENDING") return -1;
+            if (a.status !== "PENDING" && b.status === "PENDING") return 1;
+          }
+          
+          // Para pedidos con el mismo estado, ordenar por fecha de creación (más recientes primero)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })
     : orders.filter(order => order.status === selectedStatus);
 
   const pendingOrders = orders.filter(o => o.status === "PENDING").length;
@@ -413,61 +454,76 @@ export default function AdminPedidosPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white/5 border border-white/10 rounded-lg p-6"
+              className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(order.status)}`}></div>
-                  <h3 className="text-lg font-semibold">Pedido #{order.id.slice(-8)}</h3>
-                  <span className="text-gray-400">{getOrderLocationName(order)}</span>
-                  {order.staff && (
-                    <span className="text-blue-400 text-sm">
-                      👤 {order.staff.name} ({order.staff.role})
-                    </span>
-                  )}
+              {/* Header con Estado Destacado y Zona/Mesa */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                <div className="flex items-center gap-3">
+                  {/* Estado con especial prominencia */}
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${getStatusBadgeStyle(order.status)}`}>
+                    {getStatusIcon(order.status)}
+                    <span>{getStatusText(order.status)}</span>
+                  </div>
+                  
+                  {/* Zona/Mesa - Mayor jerarquía */}
+                  <div className="bg-gray-800/50 px-3 py-2 rounded-lg">
+                    <span className="text-white font-bold text-base md:text-lg">{getOrderLocationName(order)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400">
-                    {new Date(order.createdAt).toLocaleString()}
-                  </span>
-                  <QuickActionButton
-                    onClick={() => deleteOrder(order.id)}
-                    disabled={deletingOrderId === order.id}
-                    className="p-2 bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </QuickActionButton>
+                
+                {/* ID del pedido y timestamp */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-gray-400">
+                  <span className="font-mono">#{order.id.slice(-6)}</span>
+                  <span className="hidden md:inline">{new Date(order.createdAt).toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Items del pedido */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                {order.items.map((item, itemIndex) => (
-                  <div key={itemIndex} className="bg-white/5 rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{item.product.name}</h4>
-                        <p className="text-sm text-gray-400">Cantidad: {item.quantity}</p>
-                        {item.notes && (
-                          <p className="text-xs text-yellow-400 mt-1">Nota: {item.notes}</p>
-                        )}
+              {/* Productos - Segunda jerarquía */}
+              <div className="mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {order.items.map((item, idx) => (
+                    <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-white truncate">{item.product.name}</h4>
+                          <p className="text-sm text-gray-300">×{item.quantity}</p>
+                          {item.notes && (
+                            <p className="text-xs text-yellow-400 mt-1 italic">"{item.notes}"</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
-              {/* Total y acciones */}
-              <div className="flex items-center justify-between">
-                <div className="text-xl font-bold text-[#FF4D2E]">
-                  Total: S/ {order.total.toFixed(2)}
+              {/* Footer con Precio, Staff y Acciones */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Precio y Staff */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  {/* Precio - Tercera jerarquía */}
+                  <div className="text-xl md:text-2xl font-bold text-[#FF4D2E]">
+                    S/ {order.total.toFixed(2)}
+                  </div>
+                  
+                  {/* Quién hizo el pedido - Cuarta jerarquía */}
+                  {order.staff && (
+                    <div className="flex items-center gap-2 text-sm text-gray-300">
+                      <span className="text-blue-400">👤</span>
+                      <span className="hidden sm:inline">{order.staff.name}</span>
+                      <span className="sm:hidden">{order.staff.name.split(' ')[0]}</span>
+                      <span className="text-gray-500">({order.staff.role})</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Acciones */}
                 <div className="flex gap-2 flex-wrap">
                   {order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
                     <button
                       onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
                       disabled={isAnyActionInProgress(order.id) || order.status !== "PENDING"}
-                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] ${
                         order.status === "PENDING"
                           ? "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500"
                           : "bg-blue-800 text-gray-300"
@@ -476,7 +532,9 @@ export default function AdminPedidosPage() {
                       {isUpdatingOrder(order.id, "CONFIRMED") ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        order.status === "PENDING" ? "Confirmar" : "✓ Confirmado"
+                        <span>
+                          {order.status === "PENDING" ? "Confirmar" : "✓ Confirmado"}
+                        </span>
                       )}
                     </button>
                   )}
@@ -484,7 +542,7 @@ export default function AdminPedidosPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, "PREPARING")}
                       disabled={isAnyActionInProgress(order.id) || order.status !== "CONFIRMED"}
-                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] ${
                         order.status === "CONFIRMED"
                           ? "bg-orange-600 hover:bg-orange-700 text-white focus:ring-orange-500"
                           : "bg-orange-800 text-gray-300"
@@ -493,7 +551,9 @@ export default function AdminPedidosPage() {
                       {isUpdatingOrder(order.id, "PREPARING") ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        ["PREPARING", "READY", "DELIVERED"].includes(order.status) ? "En preparación" : "Preparar"
+                        <span>
+                          {["PREPARING", "READY", "DELIVERED"].includes(order.status) ? "En preparación" : "Preparar"}
+                        </span>
                       )}
                     </button>
                   )}
@@ -501,7 +561,7 @@ export default function AdminPedidosPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, "READY")}
                       disabled={isAnyActionInProgress(order.id) || order.status !== "PREPARING"}
-                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] ${
                         order.status === "PREPARING"
                           ? "bg-green-600 hover:bg-green-700 text-white focus:ring-green-500"
                           : "bg-green-800 text-gray-300"
@@ -510,7 +570,9 @@ export default function AdminPedidosPage() {
                       {isUpdatingOrder(order.id, "READY") ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        ["READY", "DELIVERED"].includes(order.status) ? "Listo para recoger" : "Listo"
+                        <span>
+                          {["READY", "DELIVERED"].includes(order.status) ? "Listo para recoger" : "Listo"}
+                        </span>
                       )}
                     </button>
                   )}
@@ -518,7 +580,7 @@ export default function AdminPedidosPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, "DELIVERED")}
                       disabled={isAnyActionInProgress(order.id) || order.status !== "READY"}
-                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] ${
                         order.status === "READY"
                           ? "bg-purple-600 hover:bg-purple-700 text-white focus:ring-purple-500"
                           : "bg-purple-800 text-gray-300"
@@ -527,7 +589,7 @@ export default function AdminPedidosPage() {
                       {isUpdatingOrder(order.id, "DELIVERED") ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        "Entregar"
+                        <span>Entregar</span>
                       )}
                     </button>
                   )}
@@ -535,15 +597,22 @@ export default function AdminPedidosPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, "CANCELLED")}
                       disabled={isAnyActionInProgress(order.id)}
-                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
                     >
                       {isUpdatingOrder(order.id, "CANCELLED") ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        "Cancelar"
+                        <span>Cancelar</span>
                       )}
                     </button>
                   )}
+                  <QuickActionButton
+                    onClick={() => deleteOrder(order.id)}
+                    disabled={deletingOrderId === order.id}
+                    className="p-2 bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </QuickActionButton>
                 </div>
               </div>
             </motion.div>

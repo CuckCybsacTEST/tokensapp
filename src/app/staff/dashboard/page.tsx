@@ -42,6 +42,7 @@ interface StaffProfile {
     canAssignTables: boolean;
     canCloseOrders: boolean;
     canMarkReady: boolean;
+    canViewMetrics: boolean;
     allowedStatuses: string[];
   };
 }
@@ -326,18 +327,20 @@ export default function StaffDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  setShowMetrics(!showMetrics);
-                  if (!showMetrics) {
-                    fetchStaffMetrics();
-                  }
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors"
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span className="text-sm">Métricas</span>
-              </button>
+              {staffProfile?.permissions.canViewMetrics && (
+                <button
+                  onClick={() => {
+                    setShowMetrics(!showMetrics);
+                    if (!showMetrics) {
+                      fetchStaffMetrics();
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="text-sm">Métricas</span>
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <Bell className="w-5 h-5" />
                 <span className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>

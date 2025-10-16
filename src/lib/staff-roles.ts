@@ -22,6 +22,7 @@ export function getStaffPermissions(role: StaffRole | null): {
   canAssignTables: boolean;
   canCloseOrders: boolean;
   canMarkReady: boolean;
+  canViewMetrics: boolean;
   allowedStatuses: string[];
 } {
   if (!role) {
@@ -31,6 +32,7 @@ export function getStaffPermissions(role: StaffRole | null): {
       canAssignTables: false,
       canCloseOrders: false,
       canMarkReady: false,
+      canViewMetrics: false,
       allowedStatuses: []
     };
   }
@@ -43,6 +45,7 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: true,
         canCloseOrders: false,
         canMarkReady: false,
+        canViewMetrics: true,
         allowedStatuses: ['DELIVERED', 'CANCELLED'] // Puede entregar y cancelar, pero no confirmar
       };
     case 'CASHIER':
@@ -52,6 +55,7 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: false,
         canCloseOrders: false, // No puede eliminar
         canMarkReady: false,
+        canViewMetrics: true,
         allowedStatuses: ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'] // Todo menos eliminar
       };
     case 'BARTENDER':
@@ -61,6 +65,7 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: false,
         canCloseOrders: false, // No puede eliminar
         canMarkReady: true,
+        canViewMetrics: true,
         allowedStatuses: ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'] // Puede confirmar, preparar, listo, entregar y cancelar
       };
     case 'ADMIN':
@@ -70,6 +75,7 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: true,
         canCloseOrders: true,
         canMarkReady: true,
+        canViewMetrics: true,
         allowedStatuses: ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED']
       };
     default:
@@ -79,6 +85,7 @@ export function getStaffPermissions(role: StaffRole | null): {
         canAssignTables: false,
         canCloseOrders: false,
         canMarkReady: false,
+        canViewMetrics: false,
         allowedStatuses: []
       };
   }
