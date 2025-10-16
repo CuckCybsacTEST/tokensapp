@@ -1,11 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
 import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
 import { mapAreaToStaffRole, getStaffPermissions } from "@/lib/staff-roles";
 import { isValidArea } from "@/lib/areas";
 
-const prisma = new PrismaClient();
+// Función para emitir eventos de socket desde APIs
+function emitSocketEvent(event: string, data: any, rooms?: string[]) {
+  try {
+    const io = (global as any).io;
+    if (io) {
+      if (rooms && rooms.length > 0) {
+        rooms.forEach(room => {
+          io.to(room).emit(event, data);
+        });
+      } else {
+        io.emit(event, data);
+      }
+      console.log(`📡 Evento '${event}' emitido:`, data);
+    } else {
+      console.warn("⚠️ Socket.IO no está disponible para emitir eventos");
+    }
+  } catch (error) {
+    console.error("❌ Error al emitir evento de socket:", error);
+  }
+}
+
+// Función específica para emitir actualizaciones de estado de pedidos
+function emitOrderStatusUpdate(orderData: any) {
+  const rooms = ["cashier", "staff-general"];
+  if (orderData.staffId) {
+    rooms.push(`staff-${orderData.staffId}`);
+  }
+  if (orderData.tableId) {
+    rooms.push(`table-${orderData.tableId}`);
+  }
+  if (orderData.servicePoint?.id) {
+    rooms.push(`service-point-${orderData.servicePoint.id}`);
+  }
+  if (orderData.location?.id) {
+    rooms.push(`location-${orderData.location.id}`);
+  }
+  emitSocketEvent("order-status-update", orderData, rooms);
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -134,7 +171,22 @@ export async function PATCH(
           },
         },
         table: true,
+        servicePoint: {
+          include: { location: true }
+        },
+        location: true,
+        staff: true,
       },
+    });
+
+    // Emitir evento de socket para actualización en tiempo real
+    emitOrderStatusUpdate({
+      orderId: updatedOrder.id,
+      status: updatedOrder.status,
+      tableId: updatedOrder.tableId,
+      staffId: updatedOrder.staffId,
+      servicePoint: updatedOrder.servicePoint,
+      location: updatedOrder.location,
     });
 
     return NextResponse.json({

@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
-import { useTableSocket } from "../../../hooks/useSocket";
+import { useMenuSocket } from "../../../hooks/useSocket";
 import Link from "next/link";
+import { Button, ActionButton, QuickActionButton } from "../../../components";
 
 interface Category {
   id: string;
@@ -31,14 +32,27 @@ interface Product {
   };
 }
 
-interface Table {
+interface Location {
   id: string;
-  number: number;
-  name: string | null;
-  zone: string | null;
+  name: string;
+  type: 'DINING' | 'VIP' | 'BAR';
+  active: boolean;
+  order: number;
+  servicePoints: ServicePoint[];
+}
+
+interface ServicePoint {
+  id: string;
+  locationId: string;
+  number: string;
+  name?: string;
+  type: 'TABLE' | 'BOX' | 'ZONE';
   capacity: number;
   active: boolean;
-  qrCode: string | null;
+  location: {
+    name: string;
+    type: string;
+  };
 }
 
 interface CartItem {
@@ -67,13 +81,17 @@ interface StaffProfile {
 export default function StaffMenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [tables, setTables] = useState<Table[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [selectedServicePoint, setSelectedServicePoint] = useState<ServicePoint | null>(null);
   const [staffProfile, setStaffProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const { socket, isConnected } = useTableSocket();
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [newOrderActivity, setNewOrderActivity] = useState<boolean>(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const { socket, isConnected } = useMenuSocket();
 
   const getRoleDisplayName = (role: string | null | undefined) => {
     switch (role) {
@@ -100,8 +118,45 @@ export default function StaffMenuPage() {
     fetchStaffProfile();
     fetchCategories();
     fetchProducts();
-    fetchTables();
+    fetchLocations();
   }, []);
+
+  // Listener para actualizaciones en tiempo real
+  useEffect(() => {
+    if (socket) {
+      // Actualizar estado de conexión
+      socket.on("connect", () => {
+        console.log("🔌 Menú: Socket conectado");
+        setSocketConnected(true);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("🔌 Menú: Socket desconectado");
+        setSocketConnected(false);
+      });
+
+      // Listener para nuevos pedidos (útil para mostrar indicadores de actividad)
+      socket.on("new-order", (orderData: any) => {
+        console.log("🍽️ Menú: Nuevo pedido detectado:", orderData);
+        setNewOrderActivity(true);
+        // Ocultar indicador después de 3 segundos
+        setTimeout(() => setNewOrderActivity(false), 3000);
+      });
+
+      // Listener para actualizaciones de estado de pedidos
+      socket.on("order-status-update", (orderData: any) => {
+        console.log("📦 Menú: Estado de pedido actualizado:", orderData);
+        // Aquí podríamos actualizar indicadores visuales de actividad
+      });
+
+      return () => {
+        socket.off("connect");
+        socket.off("disconnect");
+        socket.off("new-order");
+        socket.off("order-status-update");
+      };
+    }
+  }, [socket]);
 
   const fetchStaffProfile = async () => {
     try {
@@ -154,16 +209,16 @@ export default function StaffMenuPage() {
     }
   };
 
-  const fetchTables = async () => {
+  const fetchLocations = async () => {
     try {
-      const response = await fetch("/api/tables");
+      const response = await fetch("/api/admin/locations");
       if (response.ok) {
         const data = await response.json();
-        console.log("Tables loaded:", data);
-        setTables(data);
+        console.log("Locations loaded:", data);
+        setLocations(data);
       }
     } catch (error) {
-      console.error("Error fetching tables:", error);
+      console.error("Error fetching locations:", error);
     }
   };
 
@@ -202,14 +257,16 @@ export default function StaffMenuPage() {
   };
 
   const createOrder = async () => {
-    if (!selectedTable || cart.length === 0) {
-      alert("Selecciona una mesa y agrega productos al carrito");
+    if (!selectedServicePoint || cart.length === 0) {
+      alert("Selecciona una zona/punto de servicio y agrega productos al carrito");
       return;
     }
 
+    setCreatingOrder(true);
     try {
       const orderData = {
-        tableId: selectedTable.id,
+        servicePointId: selectedServicePoint.type === 'ZONE' ? undefined : selectedServicePoint.id,
+        locationId: selectedServicePoint.type === 'ZONE' ? selectedServicePoint.locationId : undefined,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -227,13 +284,15 @@ export default function StaffMenuPage() {
       });
 
       if (response.ok) {
-        alert("Pedido creado exitosamente");
+        setOrderSuccess(true);
         setCart([]);
-        setSelectedTable(null);
+        setSelectedServicePoint(null);
         // Emitir evento para actualizar otros dashboards
         if (socket) {
           socket.emit("new-order", orderData);
         }
+        // Reset success state after 3 seconds
+        setTimeout(() => setOrderSuccess(false), 3000);
       } else {
         const error = await response.json();
         alert(`Error al crear pedido: ${error.error}`);
@@ -241,6 +300,8 @@ export default function StaffMenuPage() {
     } catch (error) {
       console.error("Error creating order:", error);
       alert("Error al crear el pedido");
+    } finally {
+      setCreatingOrder(false);
     }
   };
 
@@ -261,13 +322,44 @@ export default function StaffMenuPage() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-end">
-            <Link
-              href="/u/pedidos"
-              className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium"
-            >
-              Control de Pedidos
-            </Link>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold">Carta Digital</h1>
+
+              {/* Indicadores de actividad */}
+              <div className="flex items-center gap-4">
+                {/* Indicador de conexión */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                  <span className="text-xs text-gray-400">
+                    {socketConnected ? 'Conectado' : 'Sin conexión'}
+                  </span>
+                </div>
+
+                {/* Indicador de actividad de pedidos */}
+                {newOrderActivity && (
+                  <div className="flex items-center gap-2 bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-xs border border-blue-600/30">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    Actividad de pedidos
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/u/mesas"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
+              >
+                Mesas
+              </Link>
+              <Link
+                href="/u/pedidos"
+                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium"
+              >
+                Control de Pedidos
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -281,18 +373,16 @@ export default function StaffMenuPage() {
               <h2 className="text-xl font-semibold mb-4">Categorías</h2>
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {categories.filter(cat => cat.active).map(category => (
-                  <button
+                  <Button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
-                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                      selectedCategory === category.id
-                        ? 'bg-[#FF4D2E] text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    }`}
+                    variant={selectedCategory === category.id ? "primary" : "outline"}
+                    size="sm"
+                    className="whitespace-nowrap"
                   >
                     {category.icon && <span className="mr-2">{category.icon}</span>}
                     {category.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -319,12 +409,14 @@ export default function StaffMenuPage() {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-[#FF4D2E] font-bold text-lg">${product.price.toFixed(2)}</span>
-                    <button
+                    <ActionButton
                       onClick={() => addToCart(product)}
-                      className="bg-[#FF4D2E] hover:bg-[#E6442A] text-white px-3 py-2 rounded-lg transition-colors"
+                      size="sm"
+                      successMessage="¡Agregado!"
+                      className="px-3 py-2"
                     >
                       <Plus className="w-4 h-4" />
-                    </button>
+                    </ActionButton>
                   </div>
                 </motion.div>
               ))}
@@ -333,30 +425,47 @@ export default function StaffMenuPage() {
 
           {/* Cart and Table Selection */}
           <div className="space-y-6">
-            {/* Table Selection */}
+            {/* Service Point Selection */}
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4">Seleccionar Mesa</h3>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                {tables.filter(table => table.active).map(table => (
-                  <button
-                    key={table.id}
-                    onClick={() => setSelectedTable(table)}
-                    className={`p-3 rounded-lg text-center transition-colors ${
-                      selectedTable?.id === table.id
-                        ? 'bg-[#FF4D2E] text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    }`}
-                  >
-                    <div className="font-semibold">Mesa {table.number}</div>
-                    {table.name && <div className="text-xs">{table.name}</div>}
-                    {table.zone && <div className="text-xs opacity-75">{table.zone}</div>}
-                  </button>
+              <h3 className="text-lg font-semibold mb-4">Seleccionar Zona/Punto de Servicio</h3>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {locations.map(location => (
+                  <div key={location.id} className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-300 flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        location.type === 'DINING' ? 'bg-blue-500' :
+                        location.type === 'VIP' ? 'bg-purple-500' :
+                        'bg-green-500'
+                      }`}></div>
+                      {location.name}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 ml-4">
+                      {location.servicePoints.filter(sp => sp.active).map(servicePoint => (
+                        <button
+                          key={servicePoint.id}
+                          onClick={() => setSelectedServicePoint(servicePoint)}
+                          className={`p-3 rounded-lg text-center transition-colors ${
+                            selectedServicePoint?.id === servicePoint.id
+                              ? 'bg-[#FF4D2E] text-white'
+                              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                          }`}
+                        >
+                          <div className="font-semibold">{servicePoint.number}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
-              {selectedTable && (
+              {selectedServicePoint && (
                 <div className="mt-4 p-3 bg-[#FF4D2E]/20 rounded-lg">
-                  <p className="text-sm font-medium">Mesa seleccionada: {selectedTable.number}</p>
-                  {selectedTable.name && <p className="text-xs text-gray-400">{selectedTable.name}</p>}
+                  <p className="text-sm font-medium">
+                    Seleccionado: {selectedServicePoint.number}
+                    {selectedServicePoint.name && ` (${selectedServicePoint.name})`}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {selectedServicePoint.location.name} - {selectedServicePoint.type.toLowerCase()}
+                  </p>
                 </div>
               )}
             </div>
@@ -379,19 +488,19 @@ export default function StaffMenuPage() {
                       <p className="text-[#FF4D2E] text-sm">${item.product.price.toFixed(2)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      <QuickActionButton
                         onClick={() => removeFromCart(item.product.id)}
-                        className="w-8 h-8 bg-gray-600 hover:bg-gray-500 rounded flex items-center justify-center"
+                        className="w-8 h-8 p-0 flex items-center justify-center"
                       >
                         <Minus className="w-4 h-4" />
-                      </button>
+                      </QuickActionButton>
                       <span className="w-8 text-center font-medium">{item.quantity}</span>
-                      <button
+                      <QuickActionButton
                         onClick={() => addToCart(item.product)}
-                        className="w-8 h-8 bg-[#FF4D2E] hover:bg-[#E6442A] rounded flex items-center justify-center"
+                        className="w-8 h-8 p-0 flex items-center justify-center bg-[#FF4D2E] hover:bg-[#E6442A]"
                       >
                         <Plus className="w-4 h-4" />
-                      </button>
+                      </QuickActionButton>
                     </div>
                   </div>
                 ))}
@@ -403,17 +512,16 @@ export default function StaffMenuPage() {
                     <span className="text-lg font-semibold">Total:</span>
                     <span className="text-xl font-bold text-[#FF4D2E]">${getTotal().toFixed(2)}</span>
                   </div>
-                  <button
+                  <ActionButton
                     onClick={createOrder}
-                    disabled={!selectedTable}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                      selectedTable
-                        ? 'bg-[#FF4D2E] hover:bg-[#E6442A] text-white'
-                        : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    }`}
+                    loading={creatingOrder}
+                    success={orderSuccess}
+                    disabled={!selectedServicePoint}
+                    successMessage="¡Pedido creado!"
+                    className="w-full py-3"
                   >
-                    {selectedTable ? 'Crear Pedido' : 'Selecciona una Mesa'}
-                  </button>
+                    {selectedServicePoint ? 'Crear Pedido' : 'Selecciona una Zona'}
+                  </ActionButton>
                 </div>
               )}
             </div>

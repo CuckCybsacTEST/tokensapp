@@ -535,6 +535,59 @@ model Table {
   @@index([active])
 }
 
+// NUEVO: Modelo de ubicaciones principales
+model Location {
+  id          String        @id @default(cuid())
+  name        String        // "General", "VIP", "Bar Abajo", "Bar Arriba 1", "Bar Arriba 2"
+  type        LocationType  // dining, vip, bar
+  active      Boolean       @default(true)
+  order       Int           @default(0) // Para ordenar en UI
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  servicePoints ServicePoint[]
+  orders      Order[]       // Pedidos asignados directamente a ubicación (zonas de pie)
+
+  @@index([type])
+  @@index([active])
+  @@index([order])
+}
+
+// NUEVO: Tipos de ubicación
+enum LocationType {
+  DINING  // Zona de mesas tradicionales
+  VIP     // Zona premium
+  BAR     // Barra
+}
+
+// NUEVO: Reemplaza Table - puntos de servicio más genéricos
+model ServicePoint {
+  id          String            @id @default(cuid())
+  locationId  String
+  location    Location          @relation(fields: [locationId], references: [id])
+  number      String            // "01", "VIP-01", "Box-01", "Zona-01"
+  name        String?           // Nombre descriptivo opcional
+  type        ServicePointType  // table, box, zone
+  capacity    Int               @default(4) // Para zones: capacidad estimada
+  active      Boolean           @default(true)
+  qrCode      String?           @unique // URL del QR
+  positionX   Int?              // Para layout visual
+  positionY   Int?              // Para layout visual
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  orders      Order[]
+
+  @@index([locationId])
+  @@index([type])
+  @@index([active])
+}
+
+// NUEVO: Tipos de puntos de servicio
+enum ServicePointType {
+  TABLE  // Mesa tradicional
+  BOX    // Box semi-privado
+  ZONE   // Zona de pie/servicio colectivo
+}
+
 enum StaffRole {
   WAITER    // Mozo
   CASHIER   // Caja
@@ -567,22 +620,28 @@ enum OrderStatus {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  tableId     String
-  table       Table       @relation(fields: [tableId], references: [id])
-  staffId     String?     // mozo asignado
-  staff       Staff?      @relation(fields: [staffId], references: [id])
-  status      OrderStatus @default(PENDING)
-  total       Float       @default(0)
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  confirmedAt DateTime?
-  readyAt     DateTime?
-  deliveredAt DateTime?
-  items       OrderItem[]
+  id            String        @id @default(cuid())
+  tableId       String?       // LEGACY: mantener para compatibilidad
+  table         Table?        @relation(fields: [tableId], references: [id])
+  servicePointId String?      // NUEVO: punto de servicio específico
+  servicePoint  ServicePoint? @relation(fields: [servicePointId], references: [id])
+  locationId    String?       // NUEVO: ubicación para zonas de pie
+  location      Location?     @relation(fields: [locationId], references: [id])
+  staffId       String?       // mozo asignado
+  staff         Staff?        @relation(fields: [staffId], references: [id])
+  status        OrderStatus   @default(PENDING)
+  total         Float         @default(0)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  confirmedAt   DateTime?
+  readyAt       DateTime?
+  deliveredAt   DateTime?
+  items         OrderItem[]
 
   @@index([tableId])
+  @@index([servicePointId])
+  @@index([locationId])
   @@index([staffId])
   @@index([status])
   @@index([createdAt])

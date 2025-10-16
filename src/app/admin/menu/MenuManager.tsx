@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Button, ActionButton, QuickActionButton } from "../../../components";
 
 interface Category {
   id: string;
@@ -38,6 +39,8 @@ export default function MenuManager() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [submittingCategory, setSubmittingCategory] = useState(false);
+  const [submittingProduct, setSubmittingProduct] = useState(false);
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -86,6 +89,7 @@ export default function MenuManager() {
   // Category handlers
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmittingCategory(true);
 
     try {
       const url = editingCategory ? "/api/menu/categories" : "/api/menu/categories";
@@ -114,6 +118,8 @@ export default function MenuManager() {
     } catch (error) {
       console.error("Error saving category:", error);
       alert("Error al guardar la categoría");
+    } finally {
+      setSubmittingCategory(false);
     }
   };
 
@@ -276,26 +282,22 @@ export default function MenuManager() {
       {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-700">
         <nav className="-mb-px flex space-x-8">
-          <button
+          <Button
             onClick={() => setActiveTab("categories")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "categories"
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300"
-            }`}
+            variant={activeTab === "categories" ? "primary" : "outline"}
+            size="sm"
+            className="border-b-2 border-transparent"
           >
             Categorías ({categories.length})
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setActiveTab("products")}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "products"
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300"
-            }`}
+            variant={activeTab === "products" ? "primary" : "outline"}
+            size="sm"
+            className="border-b-2 border-transparent"
           >
             Productos ({products.length})
-          </button>
+          </Button>
         </nav>
       </div>
 
@@ -304,12 +306,11 @@ export default function MenuManager() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Categorías</h2>
-            <button
+            <ActionButton
               onClick={() => setShowCategoryForm(true)}
-              className="btn btn-primary"
             >
               Agregar Categoría
-            </button>
+            </ActionButton>
           </div>
 
           {showCategoryForm && (
@@ -372,16 +373,22 @@ export default function MenuManager() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button type="submit" className="btn btn-primary">
+                  <ActionButton
+                    onClick={() => {}}
+                    loading={submittingCategory}
+                    className="px-4 py-2"
+                  >
+                    <button type="submit" className="hidden" />
                     {editingCategory ? "Actualizar" : "Crear"} Categoría
-                  </button>
-                  <button
+                  </ActionButton>
+                  <Button
                     type="button"
                     onClick={cancelCategoryEdit}
-                    className="btn btn-secondary"
+                    variant="outline"
+                    className="px-4 py-2"
                   >
                     Cancelar
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -431,18 +438,18 @@ export default function MenuManager() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                        <button
+                        <QuickActionButton
                           onClick={() => handleCategoryEdit(category)}
                           className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                         >
                           Editar
-                        </button>
-                        <button
+                        </QuickActionButton>
+                        <QuickActionButton
                           onClick={() => handleCategoryDelete(category)}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                         >
                           Eliminar
-                        </button>
+                        </QuickActionButton>
                       </td>
                     </tr>
                   ))}
@@ -464,12 +471,11 @@ export default function MenuManager() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Productos</h2>
-            <button
+            <ActionButton
               onClick={() => setShowProductForm(true)}
-              className="btn btn-primary"
             >
               Agregar Producto
-            </button>
+            </ActionButton>
           </div>
 
           {showProductForm && (

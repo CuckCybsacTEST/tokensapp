@@ -14,6 +14,9 @@ export default function handler(req, res) {
       },
     });
 
+    // Exponer io globalmente para que las APIs puedan emitirlo
+    global.io = io;
+
     // Configurar eventos de Socket.IO
     io.on("connection", (socket) => {
       console.log("Cliente conectado:", socket.id);
@@ -39,9 +42,14 @@ export default function handler(req, res) {
         console.log(`Mozo ${waiterId} se unió a su sala`);
       });
 
-      socket.on("join-table", (tableId) => {
-        socket.join(`table-${tableId}`);
-        console.log(`Mesa ${tableId} se unió a su sala`);
+      socket.on("join-location", (locationId) => {
+        socket.join(`location-${locationId}`);
+        console.log(`Cliente se unió a ubicación ${locationId}`);
+      });
+
+      socket.on("join-service-point", (servicePointId) => {
+        socket.join(`service-point-${servicePointId}`);
+        console.log(`Cliente se unió a punto de servicio ${servicePointId}`);
       });
 
       // Eventos de pedidos

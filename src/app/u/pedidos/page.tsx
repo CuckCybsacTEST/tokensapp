@@ -7,13 +7,27 @@ import { useStaffSocket } from "../../../hooks/useSocket";
 
 interface Order {
   id: string;
-  tableId: string;
+  tableId?: string;
+  servicePointId?: string;
+  locationId?: string;
   status: "PENDING" | "CONFIRMED" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
   total: number;
   createdAt: string;
   table?: {
     name?: string;
     number?: number;
+  };
+  servicePoint?: {
+    id: string;
+    number: string;
+    name?: string;
+    location: {
+      name: string;
+    };
+  };
+  location?: {
+    id: string;
+    name: string;
   };
   staff?: {
     id: string;
@@ -72,19 +86,50 @@ export default function CartaDashboard() {
     }
   };
 
-  const fetchOrders = async () => {
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [newOrderNotification, setNewOrderNotification] = useState<boolean>(false);
+
+  const fetchOrders = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const response = await fetch("/api/orders");
       if (response.ok) {
         const data = await response.json();
         setOrders(data.orders || []);
+        setLastUpdate(new Date());
+        console.log(`📊 Pedidos actualizados: ${data.orders?.length || 0} pedidos`);
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  // Polling de respaldo cada 8 segundos si no hay socket conectado
+  useEffect(() => {
+    if (!socketConnected) {
+      console.log("🔄 Iniciando polling de respaldo (8s)");
+      const interval = setInterval(() => {
+        fetchOrders(false);
+      }, 8000);
+
+      return () => clearInterval(interval);
+    }
+  }, [socketConnected]);
+
+  // Polling agresivo cada 3 segundos cuando hay socket conectado (para máxima velocidad)
+  useEffect(() => {
+    if (socketConnected) {
+      console.log("⚡ Iniciando polling agresivo (3s)");
+      const interval = setInterval(() => {
+        fetchOrders(false);
+      }, 3000);
+
+      return () => clearInterval(interval);
+    }
+  }, [socketConnected]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     // Validar permisos antes de actualizar
@@ -123,8 +168,8 @@ export default function CartaDashboard() {
           if (order) {
             socket.emit("order-status-update", {
               orderId: parseInt(orderId),
-              tableId: order.tableId,
-              tableName: `Mesa ${order.tableId}`,
+              tableId: getOrderLocationId(order),
+              tableName: getOrderLocationName(order),
               status: newStatus,
               timestamp: new Date().toISOString(),
             });
@@ -145,6 +190,28 @@ export default function CartaDashboard() {
       case "DELIVERED": return "bg-gray-500";
       case "CANCELLED": return "bg-red-500";
       default: return "bg-gray-500";
+    }
+  };
+
+  const getOrderLocationName = (order: Order): string => {
+    if (order.servicePoint) {
+      return `${order.servicePoint.name || order.servicePoint.number} (${order.servicePoint.location.name})`;
+    } else if (order.location) {
+      return order.location.name;
+    } else if (order.table) {
+      return order.table.name || `Mesa ${order.table.number}`;
+    } else {
+      return `Mesa ${order.tableId}`;
+    }
+  };
+
+  const getOrderLocationId = (order: Order): string => {
+    if (order.servicePoint) {
+      return order.servicePoint.id;
+    } else if (order.location) {
+      return order.location.id;
+    } else {
+      return order.tableId || "";
     }
   };
 
@@ -180,25 +247,44 @@ export default function CartaDashboard() {
 
   useEffect(() => {
     if (socket) {
+      // Actualizar estado de conexión
+      socket.on("connect", () => {
+        console.log("🔌 Socket conectado - modo tiempo real activado");
+        setSocketConnected(true);
+      });
+
+      socket.on("disconnect", () => {
+        console.log("🔌 Socket desconectado - usando polling de respaldo");
+        setSocketConnected(false);
+      });
+
       // Listener para actualizaciones de pedidos
       socket.on("order-status-update", (data: any) => {
         console.log("📦 Actualización de pedido recibida:", data);
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === data.orderId?.toString() || order.id === data.orderId
-              ? { ...order, status: data.status }
+              ? { ...order, status: data.status, updatedAt: new Date() }
               : order
           )
         );
+        setLastUpdate(new Date());
       });
 
       // Listener para nuevos pedidos
       socket.on("new-order", (orderData: any) => {
         console.log("🍽️ Nuevo pedido recibido:", orderData);
-        fetchOrders(); // Recargar todos los pedidos para incluir el nuevo
+        setNewOrderNotification(true);
+        // Pequeño delay para mostrar notificación antes de recargar
+        setTimeout(() => {
+          fetchOrders(false);
+          setNewOrderNotification(false);
+        }, 500);
       });
 
       return () => {
+        socket.off("connect");
+        socket.off("disconnect");
         socket.off("order-status-update");
         socket.off("new-order");
       };
@@ -243,13 +329,44 @@ export default function CartaDashboard() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-end">
-            <a
-              href="/u/menu"
-              className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              Ver carta
-            </a>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Indicador de conexión en tiempo real */}
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${socketConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+                <span className="text-sm text-gray-400">
+                  {socketConnected ? '🟢 Tiempo Real' : '🟡 Polling'}
+                </span>
+              </div>
+
+              {/* Última actualización */}
+              <div className="text-sm text-gray-500">
+                Última actualización: {lastUpdate.toLocaleTimeString()}
+              </div>
+
+              {/* Notificación de nuevo pedido */}
+              {newOrderNotification && (
+                <div className="flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-full text-sm animate-bounce">
+                  <span className="animate-ping">🔔</span>
+                  ¡Nuevo pedido!
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="/u/mesas"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Mesas
+              </a>
+              <a
+                href="/u/menu"
+                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#E6442A] text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Ver carta
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -350,7 +467,7 @@ export default function CartaDashboard() {
                 <div className="flex items-center gap-4">
                   <div className={`w-3 h-3 rounded-full ${getStatusColor(order.status)}`}></div>
                   <h3 className="text-lg font-semibold">Pedido #{order.id}</h3>
-                  <span className="text-gray-400">Mesa {order.tableId}</span>
+                  <span className="text-gray-400">{getOrderLocationName(order)}</span>
                   {order.staff && (
                     <span className="text-blue-400 text-sm">
                       👤 {order.staff.name} ({order.staff.role})

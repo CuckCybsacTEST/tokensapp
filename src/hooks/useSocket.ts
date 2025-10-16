@@ -69,14 +69,40 @@ export function useWaiterSocket(waiterId?: string) {
   return { socket, isConnected };
 }
 
-export function useTableSocket(tableId?: string) {
+export function useMenuSocket() {
   const { socket, isConnected } = useSocket();
 
   useEffect(() => {
-    if (socket && isConnected && tableId) {
-      socket.emit("join-table", tableId);
+    if (socket && isConnected) {
+      // Unirse a salas relevantes para el menú público
+      socket.emit("join-cashier");
+      socket.emit("join-staff", "general"); // Sala general para staff
     }
-  }, [socket, isConnected, tableId]);
+  }, [socket, isConnected]);
+
+  return { socket, isConnected };
+}
+
+export function useLocationSocket(locationId?: string) {
+  const { socket, isConnected } = useSocket();
+
+  useEffect(() => {
+    if (socket && isConnected && locationId) {
+      socket.emit("join-location", locationId);
+    }
+  }, [socket, isConnected, locationId]);
+
+  return { socket, isConnected };
+}
+
+export function useServicePointSocket(servicePointId?: string) {
+  const { socket, isConnected } = useSocket();
+
+  useEffect(() => {
+    if (socket && isConnected && servicePointId) {
+      socket.emit("join-service-point", servicePointId);
+    }
+  }, [socket, isConnected, servicePointId]);
 
   return { socket, isConnected };
 }
