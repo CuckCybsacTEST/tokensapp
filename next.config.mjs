@@ -6,6 +6,7 @@ const nextConfig = {
     // Permitir build aunque existan errores de lint (para smoke tests rápidos)
     ignoreDuringBuilds: true,
   },
+  transpilePackages: ['luxon'], // Transpilar luxon para compatibilidad con SSR
   async redirects() {
     return [
       {

@@ -65,8 +65,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [loading, setLoading] = useState(true);
   // Token activo en UI (permite cambiar sin navegación dura)
   const [activeTokenId, setActiveTokenId] = useState<string>(tokenId);
-  // Bandera para transición suave (no mostrar overlay)
-  const [softSwitch, setSoftSwitch] = useState(false);
+  // Bandera para transición suave (no mostrar overlay) - ahora ref para evitar re-ejecuciones
+  const softSwitchRef = useRef(false);
   // const [pendingAutoSpin, setPendingAutoSpin] = useState(false); // OBSOLETO
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<TokenShape | null>(null);
@@ -216,7 +216,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     }
 
     // Reset UI sólo para carga dura; en suave mantenemos UI y cambiamos al final
-    if (!softSwitch) {
+    if (!softSwitchRef.current) {
       // No mostrar loader si estamos en transición RETRY
       if (!suppressLoader) setLoading(true);
       setError(null);
@@ -297,7 +297,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
             setElements(rouletteElements);
           }
         };
-        if (softSwitch) {
+        const isSoft = softSwitchRef.current;
+        if (isSoft) {
           applyData();
           // Listo para auto-giro tras soft load - DESACTIVADO para segundo giro
           setPhase("READY");
@@ -309,15 +310,15 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       } catch (err) {
         if (!abort) {
           console.error("Error cargando datos:", err);
-          if (!softSwitch) setError(err instanceof Error ? err.message : "Error desconocido");
+          if (!softSwitchRef.current) setError(err instanceof Error ? err.message : "Error desconocido");
         }
       } finally {
         await minPromise;
         if (!abort) {
-          if (!softSwitch) setLoading(false);
+          setLoading(false); // Siempre ocultar loader al final, independientemente de softSwitch
           // Si fue softSwitch, evitamos overlay; limpiamos bandera
-          if (softSwitch) {
-            setSoftSwitch(false);
+          if (isSoft) {
+            softSwitchRef.current = false;
             setIsRetryTransition(false);
             setRetryOverlayOpen(false); // Cerrar overlay después de carga completa
           }
@@ -334,7 +335,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     return () => {
       abort = true;
     };
-  }, [activeTokenId, softSwitch]);
+  }, [activeTokenId]);
 
   const handleSpin = async () => {
     if (phase !== "READY") return;
@@ -430,7 +431,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       } catch (error) {
         console.error(`❌ [Roulette] Error en redirección:`, error);
       }
-      setSoftSwitch(true);
+      softSwitchRef.current = true;
       // Auto-spin desactivado para segundo giro - interacción manual
       // setPendingAutoSpin(true);
       setActiveTokenId(functionalTokenId!);
@@ -591,7 +592,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   }
 
   // Evitar mostrar pantallas de token no disponible/expirado durante transición RETRY
-  const transitionGuardActive = retryOverlayOpen || suppressLoader || softSwitch;
+  const transitionGuardActive = retryOverlayOpen || suppressLoader || softSwitchRef.current;
   const allowRestrictedScreens = !transitionGuardActive && phase === "READY";
 
   if (allowRestrictedScreens && token?.disabled) {
