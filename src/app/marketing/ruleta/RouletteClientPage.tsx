@@ -509,8 +509,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   // Auto-giro tras transición suave
   useEffect(() => {
     if (!pendingAutoSpin || isTransitioning) return;
-    // Prevenir auto-spin si la transición comenzó hace menos de 2 segundos
-    if (transitionStartTime.current && Date.now() - transitionStartTime.current < 2000) {
+    // Prevenir auto-spin si la transición comenzó hace menos de 15 segundos
+    if (transitionStartTime.current && Date.now() - transitionStartTime.current < 15000) {
       console.log(`⏸️ [Roulette] Auto-spin pospuesto por transición reciente:`, {
         elapsed: Date.now() - transitionStartTime.current
       });
