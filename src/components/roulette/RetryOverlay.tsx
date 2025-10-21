@@ -13,122 +13,70 @@ export default function RetryOverlay({
   open,
   functionalTokenId,
   onFunctionalTokenReady,
-  maxPollingTime = 30000 // 30 segundos máximo
+  maxPollingTime = 15000 // 15 segundos para long polling
 }: RetryOverlayProps) {
   const [pollingStatus, setPollingStatus] = useState<'waiting' | 'polling' | 'ready' | 'timeout'>('waiting');
-  const [pollCount, setPollCount] = useState(0);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingStartTimeRef = useRef<number | null>(null);
 
-  // Función para verificar si el token funcional está listo
-  const checkFunctionalToken = async () => {
-    if (!functionalTokenId) return false;
-
-    try {
-      console.log(`🔄 [RetryOverlay] Verificando token funcional: ${functionalTokenId} (intento ${pollCount + 1})`);
-
-      const response = await fetch(`/api/tokens/${functionalTokenId}/roulette-data`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store' // Importante: no cachear en producción
-      });
-
-      if (!response.ok) {
-        console.warn(`⚠️ [RetryOverlay] Error en respuesta: ${response.status}`);
-        return false;
-      }
-
-      const data = await response.json();
-      const token = data?.token;
-
-      if (!token) {
-        console.warn(`⚠️ [RetryOverlay] No se encontró token en respuesta`);
-        return false;
-      }
-
-      const isDisabled = token.disabled;
-      const isReserved = !!token.reservedByRetry;
-
-      console.log(`📊 [RetryOverlay] Token ${functionalTokenId}: disabled=${isDisabled}, reservedByRetry=${isReserved}`);
-
-      // El token está listo si NO está disabled Y NO está reserved
-      if (!isDisabled && !isReserved) {
-        console.log(`✅ [RetryOverlay] Token funcional listo!`);
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error(`❌ [RetryOverlay] Error verificando token:`, error);
-      return false;
-    }
-  };
-
-  // Efecto para manejar el polling
+  // Efecto para manejar el long polling
   useEffect(() => {
     if (!open || !functionalTokenId) {
       setPollingStatus('waiting');
-      setPollCount(0);
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      pollingStartTimeRef.current = null;
       return;
     }
 
-    console.log(`🚀 [RetryOverlay] Iniciando polling para token: ${functionalTokenId}`);
+    console.log(`🚀 [RetryOverlay] Iniciando long polling para token: ${functionalTokenId}`);
     setPollingStatus('polling');
-    setPollCount(0);
-    pollingStartTimeRef.current = Date.now();
 
-    // Verificación inicial inmediata
-    checkFunctionalToken().then((isReady) => {
-      if (isReady) {
-        setPollingStatus('ready');
-        onFunctionalTokenReady?.();
-        return;
-      }
+    // Hacer una sola llamada de long polling
+    const checkTokenReady = async () => {
+      try {
+        console.log(`🔄 [RetryOverlay] Llamando a wait-ready para: ${functionalTokenId}`);
 
-      // Si no está listo, iniciar polling cada 1.5 segundos
-      pollingIntervalRef.current = setInterval(async () => {
-        const elapsed = Date.now() - (pollingStartTimeRef.current || 0);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), maxPollingTime + 1000); // Un poco más que el timeout del servidor
 
-        // Verificar timeout
-        if (elapsed > maxPollingTime) {
-          console.error(`⏰ [RetryOverlay] Timeout alcanzado (${maxPollingTime}ms)`);
-          setPollingStatus('timeout');
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
+        const response = await fetch(`/api/tokens/${functionalTokenId}/wait-ready`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`❌ [RetryOverlay] Error en wait-ready: ${response.status}`, errorData);
+
+          if (response.status === 408) {
+            setPollingStatus('timeout');
+          } else {
+            setPollingStatus('timeout'); // Tratar otros errores como timeout
           }
           return;
         }
 
-        setPollCount(prev => prev + 1);
+        const data = await response.json();
+        console.log(`✅ [RetryOverlay] Token listo!`, data);
 
-        const isReady = await checkFunctionalToken();
-        if (isReady) {
-          console.log(`🎉 [RetryOverlay] Token funcional listo después de ${pollCount + 1} verificaciones`);
-          setPollingStatus('ready');
-          onFunctionalTokenReady?.();
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
+        setPollingStatus('ready');
+        onFunctionalTokenReady?.();
+
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          console.warn(`⏰ [RetryOverlay] Timeout en long polling para: ${functionalTokenId}`);
+          setPollingStatus('timeout');
+        } else {
+          console.error(`❌ [RetryOverlay] Error en long polling:`, error);
+          setPollingStatus('timeout');
         }
-      }, 1500); // Polling cada 1.5 segundos
-    });
-
-    // Cleanup
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
       }
     };
+
+    checkTokenReady();
+
   }, [open, functionalTokenId, onFunctionalTokenReady, maxPollingTime]);
 
   // Determinar el mensaje y animación basado en el estado
@@ -138,14 +86,14 @@ export default function RetryOverlay({
         return {
           icon: '🔄',
           title: 'Nuevo intento',
-          subtitle: 'Preparando tu siguiente giro…',
+          subtitle: 'Activando tu siguiente giro…',
           pulse: true
         };
       case 'polling':
         return {
           icon: '⏳',
           title: 'Activando token',
-          subtitle: `Verificando... (${pollCount})`,
+          subtitle: 'Conectando con el servidor…',
           pulse: true
         };
       case 'ready':
@@ -166,7 +114,7 @@ export default function RetryOverlay({
         return {
           icon: '🔄',
           title: 'Nuevo intento',
-          subtitle: 'Preparando tu siguiente giro…',
+          subtitle: 'Activando tu siguiente giro…',
           pulse: true
         };
     }
@@ -211,11 +159,6 @@ export default function RetryOverlay({
               <div className="mt-2 text-white/70 text-sm sm:text-base text-center">
                 {statusDisplay.subtitle}
               </div>
-              {pollingStatus === 'polling' && (
-                <div className="mt-2 text-white/50 text-xs">
-                  Tiempo restante: ~{Math.max(0, Math.round((maxPollingTime - (Date.now() - (pollingStartTimeRef.current || 0))) / 1000))}s
-                </div>
-              )}
             </div>
           </motion.div>
         </motion.div>
