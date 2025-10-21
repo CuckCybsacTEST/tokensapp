@@ -61,36 +61,9 @@ export async function generateInviteCard(
 
   const composites: sharp.OverlayOptions[] = [ { input: roundedQr, top, left } ];
 
-  if (reservationDateISO) {
-    const fechaSmall = formatFecha(reservationDateISO).toUpperCase();
-    const pillFont = Math.max(18, Math.round(qrSize * 0.06));
-    const horizontalPadding = Math.round(pillFont * 0.9);
-    const textApproxWidth = fechaSmall.length * pillFont * 0.55;
-    let pillWidth = Math.round(textApproxWidth + horizontalPadding * 2);
-    let pillHeight = Math.round(pillFont * 1.9);
-  pillWidth = Math.round(pillWidth * 1.08);
-    if (pillWidth > tpl.width) pillWidth = tpl.width - 20;
-    if (pillHeight > Math.round(tpl.height * 0.2)) pillHeight = Math.round(tpl.height * 0.2);
-    let pillLeft = left + Math.round((qrSize - pillWidth) / 2);
-    if (pillLeft < 0) pillLeft = 0;
-    if (pillLeft + pillWidth > tpl.width) pillLeft = tpl.width - pillWidth;
-    const marginBottom = Math.round(pillFont * 0.8);
-    let pillTop = top - pillHeight - marginBottom;
-  const extraUp = Math.round(pillFont * 0.25);
-    pillTop -= extraUp;
-    if (pillTop < 8) pillTop = 8;
-    const radius = Math.round(pillHeight / 2);
-    let pillFontEmbed = '';
-    try {
-      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'Inter-SemiBold.woff2');
-      const fontBuf = await fs.readFile(interPath);
-      pillFontEmbed = `@font-face{font-family:'InterEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
-    } catch {}
-    const dateSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${pillWidth}" height="${pillHeight}" viewBox="0 0 ${pillWidth} ${pillHeight}" xmlns="http://www.w3.org/2000/svg">\n  <defs>\n    <linearGradient id="pillgrad" x1="0%" y1="0%" x2="100%" y2="0%">\n      <stop offset="0%" stop-color="#FFD76A"/>\n      <stop offset="55%" stop-color="#FFA322"/>\n      <stop offset="100%" stop-color="#FF7A00"/>\n    </linearGradient>\n    <filter id="shadow" x="-15%" y="-15%" width="130%" height="130%">\n      <feDropShadow dx="0" dy="1.5" stdDeviation="2.2" flood-opacity="0.35"/>\n    </filter>\n  </defs>\n  ${pillFontEmbed ? `<style>${pillFontEmbed}</style>` : ''}\n  <rect x="0" y="0" width="${pillWidth}" height="${pillHeight}" rx="${radius}" ry="${radius}" fill="url(#pillgrad)" />\n  <text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" font-family="'InterEmbed','Inter','Arial',sans-serif" font-size="${pillFont}px" font-weight="700" fill="#1A0E00" filter="url(#shadow)" letter-spacing="1.2">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
-    let dateSvgRaster = await sharp(dateSvg, { density: 220 }).resize(pillWidth, pillHeight).png().toBuffer();
-    // (debug opcional de tamaños eliminado para limpiar)
-    composites.push({ input: dateSvgRaster, left: pillLeft, top: pillTop });
-  }
+  // Variables para la fecha (se posicionará después del nameBar)
+  let datePillTop = 0;
+  let dateSvgRaster: Buffer | null = null;
 
   if ((kind === 'guest' || kind === 'host') && celebrantName && (tpl as any).nameBar) {
     const nb = (tpl as any).nameBar as { leftRatio: number; widthRatio: number; topRatio: number; heightRatio: number };
@@ -106,24 +79,24 @@ export async function generateInviteCard(
     const fechaTxt = reservationDateISO ? formatFecha(reservationDateISO) : '';
     const maxWidth = barWidth - 40;
     const approxChar = (h: number) => h * 0.58;
-    const singleFont = (h: number) => clamp(Math.floor(h * 0.46), 20, 56);
+    const singleFont = (h: number) => clamp(Math.floor(h * 0.65), 30, 80); // Aumentar tamaño de fuente
     let barHeight = baseBarHeight;
     let phraseLines: string[];
     if (kind === 'host') {
-      phraseLines = [firstUpper, 'BIENVENIDO A TU FIESTA'];
-      barHeight = Math.round(baseBarHeight * 1.35);
+      phraseLines = [firstUpper];
+      barHeight = Math.round(baseBarHeight * 1.8); // Aumentar altura para fuente más grande
     } else { // guest
-      phraseLines = ['ESTAS INVITAD@ A LA FIESTA', `DE ${firstUpper}`];
-      barHeight = Math.round(baseBarHeight * 1.35);
+      phraseLines = [firstUpper];
+      barHeight = Math.round(baseBarHeight * 1.8); // Aumentar altura para fuente más grande
     }
     let f1 = singleFont(barHeight);
     const longest = phraseLines.reduce((m, l) => Math.max(m, l.length), 0);
     let widthEstimate = longest * approxChar(f1);
     if (widthEstimate > maxWidth) {
-      barHeight = Math.round(barHeight * 1.15);
-      f1 = clamp(Math.floor(barHeight * 0.34), 18, 46);
+      barHeight = Math.round(barHeight * 1.2);
+      f1 = clamp(Math.floor(barHeight * 0.55), 25, 70); // Aumentar tamaño de fuente
     } else {
-      f1 = clamp(Math.floor(barHeight * 0.38), 18, 52);
+      f1 = clamp(Math.floor(barHeight * 0.60), 25, 75); // Aumentar tamaño de fuente
     }
     const f2 = clamp(Math.floor(barHeight * 0.30), 16, 42);
     const gap = clamp(Math.floor(barHeight * 0.09), 4, 24);
@@ -131,24 +104,9 @@ export async function generateInviteCard(
     const strokeW = clamp(Math.round(barHeight * 0.05), 2, 8);
     const radius = Math.min(Math.round(barHeight * 0.45), 38);
     const bottomY = baseBarTop + baseBarHeight;
-  let barTop = bottomY - barHeight;
-    const envPx = Number(process.env.INVITE_CARD_BOTTOM_MARGIN_PX);
-    const envRatioRaw = process.env.INVITE_CARD_BOTTOM_MARGIN_RATIO;
-    let desiredBottomMargin = Math.round(tpl.height * 0.045); // ≈86px
-    if (envRatioRaw) {
-      const r = Number(envRatioRaw);
-      if (Number.isFinite(r) && r >= 0 && r <= 0.2) desiredBottomMargin = Math.round(tpl.height * r);
-    } else if (Number.isFinite(envPx) && envPx >= 0) {
-      desiredBottomMargin = Math.round(envPx);
-    }
-    // Reposicionar sólo si cambia significativamente
-    const currentBottomMargin = tpl.height - (barTop + barHeight);
-    if (Math.abs(currentBottomMargin - desiredBottomMargin) > 2) {
-      const candidateTop = tpl.height - desiredBottomMargin - barHeight;
-      if (candidateTop >= 0 && candidateTop + barHeight <= tpl.height) {
-        barTop = candidateTop;
-      }
-    }
+  let barTop = baseBarTop; // Usar directamente el topRatio definido en el template
+    // Nota: Se elimina la lógica de reposicionamiento automático por margen inferior
+    // para respetar el topRatio definido en inviteTemplates.ts
     const inset = strokeW / 2;
     const dateColor = '#c8c8c8';
     const linesHeight = phraseLines.length * f1 + (phraseLines.length - 1) * effectiveGap;
@@ -177,12 +135,12 @@ export async function generateInviteCard(
     }
     let cursorY = topPadding + Math.round(f1 * 0.90);
     // Debug layout eliminado para limpieza (activar reinsertando bloque si se requiere)
-    const highlightColor = '#FFD36A';
+    const highlightColor = 'white'; // Cambiar a blanco para que todo el nombre sea blanco
     let embeddedFontCss = '';
     try {
-      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'Inter-SemiBold.woff2');
+      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2');
       const fontBuf = await fs.readFile(interPath);
-      embeddedFontCss = `@font-face{font-family:'InterEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+      embeddedFontCss = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
     } catch {}
     let textSvg = embeddedFontCss ? `  <style>${embeddedFontCss}</style>\n` : '';
     for (const line of phraseLines) {
@@ -191,17 +149,51 @@ export async function generateInviteCard(
         const before = line.slice(0, idx);
         const namePart = line.slice(idx, idx + firstUpper.length);
         const after = line.slice(idx + firstUpper.length);
-        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(before)}<tspan fill="${highlightColor}">${escapeXml(namePart)}</tspan>${escapeXml(after)}</text>\n`;
+        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'StretchProEmbed','Stretch Pro','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(before)}<tspan fill="${highlightColor}">${escapeXml(namePart)}</tspan>${escapeXml(after)}</text>\n`;
       } else {
-        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(line)}</text>\n`;
+        textSvg += `  <text x="50%" y="${cursorY}" text-anchor="middle" fill="white" font-family="'StretchProEmbed','Stretch Pro','Arial',sans-serif" font-weight="600" font-size="${f1}px">${escapeXml(line)}</text>\n`;
       }
       cursorY += f1 + effectiveGap;
     }
   textSvg += `  <text x="50%" y="${cursorY + f2 * 0.85}" text-anchor="middle" fill="${dateColor}" font-family="'InterEmbed','Inter','Arial',sans-serif" font-weight="700" font-size="${f2}px" letter-spacing="1">${escapeXml(fechaTxt)}</text>\n`;
-    const nameBarSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${barWidth}\" height=\"${barHeight}\" viewBox=\"0 0 ${barWidth} ${barHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"ograd\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n      <stop offset=\"0%\" stop-color=\"#FF7A00\"/>\n      <stop offset=\"40%\" stop-color=\"#FFA630\"/>\n      <stop offset=\"60%\" stop-color=\"#FFB347\"/>\n      <stop offset=\"100%\" stop-color=\"#FF7A00\"/>\n    </linearGradient>\n  </defs>\n  <rect x=\"${inset}\" y=\"${inset}\" width=\"${barWidth - strokeW}\" height=\"${barHeight - strokeW}\" rx=\"${radius}\" ry=\"${radius}\" fill=\"black\" stroke=\"url(#ograd)\" stroke-width=\"${strokeW}\" />\n${textSvg}</svg>`);
+    const nameBarSvg = Buffer.from(`<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg width=\"${barWidth}\" height=\"${barHeight}\" viewBox=\"0 0 ${barWidth} ${barHeight}\" xmlns=\"http://www.w3.org/2000/svg\">\n  <defs>\n    <linearGradient id=\"ograd\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"0%\">\n      <stop offset=\"0%\" stop-color=\"#FF7A00\"/>\n      <stop offset=\"40%\" stop-color=\"#FFA630\"/>\n      <stop offset=\"60%\" stop-color=\"#FFB347\"/>\n      <stop offset=\"100%\" stop-color=\"#FF7A00\"/>\n    </linearGradient>\n  </defs>\n${textSvg}</svg>`);
     let nameBarRaster = await sharp(nameBarSvg, { density: 230 }).resize(barWidth, barHeight).png().toBuffer();
     // Debug size eliminado
     composites.push({ input: nameBarRaster, left: barLeft, top: barTop });
+
+    // Generar fecha debajo del nameBar si hay fecha disponible
+    if (reservationDateISO) {
+      const fechaSmall = formatFecha(reservationDateISO).toUpperCase();
+      const pillFont = Math.max(16, Math.round(qrSize * 0.05)); // Reducir tamaño de fuente para mejor jerarquía
+      const horizontalPadding = Math.round(pillFont * 0.8); // Aumentar padding para que quepa el texto
+      const textApproxWidth = fechaSmall.length * pillFont * 0.75; // Aumentar multiplicador para ancho completo
+      let pillWidth = Math.round(textApproxWidth + horizontalPadding * 2);
+      let pillHeight = Math.round(pillFont * 1.5); // Aumentar altura para mejor proporción
+      pillWidth = Math.round(pillWidth * 1.08);
+      if (pillWidth > tpl.width) pillWidth = tpl.width - 20;
+      if (pillHeight > Math.round(tpl.height * 0.2)) pillHeight = Math.round(tpl.height * 0.2);
+
+      // Posicionar la fecha debajo del nameBar
+      const marginTop = Math.round(pillFont * 0.8); // Acercar más la fecha al nombre
+      let pillTop = barTop + barHeight + marginTop;
+      let pillLeft = barLeft + Math.round((barWidth - pillWidth) / 2); // Centrar horizontalmente con el nameBar
+
+      // Asegurar que no se salga de los límites
+      if (pillLeft < 0) pillLeft = 0;
+      if (pillLeft + pillWidth > tpl.width) pillLeft = tpl.width - pillWidth;
+      if (pillTop + pillHeight > tpl.height) pillTop = tpl.height - pillHeight - 8;
+
+      const radius = Math.round(pillHeight / 2);
+      let pillFontEmbed = '';
+      try {
+        const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2');
+        const fontBuf = await fs.readFile(interPath);
+        pillFontEmbed = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+      } catch {}
+      const dateSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${pillWidth}" height="${pillHeight}" viewBox="0 0 ${pillWidth} ${pillHeight}" xmlns="http://www.w3.org/2000/svg">\n  ${pillFontEmbed ? `<style>${pillFontEmbed}</style>` : ''}\n  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="'StretchProEmbed','Stretch Pro','Arial',sans-serif" font-size="${pillFont}px" font-weight="600" fill="white" letter-spacing="1">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
+      dateSvgRaster = await sharp(dateSvg, { density: 220 }).resize(pillWidth, pillHeight).png().toBuffer();
+      composites.push({ input: dateSvgRaster, left: pillLeft, top: pillTop });
+    }
   }
   // Build base image; avoid unnecessary resize (can blur text) if dimensions already match template.
   let base = sharp(templateInput);
