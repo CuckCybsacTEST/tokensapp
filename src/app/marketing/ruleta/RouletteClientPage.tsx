@@ -182,6 +182,15 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       return;
     }
     if (token.revealedAt && phase === "READY") {
+      console.log(`🔍 [Roulette] Token ya revelado detectado:`, {
+        tokenId: token.id,
+        revealedAt: token.revealedAt,
+        prize: token.prize?.key,
+        phase,
+        elementsCount: elements.length,
+        isRetryTransition,
+        functionalTokenId
+      });
       // Derivar prizeIndex del premio original.
       if (elements.length) {
         const idx = elements.findIndex((e) => e.prizeId === token.prize.id);
@@ -399,13 +408,28 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   // Callback cuando el token funcional está listo
   const handleFunctionalTokenReady = () => {
-    console.log(`🚀 [Roulette] Token funcional listo, iniciando transición automática`);
+    console.log(`🚀 [Roulette] Token funcional listo, iniciando transición automática:`, {
+      functionalTokenId,
+      nextTokenId,
+      isRetryTransition
+    });
+
+    // Cleanup agresivo antes de la transición
+    setToken(null); // Forzar recarga completa de token
+    setElements([]); // Limpiar elementos anteriores
+    setPrizeWon(null);
+    setPrizeIndex(null);
+    setPhase('READY');
+
     // El overlay se cerrará automáticamente y comenzará la transición
     setTimeout(() => {
       try {
         const newUrl = `/marketing/ruleta?tokenId=${encodeURIComponent(functionalTokenId!)}`;
+        console.log(`🔗 [Roulette] Redirigiendo a: ${newUrl}`);
         window.history.replaceState(null, "", newUrl);
-      } catch {}
+      } catch (error) {
+        console.error(`❌ [Roulette] Error en redirección:`, error);
+      }
       setSoftSwitch(true);
       setPendingAutoSpin(true);
       setActiveTokenId(functionalTokenId!);
@@ -477,13 +501,28 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   // Auto-giro tras transición suave
   useEffect(() => {
     if (!pendingAutoSpin) return;
+    console.log(`🎯 [Roulette] Auto-spin activado:`, {
+      pendingAutoSpin,
+      phase,
+      elementsCount: elements.length,
+      activeTokenId
+    });
     const t = setTimeout(() => {
       if (phase === 'READY' && elements.length >= 2) {
+        console.log(`🚀 [Roulette] Ejecutando auto-spin`);
         setIsAutoSpin(true);
-        handleSpin().finally(() => setIsAutoSpin(false));
+        handleSpin().finally(() => {
+          console.log(`✅ [Roulette] Auto-spin completado`);
+          setIsAutoSpin(false);
+        });
         // Ya vamos a girar: permitir UI normal para el nuevo ciclo
         setSuppressLoader(false);
         setSuppressRevealed(false);
+      } else {
+        console.log(`⏸️ [Roulette] Auto-spin cancelado:`, {
+          phase,
+          elementsCount: elements.length
+        });
       }
       setPendingAutoSpin(false);
     }, 550);
