@@ -409,9 +409,12 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setSoftSwitch(true);
       setPendingAutoSpin(true);
       setActiveTokenId(functionalTokenId!);
-      // Limpiar estados de retry
+      // Limpiar estados de retry completamente
       setFunctionalTokenId(null);
       setNextTokenId(null);
+      setIsRetryTransition(false);
+      setRetryOverlayOpen(false);
+      setSuppressRevealed(false);
     }, 500); // Pequeño delay para que el usuario vea que está listo
   };
   const handleSpinEnd = (prize: RouletteElement) => {
@@ -422,6 +425,11 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     // Si hay RETRY, mostramos overlay con polling para esperar token funcional
     if (nextTokenId) {
       console.log(`🎯 [Roulette] Iniciando overlay de retry para token funcional: ${nextTokenId}`);
+      // Cancelar cualquier timeout de modal anterior
+      if (prizeModalTimeoutRef.current) {
+        clearTimeout(prizeModalTimeoutRef.current);
+        prizeModalTimeoutRef.current = null;
+      }
       // Mostrar overlay con polling que esperará a que el token esté listo
       setIsRetryTransition(true);
       setRetryOverlayOpen(true);
@@ -432,9 +440,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setSuppressLoader(true);
       setShowConfetti(false);
       setPrizeIndex(null);
-      setPrizeWon(null);
+      setPrizeWon(null); // Asegurar que no haya premio mostrado
       setPhase('READY');
-      // La transición se hará automáticamente cuando el polling detecte que el token está listo
+      // La transición se hará automáticamente cuando el polling detecte que el token esté listo
       return;
     }
     setPrizeWon(prize);
@@ -777,7 +785,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
                 </motion.div>
               </motion.div>
             )}
-  {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key !== 'lose' && !(isReserved && realTokenUsed) && (
+  {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key !== 'lose' && !(isReserved && realTokenUsed) && !isRetryTransition && !functionalTokenId && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -927,7 +935,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       </AnimatePresence>
 
       {/* Modal específico para lose/piña */}
-      {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key === 'lose' && <LoseModal open={true} />}
+      {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key === 'lose' && !isRetryTransition && !functionalTokenId && <LoseModal open={true} />}
     </div>
   );
 }
