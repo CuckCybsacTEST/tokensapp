@@ -347,9 +347,12 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setPrizeIndex(winIndex);
       // Si el backend indica RETRY, guardamos nextTokenId para transición suave
       if (data?.action === 'RETRY' && data?.nextTokenId) {
+        console.log(`🎯 [Roulette] Retry detectado, nextTokenId: ${data.nextTokenId}`);
         setNextTokenId(data.nextTokenId);
+        setFunctionalTokenId(data.nextTokenId); // El token funcional es el nextTokenId
       } else {
         setNextTokenId(null);
+        setFunctionalTokenId(null);
       }
       // La animación del componente NewRoulette usará prizeIndex y disparará handleSpinEnd
     } catch (err) {
@@ -391,36 +394,47 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   };
 
   const [nextTokenId, setNextTokenId] = useState<string|null>(null);
+  // Token funcional que se habilita después de reveal de retry
+  const [functionalTokenId, setFunctionalTokenId] = useState<string|null>(null);
+
+  // Callback cuando el token funcional está listo
+  const handleFunctionalTokenReady = () => {
+    console.log(`🚀 [Roulette] Token funcional listo, iniciando transición automática`);
+    // El overlay se cerrará automáticamente y comenzará la transición
+    setTimeout(() => {
+      try {
+        const newUrl = `/marketing/ruleta?tokenId=${encodeURIComponent(functionalTokenId!)}`;
+        window.history.replaceState(null, "", newUrl);
+      } catch {}
+      setSoftSwitch(true);
+      setPendingAutoSpin(true);
+      setActiveTokenId(functionalTokenId!);
+      // Limpiar estados de retry
+      setFunctionalTokenId(null);
+      setNextTokenId(null);
+    }, 500); // Pequeño delay para que el usuario vea que está listo
+  };
   const handleSpinEnd = (prize: RouletteElement) => {
     perfMark("spin_end");
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
     perfCheckBudget("spin_duration", lowMotion ? 3600 : 6200, "spin");
-    // Si hay RETRY, no mostramos modal; hacemos transición suave al siguiente token
+    // Si hay RETRY, mostramos overlay con polling para esperar token funcional
     if (nextTokenId) {
-  // Mostrar overlay minimal que tapa el contenido
+      console.log(`🎯 [Roulette] Iniciando overlay de retry para token funcional: ${nextTokenId}`);
+      // Mostrar overlay con polling que esperará a que el token esté listo
       setIsRetryTransition(true);
       setRetryOverlayOpen(true);
       try { retryOverlayOpenedAt.current = Date.now(); } catch {}
       setSuppressRevealed(true);
       // Asegurar que no aparezca overlay de loader
       setLoading(false);
-  setSuppressLoader(true);
+      setSuppressLoader(true);
       setShowConfetti(false);
       setPrizeIndex(null);
       setPrizeWon(null);
       setPhase('READY');
-      // Ejecutar el soft switch bajo overlay
-      setTimeout(() => {
-        try {
-          const newUrl = `/marketing/ruleta?tokenId=${encodeURIComponent(nextTokenId!)}`;
-          window.history.replaceState(null, "", newUrl);
-        } catch {}
-        setSoftSwitch(true);
-        setPendingAutoSpin(true);
-        setActiveTokenId(nextTokenId!);
-      }, 300);
-      // El cierre del overlay se realiza en la carga del nuevo token (softSwitch)
+      // La transición se hará automáticamente cuando el polling detecte que el token está listo
       return;
     }
     setPrizeWon(prize);
@@ -478,7 +492,14 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   // (sin aviso toast)
 
   if (retryOverlayOpen) {
-    return <RetryOverlay open={true} />;
+    return (
+      <RetryOverlay
+        open={true}
+        functionalTokenId={functionalTokenId}
+        onFunctionalTokenReady={handleFunctionalTokenReady}
+        maxPollingTime={30000}
+      />
+    );
   }
   if (loading && !suppressLoader && !retryOverlayOpen) {
     return (

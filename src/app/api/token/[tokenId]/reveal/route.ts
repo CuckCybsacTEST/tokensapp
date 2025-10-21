@@ -52,21 +52,36 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       const prizeKey = token.prize?.key || null;
       if (prizeKey === 'retry') {
         action = 'RETRY';
+        console.log(`🎯 [REVEAL] Procesando retry token: ${tokenId}`);
+
         // Prefer pairedNextTokenId when present (printed pairing)
         if (token.pairedNextTokenId) {
+          console.log(`🔗 [REVEAL] Verificando token pareado: ${token.pairedNextTokenId}`);
           const candidate = await tx.token.findUnique({ where: { id: token.pairedNextTokenId }, select: { id: true, redeemedAt: true, revealedAt: true, disabled: true, expiresAt: true, prize: { select: { key: true } } } });
           if (candidate && !candidate.redeemedAt && !candidate.revealedAt && candidate.expiresAt > new Date() && candidate.prize?.key !== 'retry' && candidate.prize?.key !== 'lose') {
-            // Reserve by disabling immediately (non-printable, non-selectable by others)
-            await tx.token.update({ where: { id: candidate.id, revealedAt: null }, data: { disabled: true } });
+            console.log(`✅ [REVEAL] Token funcional válido encontrado: ${candidate.id}, habilitando...`);
+            // HABILITAR el token funcional (antes estaba disabled: true)
+            await tx.token.update({ where: { id: candidate.id, revealedAt: null }, data: { disabled: false } });
             // Ensure retry has the paired id persisted (idempotent)
             if (!token.pairedNextTokenId) {
               await tx.token.update({ where: { id: token.id }, data: { pairedNextTokenId: candidate.id } });
             }
             nextTokenId = candidate.id;
+            console.log(`🚀 [REVEAL] Token funcional habilitado exitosamente: ${candidate.id}`);
+          } else {
+            console.warn(`⚠️ [REVEAL] Token pareado no válido:`, {
+              exists: !!candidate,
+              redeemed: candidate?.redeemedAt,
+              revealed: candidate?.revealedAt,
+              expired: candidate ? candidate.expiresAt <= new Date() : null,
+              prizeKey: candidate?.prize?.key
+            });
           }
         }
+
         // Fallback dynamic selection if no valid pairing
         if (!nextTokenId) {
+          console.log(`🔄 [REVEAL] Buscando token alternativo en el mismo batch...`);
           const next = await tx.token.findFirst({
             where: {
               batchId: token.batchId,
@@ -81,12 +96,15 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
             select: { id: true },
           });
           if (next?.id) {
-            // Reserve fallback by disabling immediately
-            await tx.token.update({ where: { id: next.id, revealedAt: null }, data: { disabled: true } });
+            console.log(`✅ [REVEAL] Token alternativo encontrado: ${next.id}, habilitando...`);
+            // HABILITAR el token alternativo (antes estaba disabled: true)
+            await tx.token.update({ where: { id: next.id, revealedAt: null }, data: { disabled: false } });
             // Persist fallback pairing on the retry to authorize reveal of disabled next
             await tx.token.update({ where: { id: token.id }, data: { pairedNextTokenId: next.id } });
             nextTokenId = next.id;
+            console.log(`🚀 [REVEAL] Token alternativo habilitado exitosamente: ${next.id}`);
           } else {
+            console.warn(`❌ [REVEAL] No se encontró token alternativo válido`);
             nextTokenId = null;
           }
         }
