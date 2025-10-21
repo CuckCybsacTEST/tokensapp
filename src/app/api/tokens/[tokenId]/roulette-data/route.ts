@@ -59,11 +59,11 @@ export async function GET(
       return apiOk({ token: serializeToken(token), message: 'Token ya canjeado' });
     }
     
-    // Si el token está reservado por bi-token (referenciado por algún retry), bloquear acceso directo a ruleta
+    // Si el token está reservado por bi-token (referenciado por algún retry NO revelado), bloquear acceso directo a ruleta
     const reservedAny = await prisma.$queryRaw<Array<{ id: string }>>`
       SELECT t.id FROM "Token" t
       JOIN "Prize" p ON p.id = t."prizeId"
-      WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id}
+      WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id} AND t."revealedAt" IS NULL
       LIMIT 1
     `;
     if ((reservedAny as any[]).length > 0 && !token.disabled) {

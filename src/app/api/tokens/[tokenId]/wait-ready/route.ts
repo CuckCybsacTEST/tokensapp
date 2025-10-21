@@ -22,7 +22,6 @@ export async function GET(_req: NextRequest, { params }: { params: { tokenId: st
         select: {
           id: true,
           disabled: true,
-          reservedByRetry: true,
           expiresAt: true,
           prize: { select: { key: true } }
         }
@@ -40,12 +39,11 @@ export async function GET(_req: NextRequest, { params }: { params: { tokenId: st
       }
 
       const isDisabled = token.disabled;
-      const isReserved = !!token.reservedByRetry;
 
-      console.log(`📊 [wait-ready] Token ${tokenId}: disabled=${isDisabled}, reserved=${isReserved}, elapsed=${Date.now() - startTime}ms`);
+      console.log(`📊 [wait-ready] Token ${tokenId}: disabled=${isDisabled}, elapsed=${Date.now() - startTime}ms`);
 
-      // Token is ready if NOT disabled AND NOT reserved
-      if (!isDisabled && !isReserved) {
+      // Token is ready if NOT disabled
+      if (!isDisabled) {
         console.log(`✅ [wait-ready] Token ${tokenId} listo después de ${Date.now() - startTime}ms`);
         return apiOk({
           ready: true,
