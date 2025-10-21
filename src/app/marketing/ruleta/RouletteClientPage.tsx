@@ -591,7 +591,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   }
 
   // Evitar mostrar pantallas de token no disponible/expirado durante transición RETRY
-  const transitionGuardActive = retryOverlayOpen || suppressLoader || pendingAutoSpin || softSwitch;
+  const transitionGuardActive = retryOverlayOpen || suppressLoader || softSwitch;
   const allowRestrictedScreens = !transitionGuardActive && phase === "READY";
 
   if (allowRestrictedScreens && token?.disabled) {
