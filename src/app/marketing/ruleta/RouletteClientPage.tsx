@@ -439,7 +439,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         console.error(`❌ [Roulette] Error en redirección:`, error);
       }
       setSoftSwitch(true);
-      setPendingAutoSpin(true);
+      // Auto-spin desactivado para segundo giro - interacción manual
+      // setPendingAutoSpin(true);
       setActiveTokenId(functionalTokenId!);
       // Limpiar estados de retry completamente
       setFunctionalTokenId(null);
