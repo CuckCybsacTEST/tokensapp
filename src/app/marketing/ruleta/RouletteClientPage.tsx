@@ -317,7 +317,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
         if (!abort) {
           setLoading(false); // Siempre ocultar loader al final, independientemente de softSwitch
           // Si fue softSwitch, evitamos overlay; limpiamos bandera
-          if (isSoft) {
+          if (softSwitchRef.current) {
             softSwitchRef.current = false;
             setIsRetryTransition(false);
             setRetryOverlayOpen(false); // Cerrar overlay después de carga completa
