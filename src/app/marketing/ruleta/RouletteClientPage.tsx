@@ -91,6 +91,8 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [isRetryTransition, setIsRetryTransition] = useState(false);
   // Bandera para auto-spin en retry, para suprimir errores
   const [isAutoSpin, setIsAutoSpin] = useState(false);
+  // Bandera para prevenir acciones automáticas durante transiciones de token
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
@@ -165,7 +167,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
   useEffect(() => {
-    if (!token) return;
+    if (!token || isTransitioning) return;
     if (suppressRevealed) return; // no mostrar panel si estamos en transición de RETRY
     const isReserved = !!token.reservedByRetry;
     // Si el token es un bi-token y tiene realToken, revisa el estado del real
@@ -414,6 +416,9 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       isRetryTransition
     });
 
+    // Marcar que estamos en transición para prevenir acciones automáticas
+    setIsTransitioning(true);
+
     // Cleanup agresivo antes de la transición
     setToken(null); // Forzar recarga completa de token
     setElements([]); // Limpiar elementos anteriores
@@ -500,7 +505,7 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
 
   // Auto-giro tras transición suave
   useEffect(() => {
-    if (!pendingAutoSpin) return;
+    if (!pendingAutoSpin || isTransitioning) return;
     console.log(`🎯 [Roulette] Auto-spin activado:`, {
       pendingAutoSpin,
       phase,
@@ -528,6 +533,15 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
     }, 550);
     return () => clearTimeout(t);
   }, [pendingAutoSpin, phase, elements.length]);
+
+  // Resetear isTransitioning cuando la transición se complete (datos cargados)
+  useEffect(() => {
+    if (!isTransitioning) return;
+    if (elements.length > 0 && token && activeTokenId) {
+      console.log(`🔄 [Roulette] Transición completada, reseteando isTransitioning`);
+      setIsTransitioning(false);
+    }
+  }, [isTransitioning, elements.length, token, activeTokenId]);
 
   // Al cambiar de token (softSwitch), desactivar supresión del panel para el nuevo ciclo
   useEffect(() => {
