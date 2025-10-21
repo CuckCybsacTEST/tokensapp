@@ -91,10 +91,6 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
   const [isRetryTransition, setIsRetryTransition] = useState(false);
   // Bandera para auto-spin en retry, para suprimir errores
   const [isAutoSpin, setIsAutoSpin] = useState(false);
-  // Timestamp de inicio de transición para prevenir auto-spin prematuro - OBSOLETO
-  // const transitionStartTime = useRef<number | null>(null);
-  // Bandera para prevenir acciones automáticas durante transiciones de token - OBSOLETO
-  // const [isTransitioning, setIsTransitioning] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
@@ -418,10 +414,6 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       isRetryTransition
     });
 
-    // Marcar que estamos en transición para prevenir acciones automáticas - OBSOLETO
-    // setIsTransitioning(true);
-    // transitionStartTime.current = Date.now();
-
     // Cleanup agresivo antes de la transición
     setToken(null); // Forzar recarga completa de token
     setElements([]); // Limpiar elementos anteriores
@@ -506,49 +498,6 @@ export default function RouletteClientPage({ tokenId }: RouletteClientPageProps)
       setPhase("REVEALED_MODAL");
     }, 1500); // 1.5 segundos de delay
   };
-
-  // Auto-giro tras transición suave - DESACTIVADO COMPLETAMENTE
-  useEffect(() => {
-    // Auto-spin completamente desactivado - interacción manual requerida
-    return;
-    // Código obsoleto comentado para referencia
-    /*
-    if (!pendingAutoSpin || isTransitioning) return;
-    // Prevenir auto-spin si la transición comenzó hace menos de 15 segundos
-    if (transitionStartTime.current && Date.now() - transitionStartTime.current < 15000) {
-      console.log(`⏸️ [Roulette] Auto-spin pospuesto por transición reciente:`, {
-        elapsed: Date.now() - transitionStartTime.current
-      });
-      return;
-    }
-    console.log(`🎯 [Roulette] Auto-spin activado:`, {
-      pendingAutoSpin,
-      phase,
-      elementsCount: elements.length,
-      activeTokenId
-    });
-    const t = setTimeout(() => {
-      if (phase === 'READY' && elements.length >= 2) {
-        console.log(`🚀 [Roulette] Ejecutando auto-spin`);
-        setIsAutoSpin(true);
-        handleSpin().finally(() => {
-          console.log(`✅ [Roulette] Auto-spin completado`);
-          setIsAutoSpin(false);
-        });
-        // Ya vamos a girar: permitir UI normal para el nuevo ciclo
-        setSuppressLoader(false);
-        setSuppressRevealed(false);
-      } else {
-        console.log(`⏸️ [Roulette] Auto-spin cancelado:`, {
-          phase,
-          elementsCount: elements.length
-        });
-      }
-      setPendingAutoSpin(false);
-    }, 550);
-    return () => clearTimeout(t);
-    */
-  }, []); // Dependencias vacías ya que está desactivado
 
   // Al cambiar de token (softSwitch), desactivar supresión del panel para el nuevo ciclo
   useEffect(() => {
