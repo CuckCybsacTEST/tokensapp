@@ -138,10 +138,41 @@ export async function generateInviteCard(
     const highlightColor = 'white'; // Cambiar a blanco para que todo el nombre sea blanco
     let embeddedFontCss = '';
     try {
-      const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2');
-      const fontBuf = await fs.readFile(interPath);
-      embeddedFontCss = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
-    } catch {}
+      // Intentar múltiples paths posibles para la fuente
+      const possiblePaths = [
+        path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2'),
+        path.resolve(process.cwd(), 'fonts', 'StretchPro.woff2'),
+        path.resolve(__dirname, '..', '..', '..', 'public', 'fonts', 'StretchPro.woff2'),
+      ];
+
+      let fontBuf: Buffer | null = null;
+      let loadedPath = '';
+
+      for (const fontPath of possiblePaths) {
+        try {
+          fontBuf = await fs.readFile(fontPath);
+          loadedPath = fontPath;
+          break;
+        } catch {
+          continue;
+        }
+      }
+
+      if (fontBuf) {
+        embeddedFontCss = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+        if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+          // eslint-disable-next-line no-console
+          console.info('[inviteCard] fuente Stretch Pro cargada desde:', loadedPath);
+        }
+      } else {
+        throw new Error('No se pudo encontrar el archivo de fuente en ningún path');
+      }
+    } catch (e: any) {
+      if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+        // eslint-disable-next-line no-console
+        console.error('[inviteCard] error cargando fuente Stretch Pro:', e?.message, 'usando fallback');
+      }
+    }
     let textSvg = embeddedFontCss ? `  <style>${embeddedFontCss}</style>\n` : '';
     for (const line of phraseLines) {
       const idx = line.indexOf(firstUpper);
@@ -186,10 +217,41 @@ export async function generateInviteCard(
       const radius = Math.round(pillHeight / 2);
       let pillFontEmbed = '';
       try {
-        const interPath = path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2');
-        const fontBuf = await fs.readFile(interPath);
-        pillFontEmbed = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
-      } catch {}
+        // Intentar múltiples paths posibles para la fuente
+        const possiblePaths = [
+          path.resolve(process.cwd(), 'public', 'fonts', 'StretchPro.woff2'),
+          path.resolve(process.cwd(), 'fonts', 'StretchPro.woff2'),
+          path.resolve(__dirname, '..', '..', '..', 'public', 'fonts', 'StretchPro.woff2'),
+        ];
+
+        let fontBuf: Buffer | null = null;
+        let loadedPath = '';
+
+        for (const fontPath of possiblePaths) {
+          try {
+            fontBuf = await fs.readFile(fontPath);
+            loadedPath = fontPath;
+            break;
+          } catch {
+            continue;
+          }
+        }
+
+        if (fontBuf) {
+          pillFontEmbed = `@font-face{font-family:'StretchProEmbed';src:url(data:font/woff2;base64,${fontBuf.toString('base64')}) format('woff2');font-weight:400 700;font-display:swap;}`;
+          if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+            // eslint-disable-next-line no-console
+            console.info('[inviteCard] fuente Stretch Pro para fecha cargada desde:', loadedPath);
+          }
+        } else {
+          throw new Error('No se pudo encontrar el archivo de fuente en ningún path');
+        }
+      } catch (e: any) {
+        if (!process.env.SILENCE_INVITE_CARD_LOGS) {
+          // eslint-disable-next-line no-console
+          console.error('[inviteCard] error cargando fuente Stretch Pro para fecha:', e?.message, 'usando fallback');
+        }
+      }
       const dateSvg = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n<svg width="${pillWidth}" height="${pillHeight}" viewBox="0 0 ${pillWidth} ${pillHeight}" xmlns="http://www.w3.org/2000/svg">\n  ${pillFontEmbed ? `<style>${pillFontEmbed}</style>` : ''}\n  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="'StretchProEmbed','Stretch Pro','Arial',sans-serif" font-size="${pillFont}px" font-weight="600" fill="white" letter-spacing="1">${escapeXml(fechaSmall)}<\/text>\n</svg>`);
       dateSvgRaster = await sharp(dateSvg, { density: 220 }).resize(pillWidth, pillHeight).png().toBuffer();
       composites.push({ input: dateSvgRaster, left: pillLeft, top: pillTop });
