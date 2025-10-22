@@ -20,7 +20,14 @@ function toIso(d: Date) {
 
 // Helper functions para zona horaria Lima usando Luxon
 function getLimaDate(date: Date): DateTime {
-  return DateTime.fromJSDate(date).setZone('America/Lima');
+  // Para fechas de reserva, asumimos que representan fechas en zona Lima
+  // Si viene como 2025-10-22T00:00:00.000Z, lo tratamos como 2025-10-22 en Lima
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1; // getUTCMonth() es 0-based
+  const day = date.getUTCDate();
+
+  // Crear DateTime en zona Lima para esa fecha
+  return DateTime.fromObject({ year, month, day, hour: 0, minute: 0, second: 0 }, { zone: 'America/Lima' });
 }
 
 // Crear DateTime en zona Lima desde componentes de fecha

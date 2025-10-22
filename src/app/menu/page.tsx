@@ -228,6 +228,8 @@ export default function MenuPage() {
     setShowSuccessModal(false);
     setLastOrderId("");
   };
+
+  const sendOrder = async () => {
     setIsSubmitting(true);
     try {
       const orderData = {
