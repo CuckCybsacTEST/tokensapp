@@ -2,10 +2,19 @@
 export const dynamic = "force-dynamic";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { DateTime } from 'luxon';
 
 // Simple validators (could replace with zod/yup)
 function isValidDateYYYYMMDD(v: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+// Helper para formatear teléfono
+function formatPhoneDisplay(phone: string) {
+  if (phone.length === 9) {
+    return `${phone.slice(0, 3)} ${phone.slice(3, 6)} ${phone.slice(6)}`;
+  }
+  return phone;
 }
 
 // Simplified styling (removed heavy orange gradients). Maintain subtle marketing tones.
@@ -27,16 +36,12 @@ function ReservarCumplePageInner() {
   const [documento, setDocumento] = useState("");
   const [email, setEmail] = useState("");
   const [date, setDate] = useState(() => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-        // Calcular fecha actual en Lima (UTC-5)
-        const now = new Date();
-        // Convertir a UTC-5
-        const limaMs = now.getTime() - 5 * 60 * 60 * 1000;
-        const lima = new Date(limaMs);
-        return `${lima.getUTCFullYear()}-${String(lima.getUTCMonth() + 1).padStart(2, "0")}-${String(lima.getUTCDate()).padStart(2, "0")}`;
+    // Usar Luxon para obtener la fecha actual en zona Lima
+    const nowLima = DateTime.now().setZone('America/Lima') as any;
+    const year = nowLima.year;
+    const month = String(nowLima.month).padStart(2, '0');
+    const day = String(nowLima.day).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
   const [timeSlot, setTimeSlot] = useState("20:00");
   const [packId, setPackId] = useState<string>("");
@@ -122,9 +127,14 @@ function ReservarCumplePageInner() {
   // Simple validation
   function validate(): string | null {
     if (!name.trim()) return "El nombre es obligatorio";
-    if (!whatsapp.trim() || whatsapp.trim().length < 5)
-      return "WhatsApp es obligatorio y debe ser válido";
-    if (!documento.trim() || documento.trim().length < 3) return "Documento es obligatorio";
+    if (name.trim().length < 2) return "El nombre debe tener al menos 2 caracteres";
+    // Validar al menos nombre y apellido (mínimo 2 palabras)
+    const nameWords = name.trim().split(/\s+/).filter(word => word.length > 0);
+    if (nameWords.length < 2) return "Ingresa nombre y apellido (mínimo 2 palabras)";
+    if (!whatsapp.trim()) return "WhatsApp es obligatorio";
+    if (!/^\d{9}$/.test(whatsapp.trim())) return "WhatsApp debe tener exactamente 9 dígitos (ej: 912345678)";
+    if (!documento.trim()) return "Documento es obligatorio";
+    if (!/^\d{8,12}$/.test(documento.trim())) return "Documento debe tener entre 8-12 dígitos";
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Email no es válido";
     if (!date || !isValidDateYYYYMMDD(date)) return "Selecciona una fecha válida";
     if (!timeSlot) return "Selecciona un horario";
@@ -139,6 +149,8 @@ function ReservarCumplePageInner() {
       case "INVALID_BODY":
       case "INVALID_DATE":
         return "Revisa los datos del formulario. Hay campos inválidos.";
+      case "INVALID_NAME_MIN_WORDS":
+        return "El nombre debe incluir nombre y apellido (mínimo 2 palabras).";
       case "NOT_FOUND":
         return "El servicio no está disponible en este momento.";
       case "CREATE_RESERVATION_ERROR":
@@ -233,18 +245,6 @@ function ReservarCumplePageInner() {
         <div id="form" />
       </a>
 
-      <div className="mt-10 md:mt-14 mb-2">
-        <div className="inline-flex items-baseline gap-3">
-          <h2 className="text-xl md:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-orange-500 to-red-400 tracking-tight">
-            Datos de la reserva
-          </h2>
-          <span className="h-px w-24 md:w-40 bg-gradient-to-r from-orange-500/60 to-transparent" />
-        </div>
-        <p className="opacity-70 mt-2 text-sm md:text-base max-w-2xl leading-relaxed">
-          Revisa que la información sea correcta para evitar demoras.
-        </p>
-      </div>
-
       {/* Sección de confirmación de pack eliminada intencionalmente */}
 
       {packsError ? (
@@ -262,9 +262,17 @@ function ReservarCumplePageInner() {
             data-testid="input-name"
             className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tu nombre"
+            onChange={(e) => {
+              // Capitalizar primera letra de cada palabra
+              const capitalized = e.target.value.replace(/\b\w/g, l => l.toUpperCase());
+              setName(capitalized);
+            }}
+            placeholder="Juan Pérez"
+            maxLength={50}
           />
+          <p className="mt-1 text-xs text-white/60">
+            Nombre completo del cumpleañero
+          </p>
         </div>
         <div>
           <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">
@@ -272,11 +280,22 @@ function ReservarCumplePageInner() {
           </label>
           <input
             data-testid="input-whatsapp"
+            type="tel"
             className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="+51 9xx xxx xxx"
+            onChange={(e) => {
+              // Formatear automáticamente: quitar +51 y espacios, mantener solo números
+              const cleaned = e.target.value.replace(/\D/g, '').replace(/^51/, '');
+              // Limitar a 9 dígitos (máximo para Perú)
+              const formatted = cleaned.slice(0, 9);
+              setWhatsapp(formatted);
+            }}
+            placeholder="912 345 678"
+            maxLength={9}
           />
+          <p className="mt-1 text-xs text-white/60">
+            Solo números, sin +51 (ej: 912345678)
+          </p>
         </div>
         <div>
           <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">
@@ -286,9 +305,17 @@ function ReservarCumplePageInner() {
             data-testid="input-documento"
             className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
             value={documento}
-            onChange={(e) => setDocumento(e.target.value)}
-            placeholder="DNI / CE"
+            onChange={(e) => {
+              // Solo números, máximo 12 dígitos
+              const cleaned = e.target.value.replace(/\D/g, '').slice(0, 12);
+              setDocumento(cleaned);
+            }}
+            placeholder="12345678"
+            maxLength={12}
           />
+          <p className="mt-1 text-xs text-white/60">
+            DNI (8 dígitos) o CE/Pasaporte
+          </p>
         </div>
         {/* Email oculto por ahora (opcional) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -302,15 +329,12 @@ function ReservarCumplePageInner() {
               className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 focus:bg-white/10 transition-colors px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               value={date}
               min={(() => {
-                // Calcular fecha actual en Lima (UTC-5)
-                const now = new Date();
-                // Convertir a UTC-5
-                const limaMs = now.getTime() - 5 * 60 * 60 * 1000;
-                const lima = new Date(limaMs);
-                const yyyy = lima.getUTCFullYear();
-                const mm = String(lima.getUTCMonth() + 1).padStart(2, "0");
-                const dd = String(lima.getUTCDate()).padStart(2, "0");
-                return `${yyyy}-${mm}-${dd}`;
+                // Usar Luxon para obtener la fecha actual en zona Lima
+                const nowLima = DateTime.now().setZone('America/Lima') as any;
+                const year = nowLima.year;
+                const month = String(nowLima.month).padStart(2, '0');
+                const day = String(nowLima.day).padStart(2, '0');
+                return `${year}-${month}-${day}`;
               })()}
               onChange={(e) => setDate(e.target.value)}
             />

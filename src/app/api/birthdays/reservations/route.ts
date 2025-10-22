@@ -6,6 +6,7 @@ import { createReservation } from '@/lib/birthdays/service';
 import { signClientSecret } from '@/lib/birthdays/clientAuth';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { corsHeadersFor } from '@/lib/cors';
+import { parseDateStringToLima, limaDateTimeToJSDate } from '@/lib/birthdays/service';
 
 const CreateReservationSchema = z.object({
   celebrantName: z.string().min(1).max(120),
@@ -26,10 +27,13 @@ export async function POST(req: NextRequest) {
     return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
   }
   const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown';
+  // Rate limiting por IP TEMPORALMENTE DESACTIVADO
+  /*
   const rl = checkRateLimit(`birthdays:create:${ip}`);
   if (!rl.ok) {
     return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { ...cors, 'Retry-After': String(rl.retryAfterSeconds) });
   }
+  */
   try {
     const body = await req.json();
     const parsed = CreateReservationSchema.safeParse(body);
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
       return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
     }
     const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned, referrerId } = parsed.data;
-    const dt = new Date(date + 'T00:00:00.000Z');
+    const dt = limaDateTimeToJSDate(parseDateStringToLima(date));
     if (!isFinite(dt.getTime())) return apiError('INVALID_DATE', 'invalid date', undefined, 400);
 
     const created = await createReservation({
@@ -70,7 +74,8 @@ export async function POST(req: NextRequest) {
     const clientSecret = signClientSecret(created.id, 15);
     return apiOk({ ok: true, ...dto, clientSecret }, 201, cors);
   } catch (e) {
-    return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation', undefined, 500, cors);
+    console.error('[API] Error creating reservation:', e);
+    return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation', e instanceof Error ? e.message : String(e), 500, cors);
   }
 }
 

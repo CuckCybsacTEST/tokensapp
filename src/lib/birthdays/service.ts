@@ -4,7 +4,11 @@ import path from 'path';
 import { audit } from '@/lib/audit';
 import { signBirthdayClaim, verifyBirthdayClaim } from '@/lib/birthdays/token';
 import { randomBytes } from 'crypto';
+import { DateTime } from 'luxon';
 import { Prisma, type BirthdayReservation, type BirthdayPack, type InviteToken, type TokenRedemption, type CourtesyItem, type PhotoDeliverable } from '@prisma/client';
+
+// Ejecutar prueba de zona horaria al cargar el módulo
+testLimaTimezone();
 
 function now() {
   return new Date();
@@ -12,6 +16,73 @@ function now() {
 
 function toIso(d: Date) {
   return d.toISOString();
+}
+
+// Helper functions para zona horaria Lima usando Luxon
+function getLimaDate(date: Date): DateTime {
+  return DateTime.fromJSDate(date).setZone('America/Lima');
+}
+
+// Crear DateTime en zona Lima desde componentes de fecha
+function createLimaDateTime(year: number, month: number, day: number): DateTime {
+  // Crear Date que representa medianoche del día en zona Lima (UTC-5)
+  // Para que sea medianoche en Lima, necesitamos 05:00:00 UTC
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0));
+  return DateTime.fromJSDate(utcDate).setZone('America/Lima');
+}
+
+// Convertir string YYYY-MM-DD a DateTime en zona Lima (medianoche Lima)
+export function parseDateStringToLima(dateStr: string): DateTime {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return createLimaDateTime(year, month, day);
+}
+
+// Convertir DateTime Lima a Date (preservando la hora exacta)
+export function limaDateTimeToJSDate(limaDateTime: DateTime): Date {
+  return limaDateTime.toJSDate();
+}
+
+// Función de prueba para verificar zona horaria
+function testLimaTimezone() {
+  console.log('[TEST] Probando funciones de zona horaria Lima');
+
+  // Test 1: Crear fecha para hoy en Lima
+  const todayLima = parseDateStringToLima('2025-10-22');
+  console.log('[TEST] Fecha parseada 2025-10-22:', todayLima.toISO());
+
+  // Test 2: Convertir a JS Date
+  const jsDate = limaDateTimeToJSDate(todayLima);
+  console.log('[TEST] Convertida a JS Date:', jsDate.toISOString());
+
+  // Test 3: Verificar conversión de vuelta
+  const backToLima = getLimaDate(jsDate);
+  console.log('[TEST] De vuelta a Lima:', backToLima.toISO());
+
+  // Test 4: Partes de fecha
+  const parts = getLimaDateParts(jsDate);
+  console.log('[TEST] Partes de fecha:', parts);
+}
+
+function getLimaDateParts(date: Date) {
+  const limaDate = getLimaDate(date) as any;
+  return {
+    y: limaDate.year,
+    m: limaDate.month, // Luxon months are 1-based, keep as is for logging
+    d: limaDate.day
+  };
+}
+
+function isReservationDatePast(reservationDate: Date) {
+  const nowLima = getLimaDate(new Date()) as DateTime;
+  // Interpretar reservationDate como fecha en zona Lima
+  const reservationLima = getLimaDate(reservationDate) as DateTime;
+
+  // Comparar solo fecha (ignorar hora)
+  // Permitir reservas para hoy mismo, solo rechazar fechas estrictamente pasadas
+  const nowDate = nowLima.startOf('day');
+  const reservationDateOnly = reservationLima.startOf('day');
+
+  return reservationDateOnly < nowDate;
 }
 
 function generateCode(len = 10) {
@@ -63,25 +134,80 @@ function assertPositive(n: number, name: string) {
 
 // Services -------------------------------------------------------------------
 export async function createReservation(input: CreateReservationInput): Promise<ReservationWithRelations> {
+  console.log('[BIRTHDAYS] createReservation: Iniciando creación', {
+    celebrantName: input.celebrantName,
+    documento: input.documento,
+    date: input.date,
+    packId: input.packId,
+    referrerId: input.referrerId
+  });
+
   // Validación de fecha: máximo 30 días en el futuro (hora Lima)
+  // PERMITIR reservas para hoy mismo
   let reservaDateObj: Date;
   const reservaDateRaw = (input.date as any)?.toString?.() ?? input.date;
   if (typeof reservaDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(reservaDateRaw)) {
-    reservaDateObj = new Date(`${reservaDateRaw}T00:00:00-05:00`);
+    // Crear fecha directamente en zona Lima usando Luxon
+    // La fecha string representa un día calendario en zona Lima
+    reservaDateObj = limaDateTimeToJSDate(parseDateStringToLima(reservaDateRaw));
   } else {
     reservaDateObj = new Date(input.date);
   }
-  const nowLima = new Date(Date.now() + 5 * 60 * 60 * 1000);
-  const maxFuture = new Date(nowLima.getTime() + 30 * 24 * 60 * 60 * 1000);
-  if (reservaDateObj.getTime() > maxFuture.getTime()) {
+
+  // Validar que no sea más de 30 días en el futuro (en zona Lima)
+  const nowLima = getLimaDate(new Date()) as DateTime;
+  const maxFuture = nowLima.plus({ days: 30 });
+  const reservationLima = getLimaDate(reservaDateObj) as DateTime;
+
+  if (reservationLima > maxFuture) {
+    console.error('[BIRTHDAYS] createReservation: Fecha demasiado lejana', {
+      reservationLima: reservationLima.toISO(),
+      maxFuture: maxFuture.toISO()
+    });
     throw new Error('DATE_TOO_FAR');
   }
+
+  // NO validar fechas pasadas - permitir reservas para hoy
+
   // Validación de formato DNI y WhatsApp
   if (!/^\d{8}$/.test(input.documento)) {
+    console.error('[BIRTHDAYS] createReservation: DNI inválido', { documento: input.documento });
     throw new Error('INVALID_DNI');
   }
   if (!/^\d{9}$/.test(input.phone)) {
+    console.error('[BIRTHDAYS] createReservation: WhatsApp inválido', { phone: input.phone });
     throw new Error('INVALID_WHATSAPP');
+  }
+
+  console.log('[BIRTHDAYS] createReservation: Validaciones básicas OK');
+
+  // Rate limiting por sesión de usuario (TEMPORALMENTE DESACTIVADO)
+  /*
+  if (input.createdBy) {
+    console.log('[BIRTHDAYS] createReservation: Verificando rate limit por sesión', { createdBy: input.createdBy });
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const count = await prisma.birthdayReservation.count({
+      where: {
+        createdBy: input.createdBy,
+        createdAt: { gte: oneHourAgo }
+      }
+    });
+    if (count >= 3) {
+      console.error('[BIRTHDAYS] createReservation: Rate limit excedido por sesión', { createdBy: input.createdBy, count });
+      throw new Error('RATE_LIMITED');
+    }
+    console.log('[BIRTHDAYS] createReservation: Rate limit OK', { createdBy: input.createdBy, count });
+  }
+  */
+
+  // Validar nombre: al menos 2 palabras (nombre y apellido)
+  const nameWords = input.celebrantName.trim().split(/\s+/).filter(word => word.length > 0);
+  if (nameWords.length < 2) {
+    console.error('[BIRTHDAYS] createReservation: Nombre debe tener al menos 2 palabras', {
+      celebrantName: input.celebrantName,
+      wordCount: nameWords.length
+    });
+    throw new Error('INVALID_NAME_MIN_WORDS');
   }
 
   // Evitar reservas duplicadas por DNI en el mismo año
@@ -91,75 +217,82 @@ export async function createReservation(input: CreateReservationInput): Promise<
   } else {
     year = reservaDateObj.getFullYear();
   }
-  const existing = await prisma.birthdayReservation.findFirst({
-    where: {
-      documento: input.documento,
-      date: {
-        gte: new Date(`${year}-01-01T00:00:00.000Z`),
-        lte: new Date(`${year}-12-31T23:59:59.999Z`)
-      }
-    }
-  });
-  if (existing) {
-    throw new Error('DUPLICATE_DNI_YEAR');
-  }
 
-  // Rate limiting por IP (máx 3 reservas por IP en 1 hora)
-  if (input.createdBy) {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const count = await prisma.birthdayReservation.count({
+  console.log('[BIRTHDAYS] createReservation: Verificando duplicados y creando reserva en transacción');
+
+  // Usar transacción para evitar race conditions en duplicados y creación
+  const created = await prisma.$transaction(async (tx) => {
+    // Si la fecha es string (YYYY-MM-DD), convertir a Date en Lima (UTC-5)
+    let dateObj: Date;
+    const dateStr = (input.date as any)?.toString?.() ?? input.date;
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      // Crear fecha directamente en zona Lima: YYYY-MM-DD se interpreta como medianoche en Lima
+      dateObj = limaDateTimeToJSDate(parseDateStringToLima(dateStr));
+    } else {
+      dateObj = new Date(input.date);
+    }
+
+    console.log('[BIRTHDAYS] createReservation: Fecha procesada dentro de transacción', { dateObj });
+
+    // Verificar duplicados dentro de la transacción
+    const existing = await tx.birthdayReservation.findFirst({
       where: {
-        createdBy: input.createdBy,
-        createdAt: { gte: oneHourAgo }
+        documento: input.documento,
+        date: {
+          gte: new Date(`${dateObj.getFullYear()}-01-01T00:00:00.000Z`),
+          lte: new Date(`${dateObj.getFullYear()}-12-31T23:59:59.999Z`)
+        }
       }
     });
-    if (count >= 3) {
-      throw new Error('RATE_LIMITED');
-    }
-  }
-  assertNonEmpty(input.celebrantName, 'celebrantName');
-  assertNonEmpty(input.phone, 'phone');
-  assertNonEmpty(input.documento, 'documento');
-  assertNonEmpty(input.timeSlot, 'timeSlot');
-  assertNonEmpty(input.packId, 'packId');
-  assertPositive(input.guestsPlanned, 'guestsPlanned');
 
-  // Si la fecha es string (YYYY-MM-DD), convertir a Date en Lima (UTC-5)
-  let dateObj: Date;
-  const dateStr = (input.date as any)?.toString?.() ?? input.date;
-  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    // Crear Date en Lima (UTC-5) usando string con offset
-    dateObj = new Date(`${dateStr}T00:00:00-05:00`);
-  } else {
-    dateObj = new Date(input.date);
-  }
-  // Validar referrerId si se proporciona
-  if (input.referrerId) {
-    const referrer = await prisma.birthdayReferrer.findUnique({
-      where: { id: input.referrerId },
-      select: { id: true, active: true },
+    if (existing) {
+      console.error('[BIRTHDAYS] createReservation: Reserva duplicada encontrada en transacción', {
+        documento: input.documento,
+        year: dateObj.getFullYear(),
+        existingId: existing.id,
+        existingDate: existing.date
+      });
+      throw new Error('DUPLICATE_DNI_YEAR');
+    }
+
+    console.log('[BIRTHDAYS] createReservation: No hay duplicados, creando reserva');
+
+    // Validar referrerId dentro de la transacción si se proporciona
+    if (input.referrerId) {
+      console.log('[BIRTHDAYS] createReservation: Validando referrer en transacción', { referrerId: input.referrerId });
+      const referrer = await tx.birthdayReferrer.findUnique({
+        where: { id: input.referrerId },
+        select: { id: true, active: true },
+      });
+      if (!referrer || !referrer.active) {
+        console.error('[BIRTHDAYS] createReservation: Referrer inválido en transacción', { referrerId: input.referrerId, referrer });
+        throw new Error('INVALID_REFERRER');
+      }
+    }
+
+    // Crear la reserva dentro de la transacción
+    const reservation = await tx.birthdayReservation.create({
+      data: {
+        celebrantName: input.celebrantName.trim(),
+        phone: input.phone.trim(),
+        documento: input.documento.trim(),
+        email: input.email || null,
+        date: dateObj,
+        timeSlot: input.timeSlot.trim(),
+        packId: input.packId,
+        guestsPlanned: input.guestsPlanned,
+        status: 'pending_review',
+        createdBy: input.createdBy || null,
+        referrerId: input.referrerId || null,
+      },
+      include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
     });
-    if (!referrer || !referrer.active) {
-      throw new Error('INVALID_REFERRER');
-    }
-  }
 
-  const created = await prisma.birthdayReservation.create({
-    data: {
-      celebrantName: input.celebrantName.trim(),
-      phone: input.phone.trim(),
-      documento: input.documento.trim(),
-      email: input.email || null,
-      date: dateObj,
-      timeSlot: input.timeSlot.trim(),
-      packId: input.packId,
-      guestsPlanned: input.guestsPlanned,
-      status: 'pending_review',
-      createdBy: input.createdBy || null,
-      referrerId: input.referrerId || null,
-    },
-    include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
+    console.log('[BIRTHDAYS] createReservation: Reserva creada en transacción', { id: reservation.id });
+    return reservation;
   });
+
+  console.log('[BIRTHDAYS] createReservation: Transacción completada exitosamente');
 
   await audit('birthday.createReservation', input.createdBy, { id: created.id, date: toIso(created.date) });
   return created as ReservationWithRelations;
@@ -299,14 +432,30 @@ export async function generateInviteTokens(
   opts?: { force?: boolean; expectedUpdatedAt?: Date | string },
   byUserId?: string
 ): Promise<InviteToken[]> {
+  console.log('[BIRTHDAYS] generateInviteTokens: Iniciando generación', {
+    reservationId,
+    force: opts?.force,
+    byUserId
+  });
+
   const reservation = await prisma.birthdayReservation.findUnique({
     where: { id: reservationId },
     include: { pack: true },
   });
-  if (!reservation) throw new Error('RESERVATION_NOT_FOUND');
+  if (!reservation) {
+    console.error('[BIRTHDAYS] generateInviteTokens: Reserva no encontrada', { reservationId });
+    throw new Error('RESERVATION_NOT_FOUND');
+  }
+
+  console.log('[BIRTHDAYS] generateInviteTokens: Reserva encontrada', {
+    id: reservation.id,
+    tokensGeneratedAt: reservation.tokensGeneratedAt,
+    packQrCount: reservation.pack?.qrCount
+  });
 
   // If already generated and not forcing, return existing tokens idempotently
   if (!opts?.force && reservation.tokensGeneratedAt) {
+    console.log('[BIRTHDAYS] generateInviteTokens: Tokens ya generados, retornando existentes');
     const existingTokens = await prisma.inviteToken.findMany({ where: { reservationId }, orderBy: { code: 'asc' } });
     return existingTokens;
   }
@@ -317,32 +466,38 @@ export async function generateInviteTokens(
     : undefined;
 
   const nowDt = now();
-  // --- Cálculo manual zona Lima (UTC-5, sin DST efectivo) ---
-  // Convertimos la fecha de la reserva (asumida en UTC) a "día Lima" restando 5 horas.
-  function toLimaDateParts(date: Date) {
-    const limaMs = date.getTime() - 5 * 3600 * 1000; // UTC-5
-    const lima = new Date(limaMs);
-    return { y: lima.getUTCFullYear(), m: lima.getUTCMonth(), d: lima.getUTCDate() };
+  console.log('[BIRTHDAYS] generateInviteTokens: Validando fecha de reserva', {
+    reservationDate: reservation.date,
+    now: nowDt,
+    target
+  });
+
+  // Calcular fecha de expiración usando Luxon
+  // Los tokens expiran a las 00:01 (Lima) del día siguiente a la reserva
+  // Interpretar reservation.date como fecha en zona Lima
+  const reservationLima = getLimaDate(reservation.date) as DateTime;
+  const expirationLima = reservationLima.plus({ days: 1 }).set({ hour: 0, minute: 1, second: 0 });
+  const exp = limaDateTimeToJSDate(expirationLima);
+
+  // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
+  if (isReservationDatePast(reservation.date)) {
+    const reservationParts = getLimaDateParts(reservation.date);
+    const nowParts = getLimaDateParts(new Date());
+    console.error('[BIRTHDAYS] generateInviteTokens: Fecha de reserva pasada', {
+      reservaLima: reservationParts,
+      actualLima: nowParts,
+      expira: exp
+    });
+    throw new Error('RESERVATION_DATE_PAST');
   }
-  const { y, m, d } = toLimaDateParts(reservation.date);
-  // Expira a las 00:01 (Lima) del día siguiente => 05:01 UTC del día siguiente.
-  const expUtcMs = Date.UTC(y, m, d + 1, 5, 1, 0, 0); // 00:01 Lima = 05:01 UTC
-  const exp = new Date(expUtcMs);
-  // Hora actual en Lima (aprox) para validar que no sea pasado.
-  // Permitir generación de tokens si la fecha de la reserva es igual o mayor al día actual en Lima
-  const { y: cy, m: cm, d: cd } = toLimaDateParts(nowDt);
-  // Si la fecha de la reserva es menor al día actual en Lima, es pasada
-  // Comparar solo año, mes y día
-    // Ajustar la fecha de la reserva sumando 5 horas (UTC-5)
-    const reservaLima = new Date(reservation.date.getTime() + 5 * 60 * 60 * 1000);
-    const yLima = reservaLima.getUTCFullYear();
-    const mLima = reservaLima.getUTCMonth();
-    const dLima = reservaLima.getUTCDate();
-    console.error('[BIRTHDAYS] Fecha reserva (ajustada Lima):', { reservaDate: reservaLima, yLima, mLima, dLima });
-    console.error('[BIRTHDAYS] Fecha actual Lima:', { now: nowDt, cy, cm, cd });
-    if (yLima < cy || (yLima === cy && mLima < cm) || (yLima === cy && mLima === cm && dLima < cd)) {
-      throw new Error('RESERVATION_DATE_PAST');
-    }
+
+  console.log('[BIRTHDAYS] generateInviteTokens: Fechas calculadas con Luxon', {
+    reservationLima: reservationLima.toISO(),
+    expirationLima: expirationLima.toISO(),
+    expira: exp
+  });
+
+  console.log('[BIRTHDAYS] generateInviteTokens: Fecha válida, iniciando transacción');
 
   const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Attempt to claim generation by setting tokensGeneratedAt only if currently null (and optional optimistic lock on updatedAt)
