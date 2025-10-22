@@ -11,6 +11,8 @@ interface Order {
   tableId?: string;
   servicePointId?: string;
   locationId?: string;
+  customerName?: string;
+  isFromQR: boolean;
   status: "PENDING" | "CONFIRMED" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
   total: number;
   createdAt: string;
@@ -507,14 +509,34 @@ export default function AdminPedidosPage() {
                   </div>
                   
                   {/* Quién hizo el pedido - Cuarta jerarquía */}
-                  {order.staff && (
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <span className="text-blue-400">👤</span>
-                      <span className="hidden sm:inline">{order.staff.name}</span>
-                      <span className="sm:hidden">{order.staff.name.split(' ')[0]}</span>
-                      <span className="text-gray-500">({order.staff.role})</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3 text-sm">
+                    {order.customerName && (
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <span className="text-green-400">👤</span>
+                        <span className="hidden sm:inline">{order.customerName}</span>
+                        <span className="sm:hidden">{order.customerName.split(' ')[0]}</span>
+                        {order.isFromQR && (
+                          <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-medium border border-purple-500/30">
+                            QR
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {order.staff && (
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <span className="text-blue-400">�‍🍳</span>
+                        <span className="hidden sm:inline">{order.staff.name}</span>
+                        <span className="sm:hidden">{order.staff.name.split(' ')[0]}</span>
+                        <span className="text-gray-500">({order.staff.role})</span>
+                      </div>
+                    )}
+                    {!order.customerName && !order.staff && (
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <span>👤</span>
+                        <span>Sin asignar</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Acciones */}

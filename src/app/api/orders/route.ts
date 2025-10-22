@@ -31,14 +31,35 @@ function emitNewOrder(orderData: any) {
 
 export async function POST(request: NextRequest) {
   try {
+    // PRIMERO obtener el body para verificar si es un pedido público
+    const body = await request.json();
+    const { servicePointId, tableId, locationId, items, notes, customerName } = body;
+
     // Obtener información del usuario autenticado
     const userCookie = getUserSessionCookieFromRequest(request);
     const userSession = await verifyUserSessionCookie(userCookie);
-    
+
     const adminCookie = getSessionCookieFromRequest(request);
     const adminSession = await verifySessionCookie(adminCookie);
 
-    if (!userSession && !adminSession) {
+    // Verificar si hay autenticación
+    const isAuthenticated = userSession || adminSession;
+
+    // Si no hay autenticación pero hay servicePointId, permitir pedido público
+    let allowPublicOrder = false;
+    if (!isAuthenticated && servicePointId) {
+      // Verificar que el servicePoint existe y está activo
+      const servicePoint = await prisma.servicePoint.findUnique({
+        where: { id: servicePointId },
+        select: { id: true, active: true }
+      });
+
+      if (servicePoint && servicePoint.active) {
+        allowPublicOrder = true;
+      }
+    }
+
+    if (!isAuthenticated && !allowPublicOrder) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
@@ -59,8 +80,7 @@ export async function POST(request: NextRequest) {
       staffId = null;
     }
 
-    const body = await request.json();
-    const { tableId, servicePointId, locationId, items, notes } = body;
+    // Ya tenemos las variables del body de arriba
 
     // Validar que se proporcione al menos una referencia de ubicación
     if ((!tableId && !servicePointId && !locationId) || !items || items.length === 0) {
@@ -146,6 +166,8 @@ export async function POST(request: NextRequest) {
           ...(verifiedServicePoint?.id && { servicePointId: verifiedServicePoint.id }), // New system
           ...(verifiedLocation?.id && { locationId: verifiedLocation.id }), // New system for zones
           staffId,
+          customerName: customerName || null, // Nombre del cliente para pedidos públicos
+          isFromQR: !isAuthenticated, // Indica si viene desde QR (sin autenticación)
           status: "PENDING",
           total,
           notes,

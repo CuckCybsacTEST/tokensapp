@@ -3,6 +3,31 @@
 import { useState, useEffect } from "react";
 import LocationModal from "@/components/admin/LocationModal";
 import ServicePointModal from "@/components/admin/ServicePointModal";
+import QrDownloadButton from "@/app/admin/persons/QrDownloadButton";
+import QRCode from "qrcode";
+
+function QRDisplay({ url, size = 120 }: { url: string; size?: number }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    QRCode.toDataURL(url, { width: size, margin: 1 })
+      .then(setQrDataUrl)
+      .catch(console.error);
+  }, [url, size]);
+
+  if (!qrDataUrl) {
+    return <div className="w-20 h-20 bg-gray-200 animate-pulse rounded"></div>;
+  }
+
+  return (
+    <img
+      src={qrDataUrl}
+      alt="QR Code"
+      className="border border-gray-300 rounded"
+      style={{ width: size, height: size }}
+    />
+  );
+}
 
 enum LocationType {
   DINING = "DINING",
@@ -331,6 +356,28 @@ export default function LocationsManager() {
                             Eliminar
                           </button>
                         </div>
+                        {servicePoint.active && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <div className="space-y-2">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 block">QR del menú</span>
+                              <div className="flex items-center space-x-3">
+                                <QRDisplay 
+                                  url={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                  size={80}
+                                />
+                                <div className="flex flex-col space-y-1">
+                                  <QrDownloadButton 
+                                    data={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                    fileName={`qr-${servicePoint.name || servicePoint.number}.png`}
+                                  />
+                                  <span className="text-xs text-gray-400">
+                                    {servicePoint.name || `${servicePoint.type} ${servicePoint.number}`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

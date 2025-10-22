@@ -198,7 +198,7 @@ export function TopNavBar() {
         <div className="flex items-center gap-2 md:gap-3">
           {/* Carta: botón fantasma con borde sutil */}
           <a
-            href="#carta"
+            href="/menu"
             className="inline-flex items-center rounded-full px-3 py-1 text-[11px] md:text-[12px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
             style={{
               color: "#ffffffd0",

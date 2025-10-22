@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 import { useTableSocket } from "../../hooks/useSocket";
+import { useSearchParams } from "next/navigation";
 
 interface Category {
   id: string;
@@ -28,12 +29,19 @@ interface Product {
 
 interface Table {
   id: string;
-  number: number;
-  name: string | null;
-  zone: string | null;
+  number: string;
+  name?: string;
+  type: 'TABLE' | 'BOX' | 'ZONE';
   capacity: number;
   active: boolean;
-  qrCode: string | null;
+  positionX?: number;
+  positionY?: number;
+  qrCode?: string;
+  location?: {
+    id: string;
+    name: string;
+    type: 'DINING' | 'VIP' | 'BAR';
+  };
 }
 
 interface CartItem {
@@ -54,14 +62,32 @@ export default function MenuPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderStatus, setOrderStatus] = useState<string>("");
+  const [customerName, setCustomerName] = useState<string>("");
+  const [showCustomerNameModal, setShowCustomerNameModal] = useState(false);
+
+  const searchParams = useSearchParams();
 
   // Socket.IO para actualizaciones en tiempo real
   const { socket, isConnected } = useTableSocket(tableId);
+
+  // Leer tableId desde URL parameters
+  useEffect(() => {
+    const tableParam = searchParams?.get('table');
+    if (tableParam) {
+      setTableId(tableParam);
+    }
+  }, [searchParams]);
 
   // Cargar datos del menú al montar el componente
   useEffect(() => {
     loadMenuData();
   }, []);
+
+  useEffect(() => {
+    if (tableId) {
+      loadTableData();
+    }
+  }, [tableId]);
 
   useEffect(() => {
     if (socket) {
@@ -88,32 +114,57 @@ export default function MenuPage() {
 
   const loadMenuData = async () => {
     try {
-      // Cargar categorías, productos y mesas desde la API
-      const [categoriesRes, productsRes, tablesRes] = await Promise.all([
+      // Cargar categorías y productos desde la API (públicos)
+      const [categoriesRes, productsRes] = await Promise.all([
         fetch("/api/menu/categories"),
-        fetch("/api/menu/products"),
-        fetch("/api/tables")
+        fetch("/api/menu/products")
       ]);
 
-      if (categoriesRes.ok && productsRes.ok && tablesRes.ok) {
+      if (categoriesRes.ok && productsRes.ok) {
         const categoriesData = await categoriesRes.json();
         const productsData = await productsRes.json();
-        const tablesData = await tablesRes.json();
 
         setCategories(categoriesData);
         setProducts(productsData);
-        setTables(tablesData);
 
         // Seleccionar primera categoría activa
         const firstActiveCategory = categoriesData.find((cat: Category) => cat.active);
         if (firstActiveCategory) {
           setSelectedCategory(firstActiveCategory.id);
         }
+      } else {
+        console.error("Error loading menu data:", {
+          categories: categoriesRes.status,
+          products: productsRes.status
+        });
       }
     } catch (error) {
       console.error("Error loading menu:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTableData = async () => {
+    if (!tableId) return;
+
+    try {
+      // Validar que el servicePoint existe y está activo
+      const tableRes = await fetch(`/api/menu/service-points?ids=${encodeURIComponent(tableId)}`);
+
+      if (tableRes.ok) {
+        const tablesData = await tableRes.json();
+        if (tablesData.length > 0) {
+          setTables(tablesData);
+        } else {
+          console.warn("Service point not found or inactive:", tableId);
+          // Podríamos mostrar un mensaje de error aquí
+        }
+      } else {
+        console.error("Error loading table data:", tableRes.status);
+      }
+    } catch (error) {
+      console.error("Error loading table:", error);
     }
   };
 
@@ -152,7 +203,7 @@ export default function MenuPage() {
   );
   const submitOrder = async () => {
     if (!tableId) {
-      alert("Por favor selecciona una mesa");
+      alert("Por favor selecciona una mesa o zona de servicio");
       return;
     }
 
@@ -161,16 +212,27 @@ export default function MenuPage() {
       return;
     }
 
+    // Si viene desde QR (tiene tableId), pedir nombre del cliente
+    if (tableId && !customerName.trim()) {
+      setShowCustomerNameModal(true);
+      return;
+    }
+
+    await sendOrder();
+  };
+
+  const sendOrder = async () => {
     setIsSubmitting(true);
     try {
       const orderData = {
-        tableId: tableId,
+        servicePointId: tableId,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
           notes: item.notes,
         })),
         notes: orderNotes.trim() || undefined,
+        customerName: customerName.trim() || undefined,
       };
 
       const response = await fetch("/api/orders", {
@@ -183,25 +245,32 @@ export default function MenuPage() {
 
       if (response.ok) {
         const result = await response.json();
-        setOrderSuccess(true);
+        
+        // Para pedidos públicos (desde QR), no mostrar modal de confirmación
+        // Solo mostrar mensaje de éxito y limpiar carrito
+        alert(`✅ Pedido enviado exitosamente!\nNúmero de pedido: ${result.order.id}`);
         setCart([]);
         setOrderNotes("");
-
+        setCustomerName("");
+        
         // Emitir evento de Socket.IO
         if (socket) {
           const selectedTable = tables.find(t => t.id === tableId);
+          let locationName = "";
+          if (selectedTable) {
+            locationName = selectedTable.name || `${selectedTable.type} ${selectedTable.number}`;
+          }
+
           socket.emit("new-order", {
             orderId: result.order.id,
             tableId: tableId,
-            tableName: selectedTable ? (selectedTable.name || `Mesa ${selectedTable.number}`) : `Mesa ${tableId}`,
+            tableName: locationName,
             items: cart,
             total: getTotalPrice(),
             status: "pendiente",
             timestamp: new Date().toISOString(),
           });
         }
-
-        alert(`✅ Pedido enviado exitosamente!\nNúmero de pedido: ${result.order.id}`);
       } else {
         const error = await response.json();
         alert(`❌ Error: ${error.error}`);
@@ -349,8 +418,8 @@ export default function MenuPage() {
                 <p className="text-xl font-bold">Total: S/ {getTotalPrice().toFixed(2)}</p>
               </div>
               <button
-                onClick={() => setOrderSuccess(true)}
-                disabled={isSubmitting}
+                onClick={submitOrder}
+                disabled={isSubmitting || !tableId}
                 className="bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 {isSubmitting ? "Enviando..." : "Hacer Pedido"}
@@ -369,7 +438,7 @@ export default function MenuPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seleccionar Mesa
+                  Seleccionar Mesa/Zona
                 </label>
                 <select
                   value={tableId}
@@ -377,16 +446,26 @@ export default function MenuPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                   required
                 >
-                  <option value="">Seleccionar mesa...</option>
+                  <option value="">Seleccionar mesa/zona...</option>
+                  
+                  {/* Puntos de servicio (mesas, boxes, zonas) */}
                   {tables.map((table) => (
                     <option key={table.id} value={table.id}>
-                      Mesa {table.number}
+                      {table.type === 'TABLE' ? 'Mesa' : 
+                       table.type === 'BOX' ? 'Box' : 'Zona'} {table.number}
                       {table.name && ` - ${table.name}`}
-                      {table.zone && ` (${table.zone})`}
+                      {table.location && ` (${table.location.name})`}
                       {` - ${table.capacity} personas`}
                     </option>
                   ))}
                 </select>
+                
+                {/* Mostrar información de la selección actual */}
+                {tableId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Zona de servicio seleccionada
+                  </p>
+                )}
               </div>
 
               <div>
@@ -423,6 +502,58 @@ export default function MenuPage() {
                 className="flex-1 px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
               >
                 {isSubmitting ? "Enviando..." : "Confirmar Pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Name Modal */}
+      {showCustomerNameModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Ingresa tu nombre</h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              Para identificarte cuando llegue tu pedido
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tu nombre *
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Ej: Juan Pérez"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                  autoFocus
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCustomerNameModal(false)}
+                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (customerName.trim()) {
+                    setShowCustomerNameModal(false);
+                    sendOrder();
+                  } else {
+                    alert("Por favor ingresa tu nombre");
+                  }
+                }}
+                disabled={!customerName.trim()}
+                className="flex-1 px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
+              >
+                Continuar
               </button>
             </div>
           </div>

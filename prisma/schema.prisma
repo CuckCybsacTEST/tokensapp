@@ -648,6 +648,8 @@ model Order {
   location      Location?     @relation(fields: [locationId], references: [id])
   staffId       String?       // mozo asignado
   staff         Staff?        @relation(fields: [staffId], references: [id])
+  customerName  String?       // Nombre del cliente (para pedidos desde QR)
+  isFromQR      Boolean       @default(false) // Indica si el pedido viene desde QR
   status        OrderStatus   @default(PENDING)
   total         Float         @default(0)
   notes         String?
