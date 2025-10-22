@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
+import SuccessModal from "@/components/SuccessModal";
 import { useTableSocket } from "../../hooks/useSocket";
 import { useSearchParams } from "next/navigation";
 
@@ -64,6 +65,8 @@ export default function MenuPage() {
   const [orderStatus, setOrderStatus] = useState<string>("");
   const [customerName, setCustomerName] = useState<string>("");
   const [showCustomerNameModal, setShowCustomerNameModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<string>("");
 
   const searchParams = useSearchParams();
 
@@ -221,7 +224,10 @@ export default function MenuPage() {
     await sendOrder();
   };
 
-  const sendOrder = async () => {
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    setLastOrderId("");
+  };
     setIsSubmitting(true);
     try {
       const orderData = {
@@ -246,9 +252,11 @@ export default function MenuPage() {
       if (response.ok) {
         const result = await response.json();
         
-        // Para pedidos públicos (desde QR), no mostrar modal de confirmación
-        // Solo mostrar mensaje de éxito y limpiar carrito
-        alert(`✅ Pedido enviado exitosamente!\nNúmero de pedido: ${result.order.id}`);
+        // Guardar el ID del pedido y mostrar modal de éxito
+        setLastOrderId(result.order.id);
+        setShowSuccessModal(true);
+        
+        // Limpiar carrito y datos del cliente
         setCart([]);
         setOrderNotes("");
         setCustomerName("");
@@ -511,15 +519,15 @@ export default function MenuPage() {
       {/* Customer Name Modal */}
       {showCustomerNameModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Ingresa tu nombre</h3>
-            <p className="text-gray-600 mb-4 text-sm">
+          <div className="bg-black/90 border border-white/20 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-white mb-4">Ingresa tu nombre</h3>
+            <p className="text-gray-300 mb-4 text-sm">
               Para identificarte cuando llegue tu pedido
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-white mb-1">
                   Tu nombre *
                 </label>
                 <input
@@ -527,7 +535,7 @@ export default function MenuPage() {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                   autoFocus
                   required
                 />
@@ -537,7 +545,7 @@ export default function MenuPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowCustomerNameModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
               >
                 Cancelar
               </button>
@@ -559,6 +567,16 @@ export default function MenuPage() {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        title="¡Pedido enviado!"
+        message="Tu pedido ha sido registrado exitosamente. Te notificaremos cuando esté listo."
+        orderId={lastOrderId}
+        autoCloseDelay={8000}
+      />
     </div>
   );
 }
