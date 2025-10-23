@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Ticket, Eye, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Ticket, Eye, Download, RefreshCw, X, AlertTriangle } from 'lucide-react';
+import { useStaffSocket } from '@/hooks/useSocket';
 
 interface TicketType {
   id: string;
@@ -53,7 +54,7 @@ interface ApiResponse {
 type TabType = 'types' | 'tickets';
 
 export default function AdminTicketsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('types');
+  const [activeTab, setActiveTab] = useState<TabType>('tickets');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
@@ -63,6 +64,7 @@ export default function AdminTicketsPage() {
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [processingTicket, setProcessingTicket] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     showId: '',
@@ -72,9 +74,39 @@ export default function AdminTicketsPage() {
     capacity: ''
   });
 
+  // Socket para actualizaciones en tiempo real
+  const { socket } = useStaffSocket("general");
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Escuchar eventos de socket para actualizaciones en tiempo real
+  useEffect(() => {
+    if (socket) {
+      const handleTicketPurchased = (data: any) => {
+        console.log('Nueva compra de ticket recibida:', data);
+        // Refrescar datos inmediatamente
+        fetchData();
+      };
+
+      const handleTicketStatusChanged = (data: any) => {
+        console.log('Cambio de estado de ticket recibido:', data);
+        // Pequeño delay para una transición más suave, luego refrescar
+        setTimeout(() => {
+          fetchData();
+        }, 300);
+      };
+
+      socket.on('ticket-purchased', handleTicketPurchased);
+      socket.on('ticket-status-changed', handleTicketStatusChanged);
+
+      return () => {
+        socket.off('ticket-purchased', handleTicketPurchased);
+        socket.off('ticket-status-changed', handleTicketStatusChanged);
+      };
+    }
+  }, [socket]);
 
   async function fetchData() {
     try {
@@ -202,6 +234,93 @@ export default function AdminTicketsPage() {
     }
   }
 
+  async function handleCancelTicket(ticketId: string) {
+    if (!confirm('¿Estás seguro de que quieres cancelar este ticket? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setProcessingTicket(ticketId);
+    try {
+      const response = await fetch(`/api/admin/tickets/cancel/${ticketId}`, {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSuccess('Ticket cancelado exitosamente');
+        // La UI se actualizará automáticamente via socket events
+      } else {
+        setError(result.error || 'Error al cancelar el ticket');
+        fetchData(); // Solo recargar en caso de error
+      }
+    } catch (error) {
+      console.error('Error canceling ticket:', error);
+      setError('Error al cancelar el ticket');
+      fetchData(); // Solo recargar en caso de error
+    } finally {
+      setProcessingTicket(null);
+    }
+  }
+
+  async function handleMarkSuspicious(ticketId: string) {
+    if (!confirm('¿Marcar este ticket como sospechoso?')) {
+      return;
+    }
+
+    setProcessingTicket(ticketId);
+    try {
+      const response = await fetch(`/api/admin/tickets/suspicious/${ticketId}`, {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSuccess('Ticket marcado como sospechoso');
+        // La UI se actualizará automáticamente via socket events
+      } else {
+        setError(result.error || 'Error al marcar el ticket como sospechoso');
+        fetchData(); // Solo recargar en caso de error
+      }
+    } catch (error) {
+      console.error('Error marking ticket as suspicious:', error);
+      setError('Error al marcar el ticket como sospechoso');
+      fetchData(); // Solo recargar en caso de error
+    } finally {
+      setProcessingTicket(null);
+    }
+  }
+
+  async function handleMarkValid(ticketId: string) {
+    if (!confirm('¿Marcar este ticket como válido?')) {
+      return;
+    }
+
+    setProcessingTicket(ticketId);
+    try {
+      const response = await fetch(`/api/admin/tickets/valid/${ticketId}`, {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSuccess('Ticket marcado como válido');
+        // La UI se actualizará automáticamente via socket events
+      } else {
+        setError(result.error || 'Error al marcar el ticket como válido');
+        fetchData(); // Solo recargar en caso de error
+      }
+    } catch (error) {
+      console.error('Error marking ticket as valid:', error);
+      setError('Error al marcar el ticket como válido');
+      fetchData(); // Solo recargar en caso de error
+    } finally {
+      setProcessingTicket(null);
+    }
+  }
+
   const filteredTickets = selectedShow === 'all'
     ? ticketTypes
     : ticketTypes.filter(ticket => ticket.showId === selectedShow);
@@ -230,15 +349,24 @@ export default function AdminTicketsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Tickets</h1>
           <p className="text-gray-600 dark:text-gray-400">Administra los tipos de entradas y tickets vendidos</p>
         </div>
-        {activeTab === 'types' && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={openCreateModal}
-            className="bg-[#FF4D2E] text-white px-4 py-2 rounded-lg hover:bg-[#e6442a] flex items-center gap-2"
+            onClick={fetchData}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="Actualizar datos"
           >
-            <Plus size={20} />
-            Nuevo Tipo de Ticket
+            <RefreshCw size={20} />
           </button>
-        )}
+          {activeTab === 'types' && (
+            <button
+              onClick={openCreateModal}
+              className="bg-[#FF4D2E] text-white px-4 py-2 rounded-lg hover:bg-[#e6442a] flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Nuevo Tipo de Ticket
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Pestañas */}
@@ -436,14 +564,18 @@ export default function AdminTicketsPage() {
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                 : ticket.status === 'USED'
                                 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                : ticket.status === 'SUSPICIOUS'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                                 : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                             }`}>
                               {ticket.status === 'VALID' ? 'Válido' :
-                               ticket.status === 'USED' ? 'Usado' : 'Cancelado'}
+                               ticket.status === 'USED' ? 'Usado' :
+                               ticket.status === 'SUSPICIOUS' ? 'Sospechoso' :
+                               ticket.status === 'CANCELLED' ? 'Cancelado' : 'Otro'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(ticket.purchasedAt).toLocaleDateString('es-ES')}
+                            {new Date(ticket.purchasedAt).toLocaleDateString('es-ES')} {new Date(ticket.purchasedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
@@ -453,7 +585,9 @@ export default function AdminTicketsPage() {
                                 link.download = `ticket-${ticket.id}.png`;
                                 link.click();
                               }}
-                              className="text-[#FF4D2E] hover:text-[#e6442a] mr-3"
+                              disabled={!ticket.qrDataUrl}
+                              className={`mr-3 ${!ticket.qrDataUrl ? 'text-gray-400 cursor-not-allowed' : 'text-[#FF4D2E] hover:text-[#e6442a]'}`}
+                              title={!ticket.qrDataUrl ? 'QR se genera después del pago' : 'Descargar QR'}
                             >
                               <Download size={16} />
                             </button>
@@ -488,10 +622,44 @@ export default function AdminTicketsPage() {
                                 `;
                                 document.body.appendChild(modal);
                               }}
-                              className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                              disabled={!ticket.qrDataUrl}
+                              className={`mr-2 ${!ticket.qrDataUrl ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300'}`}
+                              title={!ticket.qrDataUrl ? 'QR se genera después del pago' : 'Ver QR'}
                             >
                               <Eye size={16} />
                             </button>
+                            {(ticket.status === 'VALID' || ticket.status === 'SUSPICIOUS') && (
+                              <>
+                                <button
+                                  onClick={() => handleCancelTicket(ticket.id)}
+                                  disabled={processingTicket === ticket.id}
+                                  className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300'}`}
+                                  title="Cancelar ticket"
+                                >
+                                  {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <X size={16} />}
+                                </button>
+                                {ticket.status === 'VALID' && (
+                                  <button
+                                    onClick={() => handleMarkSuspicious(ticket.id)}
+                                    disabled={processingTicket === ticket.id}
+                                    className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300'}`}
+                                    title="Marcar como sospechoso"
+                                  >
+                                    {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <AlertTriangle size={16} />}
+                                  </button>
+                                )}
+                                {ticket.status === 'SUSPICIOUS' && (
+                                  <button
+                                    onClick={() => handleMarkValid(ticket.id)}
+                                    disabled={processingTicket === ticket.id}
+                                    className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'}`}
+                                    title="Marcar como válido"
+                                  >
+                                    {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                                  </button>
+                                )}
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}

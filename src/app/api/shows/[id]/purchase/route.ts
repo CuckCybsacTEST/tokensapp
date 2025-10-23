@@ -182,6 +182,19 @@ export async function POST(
     // TODO: Enviar email de confirmación
     // TODO: Integrar con pasarela de pagos
 
+    // Emitir evento de socket para notificar a staff/admin
+    const io = (global as any).io;
+    if (io) {
+      io.to("staff-general").emit("ticket-purchased", {
+        purchaseId: result.mainPurchase.id,
+        customerName,
+        customerDni,
+        totalAmount: result.totalAmount,
+        showId,
+        tickets: result.items
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       purchaseId: result.mainPurchase.id,

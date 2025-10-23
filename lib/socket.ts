@@ -10,6 +10,32 @@ export type NextApiResponseServerIo = NextApiResponse & {
   };
 };
 
+// Variable global para acceder al io desde cualquier lugar
+let globalIo: ServerIO | null = null;
+
+export const getGlobalIo = () => globalIo;
+
+// Función utilitaria para emitir eventos de socket desde cualquier lugar
+export function emitSocketEvent(event: string, data: any, rooms?: string[]) {
+  try {
+    const io = getGlobalIo();
+    if (io) {
+      if (rooms && rooms.length > 0) {
+        rooms.forEach(room => {
+          io.to(room).emit(event, data);
+        });
+      } else {
+        io.emit(event, data);
+      }
+      console.log(`📡 Evento '${event}' emitido:`, data);
+    } else {
+      console.warn("⚠️ Socket.IO no está disponible para emitir eventos");
+    }
+  } catch (error) {
+    console.error("❌ Error al emitir evento de socket:", error);
+  }
+}
+
 export const initSocketIO = (httpServer: NetServer): ServerIO => {
   const io = new ServerIO(httpServer, {
     path: "/api/socketio",
@@ -29,42 +55,13 @@ export const initSocketIO = (httpServer: NetServer): ServerIO => {
       console.log(`Staff ${staffId} se unió a su sala`);
     });
 
-    socket.on("join-cashier", () => {
-      socket.join("cashier");
-      console.log("Cajero se unió a la sala de caja");
-    });
-
-    socket.on("join-waiter", (waiterId: string) => {
-      socket.join(`waiter-${waiterId}`);
-      console.log(`Mozo ${waiterId} se unió a su sala`);
-    });
-
-    socket.on("join-table", (tableId: string) => {
-      socket.join(`table-${tableId}`);
-      console.log(`Mesa ${tableId} se unió a su sala`);
-    });
-
-    // Eventos de pedidos
-    socket.on("order-created", (orderData) => {
-      // Notificar a todos los mozos y caja
-      io.to("cashier").emit("new-order", orderData);
-      // Notificar a mozos específicos si es necesario
-      socket.broadcast.emit("new-order", orderData);
-    });
-
-    socket.on("order-status-changed", (orderData) => {
-      // Notificar al cliente y staff relevante
-      io.to(`table-${orderData.tableId}`).emit("order-status-update", orderData);
-      io.to("cashier").emit("order-status-update", orderData);
-      if (orderData.staffId) {
-        io.to(`staff-${orderData.staffId}`).emit("order-status-update", orderData);
-      }
-    });
-
     socket.on("disconnect", () => {
       console.log("Cliente desconectado:", socket.id);
     });
   });
+
+  // Asignar a variable global
+  globalIo = io;
 
   return io;
 };
