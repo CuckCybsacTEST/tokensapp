@@ -101,7 +101,7 @@ export function DynamicShowsSection({
     <section
       className={`shows-wrap relative flex flex-col items-center justify-center pt-8 md:pt-0 pb-8 md:pb-0 overflow-x-hidden ${className}`}
     >
-  <div className="mx-auto w-full px-4 sm:px-6 md:px-8 max-w-[640px] sm:max-w-[680px] md:max-w-7xl">
+      <div className="mx-auto w-full px-4 sm:px-6 md:px-8 max-w-[640px] sm:max-w-[680px] md:max-w-7xl">
         <div className="shows-header mb-9 md:mb-14 flex flex-col items-center text-center gap-3 md:gap-4">
           <h2
             aria-describedby="shows-subtitle shows-subtitle-mobile"
@@ -130,8 +130,9 @@ export function DynamicShowsSection({
                 transition={{ duration: 0.5, delay: idx * 0.05 }}
                 className="group"
               >
-                <div
-                  className="shows-card relative w-full overflow-hidden rounded-xl shadow-lg border border-white/10 bg-[linear-gradient(135deg,#3d0a0a,#5c1111)] group/card"
+                <a
+                  href={`/shows/${s.slug}`}
+                  className="shows-card relative w-full overflow-hidden rounded-xl shadow-lg border border-white/10 bg-[linear-gradient(135deg,#3d0a0a,#5c1111)] group/card block"
                 >
                   <div className="absolute inset-0">
                     {s.imageWebpPath && (
@@ -192,9 +193,8 @@ export function DynamicShowsSection({
                             {s.title}
                           </h3>
                           <div className="flex w-full gap-2 max-[380px]:flex-col max-[380px]:gap-1">
-                            <a
-                              href="/marketing/cumpleanos"
-                              className="relative flex items-center justify-center gap-1 rounded-full flex-1 py-1.5 px-4 text-[11px] font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[--ring-color] overflow-hidden whitespace-nowrap tracking-wide min-w-0 max-[420px]:py-1.5 max-[360px]:px-3"
+                            <div
+                              className="relative flex items-center justify-center gap-1 rounded-full flex-1 py-1.5 px-4 text-[11px] font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[--ring-color] overflow-hidden whitespace-nowrap tracking-wide min-w-0 max-[420px]:py-1.5 max-[360px]:px-3 cursor-pointer"
                               style={{
                                 background: `${brand.primary}E6`,
                                 boxShadow: `0 4px 14px -6px ${brand.primary}`,
@@ -213,7 +213,7 @@ export function DynamicShowsSection({
                               </svg>
                               <span className="truncate max-[340px]:text-[10px]">Reserva</span>
                               <span className="pointer-events-none absolute inset-0 opacity-0 md:group-hover/card:opacity-0 animate-[ping_4s_linear_infinite] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_60%)]" />
-                            </a>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -270,7 +270,7 @@ export function DynamicShowsSection({
                       </div>
                     )}
                   </div>
-                </div>
+                </a>
               </motion.div>
             );
           })}

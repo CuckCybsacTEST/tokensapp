@@ -50,6 +50,7 @@ export function getFeatureFlagsSnapshot() {
     birthdaysAdmin: isBirthdaysEnabledAdmin(),
     allowClientDeliver: parseBool(process.env.ALLOW_CLIENT_DELIVER),
     showsEnabled: isShowsFeatureEnabled(),
+    paymentMode: getPaymentMode(),
   };
 }
 
@@ -64,4 +65,26 @@ export function isShowsFeatureEnabled(): boolean {
   const v = process.env.SHOWS_ENABLED;
   if (v === undefined || v === null || v === '') return true;
   return parseBool(v);
+}
+
+/**
+ * Payment system mode detection.
+ * Returns true if real Culqi credentials are available, false for demo mode.
+ */
+export function isCulqiRealMode(): boolean {
+  const secretKey = process.env.CULQI_SECRET_KEY;
+  const publicKey = process.env.CULQI_PUBLIC_KEY;
+
+  // Check if keys exist and are not placeholder values
+  if (!secretKey || !publicKey) return false;
+  if (secretKey.includes('XXXXXXXXXXXXXXXX') || publicKey.includes('XXXXXXXXXXXXXXXX')) return false;
+
+  return true;
+}
+
+/**
+ * Get current payment mode for diagnostics.
+ */
+export function getPaymentMode(): 'real' | 'demo' {
+  return isCulqiRealMode() ? 'real' : 'demo';
 }

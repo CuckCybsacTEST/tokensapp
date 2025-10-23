@@ -26,8 +26,11 @@ function getLimaDate(date: Date): DateTime {
   const month = date.getUTCMonth() + 1; // getUTCMonth() es 0-based
   const day = date.getUTCDate();
 
-  // Crear DateTime en zona Lima para esa fecha
-  return DateTime.fromObject({ year, month, day, hour: 0, minute: 0, second: 0 }, { zone: 'America/Lima' });
+  // Crear Date que representa medianoche del día en zona UTC
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+
+  // Crear DateTime en zona Lima desde la fecha UTC
+  return DateTime.fromJSDate(utcDate).setZone('America/Lima');
 }
 
 // Crear DateTime en zona Lima desde componentes de fecha

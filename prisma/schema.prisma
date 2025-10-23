@@ -184,6 +184,7 @@ model User {
   updatedTaskStatuses       PersonTaskStatus[]     @relation("TaskStatusUpdatedBy")
   TaskComment               TaskComment[]
   person                    Person                 @relation(fields: [personId], references: [id])
+  ticketPurchases           TicketPurchase[]
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
@@ -421,7 +422,91 @@ model Show {
   notes             String?
   specialGuests     String?
 
+  ticketTypes       TicketType[]
+
   @@index([status, startsAt(sort: Desc)])
+}
+
+enum PurchaseStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+model TicketType {
+  id            String   @id @default(cuid())
+  showId        String
+  name          String   @db.VarChar(100)
+  description   String?  @db.Text
+  price         Decimal  @db.Decimal(10,2)
+  capacity      Int
+  soldCount     Int      @default(0)
+  availableFrom DateTime?
+  availableTo   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  show          Show            @relation(fields: [showId], references: [id], onDelete: Cascade)
+  purchases     TicketPurchase[]
+  tickets       Ticket[]        // Tickets individuales de este tipo
+
+  @@index([showId])
+  @@index([availableFrom, availableTo])
+}
+
+model TicketPurchase {
+  id             String         @id @default(cuid())
+  userId         String?
+  ticketTypeId   String
+  quantity       Int
+  totalAmount    Decimal        @db.Decimal(10,2)
+  status         PurchaseStatus @default(PENDING)
+  paymentId      String?
+  culqiOrderId   String?        // ID de la orden en Culqi
+  paymentStatus  String         @default("pending") // pending, completed, expired, cancelled
+  purchasedAt    DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  customerName   String
+  customerEmail  String?
+  customerPhone  String
+  customerDni    String?        // DNI del comprador (obligatorio para tickets)
+
+  ticketType     TicketType     @relation(fields: [ticketTypeId], references: [id])
+  user           User?           @relation(fields: [userId], references: [id])
+  tickets        Ticket[]       // Tickets individuales generados para esta compra
+
+  @@index([userId])
+  @@index([ticketTypeId])
+  @@index([status])
+  @@index([culqiOrderId])
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+}
+
+model Ticket {
+  id               String       @id @default(cuid())
+  ticketPurchaseId String
+  ticketTypeId     String
+  qrCode           String       // Código único del QR (signature)
+  qrDataUrl        String?      // DataURL del PNG del QR
+  customerDni      String       // DNI obligatorio (8 dígitos)
+  customerName     String
+  customerPhone    String
+  status           TicketStatus @default(VALID)
+  createdAt        DateTime     @default(now())
+  usedAt           DateTime?
+
+  ticketPurchase   TicketPurchase @relation(fields: [ticketPurchaseId], references: [id])
+  ticketType       TicketType     @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([ticketPurchaseId])
+  @@index([qrCode])
+  @@index([status])
 }
 
 model ChecklistComment {

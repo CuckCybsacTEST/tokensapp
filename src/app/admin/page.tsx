@@ -65,10 +65,11 @@ export default async function AdminDashboard() {
             <h3 className="text-lg font-semibold">Control de Shows Estelares</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
-            Administra el lineup publicado, imágenes optimizadas, slots y contenido destacado que aparece en la landing de marketing.
+            Administra el lineup publicado, imágenes optimizadas, slots, contenido destacado y configuración de tickets que aparece en la landing de marketing.
           </p>
           <div className="flex flex-wrap gap-2">
-            <a href="/admin/shows" className="btn">Abrir módulo</a>
+            <a href="/admin/shows" className="btn">Shows</a>
+            <a href="/admin/tickets" className="btn">Tickets</a>
             <a href="/marketing#shows" className="btn-secondary text-xs px-3 py-2">Ver en marketing</a>
           </div>
         </div>
