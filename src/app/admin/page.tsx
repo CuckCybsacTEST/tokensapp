@@ -79,7 +79,7 @@ export default async function AdminDashboard() {
           <div className="flex items-center mb-3">
             <div className="mr-3 p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-pink-600 dark:text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15a4 4 0 01-4 4H7a4 4 0 110-8h10a4 4 0 014 4zM8 7v.01M12 7v.01M16 7v.01" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
               </svg>
             </div>
             <h3 className="text-lg font-semibold">Gestión de Cumpleaños</h3>
@@ -92,7 +92,25 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Gestión de Inventario */}
+        {/* Gestión de Ofertas */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Ofertas</h3>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
+            Administra ofertas especiales, promociones temporales, control de stock y procesamiento de pagos con Culqi.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/offers" className="btn">Panel de Ofertas</a>
+            <a href="/admin/offers" className="btn">Crear Oferta</a>
+            <a href="/marketing#ofertas" className="btn-secondary text-xs px-3 py-2">Ver en marketing</a>
+          </div>
+        </div>        {/* Gestión de Inventario */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
           <div className="flex items-center mb-3">
             <div className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">

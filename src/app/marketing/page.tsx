@@ -17,6 +17,7 @@ import { SpotifySection } from "./components/SpotifySection";
 import { FaqSection } from "./components/FaqSection";
 import { MapSection } from "./components/MapSection";
 import { BlogSection } from "./components/BlogSection";
+import { OffersSection } from "./components/OffersSection";
 import { Footer } from "./components/Footer";
 import { SectionDivider } from "./components/SectionDivider";
 import { BackToTop } from "./components/BackToTop";
@@ -354,6 +355,17 @@ export default function MarketingPage() {
           className="snap-section"
         >
           <BirthdaySection />
+        </div>
+  {/* Divider eliminado en desktop para pantalla completa por sección */}
+        <div
+          id="ofertas"
+          data-section="ofertas"
+          tabIndex={-1}
+          role="region"
+          aria-label="Ofertas Especiales"
+          className="snap-section"
+        >
+          <OffersSection />
         </div>
   {/* Divider eliminado en desktop para pantalla completa por sección */}
         <div

@@ -3,6 +3,7 @@ export const SECTIONS = [
   { id: "hero", label: "Inicio" },
   { id: "shows", label: "Estelares" },
   { id: "cumple", label: "Cumpleaños" },
+  { id: "ofertas", label: "Ofertas" },
   { id: "spotify", label: "Spotify" },
   { id: "galeria", label: "Galería" },
   { id: "faq", label: "Preguntas Frecuentes" },

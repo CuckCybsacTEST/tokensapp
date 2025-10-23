@@ -1,6 +1,7 @@
 import { Server as NetServer } from "http";
 import { NextApiResponse } from "next";
 import { Server as ServerIO } from "socket.io";
+import { setupOffersSocketEvents } from "./socket/offers";
 
 export type NextApiResponseServerIo = NextApiResponse & {
   socket: {
@@ -59,6 +60,9 @@ export const initSocketIO = (httpServer: NetServer): ServerIO => {
       console.log("Cliente desconectado:", socket.id);
     });
   });
+
+  // Configurar eventos específicos de ofertas
+  setupOffersSocketEvents(io);
 
   // Asignar a variable global
   globalIo = io;

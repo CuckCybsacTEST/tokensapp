@@ -212,7 +212,7 @@ export function TopNavBar() {
           </a>
           {/* Ofertas destacado: gradiente de marca + animación sutil */}
           <a
-            href="#ofertas"
+            href="/marketing/ofertas"
             className="offer-cta inline-flex items-center rounded-full px-3.5 py-1.5 text-[11px] md:text-[12px] font-bold tracking-wide shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
             style={{
               background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,

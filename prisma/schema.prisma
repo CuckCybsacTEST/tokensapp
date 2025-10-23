@@ -185,6 +185,7 @@ model User {
   TaskComment               TaskComment[]
   person                    Person                 @relation(fields: [personId], references: [id])
   ticketPurchases           TicketPurchase[]
+  offerPurchases            OfferPurchase[]
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
@@ -904,4 +905,96 @@ model InventoryItem {
   @@index([supplierId])
   @@index([expiryDate])
   @@index([batchNumber])
+}
+
+// ===== MODELOS DE OFERTAS =====
+
+enum OfferPurchaseStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+model Offer {
+  id            String      @id @default(cuid())
+  title         String      @db.VarChar(100)
+  description   String?     @db.Text
+  shortDesc     String?     @db.VarChar(200) // Para cards
+  price         Decimal     @db.Decimal(10,2)
+  originalPrice Decimal?    @db.Decimal(10,2) // Precio tachado
+  discount      Int?        // Porcentaje de descuento
+
+  // Imagen principal (formato vertical 1080x1350)
+  imagePath     String
+  imageWebpPath String
+  imageBlurData String
+  width         Int
+  height        Int
+
+  // Configuración temporal con Luxon
+  isActive      Boolean     @default(true)
+  validFrom     DateTime?   // Inicio de vigencia
+  validUntil    DateTime?   // Fin de vigencia
+  timezone      String      @default("America/Lima")
+
+  // Disponibilidad por días/horas
+  availableDays Int[]       // [0=domingo, 1=lunes, ..., 6=sábado]
+  startTime     String?     // "HH:mm" formato 24h
+  endTime       String?     // "HH:mm" formato 24h
+
+  // Inventario
+  maxQuantity   Int?        // Límite total
+  soldCount     Int         @default(0)
+
+  // Categorización
+  category      String?     @db.VarChar(50)
+  tags          String[]    // Array de tags para filtros
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  purchases     OfferPurchase[]
+
+  @@index([isActive, validFrom, validUntil])
+  @@index([category])
+}
+
+model OfferPurchase {
+  id            String            @id @default(cuid())
+  offerId       String
+  userId        String?
+
+  // Datos del comprador
+  customerName  String
+  customerEmail String?
+  customerPhone String
+  customerDni   String?
+
+  // Detalles de compra
+  amount        Decimal           @db.Decimal(10,2)
+  currency      String            @default("PEN")
+  quantity      Int               @default(1)
+
+  // Estado y pago
+  status        OfferPurchaseStatus @default(PENDING)
+  culqiChargeId String?
+  culqiPaymentId String?
+  paymentStatus String            @default("pending")
+
+  // Código QR para validación
+  qrCode        String?            @unique
+
+  // Timestamps
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Relaciones
+  offer         Offer              @relation(fields: [offerId], references: [id])
+  user          User?              @relation(fields: [userId], references: [id])
+
+  @@index([offerId])
+  @@index([userId])
+  @@index([status])
 }

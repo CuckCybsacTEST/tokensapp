@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { emitSocketEvent } from '../../../../lib/socket';
+import { emitSocketEvent } from '@/lib/socket';
 
 export async function POST(
   request: NextRequest,
