@@ -214,6 +214,7 @@ export default function AdminTicketsPage() {
     return acc;
   }, {} as Record<string, TicketType[]>);
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -300,66 +301,67 @@ export default function AdminTicketsPage() {
 
           {/* Lista de Tipos de Tickets */}
           <div className="space-y-6">
-        {Object.entries(groupedTickets).map(([showTitle, tickets]) => (
-          <div key={showTitle} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{showTitle}</h2>
-            </div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {tickets.map(ticket => (
-                <div key={ticket.id} className="px-6 py-4 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <Ticket className="text-[#FF4D2E]" size={20} />
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100">{ticket.name}</h3>
-                        {ticket.description && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-[#FF4D2E]">
-                        S/ {ticket.price.toFixed(2)}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {ticket.soldCount}/{ticket.capacity} vendidos
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(ticket)}
-                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ticket.id)}
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+            {Object.entries(groupedTickets).map(([showTitle, tickets]) => (
+              <div key={showTitle} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{showTitle}</h2>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {tickets.map(ticket => (
+                    <div key={ticket.id} className="px-6 py-4 flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <Ticket className="text-[#FF4D2E]" size={20} />
+                          <div>
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100">{ticket.name}</h3>
+                            {ticket.description && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-[#FF4D2E]">
+                            S/ {ticket.price.toFixed(2)}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {ticket.soldCount}/{ticket.capacity} vendidos
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditModal(ticket)}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(ticket.id)}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
 
-        {Object.keys(groupedTickets).length === 0 && (
-          <div className="text-center py-12">
-            <Ticket className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay tickets</h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Comienza creando tu primer tipo de ticket.
-            </p>
+            {Object.keys(groupedTickets).length === 0 && (
+              <div className="text-center py-12">
+                <Ticket className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay tickets</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Comienza creando tu primer tipo de ticket.
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    ) : (
+        </div>
+      ) : (
         /* Vista de Tickets Individuales */
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
