@@ -130,6 +130,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // imagePath puede estar vacío inicialmente, se actualizará cuando se suba la imagen
+    // if (!imagePath || imagePath.trim() === '') {
+    //   return NextResponse.json(
+    //     { error: 'La ruta de la imagen es requerida' },
+    //     { status: 400 }
+    //   );
+    // }
+
     // Validar tiempos
     const timeErrors = OfferTimeUtils.validateOfferTimes({
       validFrom: validFrom ? new Date(validFrom) : undefined,
@@ -152,7 +160,7 @@ export async function POST(request: NextRequest) {
         description,
         price: parseFloat(price),
         originalPrice: originalPrice ? parseFloat(originalPrice) : null,
-        imagePath,
+        imagePath: imagePath || '/offers/placeholder.jpg', // Valor por defecto si no se proporciona
         imageWebpPath: '', // TODO: Generar WebP cuando se suba imagen
         imageBlurData: '', // TODO: Generar blur data cuando se suba imagen
         width: 0, // TODO: Obtener dimensiones cuando se suba imagen

@@ -4,6 +4,7 @@ import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/
 import culqi from '../../../../../../lib/culqi';
 import { isCulqiRealMode } from '@/lib/featureFlags';
 import { emitOfferPurchased } from '@/lib/socket/offers';
+import { QRUtils } from '@/lib/qrUtils';
 
 export async function POST(
   request: NextRequest,
@@ -16,26 +17,7 @@ export async function POST(
     const { token, purchaseId: pid } = await request.json();
     purchaseId = pid;
 
-    // Verificar sesión del usuario
-    const cookie = request.headers.get('cookie');
-    if (!cookie) {
-      return NextResponse.json(
-        { error: 'Usuario no autenticado' },
-        { status: 401 }
-      );
-    }
-
-    const session = await verifyUserSessionCookie(cookie);
-    if (!session?.userId) {
-      return NextResponse.json(
-        { error: 'Sesión inválida' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.userId;
-
-    // Verificar que la compra existe y pertenece al usuario
+    // Verificar que la compra existe
     const offerPurchase = await prisma.offerPurchase.findUnique({
       where: { id: purchaseId },
       include: { offer: true }
@@ -48,11 +30,24 @@ export async function POST(
       );
     }
 
-    if (offerPurchase.userId !== userId) {
-      return NextResponse.json(
-        { error: 'Acceso denegado' },
-        { status: 403 }
-      );
+    // Para compras anónimas (userId es null), no requerimos autenticación
+    // Para compras de usuarios registrados, verificar sesión
+    if (offerPurchase.userId) {
+      const cookie = request.headers.get('cookie');
+      if (!cookie) {
+        return NextResponse.json(
+          { error: 'Usuario no autenticado' },
+          { status: 401 }
+        );
+      }
+
+      const session = await verifyUserSessionCookie(cookie);
+      if (!session?.userId || session.userId !== offerPurchase.userId) {
+        return NextResponse.json(
+          { error: 'Sesión inválida o acceso denegado' },
+          { status: 401 }
+        );
+      }
     }
 
     if (offerPurchase.status !== 'PENDING') {
@@ -119,6 +114,23 @@ export async function POST(
       }
     });
 
+    // Generar código QR para la compra confirmada
+    const qrResult = await QRUtils.generatePurchaseQR({
+      id: updatedPurchase.id,
+      offerId: updatedPurchase.offerId,
+      customerName: updatedPurchase.customerName || 'Cliente Anónimo',
+      customerEmail: updatedPurchase.customerEmail || '',
+      customerPhone: updatedPurchase.customerPhone || '',
+      amount: Number(updatedPurchase.amount),
+      createdAt: updatedPurchase.createdAt.toISOString()
+    });
+
+    // Actualizar la compra con el código QR
+    await prisma.offerPurchase.update({
+      where: { id: purchaseId },
+      data: { qrCode: qrResult.qrCode }
+    });
+
     // Emitir evento de socket
     emitOfferPurchased(updatedPurchase);
 
@@ -128,7 +140,9 @@ export async function POST(
         chargeId: charge.id,
         status: 'CONFIRMED',
         amount: offerPurchase.amount,
-        currency: offerPurchase.currency
+        currency: offerPurchase.currency,
+        qrDataUrl: qrResult.qrDataUrl,
+        qrCode: qrResult.qrCode
       }
     });
 

@@ -10,6 +10,12 @@ export async function POST(
 ) {
   try {
     const offerId = params.id;
+    let skipQR = false;
+
+    // Variables para datos del cliente
+    let customerName = 'Cliente Anónimo';
+    let customerEmail = '';
+    let customerPhone = '';
 
     // Para compras públicas, no requerimos autenticación de usuario
     // Las compras serán anónimas
@@ -82,10 +88,6 @@ export async function POST(
     }
 
     // Obtener datos del cliente (de la sesión o del body de la request)
-    let customerName = 'Cliente Anónimo';
-    let customerEmail = '';
-    let customerPhone = '';
-
     if (userId) {
       // Usuario autenticado - obtener datos de la BD
       const user = await prisma.user.findUnique({
@@ -117,6 +119,7 @@ export async function POST(
         customerName = body.customerName || 'Cliente Anónimo';
         customerEmail = body.customerEmail || '';
         customerPhone = body.customerPhone || '';
+        skipQR = body.skipQR || false;
       } catch (e) {
         // No hay body JSON, continuar con datos anónimos
       }
@@ -136,30 +139,36 @@ export async function POST(
       }
     });
 
-    // Generar código QR para la compra
-    const { qrCode, qrDataUrl } = await QRUtils.generatePurchaseQR({
-      id: offerPurchase.id,
-      offerId: offer.id,
-      customerName,
-      customerEmail,
-      customerPhone,
-      amount: Number(offerPurchase.amount),
-      createdAt: offerPurchase.createdAt.toISOString()
-    });
+    // Generar código QR para la compra (solo si no se salta)
+    let qrCode: string | undefined;
+    let qrDataUrl: string | undefined;
 
-    // Actualizar la compra con el código QR
-    await prisma.offerPurchase.update({
-      where: { id: offerPurchase.id },
-      data: { qrCode }
-    });
+    if (!skipQR) {
+      const qrResult = await QRUtils.generatePurchaseQR({
+        id: offerPurchase.id,
+        offerId: offer.id,
+        customerName,
+        customerEmail,
+        customerPhone,
+        amount: Number(offerPurchase.amount),
+        createdAt: offerPurchase.createdAt.toISOString()
+      });
+      qrCode = qrResult.qrCode;
+      qrDataUrl = qrResult.qrDataUrl;
+
+      // Actualizar la compra con el código QR
+      await prisma.offerPurchase.update({
+        where: { id: offerPurchase.id },
+        data: { qrCode }
+      });
+    }
 
     return NextResponse.json({
       success: true,
       data: {
         purchaseId: offerPurchase.id,
-        qrCode,
-        qrDataUrl,
-        amount: offerPurchase.amount,
+        ...(qrCode && qrDataUrl && { qrCode, qrDataUrl }),
+        amount: Number(offerPurchase.amount),
         currency: offerPurchase.currency,
         status: offerPurchase.status
       }

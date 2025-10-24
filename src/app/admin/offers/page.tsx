@@ -1,8 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Eye, RefreshCw, X, AlertTriangle, Calendar, Clock, DollarSign, Package, QrCode } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, RefreshCw, X, AlertTriangle, Calendar, Clock, DollarSign, Package } from 'lucide-react';
 import { useStaffSocket } from '@/hooks/useSocket';
-import { QRScanner } from '@/components/QRScanner';
 
 interface Offer {
   id: string;
@@ -71,7 +70,6 @@ export default function OffersAdminPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPurchasesModal, setShowPurchasesModal] = useState(false);
-  const [showQRScanner, setShowQRScanner] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -127,30 +125,6 @@ export default function OffersAdminPage() {
     }
   };
 
-  const handleQRScan = async (qrData: string) => {
-    try {
-      const response = await fetch('/api/admin/offers/validate-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrData })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert(`Compra validada exitosamente!\n\nCliente: ${data.data.customerName}\nOferta: ${data.data.offerTitle}\nMonto: S/ ${data.data.amount.toFixed(2)}`);
-        setShowQRScanner(false);
-        // Recargar ofertas para actualizar estadísticas
-        fetchOffers();
-      } else {
-        alert(`Error: ${data.error}`);
-      }
-    } catch (err) {
-      console.error('Error validating QR:', err);
-      alert('Error al validar el código QR');
-    }
-  };
-
   const uploadImage = async (offerId: string, file: File) => {
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
@@ -170,12 +144,17 @@ export default function OffersAdminPage() {
   const handleCreate = async () => {
     try {
       // Crear la oferta primero (excluir imageFile del JSON)
-      const { imageFile, ...createData } = formData;
+      const { imageFile, imageUrl, ...createData } = formData;
+
+      const requestData = {
+        ...createData,
+        ...(imageUrl && imageUrl.trim() !== '' && { imagePath: imageUrl }) // Solo enviar imagePath si tiene valor
+      };
 
       const response = await fetch('/api/admin/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(createData)
+        body: JSON.stringify(requestData)
       });
 
       const data = await response.json();
@@ -207,12 +186,17 @@ export default function OffersAdminPage() {
 
     try {
       // Actualizar la oferta primero (excluir imageFile del JSON)
-      const { imageFile, ...updateData } = formData;
+      const { imageFile, imageUrl, ...updateData } = formData;
+
+      const requestData = {
+        ...updateData,
+        ...(imageUrl && imageUrl.trim() !== '' && { imagePath: imageUrl }) // Solo enviar imagePath si tiene valor
+      };
 
       const response = await fetch(`/api/admin/offers/${selectedOffer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(requestData)
       });
 
       const data = await response.json();
@@ -312,7 +296,7 @@ export default function OffersAdminPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Administración de Ofertas</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <button
             onClick={fetchOffers}
             className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
@@ -326,13 +310,6 @@ export default function OffersAdminPage() {
           >
             <Plus className="w-4 h-4" />
             Nueva Oferta
-          </button>
-          <button
-            onClick={() => setShowQRScanner(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-          >
-            <QrCode className="w-4 h-4" />
-            Validar QR
           </button>
         </div>
       </div>
@@ -567,14 +544,6 @@ export default function OffersAdminPage() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* QR Scanner Modal */}
-      {showQRScanner && (
-        <QRScanner
-          onScan={handleQRScan}
-          onClose={() => setShowQRScanner(false)}
-        />
       )}
     </div>
   );

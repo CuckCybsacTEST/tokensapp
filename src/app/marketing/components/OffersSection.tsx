@@ -3,12 +3,23 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FormattedOffer } from '@/lib/types/offers';
+import { CulqiProvider, useCheckout } from 'react-culqi-next';
 
 interface OffersSectionProps {
   offers?: FormattedOffer[];
 }
 
 export function OffersSection({ offers: initialOffers }: OffersSectionProps = {}) {
+  return (
+    <CulqiProvider
+      publicKey={process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || 'pk_test_XXXXXXXXXXXXXXXX'}
+    >
+      <OffersSectionContent offers={initialOffers} />
+    </CulqiProvider>
+  );
+}
+
+function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}) {
   const [offers, setOffers] = useState<FormattedOffer[]>(initialOffers || []);
   const [loading, setLoading] = useState(!initialOffers);
   const [error, setError] = useState<string | null>(null);
@@ -20,11 +31,39 @@ export function OffersSection({ offers: initialOffers }: OffersSectionProps = {}
     phone: ''
   });
   const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [currentPurchaseId, setCurrentPurchaseId] = useState<string | null>(null);
   const [purchaseResult, setPurchaseResult] = useState<{
     qrDataUrl: string;
     purchaseId: string;
     amount: number;
   } | null>(null);
+
+  // Hook de Culqi debe estar en el nivel superior
+  const { openCulqi, token: culqiToken, error: culqiError } = useCheckout({
+    settings: {
+      amount: 0, // Se actualizará cuando se seleccione una oferta
+      currency: 'PEN',
+      title: 'Pago de Oferta',
+    }
+  });
+
+  // Efecto para procesar el pago cuando el token esté disponible
+  useEffect(() => {
+    if (culqiToken && selectedOffer && paymentProcessing && currentPurchaseId) {
+      processCulqiPayment(culqiToken.id);
+    }
+  }, [culqiToken, selectedOffer, paymentProcessing, currentPurchaseId]);
+
+  // Efecto para manejar errores de Culqi
+  useEffect(() => {
+    if (culqiError) {
+      console.error('Error de Culqi:', culqiError);
+      alert('Error en el procesamiento del pago: ' + culqiError.user_message);
+      setPaymentProcessing(false);
+      setCurrentPurchaseId(null);
+    }
+  }, [culqiError]);
 
   useEffect(() => {
     if (!initialOffers) {
@@ -61,14 +100,15 @@ export function OffersSection({ offers: initialOffers }: OffersSectionProps = {}
     try {
       setPurchaseLoading(true);
 
-      // Crear la compra con datos del cliente
+      // Crear la compra con datos del cliente (sin generar QR aún)
       const purchaseResponse = await fetch(`/api/offers/${selectedOffer.id}/purchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerData.name,
           customerEmail: customerData.email,
-          customerPhone: customerData.phone
+          customerPhone: customerData.phone,
+          skipQR: true // No generar QR hasta que el pago sea exitoso
         })
       });
 
@@ -79,27 +119,82 @@ export function OffersSection({ offers: initialOffers }: OffersSectionProps = {}
         return;
       }
 
-      const { purchaseId, qrDataUrl, amount } = purchaseData.data;
+      const { purchaseId } = purchaseData.data;
 
-      // Mostrar resultado de la compra con QR
-      setPurchaseResult({ qrDataUrl, purchaseId, amount });
-
-      // Cerrar modal de compra y resetear
-      setShowPurchaseModal(false);
-      setSelectedOffer(null);
-      setCustomerData({ name: '', email: '', phone: '' });
-
-      // TODO: Implementar integración completa con Culqi
-      // 1. Cargar Culqi JS SDK
-      // 2. Configurar tokenización
-      // 3. Procesar pago
-      // 4. Confirmar compra
+      // Ahora procesar el pago con Culqi
+      await processPayment(purchaseId);
 
     } catch (err) {
       console.error('Error en compra:', err);
       alert('Error en el proceso de compra');
     } finally {
       setPurchaseLoading(false);
+    }
+  };
+
+  const processPayment = async (purchaseId: string) => {
+    try {
+      setPaymentProcessing(true);
+      setCurrentPurchaseId(purchaseId);
+
+      // Abrir el modal de Culqi
+      openCulqi();
+
+    } catch (err) {
+      console.error('Error procesando pago:', err);
+      alert('Error en el procesamiento del pago');
+      setPaymentProcessing(false);
+      setCurrentPurchaseId(null);
+    }
+  };
+
+  const processCulqiPayment = async (tokenId: string) => {
+    try {
+      if (!selectedOffer || !currentPurchaseId) return;
+
+      // Procesar el pago con el token
+      const paymentResponse = await fetch(`/api/offers/${selectedOffer.id}/process-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: tokenId,
+          purchaseId: currentPurchaseId,
+          customerName: customerData.name,
+          customerEmail: customerData.email,
+          customerPhone: customerData.phone
+        })
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (paymentData.success) {
+        // Pago exitoso - mostrar el QR
+        if (paymentData.data?.qrDataUrl) {
+          setPurchaseResult({
+            qrDataUrl: paymentData.data.qrDataUrl,
+            purchaseId: currentPurchaseId,
+            amount: paymentData.data.amount
+          });
+        } else {
+          alert('Pago procesado exitosamente. El código QR estará disponible pronto.');
+        }
+
+        // Cerrar modal de compra y resetear
+        setShowPurchaseModal(false);
+        setSelectedOffer(null);
+        setCustomerData({ name: '', email: '', phone: '' });
+        setCurrentPurchaseId(null);
+      } else {
+        alert('Error en el procesamiento del pago: ' + paymentData.error);
+        setCurrentPurchaseId(null);
+      }
+
+    } catch (err) {
+      console.error('Error procesando pago:', err);
+      alert('Error en el procesamiento del pago');
+      setCurrentPurchaseId(null);
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 

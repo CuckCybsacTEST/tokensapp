@@ -1,6 +1,19 @@
 import React from 'react';
 import { Metadata } from 'next';
-import { OffersSection } from '@/app/marketing/components/OffersSection';
+import dynamic from 'next/dynamic';
+
+// Importar OffersSection dinámicamente para evitar problemas de SSR con Culqi
+const OffersSection = dynamic(() => import('../components/OffersSection').then(mod => ({ default: mod.OffersSection })), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+        <p className="text-white/70">Cargando ofertas...</p>
+      </div>
+    </div>
+  )
+});
 
 export const metadata: Metadata = {
   title: 'Ofertas Especiales | Go Lounge',
