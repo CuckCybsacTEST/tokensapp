@@ -176,7 +176,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
           setPurchaseResult({
             qrDataUrl: paymentData.data.qrDataUrl,
             purchaseId: currentPurchaseId,
-            amount: paymentData.data.amount
+            amount: Number(paymentData.data.amount)
           });
         } else {
           alert('Pago procesado exitosamente. El código QR estará disponible pronto.');
@@ -228,7 +228,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
           setPurchaseResult({
             qrDataUrl: paymentData.data.qrDataUrl,
             purchaseId: purchaseId,
-            amount: paymentData.data.amount
+            amount: Number(paymentData.data.amount)
           });
         } else {
           alert('Pago procesado exitosamente. El código QR estará disponible pronto.');
