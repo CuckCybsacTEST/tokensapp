@@ -119,8 +119,7 @@ export async function POST(
       id: updatedPurchase.id,
       offerId: updatedPurchase.offerId,
       customerName: updatedPurchase.customerName || 'Cliente Anónimo',
-      customerEmail: updatedPurchase.customerEmail || '',
-      customerPhone: updatedPurchase.customerPhone || '',
+      customerWhatsapp: updatedPurchase.customerWhatsapp || '',
       amount: Number(updatedPurchase.amount),
       createdAt: updatedPurchase.createdAt.toISOString()
     });

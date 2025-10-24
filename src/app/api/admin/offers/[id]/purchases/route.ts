@@ -54,7 +54,7 @@ export async function GET(
       } : {
         id: 'anonymous',
         name: purchase.customerName,
-        email: purchase.customerEmail || purchase.customerPhone || 'Sin email'
+        email: purchase.customerWhatsapp || 'Sin WhatsApp'
       }
     }));
 

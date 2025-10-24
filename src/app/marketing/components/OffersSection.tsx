@@ -27,8 +27,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
   const [selectedOffer, setSelectedOffer] = useState<FormattedOffer | null>(null);
   const [customerData, setCustomerData] = useState({
     name: '',
-    email: '',
-    phone: ''
+    whatsapp: ''
   });
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -106,8 +105,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerData.name,
-          customerEmail: customerData.email,
-          customerPhone: customerData.phone,
+          customerWhatsapp: customerData.whatsapp,
           skipQR: true // No generar QR hasta que el pago sea exitoso
         })
       });
@@ -137,8 +135,14 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
       setPaymentProcessing(true);
       setCurrentPurchaseId(purchaseId);
 
-      // Abrir el modal de Culqi
-      openCulqi();
+      // DEMO MODE: Simular pago exitoso sin Culqi
+      console.log('🎭 DEMO MODE: Simulando pago exitoso...');
+
+      // Simular delay de procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Simular pago exitoso
+      await processDemoPayment(purchaseId);
 
     } catch (err) {
       console.error('Error procesando pago:', err);
@@ -160,8 +164,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
           token: tokenId,
           purchaseId: currentPurchaseId,
           customerName: customerData.name,
-          customerEmail: customerData.email,
-          customerPhone: customerData.phone
+          customerWhatsapp: customerData.whatsapp
         })
       });
 
@@ -182,7 +185,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
         // Cerrar modal de compra y resetear
         setShowPurchaseModal(false);
         setSelectedOffer(null);
-        setCustomerData({ name: '', email: '', phone: '' });
+        setCustomerData({ name: '', whatsapp: '' });
         setCurrentPurchaseId(null);
       } else {
         alert('Error en el procesamiento del pago: ' + paymentData.error);
@@ -192,6 +195,58 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
     } catch (err) {
       console.error('Error procesando pago:', err);
       alert('Error en el procesamiento del pago');
+      setCurrentPurchaseId(null);
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
+  const processDemoPayment = async (purchaseId: string) => {
+    try {
+      if (!selectedOffer) return;
+
+      // Procesar el pago en modo demo (simular token de Culqi)
+      const demoToken = 'demo_token_' + Date.now();
+
+      const paymentResponse = await fetch(`/api/offers/${selectedOffer.id}/process-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: demoToken,
+          purchaseId: purchaseId,
+          customerName: customerData.name,
+          customerWhatsapp: customerData.whatsapp,
+          demo: true // Indicar que es modo demo
+        })
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (paymentData.success) {
+        // Pago exitoso - mostrar el QR
+        if (paymentData.data?.qrDataUrl) {
+          setPurchaseResult({
+            qrDataUrl: paymentData.data.qrDataUrl,
+            purchaseId: purchaseId,
+            amount: paymentData.data.amount
+          });
+        } else {
+          alert('Pago procesado exitosamente. El código QR estará disponible pronto.');
+        }
+
+        // Cerrar modal de compra y resetear
+        setShowPurchaseModal(false);
+        setSelectedOffer(null);
+        setCustomerData({ name: '', whatsapp: '' });
+        setCurrentPurchaseId(null);
+      } else {
+        alert('Error en el procesamiento del pago: ' + paymentData.error);
+        setCurrentPurchaseId(null);
+      }
+
+    } catch (err) {
+      console.error('Error procesando pago demo:', err);
+      alert('Error en el procesamiento del pago demo');
       setCurrentPurchaseId(null);
     } finally {
       setPaymentProcessing(false);
@@ -374,26 +429,12 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
 
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
-                  Correo electrónico
-                </label>
-                <input
-                  type="email"
-                  value={customerData.email}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="tu@email.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">
-                  Teléfono
+                  WhatsApp
                 </label>
                 <input
                   type="tel"
-                  value={customerData.phone}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  value={customerData.whatsapp}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, whatsapp: e.target.value }))}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="+51 999 999 999"
                   required
@@ -412,7 +453,7 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
                 onClick={() => {
                   setShowPurchaseModal(false);
                   setSelectedOffer(null);
-                  setCustomerData({ name: '', email: '', phone: '' });
+                  setCustomerData({ name: '', whatsapp: '' });
                 }}
                 className="flex-1 py-3 px-6 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors duration-300"
                 disabled={purchaseLoading}
@@ -422,16 +463,16 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
 
               <button
                 onClick={handleConfirmPurchase}
-                disabled={purchaseLoading || !customerData.name || !customerData.email || !customerData.phone}
+                disabled={purchaseLoading || !customerData.name || !customerData.whatsapp}
                 className="flex-1 py-3 px-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {purchaseLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Procesando...
+                    Procesando Demo...
                   </div>
                 ) : (
-                  'Confirmar Compra'
+                  'Confirmar Compra (Demo)'
                 )}
               </button>
             </div>

@@ -24,7 +24,7 @@ export default async function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Gestión de Tokens</h3>
+            <h3 className="text-lg font-semibold">Tokens</h3>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -62,7 +62,7 @@ export default async function AdminDashboard() {
                 <path d="M12 2l2.09 6.26L20.97 9l-5.18 3.76L17.82 20 12 15.9 6.18 20l2.03-7.24L3.03 9l6.88-.74L12 2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Control de Shows Estelares</h3>
+            <h3 className="text-lg font-semibold">Shows y Entradas</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
             Administra el lineup publicado, imágenes optimizadas, slots, contenido destacado y configuración de tickets que aparece en la landing de marketing.

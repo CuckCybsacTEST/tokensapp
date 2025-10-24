@@ -9,8 +9,7 @@ export class QRUtils {
     id: string;
     offerId: string;
     customerName: string;
-    customerEmail?: string;
-    customerPhone: string;
+    customerWhatsapp?: string;
     amount: number;
     createdAt: string;
   }): Promise<{ qrCode: string; qrDataUrl: string }> {
@@ -23,8 +22,7 @@ export class QRUtils {
       purchaseId: purchaseData.id,
       offerId: purchaseData.offerId,
       customerName: purchaseData.customerName,
-      customerEmail: purchaseData.customerEmail,
-      customerPhone: purchaseData.customerPhone,
+      customerWhatsapp: purchaseData.customerWhatsapp,
       amount: purchaseData.amount,
       createdAt: purchaseData.createdAt,
       qrCode: qrCode
@@ -51,8 +49,7 @@ export class QRUtils {
     purchaseId: string;
     offerId: string;
     customerName: string;
-    customerEmail?: string;
-    customerPhone: string;
+    customerWhatsapp?: string;
     amount: number;
     createdAt: string;
     qrCode: string;

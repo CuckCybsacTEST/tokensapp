@@ -14,8 +14,7 @@ export async function POST(
 
     // Variables para datos del cliente
     let customerName = 'Cliente Anónimo';
-    let customerEmail = '';
-    let customerPhone = '';
+    let customerWhatsapp = '';
 
     // Para compras públicas, no requerimos autenticación de usuario
     // Las compras serán anónimas
@@ -110,15 +109,13 @@ export async function POST(
       }
 
       customerName = user.person.name;
-      customerEmail = user.person.whatsapp || '';
-      customerPhone = user.person.whatsapp || '';
+      customerWhatsapp = user.person.whatsapp || '';
     } else {
       // Compra anónima - intentar obtener datos del body
       try {
         const body = await request.json();
         customerName = body.customerName || 'Cliente Anónimo';
-        customerEmail = body.customerEmail || '';
-        customerPhone = body.customerPhone || '';
+        customerWhatsapp = body.customerWhatsapp || '';
         skipQR = body.skipQR || false;
       } catch (e) {
         // No hay body JSON, continuar con datos anónimos
@@ -134,8 +131,8 @@ export async function POST(
         currency: 'PEN',
         status: 'PENDING',
         customerName,
-        customerEmail,
-        customerPhone
+        customerWhatsapp,
+        customerPhone: customerWhatsapp // Mantener compatibilidad temporal
       }
     });
 
@@ -148,8 +145,7 @@ export async function POST(
         id: offerPurchase.id,
         offerId: offer.id,
         customerName,
-        customerEmail,
-        customerPhone,
+        customerWhatsapp,
         amount: Number(offerPurchase.amount),
         createdAt: offerPurchase.createdAt.toISOString()
       });
