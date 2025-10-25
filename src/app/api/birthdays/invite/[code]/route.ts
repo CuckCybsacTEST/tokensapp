@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
+import { recalculateTokenExpirations } from '@/lib/birthdays/expiration-manager';
 import { redeemToken } from '@/lib/birthdays/service';
 
 /*
@@ -22,6 +23,16 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   try {
     console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff });
     const token = await prisma.inviteToken.findUnique({ where: { code: params.code }, include: { reservation: { include: { pack: true } } } });
+    
+    // Debug: Check hostArrivedAt directly from database
+    if (token) {
+      const directCheck = await prisma.$queryRaw`SELECT "hostArrivedAt" FROM "BirthdayReservation" WHERE id = ${token.reservationId}`;
+      console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Direct DB check', { 
+        reservationId: token.reservationId,
+        directHostArrivedAt: directCheck,
+        includeHostArrivedAt: (token.reservation as any).hostArrivedAt
+      });
+    }
     if (!token) {
       console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token NO encontrado', { code: params.code });
       return apiError('NOT_FOUND', 'Token no encontrado', undefined, 404);
@@ -34,6 +45,12 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       expiresAt: token.expiresAt
     });
     const r = token.reservation as any;
+    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Reservation data', {
+      reservationId: r.id,
+      hostArrivedAt: r.hostArrivedAt,
+      hostArrivedAtType: typeof r.hostArrivedAt,
+      celebrantName: r.celebrantName
+    });
     const firstName = (r.celebrantName || '').trim().split(/\s+/)[0] || r.celebrantName;
     const base = {
       code: token.code,
@@ -60,6 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         public: true,
         message: publicMessage,
         token: { ...base, celebrantName: firstName },
+        hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
       });
     }
     // Staff/Admin extended fields
@@ -74,6 +92,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       tokensGeneratedAt: r.tokensGeneratedAt ? r.tokensGeneratedAt.toISOString() : null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
+      hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
+      guestArrivals: r.guestArrivals || 0,
     };
     return apiOk({ public: false, token: base, reservation: extended });
   } catch (e) {
@@ -108,10 +128,27 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     if (tokenPre.kind === 'host') {
       // Host token should be single-use logically; allow idempotent re-validation
       if (tokenPre.status === 'redeemed' || tokenPre.status === 'exhausted') {
-        // ensure hostArrivedAt exists; if not, set it
-        if (!((tokenPre as any).reservation as any).hostArrivedAt) {
-          await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ hostArrivedAt: new Date() } as any) });
-        }
+        // Always ensure hostArrivedAt is set for host tokens
+        console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Token already redeemed/exhausted, ensuring hostArrivedAt is set', { 
+          resId, 
+          currentHostArrivedAt: ((tokenPre as any).reservation as any).hostArrivedAt 
+        });
+        // Always update hostArrivedAt to current time for host validations
+        console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Updating hostArrivedAt to current time', { resId });
+        const updateResult = await prisma.birthdayReservation.update({ 
+          where: { id: resId }, 
+          data: ({ hostArrivedAt: new Date() } as any) 
+        });
+        console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Update result', { updateResult });
+        
+        // Verify the update was successful
+        const verifyReservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
+        console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Verification after update', { 
+          hostArrivedAt: (verifyReservation as any)?.hostArrivedAt 
+        });
+        
+        // Recalcular expiraciones cuando se registra la llegada del host
+        await recalculateTokenExpirations(resId);
         const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
         return apiOk({
           idempotent: true,
@@ -121,13 +158,32 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       }
       redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
       // Set hostArrivedAt if not set
-      await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ hostArrivedAt: new Date() } as any) });
+      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting hostArrivedAt for first time', { resId });
+      const firstUpdateResult = await prisma.birthdayReservation.update({ 
+        where: { id: resId }, 
+        data: ({ hostArrivedAt: new Date() } as any) 
+      });
+      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: First update result', { firstUpdateResult });
+      
+      // Recalcular expiraciones cuando se registra la llegada del host por primera vez
+      await recalculateTokenExpirations(resId);
     } else {
-      // guest token (multi-use): redeem increments usedCount; we also update cached guestArrivals to usedCount
+      // guest token: redeem the token when staff validates it (this represents guest arrival)
+      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Redeeming guest token');
       redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
-      // After redeem, sync guestArrivals = usedCount for reservation (host arrivals unaffected)
-      const tok = redeemedResult.token as any;
-      await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ guestArrivals: tok.usedCount || 0 } as any) });
+      // After redeem, recalculate total guestArrivals = sum of usedCount for all guest tokens in this reservation
+      const allGuestTokens = await prisma.inviteToken.findMany({
+        where: { reservationId: resId, kind: 'guest' },
+        select: { usedCount: true, code: true }
+      });
+      const totalGuestArrivals = allGuestTokens.reduce((sum, token) => sum + (token.usedCount || 0), 0);
+      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Recalculating guestArrivals after redeem', {
+        resId,
+        guestTokensCount: allGuestTokens.length,
+        guestTokens: allGuestTokens.map(t => ({ code: t.code, usedCount: t.usedCount })),
+        totalGuestArrivals
+      });
+      await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ guestArrivals: totalGuestArrivals } as any) });
     }
     const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
     return apiOk({
@@ -146,6 +202,6 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     if (msg === 'TOKEN_ALREADY_REDEEMED') return apiError('TOKEN_ALREADY_REDEEMED','Token ya usado');
     if (msg === 'TOKEN_EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado');
     if (msg === 'INVALID_SIGNATURE') return apiError('INVALID_SIGNATURE','Firma inválida');
-  return apiError('INTERNAL_ERROR','Error interno');
+    return apiError('INTERNAL_ERROR','Error interno');
   }
 }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { apiError, apiOk } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
-import { listReservations, createReservation } from '@/lib/birthdays/service';
+import { listReservations, createReservation, parseDateStringToLima, limaDateTimeToJSDate } from '@/lib/birthdays/service';
 
 // List reservations (STAFF via user_session)
 const ListSchema = z.object({
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     const parsed = CreateSchema.safeParse(body);
     if (!parsed.success) return apiError('INVALID_BODY','Validation failed', parsed.error.flatten(), 400);
     const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned } = parsed.data;
-    const dt = new Date(date + 'T00:00:00.000Z');
+    const dt = limaDateTimeToJSDate(parseDateStringToLima(date));
     if (!isFinite(dt.getTime())) return apiError('INVALID_DATE', 'invalid date', undefined, 400);
     const created = await createReservation({ celebrantName, phone, documento, email: email || undefined, date: dt, timeSlot, packId, guestsPlanned, createdBy: 'STAFF' });
     const dto = {

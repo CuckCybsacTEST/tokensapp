@@ -88,8 +88,8 @@ function getLimaDateParts(date: Date) {
 
 function isReservationDatePast(reservationDate: Date) {
   const nowLima = getLimaDate(new Date()) as DateTime;
-  // Interpretar reservationDate como fecha en zona Lima
-  const reservationLima = getLimaDate(reservationDate) as DateTime;
+  // Interpretar reservationDate como fecha que representa un día calendario en zona Lima
+  const reservationLima = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
 
   // Comparar solo fecha (ignorar hora)
   // Permitir reservas para hoy mismo, solo rechazar fechas estrictamente pasadas
@@ -171,7 +171,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
   // Validar que no sea más de 30 días en el futuro (en zona Lima)
   const nowLima = getLimaDate(new Date()) as DateTime;
   const maxFuture = nowLima.plus({ days: 30 });
-  const reservationLima = getLimaDate(reservaDateObj) as DateTime;
+  const reservationLima = DateTime.fromJSDate(reservaDateObj).setZone('America/Lima');
 
   if (reservationLima > maxFuture) {
     console.error('[BIRTHDAYS] createReservation: Fecha demasiado lejana', {
@@ -487,15 +487,18 @@ export async function generateInviteTokens(
   });
 
   // Calcular fecha de expiración usando Luxon
-  // Los tokens expiran a las 23:59 (Lima) del día siguiente a la reserva
-  // Interpretar reservation.date como fecha en zona Lima
-  const reservationLima = getLimaDate(reservation.date) as DateTime;
-  const expirationLima = reservationLima.plus({ days: 1 }).set({ hour: 23, minute: 59, second: 59 });
+  // Los tokens inicialmente expiran al final del día de la reserva
+  // Se recalcularán a 45 minutos después de la llegada del host cuando se registre hostArrivedAt
+  // Interpretar reservation.date como fecha que representa un día calendario en zona Lima
+  // (ya se guardó correctamente con parseDateStringToLima + limaDateTimeToJSDate)
+  const reservationDateLima = DateTime.fromJSDate(reservation.date).setZone('America/Lima');
+  const expirationLima = reservationDateLima.endOf('day'); // Final del día de la reserva
   const exp = limaDateTimeToJSDate(expirationLima);
 
   // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
   if (isReservationDatePast(reservation.date)) {
-    const reservationParts = getLimaDateParts(reservation.date);
+    const reservationLima = DateTime.fromJSDate(reservation.date).setZone('America/Lima');
+    const reservationParts = { y: (reservationLima as any).year, m: (reservationLima as any).month, d: (reservationLima as any).day };
     const nowParts = getLimaDateParts(new Date());
     console.error('[BIRTHDAYS] generateInviteTokens: Fecha de reserva pasada', {
       reservaLima: reservationParts,
@@ -506,7 +509,7 @@ export async function generateInviteTokens(
   }
 
   console.log('[BIRTHDAYS] generateInviteTokens: Fechas calculadas con Luxon', {
-    reservationLima: reservationLima.toISO(),
+    reservationDateLima: reservationDateLima.toISO(),
     expirationLima: expirationLima.toISO(),
     expira: exp
   });

@@ -1,12 +1,12 @@
 "use client";
 import React, { useEffect, useState, useTransition } from 'react';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt }:{ code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null }) {
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0 }:{ code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number }) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
   const [max, setMax] = useState(multiUse?.max ?? (multiUse ? 0 : 1));
   const [hostArrivedAt, setHostArrivedAt] = useState<Date | null>(null);
-  const [guestArrivals, setGuestArrivals] = useState<number>(0);
+  const [guestArrivals, setGuestArrivals] = useState<number>(initialGuestArrivals);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [consumedOnce, setConsumedOnce] = useState(false); // evita múltiples consumos sin re-escanear
@@ -20,23 +20,32 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
   }, [code]);
 
   function validate() {
+    console.log('[STAFF] Attempting validation for code:', code, 'consumedOnce:', consumedOnce);
     setErr(null);
     start(async () => {
       try {
-        if (consumedOnce) return; // segunda pulsación ignorada hasta nuevo escaneo
+        if (consumedOnce) {
+          console.log('[STAFF] Validation blocked - already consumed once');
+          return; // segunda pulsación ignorada hasta nuevo escaneo
+        }
+        console.log('[STAFF] Making POST request for validation');
         const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ device: 'web', location: 'entrance' }) });
         const j = await res.json().catch(()=>({}));
+        console.log('[STAFF] POST response:', { ok: res.ok, status: res.status, data: j });
         if (!res.ok) throw new Error(j?.code || j?.message || res.status);
         if (j.token) {
+          console.log('[STAFF] Token updated:', { status: j.token.status, usedCount: j.token.usedCount, maxUses: j.token.maxUses });
           setStatus(j.token.status);
           if (typeof j.token.usedCount === 'number') setUsed(j.token.usedCount);
           if (typeof j.token.maxUses === 'number') setMax(j.token.maxUses);
         }
         if (j.arrival) {
+          console.log('[STAFF] Arrival updated:', j.arrival);
           setHostArrivedAt(j.arrival.hostArrivedAt ? new Date(j.arrival.hostArrivedAt) : null);
           setGuestArrivals(j.arrival.guestArrivals || 0);
         }
         setConsumedOnce(true);
+        console.log('[STAFF] Validation completed, consumedOnce set to true');
         // Modal de confirmación
         const msg = isHost
           ? 'Muestra este código al ingresar y disfruta de tu noche!'
@@ -82,7 +91,7 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
         
         <div className="flex justify-between items-center">
           <span className="text-white/70">Vence:</span>
-          <span className="font-medium text-yellow-300">{expiresAt ? new Date(expiresAt).toLocaleString() : '–'}</span>
+          <span className="font-medium text-yellow-300">{expiresAt ? new Date(expiresAt).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '–'}</span>
         </div>
         
         {isHost && hostArrivedAt && (
