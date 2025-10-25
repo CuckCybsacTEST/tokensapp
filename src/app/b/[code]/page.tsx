@@ -141,7 +141,12 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
             {hostArrivedAt ? (
               <>
                 <div className="text-lg mb-1">🎉 ¡El cumpleañero ya llegó!</div>
-                <div className="text-sm opacity-80">Puedes dirigirte al lounge</div>
+                <div className="text-sm opacity-80 mb-2">Puedes dirigirte al lounge</div>
+                {data.reservation?.guestArrivals > 0 && (
+                  <div className="text-sm opacity-90 font-medium">
+                    {data.reservation.guestArrivals} {data.reservation.guestArrivals === 1 ? 'invitado ya llegó' : 'invitados ya llegaron'}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -230,6 +235,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
               initialStatus={token.status} 
               expiresAt={token.expiresAt}
               initialGuestArrivals={data.reservation?.guestArrivals || 0}
+              lastGuestArrivalAt={data.reservation?.lastGuestArrivalAt}
             />
           </div>
         )}

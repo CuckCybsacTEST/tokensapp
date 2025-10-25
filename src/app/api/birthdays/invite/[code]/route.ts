@@ -78,9 +78,22 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         message: publicMessage,
         token: { ...base, celebrantName: firstName },
         hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
+        reservation: {
+          guestArrivals: r.guestArrivals || 0
+        }
       });
     }
     // Staff/Admin extended fields
+    // Get last guest arrival time
+    const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
+      where: { 
+        reservationId: r.id,
+        token: { kind: 'guest' }
+      },
+      orderBy: { redeemedAt: 'desc' },
+      select: { redeemedAt: true }
+    });
+    
     const extended = {
       reservationId: r.id,
       date: r.date.toISOString().slice(0,10),
@@ -94,6 +107,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       updatedAt: r.updatedAt.toISOString(),
       hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
       guestArrivals: r.guestArrivals || 0,
+      lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null,
     };
     return apiOk({ public: false, token: base, reservation: extended });
   } catch (e) {
@@ -149,11 +163,26 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         
         // Recalcular expiraciones cuando se registra la llegada del host
         await recalculateTokenExpirations(resId);
+        
+        // Get last guest arrival time for response
+        const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
+          where: { 
+            reservationId: resId,
+            token: { kind: 'guest' }
+          },
+          orderBy: { redeemedAt: 'desc' },
+          select: { redeemedAt: true }
+        });
+        
         const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
         return apiOk({
           idempotent: true,
           token: { code: tokenPre.code, kind: tokenPre.kind, status: tokenPre.status, usedCount: (tokenPre as any).usedCount, maxUses: (tokenPre as any).maxUses },
-          arrival: { hostArrivedAt: (reservation as any)?.hostArrivedAt || null, guestArrivals: (reservation as any)?.guestArrivals ?? 0 }
+          arrival: { 
+            hostArrivedAt: (reservation as any)?.hostArrivedAt || null, 
+            guestArrivals: (reservation as any)?.guestArrivals ?? 0,
+            lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
+          }
         });
       }
       redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
@@ -185,6 +214,17 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       });
       await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ guestArrivals: totalGuestArrivals } as any) });
     }
+    
+    // Get updated last guest arrival time after redemption
+    const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
+      where: { 
+        reservationId: resId,
+        token: { kind: 'guest' }
+      },
+      orderBy: { redeemedAt: 'desc' },
+      select: { redeemedAt: true }
+    });
+    
     const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
     return apiOk({
       token: {
@@ -194,7 +234,11 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         usedCount: (redeemedResult.token as any).usedCount,
         maxUses: (redeemedResult.token as any).maxUses,
       },
-      arrival: { hostArrivedAt: (reservation as any)?.hostArrivedAt || null, guestArrivals: (reservation as any)?.guestArrivals ?? 0 }
+      arrival: { 
+        hostArrivedAt: (reservation as any)?.hostArrivedAt || null, 
+        guestArrivals: (reservation as any)?.guestArrivals ?? 0,
+        lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
+      }
     });
   } catch (e: any) {
     const msg = String(e?.message || e);

@@ -1,12 +1,13 @@
 "use client";
 import React, { useEffect, useState, useTransition } from 'react';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0 }:{ code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number }) {
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt }: { code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number; lastGuestArrivalAt?: string | null }) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
   const [max, setMax] = useState(multiUse?.max ?? (multiUse ? 0 : 1));
   const [hostArrivedAt, setHostArrivedAt] = useState<Date | null>(null);
   const [guestArrivals, setGuestArrivals] = useState<number>(initialGuestArrivals);
+  const [lastGuestArrival, setLastGuestArrival] = useState<string | null>(lastGuestArrivalAt || null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [consumedOnce, setConsumedOnce] = useState(false); // evita múltiples consumos sin re-escanear
@@ -43,6 +44,9 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
           console.log('[STAFF] Arrival updated:', j.arrival);
           setHostArrivedAt(j.arrival.hostArrivedAt ? new Date(j.arrival.hostArrivedAt) : null);
           setGuestArrivals(j.arrival.guestArrivals || 0);
+          if (j.arrival.lastGuestArrivalAt) {
+            setLastGuestArrival(j.arrival.lastGuestArrivalAt);
+          }
         }
         setConsumedOnce(true);
         console.log('[STAFF] Validation completed, consumedOnce set to true');
@@ -105,6 +109,20 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
           <div className="flex justify-between items-center">
             <span className="text-white/70">Invitados:</span>
             <span className="text-blue-300 font-medium">{guestArrivals} ingresos</span>
+          </div>
+        )}
+        
+        {!isHost && lastGuestArrival && (
+          <div className="flex justify-between items-center">
+            <span className="text-white/70">Último ingreso:</span>
+            <span className="text-green-300 font-medium text-sm">
+              {new Date(lastGuestArrival).toLocaleString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+              })}
+            </span>
           </div>
         )}
       </div>
