@@ -14,6 +14,10 @@ function now() {
   return new Date();
 }
 
+function nowLima(): DateTime {
+  return DateTime.now().setZone('America/Lima');
+}
+
 function toIso(d: Date) {
   return d.toISOString();
 }
@@ -483,10 +487,10 @@ export async function generateInviteTokens(
   });
 
   // Calcular fecha de expiración usando Luxon
-  // Los tokens expiran a las 00:01 (Lima) del día siguiente a la reserva
+  // Los tokens expiran a las 23:59 (Lima) del día siguiente a la reserva
   // Interpretar reservation.date como fecha en zona Lima
   const reservationLima = getLimaDate(reservation.date) as DateTime;
-  const expirationLima = reservationLima.plus({ days: 1 }).set({ hour: 0, minute: 1, second: 0 });
+  const expirationLima = reservationLima.plus({ days: 1 }).set({ hour: 23, minute: 59, second: 59 });
   const exp = limaDateTimeToJSDate(expirationLima);
 
   // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
@@ -530,6 +534,12 @@ export async function generateInviteTokens(
     // - guest: multi-use (maxUses=target), kind='guest', status='active'
     const existing = await tx.inviteToken.findMany({ where: { reservationId }, orderBy: { code: 'asc' } });
 
+    // If forcing regeneration, delete all existing tokens first
+    if (opts?.force && existing.length > 0) {
+      await tx.inviteToken.deleteMany({ where: { reservationId } });
+      console.log(`[BIRTHDAYS] generateInviteTokens: Deleted ${existing.length} existing tokens for force regeneration`);
+    }
+
     const created: InviteToken[] = [];
 
     async function createToken(kind: 'host' | 'guest', maxUses: number) {
@@ -564,13 +574,11 @@ export async function generateInviteTokens(
     }
 
     // detect if we already have host and guest tokens in any state
-  const hasHost = existing.find((e: any) => e.kind === 'host');
-  const hasGuest = existing.find((e: any) => e.kind === 'guest');
+    const hasHost = existing.find((e: any) => e.kind === 'host');
+    const hasGuest = existing.find((e: any) => e.kind === 'guest');
 
-    if (!hasHost) await createToken('host', 1);
-    if (!hasGuest) await createToken('guest', Math.max(1, target));
-
-    // If forcing and tokensGeneratedAt was null, set it now
+    if (!hasHost || opts?.force) await createToken('host', 1);
+    if (!hasGuest || opts?.force) await createToken('guest', Math.max(1, target));    // If forcing and tokensGeneratedAt was null, set it now
     if (opts?.force && !reservation.tokensGeneratedAt) {
       await tx.birthdayReservation.update({ where: { id: reservationId }, data: { tokensGeneratedAt: nowDt } });
     }
@@ -600,7 +608,9 @@ export async function redeemToken(code: string, context: RedeemContext = {}, byU
     const token = await tx.inviteToken.findUnique({ where: { code } });
     if (!token) throw new Error('TOKEN_NOT_FOUND');
     const nowDt = now();
-    if (nowDt > token.expiresAt) throw new Error('TOKEN_EXPIRED');
+    const nowLimaDt = nowLima();
+    const expiresAtLima = DateTime.fromJSDate(token.expiresAt).setZone('America/Lima');
+    if (nowLimaDt > expiresAtLima) throw new Error('TOKEN_EXPIRED');
 
     // Validate claim signature & expiration
     try {

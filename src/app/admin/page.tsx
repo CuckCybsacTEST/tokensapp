@@ -50,7 +50,7 @@ export default async function AdminDashboard() {
             <a href="/admin/users" className="btn">Gestión de Colaboradores</a>
             <a href="/admin/tasks" className="btn">Gestión de tareas</a>
             <a href="/admin/day-brief" className="btn">Brief del día</a>
-            <a href="/scanner" className="btn">Escáner</a>
+            <a href="/admin/scanner" className="btn">Escáner</a>
           </div>
         </div>
 

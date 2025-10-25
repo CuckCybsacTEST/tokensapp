@@ -20,8 +20,19 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const session = await verifySessionCookie(raw);
   const isStaff = !!session && requireRole(session, ['ADMIN','STAFF']).ok;
   try {
+    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff });
     const token = await prisma.inviteToken.findUnique({ where: { code: params.code }, include: { reservation: { include: { pack: true } } } });
-    if (!token) return apiError('NOT_FOUND', 'Token no encontrado', undefined, 404);
+    if (!token) {
+      console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token NO encontrado', { code: params.code });
+      return apiError('NOT_FOUND', 'Token no encontrado', undefined, 404);
+    }
+    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token encontrado', {
+      code: params.code,
+      kind: token.kind,
+      status: token.status,
+      reservationId: token.reservationId,
+      expiresAt: token.expiresAt
+    });
     const r = token.reservation as any;
     const firstName = (r.celebrantName || '').trim().split(/\s+/)[0] || r.celebrantName;
     const base = {

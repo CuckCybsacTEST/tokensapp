@@ -213,7 +213,12 @@ export default function AdminBirthdaysPage() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
       <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-      <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Gestión de Cumpleaños</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Gestión de Cumpleaños</h1>
+        <a href="/admin/birthdays/debug-token/test" className="btn-sm bg-blue-600 hover:bg-blue-700 text-white">
+          🔍 Debug Token
+        </a>
+      </div>
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
       {/* Crear reserva rápida */}

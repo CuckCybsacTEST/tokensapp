@@ -78,6 +78,17 @@ function decodeGlobalModeFromQr(text: string): Mode | null {
   return null;
 }
 
+function decodeOfferQrFromText(text: string): { type: string; purchaseId: string; qrCode: string } | null {
+  // Try JSON direct
+  try {
+    const j = JSON.parse(text);
+    if (j && typeof j === "object" && j.type === "offer_purchase" && j.purchaseId && j.qrCode) {
+      return j as { type: string; purchaseId: string; qrCode: string };
+    }
+  } catch {}
+  return null;
+}
+
 function beep(freq = 880, duration = 120, type: OscillatorType = "sine", volume = 0.08) {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -111,6 +122,14 @@ export default function ScannerPage() {
 
   const [banner, setBanner] = useState<{ variant: "success" | "error"; message: string } | null>(null);
   const [overlay, setOverlay] = useState<{ person: Person; lastScanAt?: string } | null>(null);
+  const [offerOverlay, setOfferOverlay] = useState<{
+    purchase: { customerName: string; amount: number; createdAt: string };
+    offer: { title: string; price: number };
+    status: string;
+    purchaseId?: string;
+    canComplete?: boolean;
+  } | null>(null);
+  const [overlayHideTimeout, setOverlayHideTimeout] = useState<NodeJS.Timeout | null>(null);
   const [mode, setMode] = useState<Mode>("IN");
   const [awaitingCode, setAwaitingCode] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
@@ -139,6 +158,61 @@ export default function ScannerPage() {
       return;
     }
 
+    // 2) Detect OFFER QR: validate offer purchase
+    const offerQrData = decodeOfferQrFromText(text);
+    if (offerQrData) {
+      try {
+        const res = await fetch("/api/offers/validate-qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ qrData: text }),
+        });
+        const json = await res.json();
+
+        if (json.valid) {
+          setOfferOverlay({
+            purchase: {
+              customerName: json.purchase.customerName,
+              amount: json.purchase.amount,
+              createdAt: json.purchase.createdAt
+            },
+            offer: {
+              title: json.offer.title,
+              price: json.offer.price
+            },
+            status: json.status,
+            purchaseId: json.purchase.purchaseId,
+            canComplete: json.purchase.status === 'PENDING'
+          });
+          // Hide overlay after 10 seconds for offers (longer than person overlays)
+          if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+          setOverlayHideTimeout(setTimeout(() => setOfferOverlay(null), 10000));
+          setBanner({ variant: "success", message: `✅ Oferta pendiente: ${json.purchase.customerName} - S/ ${json.purchase.amount.toFixed(2)}` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 1200);
+        } else {
+          let errorMsg = "QR de oferta inválido";
+          if (json.status === 'expired') errorMsg = "QR de oferta expirado";
+          else if (json.status === 'used') errorMsg = "QR de oferta ya utilizado";
+          else if (json.status === 'cancelled') errorMsg = "Compra de oferta cancelada";
+          else if (json.status === 'refunded') errorMsg = "Compra de oferta reembolsada";
+
+          setBanner({ variant: "error", message: errorMsg });
+          beep(220, 150, "square");
+          vibrate(120);
+          setCooldownUntil(Date.now() + 1000);
+        }
+      } catch (e: any) {
+        setBanner({ variant: "error", message: `Error al validar oferta: ${String(e?.message || e)}` });
+        beep(220, 150, "square");
+        vibrate(120);
+        setCooldownUntil(Date.now() + 1000);
+      }
+      processingRef.current = false;
+      return;
+    }
+
     const payload = decodePersonPayloadFromQr(text);
     if (!payload) {
       setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });
@@ -160,6 +234,9 @@ export default function ScannerPage() {
       if ((json as ScanOk).ok) {
         const ok = json as ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string };
         setOverlay({ person: ok.person });
+        // Hide overlay after 3 seconds
+        if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
+        setOverlayHideTimeout(setTimeout(() => setOverlay(null), 3000));
         const human = mode === "IN" ? "Entrada registrada" : "Salida registrada";
         const already = ok.alerts?.includes('already_marked');
         const sameDir = ok.alerts?.includes('same_direction');
@@ -281,6 +358,14 @@ export default function ScannerPage() {
   }, [code, mode]);
 
   useEffect(() => {
+    return () => {
+      if (overlayHideTimeout) {
+        clearTimeout(overlayHideTimeout);
+      }
+    };
+  }, [overlayHideTimeout]);
+
+  useEffect(() => {
     let mounted = true;
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
@@ -315,8 +400,8 @@ export default function ScannerPage() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-yellow-300 px-2 py-8">
       <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white/80 backdrop-blur-lg p-6 flex flex-col items-center">
-        <h1 className="mb-2 text-3xl font-extrabold text-orange-700 tracking-tight text-center drop-shadow">Escáner de Cumpleañeros</h1>
-        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea el QR de la persona o usa un póster para registrar entrada/salida.</p>
+        <h1 className="mb-2 text-3xl font-extrabold text-orange-700 tracking-tight text-center drop-shadow">Escáner QR</h1>
+        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea QR de personas, ofertas o usa pósters para registrar entrada/salida.</p>
 
         {banner && (
           <div className={`mb-4 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{banner.message}</div>
@@ -385,6 +470,60 @@ export default function ScannerPage() {
                   Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
                 </div>
               )}
+            </div>
+          )}
+
+          {offerOverlay && (
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent p-4 text-white rounded-2xl">
+              <div className="text-center">
+                <div className="text-lg font-bold leading-tight drop-shadow-lg mb-1">
+                  🎁 {offerOverlay.offer.title}
+                </div>
+                <div className="text-base opacity-90">
+                  {offerOverlay.purchase.customerName}
+                </div>
+                <div className="text-sm opacity-80">
+                  S/ {offerOverlay.purchase.amount.toFixed(2)}
+                </div>
+                <div className="text-xs opacity-70 mt-1">
+                  {new Date(offerOverlay.purchase.createdAt).toLocaleDateString()}
+                </div>
+                {offerOverlay.canComplete && (
+                  <button
+                    className="pointer-events-auto mt-3 px-4 py-2 bg-white text-green-800 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
+                    onClick={async () => {
+                      if (!offerOverlay.purchaseId) return;
+
+                      try {
+                        const res = await fetch('/api/offers/complete-delivery', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ purchaseId: offerOverlay.purchaseId }),
+                        });
+
+                        const data = await res.json();
+
+                        if (data.success) {
+                          setBanner({ variant: "success", message: "✅ Entrega completada exitosamente" });
+                          setOfferOverlay(null);
+                          beep(880, 120, "sine");
+                          vibrate(60);
+                        } else {
+                          setBanner({ variant: "error", message: `Error: ${data.error}` });
+                          beep(220, 150, "square");
+                          vibrate(120);
+                        }
+                      } catch (e: any) {
+                        setBanner({ variant: "error", message: `Error al completar entrega: ${String(e?.message || e)}` });
+                        beep(220, 150, "square");
+                        vibrate(120);
+                      }
+                    }}
+                  >
+                    Completar Entrega
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {cameraError && (

@@ -1,7 +1,12 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-interface ScanResult { text: string; ts: number; }
+interface ScanResult { 
+  text: string; 
+  ts: number; 
+  type?: string;
+  data?: any;
+}
 
 export default function ScannerClient() {
   const videoRef = useRef<HTMLVideoElement|null>(null);
@@ -17,6 +22,106 @@ export default function ScannerClient() {
   const redirectedRef = useRef<boolean>(false); // evita múltiples redirecciones
   const [, force] = useState(0);
   const frameRef = useRef<number>();
+  const resultsRef = useRef<ScanResult[]>([]);
+  
+  // Keep results in sync with ref
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
+
+  // Function to check if it's a global in/out code
+  const isGlobalInOutCode = useCallback((raw: string): boolean => {
+    if (!raw) return false; const text = String(raw).trim();
+    // Direct JSON
+    try {
+      const j = JSON.parse(text);
+      if (j && typeof j === 'object' && j.kind === 'GLOBAL' && (j.mode === 'IN' || j.mode === 'OUT')) return true;
+    } catch {}
+    // base64url JSON
+    try {
+      const pad = text.length % 4 === 2 ? '==' : text.length % 4 === 3 ? '=' : '';
+      const b64 = text.replace(/-/g,'+').replace(/_/g,'/') + pad;
+      const decoded = atob(b64);
+      const j2 = JSON.parse(decoded);
+      if (j2 && j2.kind === 'GLOBAL' && (j2.mode === 'IN' || j2.mode === 'OUT')) return true;
+    } catch {}
+    const upper = text.toUpperCase();
+    if (upper === 'IN' || upper === 'OUT') return true;
+    if (upper.startsWith('GLOBAL') && (upper.includes('IN') || upper.includes('OUT'))) return true;
+    try {
+      const url = new URL(text);
+      const m = (url.searchParams.get('mode') || '').toUpperCase();
+      if (m === 'IN' || m === 'OUT') return true;
+    } catch {}
+    return false;
+  }, []);
+
+  // Function to navigate to birthday pages
+  const maybeNavigate = useCallback((raw: string) => {
+    if (redirectedRef.current) return;
+    try {
+      const url = new URL(raw);
+      // Patrón principal: /b/<code> (tanto relativo como absoluto)
+      if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
+        redirectedRef.current = true;
+        setActive(false); // detener cámara antes de salir
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = raw; }, 120);
+        return;
+      }
+      // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
+      if (/^\/marketing\/birthdays\//.test(url.pathname)) {
+        redirectedRef.current = true;
+        setActive(false);
+        setTimeout(()=>{ window.location.href = raw; }, 120);
+      }
+    } catch {
+      // no es URL absoluta; podría venir un code simple futuro: birthday:<code>
+      if (/^https?:\/\//i.test(raw) === false && /^bday:/i.test(raw)) {
+        // Formato hipotético bday:<code>
+        const code = raw.split(':')[1];
+        if (code && code.length >= 4 && !redirectedRef.current) {
+          redirectedRef.current = true;
+          setActive(false);
+          setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
+        }
+      }
+    }
+  }, []);
+
+  // Function to process QR text (extracted for reuse)
+  const processQrText = useCallback(async (raw: string) => {
+    if (!raw) return;
+
+    // Check if it's an offer QR
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.type === 'offer_purchase') {
+        // It's an offer QR - redirect to validation page
+        if (!redirectedRef.current) {
+          redirectedRef.current = true;
+          setActive(false); // detener cámara antes de salir
+          const isAdminContext = window.location.pathname.startsWith('/admin');
+          const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
+          sessionStorage.setItem('scannedQRData', raw);
+          // pequeña pausa para permitir sonido/flash visual
+          setTimeout(() => { window.location.href = validationUrl; }, 120);
+        }
+        return;
+      }
+    } catch {
+      // Not a JSON QR, continue with normal processing
+    }
+
+    // Normal QR processing
+    if (!resultsRef.current.some(r=>r.text===raw)) {
+      setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
+      try { audioOkRef.current?.play().catch(()=>{}); } catch {}
+      flashRef.current = { ts: Date.now() }; force(v=>v+1);
+    }
+    // Intentar navegación automática si es un QR de cumpleaños (/b/<code>)
+    maybeNavigate(raw);
+  }, [maybeNavigate]);
 
   useEffect(()=>{
     if (!active) return;
@@ -77,13 +182,7 @@ export default function ScannerClient() {
         }
         return;
       }
-      if (!results.some(r=>r.text===raw)) {
-        setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
-        try { audioOkRef.current?.play().catch(()=>{}); } catch {}
-        flashRef.current = { ts: Date.now() }; force(v=>v+1);
-      }
-      // Intentar navegación automática si es un QR de cumpleaños (/b/<code>)
-      maybeNavigate(raw);
+      processQrText(raw);
     }
     function isGlobalInOutCode(raw: string): boolean {
       if (!raw) return false; const text = String(raw).trim();
@@ -194,6 +293,63 @@ export default function ScannerClient() {
             {active && <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />Escaneando…</div>}
             {!active && <div className="text-[11px] text-slate-500 dark:text-slate-400">Pausado</div>}
             <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
+              Subir imagen QR
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  try {
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                      const dataUrl = String(reader.result);
+                      try {
+                        // Try native BarcodeDetector first
+                        if ('BarcodeDetector' in window) {
+                          const detector = new (window as any).BarcodeDetector(['qr_code']);
+                          const img = new Image();
+                          img.onload = async () => {
+                            try {
+                              const results = await detector.detect(img);
+                              if (results && results.length > 0) {
+                                const raw = (results[0] as any).rawValue;
+                                await processQrText(raw);
+                              } else {
+                                setErr('No se encontró código QR en la imagen');
+                              }
+                            } catch (detErr) {
+                              setErr('Error al procesar la imagen');
+                            }
+                          };
+                          img.src = dataUrl;
+                        } else {
+                          // Fallback to ZXing
+                          const mod = await import('@zxing/browser');
+                          const Reader = (mod as any).BrowserMultiFormatReader;
+                          const codeReader = new Reader();
+                          const result = await codeReader.decodeFromImageUrl(dataUrl);
+                          const raw = result?.getText();
+                          if (raw) {
+                            await processQrText(raw);
+                          } else {
+                            setErr('No se encontró código QR en la imagen');
+                          }
+                        }
+                      } catch (e: any) {
+                        setErr('Error al procesar la imagen: ' + (e?.message || 'desconocido'));
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  } catch (e: any) {
+                    setErr('Error al leer el archivo: ' + (e?.message || 'desconocido'));
+                  }
+                }}
+              />
+            </label>
           </div>
           {err && <div className="mt-2 text-xs text-rose-600 dark:text-rose-400 font-medium">{err}</div>}
         </div>
@@ -206,11 +362,41 @@ export default function ScannerClient() {
           {results.length>0 && (
             <ul className="space-y-1 max-h-64 overflow-auto text-[13px] pr-1">
               {results.map(r => (
-                <li key={r.ts} className="group flex items-center justify-between gap-2 rounded border border-slate-200 dark:border-slate-600 px-2 py-1 bg-slate-50 dark:bg-slate-700/40">
-                  <span className="truncate" title={r.text}>{r.text}</span>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
-                  </div>
+                <li key={r.ts} className="group flex flex-col gap-2 rounded border border-slate-200 dark:border-slate-600 px-3 py-2 bg-slate-50 dark:bg-slate-700/40">
+                  {r.type === 'offer' && r.data ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded">Oferta QR</span>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                          <button 
+                            onClick={() => {
+                              const isAdminContext = window.location.pathname.startsWith('/admin');
+                              const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
+                              sessionStorage.setItem('scannedQRData', r.text);
+                              window.location.href = validationUrl;
+                            }} 
+                            className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
+                          >
+                            Validar
+                          </button>
+                          <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <div><strong>Cliente:</strong> {r.data.customerName}</div>
+                        <div><strong>Oferta:</strong> {r.data.offer?.title || 'N/A'}</div>
+                        <div><strong>Monto:</strong> S/ {r.data.amount?.toFixed(2) || 'N/A'}</div>
+                        <div><strong>Fecha:</strong> {r.data.createdAt ? new Date(r.data.createdAt).toLocaleString('es-PE') : 'N/A'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate" title={r.text}>{r.text}</span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

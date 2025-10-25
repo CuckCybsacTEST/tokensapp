@@ -147,7 +147,21 @@ export async function POST(
         customerName,
         customerWhatsapp,
         amount: Number(offerPurchase.amount),
-        createdAt: offerPurchase.createdAt.toISOString()
+        createdAt: offerPurchase.createdAt.toISOString(),
+        // Incluir todos los datos de la oferta para validación offline
+        offer: {
+          id: offer.id,
+          title: offer.title,
+          price: Number(offer.price),
+          isActive: offer.isActive,
+          validFrom: offer.validFrom,
+          validUntil: offer.validUntil,
+          timezone: offer.timezone,
+          availableDays: offer.availableDays,
+          startTime: offer.startTime,
+          endTime: offer.endTime,
+          maxQuantity: offer.maxQuantity
+        }
       });
       qrCode = qrResult.qrCode;
       qrDataUrl = qrResult.qrDataUrl;

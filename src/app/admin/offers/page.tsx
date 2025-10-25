@@ -36,6 +36,7 @@ interface OfferPurchase {
   customerName: string;
   customerEmail?: string;
   customerPhone: string;
+  customerWhatsapp?: string;
   amount: number;
   currency: string;
   status: string;
@@ -49,7 +50,7 @@ interface OfferPurchase {
     description: string;
     price: number;
   };
-  user: {
+  user?: {
     id: string;
     name: string;
     email: string;
@@ -122,6 +123,30 @@ export default function OffersAdminPage() {
       }
     } catch (err) {
       console.error('Error fetching purchases:', err);
+    }
+  };
+
+  const updatePurchaseStatus = async (purchaseId: string, offerId: string, status: string) => {
+    try {
+      const response = await fetch(`/api/admin/offers/${offerId}/purchases`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchaseId, status })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Actualizar la lista de compras
+        setPurchases(purchases.map(purchase =>
+          purchase.id === purchaseId ? data.data : purchase
+        ));
+      } else {
+        alert(data.error || 'Error al actualizar el estado');
+      }
+    } catch (err) {
+      console.error('Error updating purchase status:', err);
+      alert('Error de conexión');
     }
   };
 
@@ -494,17 +519,17 @@ export default function OffersAdminPage() {
                 {purchases.map((purchase) => (
                   <div key={purchase.id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{purchase.user.name}</h3>
-                          {purchase.user.id === 'anonymous' && (
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold">{purchase.customerName}</h3>
+                          {purchase.userId === 'anonymous' && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                               Anónimo
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {purchase.user.id === 'anonymous' ? (
+                        <p className="text-sm text-gray-600 mb-2">
+                          {purchase.userId === 'anonymous' ? (
                             // Para compras anónimas, mostrar email y teléfono si están disponibles
                             <>
                               {purchase.customerEmail && `${purchase.customerEmail}`}
@@ -514,24 +539,49 @@ export default function OffersAdminPage() {
                             </>
                           ) : (
                             // Para usuarios registrados, mostrar el email/whatsapp
-                            purchase.user.email
+                            purchase.user?.email || 'Sin email'
                           )}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 mb-2">
                           {new Date(purchase.createdAt).toLocaleString()}
                         </p>
+                        <p className="text-sm text-gray-700">
+                          <strong>Oferta:</strong> {purchase.offer.title}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">S/ {purchase.amount.toFixed(2)}</div>
-                        <span className={`px-2 py-1 rounded text-xs ${
+                      <div className="text-right ml-4">
+                        <div className="font-semibold text-lg mb-2">S/ {purchase.amount.toFixed(2)}</div>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
                           purchase.status === 'CONFIRMED'
                             ? 'bg-green-100 text-green-800'
                             : purchase.status === 'PENDING'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
+                            : purchase.status === 'CANCELLED'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {purchase.status}
+                          {purchase.status === 'PENDING' ? 'Pendiente' :
+                           purchase.status === 'CONFIRMED' ? 'Entregado' :
+                           purchase.status === 'CANCELLED' ? 'Cancelado' :
+                           purchase.status === 'REFUNDED' ? 'Reembolsado' :
+                           purchase.status === 'EXPIRED' ? 'Expirado' : purchase.status}
                         </span>
+                        {purchase.status === 'PENDING' && (
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => updatePurchaseStatus(purchase.id, purchase.offerId, 'CONFIRMED')}
+                              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                            >
+                              ✓ Entregado
+                            </button>
+                            <button
+                              onClick={() => updatePurchaseStatus(purchase.id, purchase.offerId, 'CANCELLED')}
+                              className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                            >
+                              ✗ Cancelar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -90,11 +90,11 @@ export async function POST(
       };
     }
 
-    // Actualizar el estado de la compra
+    // Actualizar el estado de la compra (mantener PENDING hasta entrega física)
     const updatedPurchase = await prisma.offerPurchase.update({
       where: { id: purchaseId },
       data: {
-        status: 'CONFIRMED',
+        // status: 'CONFIRMED', // <- Removido: mantener PENDING hasta que admin complete entrega
         culqiChargeId: charge.id,
         culqiPaymentId: charge.id, // Usar el mismo ID por simplicidad
         updatedAt: new Date(),
@@ -121,7 +121,21 @@ export async function POST(
       customerName: updatedPurchase.customerName || 'Cliente Anónimo',
       customerWhatsapp: updatedPurchase.customerWhatsapp || '',
       amount: Number(updatedPurchase.amount),
-      createdAt: updatedPurchase.createdAt.toISOString()
+      createdAt: updatedPurchase.createdAt.toISOString(),
+      // Incluir todos los datos de la oferta para validación offline
+      offer: {
+        id: updatedPurchase.offer.id,
+        title: updatedPurchase.offer.title,
+        price: Number(updatedPurchase.amount),
+        isActive: updatedPurchase.offer.isActive,
+        validFrom: updatedPurchase.offer.validFrom,
+        validUntil: updatedPurchase.offer.validUntil,
+        timezone: updatedPurchase.offer.timezone,
+        availableDays: updatedPurchase.offer.availableDays,
+        startTime: updatedPurchase.offer.startTime,
+        endTime: updatedPurchase.offer.endTime,
+        maxQuantity: updatedPurchase.offer.maxQuantity
+      }
     });
 
     // Actualizar la compra con el código QR
@@ -137,7 +151,7 @@ export async function POST(
       success: true,
       data: {
         chargeId: charge.id,
-        status: 'CONFIRMED',
+        status: 'PENDING', // Mantener PENDING hasta entrega física
         amount: offerPurchase.amount,
         currency: offerPurchase.currency,
         qrDataUrl: qrResult.qrDataUrl,
