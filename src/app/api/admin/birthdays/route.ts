@@ -4,7 +4,7 @@ import { apiError, apiOk } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
-import { listReservations, createReservation } from '@/lib/birthdays/service';
+import { listReservations, createReservation, parseDateStringToLima, limaDateTimeToJSDate } from '@/lib/birthdays/service';
 
 const ListSchema = z.object({
   status: z.string().optional(),
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     const parsed = CreateSchema.safeParse(body);
     if (!parsed.success) return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400);
   const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned } = parsed.data;
-    const dt = new Date(date + 'T00:00:00.000Z');
+    const dt = limaDateTimeToJSDate(parseDateStringToLima(date));
     if (!isFinite(dt.getTime())) return apiError('INVALID_DATE', 'invalid date', undefined, 400);
 
     const created = await createReservation({

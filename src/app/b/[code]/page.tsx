@@ -89,24 +89,20 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>
       <div className="w-full max-w-xl mx-auto rounded-2xl shadow-2xl bg-gradient-to-br from-white/5 to-white/2 border border-white/10 p-6 md:p-10 flex flex-col items-center">
-        <a href="/marketing" className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white">← Volver</a>
-        
-        {/* Botón de actualizar estado */}
-        <div className="w-full flex justify-end mb-4">
-          <button
-            onClick={loadData}
-            disabled={isRefreshing}
-            className="text-xs px-3 py-1 rounded bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1"
-          >
-            {isRefreshing ? '🔄' : '↻'} Actualizar
-          </button>
-        </div>
+        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white">← Volver</a>
         
         <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg text-center text-[#FF4D2E]">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
         
-        {/* Indicador de última actualización */}
-        <div className="text-xs opacity-60 mt-1 mb-2">
-          Última actualización: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+        {/* Información de expiración */}
+        <div className="text-sm opacity-70 mt-2 mb-2 text-center">
+          Expira: {new Date(token.expiresAt).toLocaleString('es-ES', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZone: 'America/Lima'
+          })}
         </div>
         {token.isHost && (
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>

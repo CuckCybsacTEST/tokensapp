@@ -151,6 +151,8 @@ function ReservarCumplePageInner() {
         return "Revisa los datos del formulario. Hay campos inválidos.";
       case "INVALID_NAME_MIN_WORDS":
         return "El nombre debe incluir nombre y apellido (mínimo 2 palabras).";
+      case "DUPLICATE_DNI_YEAR":
+        return "Ya tienes una reserva de cumpleaños este año. Si necesitas cambiar la fecha, contacta con atención al cliente.";
       case "NOT_FOUND":
         return "El servicio no está disponible en este momento.";
       case "CREATE_RESERVATION_ERROR":

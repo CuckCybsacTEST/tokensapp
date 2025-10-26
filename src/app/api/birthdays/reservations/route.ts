@@ -75,6 +75,23 @@ export async function POST(req: NextRequest) {
     return apiOk({ ok: true, ...dto, clientSecret }, 201, cors);
   } catch (e) {
     console.error('[API] Error creating reservation:', e);
+    
+    // Handle specific error types
+    if (e instanceof Error) {
+      if (e.message === 'DUPLICATE_DNI_YEAR') {
+        return apiError('DUPLICATE_DNI_YEAR', 'Ya tienes una reserva de cumpleaños este año', undefined, 409, cors);
+      }
+      if (e.message === 'RATE_LIMITED') {
+        return apiError('RATE_LIMITED', 'Demasiadas solicitudes', undefined, 429, cors);
+      }
+      if (e.message === 'INVALID_REFERRER') {
+        return apiError('INVALID_REFERRER', 'Referidor inválido', undefined, 400, cors);
+      }
+      if (e.message === 'INVALID_NAME_MIN_WORDS') {
+        return apiError('INVALID_NAME_MIN_WORDS', 'Nombre debe tener al menos 2 palabras', undefined, 400, cors);
+      }
+    }
+    
     return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation', e instanceof Error ? e.message : String(e), 500, cors);
   }
 }
