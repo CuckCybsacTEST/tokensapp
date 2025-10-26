@@ -8,7 +8,7 @@ import { DateTime } from 'luxon';
 import { Prisma, type BirthdayReservation, type BirthdayPack, type InviteToken, type TokenRedemption, type CourtesyItem, type PhotoDeliverable } from '@prisma/client';
 
 // Ejecutar prueba de zona horaria al cargar el módulo
-testLimaTimezone();
+// testLimaTimezone(); // REMOVED: Código de desarrollo/testing
 
 function now() {
   return new Date();
@@ -57,6 +57,8 @@ export function limaDateTimeToJSDate(limaDateTime: DateTime): Date {
 }
 
 // Función de prueba para verificar zona horaria
+// REMOVED: Código de desarrollo/testing innecesario en producción
+/*
 function testLimaTimezone() {
   console.log('[TEST] Probando funciones de zona horaria Lima');
 
@@ -76,6 +78,7 @@ function testLimaTimezone() {
   const parts = getLimaDateParts(jsDate);
   console.log('[TEST] Partes de fecha:', parts);
 }
+*/
 
 function getLimaDateParts(date: Date) {
   const limaDate = getLimaDate(date) as any;
@@ -487,12 +490,16 @@ export async function generateInviteTokens(
   });
 
   // Calcular fecha de expiración usando Luxon
-  // Los tokens inicialmente expiran al final del día de la reserva
-  // Se recalcularán a 45 minutos después de la llegada del host cuando se registre hostArrivedAt
+  // Los tokens expiran 45 minutos después de la hora de reserva
+  // Si el host llega antes, se recalcularán a 45 minutos después de la llegada del host
   // Interpretar reservation.date como fecha que representa un día calendario en zona Lima
   // (ya se guardó correctamente con parseDateStringToLima + limaDateTimeToJSDate)
   const reservationDateLima = DateTime.fromJSDate(reservation.date).setZone('America/Lima');
-  const expirationLima = reservationDateLima.endOf('day'); // Final del día de la reserva
+
+  // Parsear timeSlot y calcular expiración: hora_reserva + 45 minutos
+  const [hours, minutes] = reservation.timeSlot.split(':').map(Number);
+  const reservationDateTime = reservationDateLima.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
+  const expirationLima = reservationDateTime.plus({ minutes: 45 });
   const exp = limaDateTimeToJSDate(expirationLima);
 
   // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
