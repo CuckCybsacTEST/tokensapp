@@ -3,8 +3,8 @@ import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
-// Función para recalcular expiraciones de tokens basado en hostArrivedAt
-export async function recalculateTokenExpirations(reservationId: string) {
+// Función para asegurar que los tokens tengan la expiración correcta: hora_reserva + 45min
+export async function ensureCorrectTokenExpirations(reservationId: string) {
   const reservation = await prisma.birthdayReservation.findUnique({
     where: { id: reservationId },
     include: { inviteTokens: true }
@@ -14,31 +14,28 @@ export async function recalculateTokenExpirations(reservationId: string) {
     throw new Error('RESERVATION_NOT_FOUND');
   }
 
-  if (!reservation.hostArrivedAt) {
-    // Si no hay llegada registrada, no hacer nada
-    return;
-  }
+  // Calcular expiración correcta: hora de reserva + 45 minutos (siempre, sin importar llegada del host)
+  const reservationDateLima = DateTime.fromJSDate(reservation.date).setZone('America/Lima');
+  const [hours, minutes] = reservation.timeSlot.split(':').map(Number);
+  const reservationDateTime = reservationDateLima.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
+  const correctExpirationDateTime = reservationDateTime.plus({ minutes: 45 });
+  const correctExpiration = correctExpirationDateTime.toJSDate();
 
-  // Calcular nueva expiración: 45 minutos después de la llegada del host
-  const hostArrivalDateTime = DateTime.fromJSDate(reservation.hostArrivedAt).setZone('America/Lima');
-  const newExpirationDateTime = hostArrivalDateTime.plus({ minutes: 45 });
-  const newExpiration = newExpirationDateTime.toJSDate();
-
-  console.log(`[BIRTHDAYS] Recalculating expirations for reservation ${reservationId}:`, {
-    hostArrivedAt: reservation.hostArrivedAt,
-    newExpiration,
+  console.log(`[BIRTHDAYS] Ensuring correct expirations for reservation ${reservationId}:`, {
+    reservationTime: reservationDateTime.toISO(),
+    correctExpiration,
     tokenCount: reservation.inviteTokens.length
   });
 
-  // Actualizar todos los tokens de la reserva
+  // Actualizar todos los tokens de la reserva a la expiración correcta
   await prisma.inviteToken.updateMany({
     where: { reservationId },
-    data: { expiresAt: newExpiration }
+    data: { expiresAt: correctExpiration }
   });
 
   return {
-    hostArrivedAt: reservation.hostArrivedAt,
-    newExpiration,
+    reservationTime: reservationDateTime.toISO(),
+    correctExpiration,
     tokensUpdated: reservation.inviteTokens.length
   };
 }

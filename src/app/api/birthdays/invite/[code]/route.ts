@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
-import { recalculateTokenExpirations } from '@/lib/birthdays/expiration-manager';
 import { redeemToken } from '@/lib/birthdays/service';
 import { DateTime } from 'luxon';
 
@@ -167,8 +166,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
           });
         }
         
-        // Recalcular expiraciones (por si acaso)
-        await recalculateTokenExpirations(resId);
+        // REMOVED: No longer recalculate expirations when host arrives - expiration is fixed to reservation_time + 45min
         
         // Get last guest arrival time for response
         const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
@@ -218,8 +216,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       });
       console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: First update result', { firstUpdateResult });
       
-      // Recalcular expiraciones cuando se registra la llegada del host por primera vez
-      await recalculateTokenExpirations(resId);
+      // REMOVED: No longer recalculate expirations when host arrives - expiration is fixed to reservation_time + 45min
     } else {
       // guest token: redeem the token when staff validates it (this represents guest arrival)
       console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Redeeming guest token');
