@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { DateTime } from 'luxon';
+import StaffValidateControls from './StaffValidateControls';
 
 async function fetchToken(code: string, cookieHeader: string | undefined) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/birthdays/invite/${encodeURIComponent(code)}`, {
@@ -89,18 +90,6 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
 
   const tokenAvailable = isTokenAvailable();
 
-  console.log('[CLIENT] Rendering with data:', {
-    code: params.code,
-    isPublic,
-    isStaff,
-    hostArrivedAt: hostArrivedAt,
-    tokenStatus: token.status,
-    tokenKind: token.kind,
-    hasHostArrivedAt: !!hostArrivedAt,
-    tokenAvailable,
-    reservationDate: data.reservation?.date
-  });
-
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>
       <div className="w-full max-w-xl mx-auto rounded-2xl shadow-2xl bg-gradient-to-br from-white/5 to-white/2 border border-white/10 p-6 md:p-10 flex flex-col items-center">
@@ -110,14 +99,14 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         
         {/* Información de expiración */}
         <div className="text-sm opacity-70 mt-2 mb-2 text-center">
-          Expira: {new Date(token.expiresAt).toLocaleString('es-ES', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit',
-            hour: '2-digit', 
-            minute: '2-digit',
-            timeZone: 'America/Lima'
-          })}
+          {hostArrivedAt && hostArrivedAt !== null ? (
+            <>Expira: {(() => {
+              const expiresAtLima = DateTime.fromJSDate(new Date(token.expiresAt)).setZone('America/Lima');
+              return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
+            })()}</>
+          ) : (
+            <>Expira: 45 min después de llegada del cumpleañero</>
+          )}
         </div>
         {token.isHost && (
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>
@@ -275,4 +264,3 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
     </div>
   );
 }
-  import StaffValidateControls from './StaffValidateControls';

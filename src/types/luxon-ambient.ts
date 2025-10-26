@@ -6,6 +6,7 @@ declare module "luxon" {
     static fromISO(s: string, opts?: any): DateTime;
     static fromJSDate(d: Date, opts?: any): DateTime; // added to satisfy legacy references
     static now(): DateTime;
+    static get DATETIME_SHORT(): Intl.DateTimeFormatOptions;
     setZone(zone: string, opts?: any): DateTime;
     startOf(unit: string): DateTime;
     endOf(unit: string): DateTime;
@@ -13,6 +14,7 @@ declare module "luxon" {
     set(values: Record<string, number>): DateTime; // optional chaining support
     toJSDate(): Date;
     toISO(): string | null;
+    toLocaleString(format?: Intl.DateTimeFormatOptions | string, opts?: any): string;
     get isValid(): boolean;
   }
 }

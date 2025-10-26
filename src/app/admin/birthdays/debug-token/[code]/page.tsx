@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { DateTime } from 'luxon';
 
 export default function DebugTokenPage() {
   const [code, setCode] = useState('');
@@ -64,7 +65,10 @@ export default function DebugTokenPage() {
                       <div>Código: <code className="bg-slate-700 px-2 py-1 rounded">{result.token.code}</code></div>
                       <div>Tipo: {result.token.kind}</div>
                       <div>Estado: {result.token.status}</div>
-                      <div>Expira: {new Date(result.token.expiresAt).toLocaleString()}</div>
+                      <div>Expira: {(() => {
+                        const expiresAtLima = DateTime.fromJSDate(new Date(result.token.expiresAt)).setZone('America/Lima');
+                        return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
+                      })()}</div>
                       <div>Creado: {new Date(result.token.createdAt).toLocaleString()}</div>
                       {result.token.maxUses && <div>Usos: {result.token.usedCount}/{result.token.maxUses}</div>}
                     </div>

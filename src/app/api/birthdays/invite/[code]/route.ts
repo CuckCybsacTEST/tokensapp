@@ -5,6 +5,7 @@ import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
 import { recalculateTokenExpirations } from '@/lib/birthdays/expiration-manager';
 import { redeemToken } from '@/lib/birthdays/service';
+import { DateTime } from 'luxon';
 
 /*
   GET /api/birthdays/invite/:code
@@ -154,10 +155,12 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
           const reservationDate = (reservation as any).date;
           const timeSlot = (reservation as any).timeSlot;
           const [hours, minutes] = timeSlot.split(':').map(Number);
-          const hostArrivalTime = new Date(reservationDate);
-          hostArrivalTime.setHours(hours, minutes, 0, 0);
+          // Use Luxon for proper timezone handling
+          const reservationDateTime = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
+          const hostArrivalDateTime = reservationDateTime.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
+          const hostArrivalTime = hostArrivalDateTime.toJSDate();
           
-          console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting missing hostArrivedAt to reservation time', { resId, hostArrivalTime });
+          console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting missing hostArrivedAt to reservation time', { resId, hostArrivalTime: hostArrivalTime.toISOString() });
           await prisma.birthdayReservation.update({ 
             where: { id: resId }, 
             data: ({ hostArrivedAt: hostArrivalTime } as any) 
@@ -194,15 +197,18 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       const reservationDate = (reservation as any).date;
       const timeSlot = (reservation as any).timeSlot; // e.g., "20:00"
       
-      // Parse timeSlot and combine with reservation date
+      // Parse timeSlot and combine with reservation date using Luxon for proper timezone handling
       const [hours, minutes] = timeSlot.split(':').map(Number);
-      const hostArrivalTime = new Date(reservationDate);
-      hostArrivalTime.setHours(hours, minutes, 0, 0);
+      // Interpretar reservationDate como fecha en zona Lima y agregar la hora del timeSlot
+      const reservationDateTime = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
+      const hostArrivalDateTime = reservationDateTime.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
+      const hostArrivalTime = hostArrivalDateTime.toJSDate();
       
       console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting hostArrivedAt to reservation time', { 
         resId, 
         reservationDate: reservationDate.toISOString(),
         timeSlot,
+        hostArrivalDateTime: hostArrivalDateTime.toISO(),
         hostArrivalTime: hostArrivalTime.toISOString()
       });
       

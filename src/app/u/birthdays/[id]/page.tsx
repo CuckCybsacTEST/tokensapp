@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { DateTime } from 'luxon';
 
 type Reservation = { id:string; celebrantName:string; phone:string; documento:string; email:string|null; date:string; timeSlot:string; pack?: any; guestsPlanned:number; status:string; tokensGeneratedAt:string|null; courtesyItems:any[]; photoDeliveries:any[] };
 type Token = { id:string; code:string; kind:string; status:string; expiresAt:string; usedCount?:number; maxUses?:number };
@@ -72,7 +73,7 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
             <div className="max-h-60 overflow-auto rounded border border-slate-200 dark:border-slate-600">
               <table className="min-w-[650px] w-full text-sm">
                 <thead><tr className="bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200"><th className="text-left px-2 py-1">Code</th><th className="text-left px-2 py-1">Tipo</th><th className="text-left px-2 py-1">Estado</th><th className="text-left px-2 py-1">Expira</th><th className="text-left px-2 py-1">Usos</th></tr></thead>
-                <tbody>{tokens.map(t=> <tr key={t.id} className="border-t border-slate-100 dark:border-slate-700"><td className="px-2 py-1 font-mono">{t.code}</td><td className="px-2 py-1">{t.kind}</td><td className="px-2 py-1">{t.status}</td><td className="px-2 py-1">{t.expiresAt?.slice?.(0,19)?.replace('T',' ')}</td><td className="px-2 py-1">{(t.usedCount??0)}{t.maxUses?` / ${t.maxUses}`:''}</td></tr>)}</tbody>
+                <tbody>{tokens.map(t=> <tr key={t.id} className="border-t border-slate-100 dark:border-slate-700"><td className="px-2 py-1 font-mono">{t.code}</td><td className="px-2 py-1">{t.kind}</td><td className="px-2 py-1">{t.status}</td><td className="px-2 py-1">{t.expiresAt ? DateTime.fromISO(t.expiresAt).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' }) : '-'}</td><td className="px-2 py-1">{(t.usedCount??0)}{t.maxUses?` / ${t.maxUses}`:''}</td></tr>)}</tbody>
               </table>
             </div>
           </div>

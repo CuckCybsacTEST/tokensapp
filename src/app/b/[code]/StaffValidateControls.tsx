@@ -124,7 +124,10 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
         
         <div className="flex justify-between items-center">
           <span className="text-white/70">Vence:</span>
-          <span className="font-medium text-yellow-300">{expiresAt ? new Date(expiresAt).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '–'}</span>
+          <span className="font-medium text-yellow-300">{expiresAt ? (() => {
+            const expiresAtLima = DateTime.fromJSDate(new Date(expiresAt)).setZone('America/Lima');
+            return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
+          })() : '–'}</span>
         </div>
         
         {isHost && hostArrivedAt && (

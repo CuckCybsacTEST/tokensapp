@@ -123,6 +123,82 @@ export default function ScannerClient() {
     maybeNavigate(raw);
   }, [maybeNavigate]);
 
+  // Function to handle file upload for QR image processing
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Validate file type before processing
+      if (!file.type.startsWith('image/')) {
+        setErr('El archivo debe ser una imagen (PNG, JPG, JPEG, etc.)');
+        return;
+      }
+
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setErr('La imagen es demasiado grande. Máximo 10MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = String(reader.result);
+        try {
+          // Try native BarcodeDetector first
+          if ('BarcodeDetector' in window) {
+            const detector = new (window as any).BarcodeDetector(['qr_code']);
+            const img = new Image();
+            img.onload = async () => {
+              try {
+                const results = await detector.detect(img);
+                if (results && results.length > 0) {
+                  const raw = (results[0] as any).rawValue;
+                  await processQrText(raw);
+                } else {
+                  setErr('No se encontró código QR en la imagen');
+                }
+              } catch (detErr) {
+                // BarcodeDetector failed, will fallback to ZXing
+                console.warn('BarcodeDetector failed, trying ZXing fallback:', detErr);
+              }
+            };
+            img.src = dataUrl;
+          } else {
+            // Fallback to ZXing
+            const mod = await import('@zxing/browser');
+            const Reader = (mod as any).BrowserMultiFormatReader;
+            const codeReader = new Reader();
+            try {
+              const result = await codeReader.decodeFromImageUrl(dataUrl);
+              const raw = result?.getText();
+              if (raw) {
+                await processQrText(raw);
+              } else {
+                setErr('No se encontró código QR en la imagen');
+              }
+            } catch (zxingError: any) {
+              // Handle ZXing-specific errors more gracefully
+              const errorMessage = zxingError?.message || '';
+              if (errorMessage.includes('No MultiFormat Readers were able to detect the code') ||
+                  errorMessage.includes('NotFoundException')) {
+                setErr('No se pudo detectar un código QR válido en la imagen. Verifica que la imagen sea clara y contenga un código QR legible.');
+              } else {
+                console.error('ZXing error:', zxingError);
+                setErr('Error al procesar la imagen. Intenta con una imagen más clara.');
+              }
+            }
+          }
+        } catch (e: any) {
+          setErr('Error al procesar la imagen: ' + (e?.message || 'desconocido'));
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e: any) {
+      setErr('Error al leer el archivo: ' + (e?.message || 'desconocido'));
+    }
+  }, [processQrText]);
+
   useEffect(()=>{
     if (!active) return;
     let stream: MediaStream|null = null; // Only used for native detector path
@@ -299,55 +375,7 @@ export default function ScannerClient() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  
-                  try {
-                    const reader = new FileReader();
-                    reader.onload = async () => {
-                      const dataUrl = String(reader.result);
-                      try {
-                        // Try native BarcodeDetector first
-                        if ('BarcodeDetector' in window) {
-                          const detector = new (window as any).BarcodeDetector(['qr_code']);
-                          const img = new Image();
-                          img.onload = async () => {
-                            try {
-                              const results = await detector.detect(img);
-                              if (results && results.length > 0) {
-                                const raw = (results[0] as any).rawValue;
-                                await processQrText(raw);
-                              } else {
-                                setErr('No se encontró código QR en la imagen');
-                              }
-                            } catch (detErr) {
-                              setErr('Error al procesar la imagen');
-                            }
-                          };
-                          img.src = dataUrl;
-                        } else {
-                          // Fallback to ZXing
-                          const mod = await import('@zxing/browser');
-                          const Reader = (mod as any).BrowserMultiFormatReader;
-                          const codeReader = new Reader();
-                          const result = await codeReader.decodeFromImageUrl(dataUrl);
-                          const raw = result?.getText();
-                          if (raw) {
-                            await processQrText(raw);
-                          } else {
-                            setErr('No se encontró código QR en la imagen');
-                          }
-                        }
-                      } catch (e: any) {
-                        setErr('Error al procesar la imagen: ' + (e?.message || 'desconocido'));
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  } catch (e: any) {
-                    setErr('Error al leer el archivo: ' + (e?.message || 'desconocido'));
-                  }
-                }}
+                onChange={handleFileUpload}
               />
             </label>
           </div>

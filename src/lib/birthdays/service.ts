@@ -599,6 +599,14 @@ export async function generateInviteTokens(
     resDate: toIso(reservation.date),
     // Se omite ahora Lima exacto (aprox implícito en cálculo manual)
   });
+
+  // If tokens were regenerated and there's already a host arrival, recalculate expirations
+  if (opts?.force && reservation.hostArrivedAt) {
+    console.log('[BIRTHDAYS] generateInviteTokens: Recalculating expirations after force regeneration for reservation with host arrival');
+    const { recalculateTokenExpirations } = await import('./expiration-manager');
+    await recalculateTokenExpirations(reservationId);
+  }
+
   return result.tokens;
 }
 
