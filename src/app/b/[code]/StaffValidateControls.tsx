@@ -1,7 +1,8 @@
 "use client";
 import React, { useEffect, useState, useTransition } from 'react';
+import { DateTime } from 'luxon';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt }: { code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number; lastGuestArrivalAt?: string | null }) {
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt, reservationDate }: { code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number; lastGuestArrivalAt?: string | null; reservationDate?: string }) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
   const [max, setMax] = useState(multiUse?.max ?? (multiUse ? 0 : 1));
@@ -13,6 +14,18 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
   const [consumedOnce, setConsumedOnce] = useState(false); // evita múltiples consumos sin re-escanear
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
+  // Determinar si el token está disponible basado en la fecha de reserva
+  const isTokenAvailable = () => {
+    if (!reservationDate) return true; // Si no hay fecha de reserva, asumir disponible
+    
+    const nowLima = DateTime.now().setZone('America/Lima').startOf('day');
+    const reservationLima = DateTime.fromISO(reservationDate).setZone('America/Lima').startOf('day');
+    
+    return nowLima >= reservationLima;
+  };
+
+  const tokenAvailable = isTokenAvailable();
 
   // Marcar la “sesión de lectura” del QR al montar: si se recarga la página se considera un nuevo escaneo.
   useEffect(()=>{
@@ -64,25 +77,41 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
 
   const exhausted = status === 'exhausted' || (max > 0 && used >= max);
   const already = status === 'redeemed' && !multiUse;
-  const disableButton = pending || exhausted || already || consumedOnce;
+  const disableButton = pending || exhausted || already || consumedOnce || !tokenAvailable;
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg">
       <div className="text-sm font-semibold text-[#FF4D2E] mb-3 text-center">Validación de Ingreso</div>
       
-      {/* Botón principal prominente */}
-      <div className="flex justify-center mb-4">
-        <button 
-          onClick={validate} 
-          disabled={disableButton} 
-          className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 ${
-            disableButton 
-              ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-              : 'bg-[#FF4D2E] hover:bg-[#FF7A3C] active:scale-95 shadow-lg hover:shadow-xl'
-          } text-white`}
-        >
-          {pending ? 'Validando…' : isHost ? (hostArrivedAt ? '✅ Llegada Registrada' : '🚪 Marcar Llegada') : exhausted ? '❌ Agotado' : consumedOnce ? '✅ Registrado' : '✅ Registrar Ingreso'}
-        </button>
-      </div>
+      {/* Mostrar mensaje si el token no está disponible por fecha */}
+      {!tokenAvailable && (
+        <div className="mb-4 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-100 text-center">
+          <div className="text-lg mb-1">📅 Token no disponible aún</div>
+          <div className="text-sm opacity-80">
+            Este token solo estará disponible a partir del {reservationDate ? new Date(reservationDate).toLocaleDateString('es-ES', { 
+              year: 'numeric', 
+              month: '2-digit', 
+              day: '2-digit'
+            }) : 'fecha de reserva'}
+          </div>
+        </div>
+      )}
+      
+      {/* Botón principal prominente - solo mostrar si el token está disponible */}
+      {tokenAvailable && (
+        <div className="flex justify-center mb-4">
+          <button 
+            onClick={validate} 
+            disabled={disableButton} 
+            className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 ${
+              disableButton 
+                ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+                : 'bg-[#FF4D2E] hover:bg-[#FF7A3C] active:scale-95 shadow-lg hover:shadow-xl'
+            } text-white`}
+          >
+            {pending ? 'Validando…' : isHost ? (hostArrivedAt ? '✅ Llegada Registrada' : '🚪 Marcar Llegada') : exhausted ? '❌ Agotado' : consumedOnce ? '✅ Registrado' : '✅ Registrar Ingreso'}
+          </button>
+        </div>
+      )}
 
       {/* Información de estado */}
       <div className="grid grid-cols-1 gap-2 text-sm">

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { DateTime } from 'luxon';
 
 async function fetchToken(code: string, cookieHeader: string | undefined) {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/birthdays/invite/${encodeURIComponent(code)}`, {
@@ -75,6 +76,18 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   
   // Get hostArrivedAt from the correct location based on user type
   const hostArrivedAt = isPublic ? data.hostArrivedAt : data.reservation?.hostArrivedAt;
+  
+  // Determinar si el token está disponible basado en la fecha de reserva
+  const isTokenAvailable = () => {
+    if (!isStaff || !data.reservation?.date) return true; // Vista pública siempre muestra, staff necesita fecha de reserva
+    
+    const nowLima = DateTime.now().setZone('America/Lima').startOf('day');
+    const reservationLima = DateTime.fromISO(data.reservation.date).setZone('America/Lima').startOf('day');
+    
+    return nowLima >= reservationLima;
+  };
+
+  const tokenAvailable = isTokenAvailable();
 
   console.log('[CLIENT] Rendering with data:', {
     code: params.code,
@@ -83,7 +96,9 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
     hostArrivedAt: hostArrivedAt,
     tokenStatus: token.status,
     tokenKind: token.kind,
-    hasHostArrivedAt: !!hostArrivedAt
+    hasHostArrivedAt: !!hostArrivedAt,
+    tokenAvailable,
+    reservationDate: data.reservation?.date
   });
 
   return (
@@ -128,7 +143,25 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
           </div>
         )}
         
-        {isPublic && !token.isHost && (
+        {/* Mostrar mensaje si el token no está disponible por fecha - Vista pública */}
+        {isPublic && !tokenAvailable && (
+          <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-yellow-100 shadow-lg">
+            <div className="text-lg mb-2">📅 Token no disponible aún</div>
+            <div className="text-sm opacity-80 mb-2">
+              Este token estará disponible a partir del {data.reservation?.date ? new Date(data.reservation.date).toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: '2-digit', 
+                day: '2-digit'
+              }) : 'fecha de la reserva'}
+            </div>
+            <div className="text-xs opacity-70">
+              Vuelve en la fecha indicada para poder usar este código.
+            </div>
+          </div>
+        )}
+        
+        {/* Mostrar información de llegada solo si el token está disponible - Vista pública */}
+        {isPublic && tokenAvailable && !token.isHost && (
           <div className={`mt-4 rounded-xl border p-4 text-center font-semibold shadow-lg ${
             hostArrivedAt 
               ? 'border-green-500/30 bg-green-500/10 text-green-100' 
@@ -232,6 +265,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
               expiresAt={token.expiresAt}
               initialGuestArrivals={data.reservation?.guestArrivals || 0}
               lastGuestArrivalAt={data.reservation?.lastGuestArrivalAt}
+              reservationDate={data.reservation?.date}
             />
           </div>
         )}
