@@ -608,8 +608,19 @@ export async function listTokens(reservationId: string): Promise<InviteToken[]> 
 
 export async function redeemToken(code: string, context: RedeemContext = {}, byUserId?: string): Promise<{ token: InviteToken; redemption: TokenRedemption }>{
   const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const token = await tx.inviteToken.findUnique({ where: { code } });
+    const token = await tx.inviteToken.findUnique({ where: { code }, include: { reservation: true } });
     if (!token) throw new Error('TOKEN_NOT_FOUND');
+    
+    // Validate reservation date: tokens can only be redeemed on or after the reservation date
+    const reservation = token.reservation;
+    const reservationLimaDate = getLimaDate(reservation.date);
+    const nowLimaDate = nowLima().startOf('day');
+    const reservationDateOnly = reservationLimaDate.startOf('day');
+    
+    if (nowLimaDate < reservationDateOnly) {
+      throw new Error('RESERVATION_DATE_FUTURE');
+    }
+    
     const nowDt = now();
     const nowLimaDt = nowLima();
     const expiresAtLima = DateTime.fromJSDate(token.expiresAt).setZone('America/Lima');
