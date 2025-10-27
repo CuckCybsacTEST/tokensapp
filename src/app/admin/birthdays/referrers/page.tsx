@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
+import * as QRCode from "qrcode";
 
 type Referrer = {
   id: string;
@@ -40,6 +41,8 @@ export default function AdminReferrersPage() {
     phone: '',
   });
 
+  const [qrModal, setQrModal] = useState<{ open: boolean; slug: string; name: string } | null>(null);
+
   // Load referrers
   const loadReferrers = async () => {
     try {
@@ -59,44 +62,29 @@ export default function AdminReferrersPage() {
     loadReferrers();
   }, []);
 
-  // Handle form submission
+  // Generate link
+  const generateLink = (slug: string) => {
+    return `${window.location.origin}/reservatucumple/${slug}`;
+  };
+
+  // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
-
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      setError(null);
-
-      const url = editingId
-        ? `/api/admin/birthdays/referrers/${editingId}`
-        : '/api/admin/birthdays/referrers';
-
+      const url = editingId ? `/api/admin/birthdays/referrers/${editingId}` : '/api/admin/birthdays/referrers';
       const method = editingId ? 'PUT' : 'POST';
-
-      const payload = {
-        name: formData.name.trim(),
-        slug: formData.slug.trim(),
-        ...(formData.email.trim() && { email: formData.email.trim() }),
-        ...(formData.phone.trim() && { phone: formData.phone.trim() }),
-      };
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(formData),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error saving referrer');
-
-      // Reset form
-      setFormData({ name: '', slug: '', email: '', phone: '' });
+      await loadReferrers();
       setShowCreateForm(false);
       setEditingId(null);
-
-      // Reload list
-      await loadReferrers();
+      setFormData({ name: '', slug: '', email: '', phone: '' });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -106,27 +94,26 @@ export default function AdminReferrersPage() {
 
   // Handle edit
   const handleEdit = (referrer: Referrer) => {
+    setEditingId(referrer.id);
     setFormData({
       name: referrer.name,
       slug: referrer.slug,
       email: referrer.email || '',
       phone: referrer.phone || '',
     });
-    setEditingId(referrer.id);
     setShowCreateForm(true);
   };
 
   // Handle toggle active
-  const handleToggleActive = async (id: string, currentActive: boolean) => {
+  const handleToggleActive = async (id: string, active: boolean) => {
     try {
       const res = await fetch(`/api/admin/birthdays/referrers/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active: !currentActive }),
+        body: JSON.stringify({ active: !active }),
       });
-
-      if (!res.ok) throw new Error('Error updating referrer');
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error updating referrer');
       await loadReferrers();
     } catch (err: any) {
       setError(err.message);
@@ -135,43 +122,32 @@ export default function AdminReferrersPage() {
 
   // Handle delete
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este referrer?')) return;
-
+    if (!confirm('¿Estás seguro de que quieres eliminar este referrer?')) return;
     try {
       const res = await fetch(`/api/admin/birthdays/referrers/${id}`, {
         method: 'DELETE',
       });
-
-      if (!res.ok) throw new Error('Error deleting referrer');
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error deleting referrer');
       await loadReferrers();
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  // Generate link
-  const generateLink = (slug: string) => {
-    return `${window.location.origin}/cumpleanos/${slug}`;
-  };
-
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="p-6">Cargando...</div>;
   }
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      {/* Modal QR */}
+      <QRModal
+        open={!!qrModal?.open}
+        slug={qrModal?.slug || ""}
+        name={qrModal?.name || ""}
+        onClose={() => setQrModal(null)}
+      />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Gestión de Referrers
@@ -187,13 +163,11 @@ export default function AdminReferrersPage() {
           Nuevo Referrer
         </button>
       </div>
-
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
       )}
-
       {/* Create/Edit Form */}
       {showCreateForm && (
         <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border">
@@ -267,7 +241,6 @@ export default function AdminReferrersPage() {
           </form>
         </div>
       )}
-
       {/* Referrers List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
@@ -330,6 +303,13 @@ export default function AdminReferrersPage() {
                     >
                       📋 Copiar
                     </button>
+                    <button
+                      onClick={() => setQrModal({ open: true, slug: referrer.slug, name: referrer.name })}
+                      className="ml-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      title="Ver QR"
+                    >
+                      🧾 QR
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     <button
@@ -361,7 +341,6 @@ export default function AdminReferrersPage() {
             </tbody>
           </table>
         </div>
-
         {referrers.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">
@@ -369,6 +348,63 @@ export default function AdminReferrersPage() {
             </p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Modal para mostrar QR
+function QRModal({ open, slug, name, onClose }: { open: boolean; slug: string; name: string; onClose: () => void }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const url = typeof window !== "undefined" ? `${window.location.origin}/reservatucumple/${slug}` : '';
+  const hasGenerated = useRef(false);
+
+  useEffect(() => {
+    if (open && url && !hasGenerated.current) {
+      QRCode.toDataURL(url, { width: 256, margin: 2 })
+        .then(setQrDataUrl)
+        .catch(console.error);
+      hasGenerated.current = true;
+    }
+    if (!open) {
+      setQrDataUrl("");
+      hasGenerated.current = false;
+    }
+  }, [open, url]);
+
+  const downloadQR = () => {
+    if (!qrDataUrl) return;
+
+    // Convertir dataURL a blob
+    const link = document.createElement('a');
+    link.href = qrDataUrl;
+    link.download = `qr(${slug}).png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-xs flex flex-col items-center">
+        <div className="mb-2 text-lg font-bold text-gray-900 dark:text-white">QR de {name}</div>
+        {qrDataUrl ? (
+          <img src={qrDataUrl} alt={`QR para ${slug}`} className="mb-2 w-48 h-48 border rounded" />
+        ) : (
+          <div className="w-48 h-48 bg-gray-200 animate-pulse rounded mb-2"></div>
+        )}
+        <div className="text-xs text-gray-500 break-all mb-4">{url}</div>
+        <div className="flex gap-2 w-full">
+          <button
+            onClick={downloadQR}
+            disabled={!qrDataUrl}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            📥 Descargar QR
+          </button>
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Cerrar</button>
+        </div>
       </div>
     </div>
   );

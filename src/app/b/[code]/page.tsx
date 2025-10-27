@@ -97,7 +97,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
         <p className="text-base opacity-80 mb-4">Este pase ya expiró y no es válido para ingresar.</p>
         <div className="text-sm opacity-70 mb-2">Expiró el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
-        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+        <a href={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         <p className="text-base opacity-80 mb-4">Este pase solo será válido el día de la reserva.</p>
         <div className="text-sm opacity-70 mb-2">Reserva para: {reservationDate ? reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' }) : 'Fecha desconocida'}</div>
         <div className="text-sm opacity-70 mb-2">Expira el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
-        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+        <a href={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
       </div>
     );
   }
@@ -126,36 +126,35 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
           href={
             isPublic
               ? "/marketing"
-              : (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
-                ? "/admin/scanner"
-                : "/u/scanner")
+              : (data.isAdmin ? "/admin/scanner" : "/u/scanner")
           }
           className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white"
         >← Volver</a>
         
         <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg text-center text-[#FF4D2E]">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
         
-        {/* Información de reserva y expiración */}
-        <div className="text-sm opacity-70 mt-2 mb-2 text-center space-y-1">
-          <div>
-            📅 Reserva: {(() => {
-              // Mostrar fecha de reserva en zona Lima
-              const reservationDate = data.reservation?.date
-                ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
-                : null;
-              if (reservationDate) {
-                return reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
-              }
-              return 'Fecha no disponible';
-            })()}
+        {/* Información de reserva y expiración solo para sesión pública, no staff/admin */}
+        {isPublic && (
+          <div className="text-sm opacity-70 mt-2 mb-2 text-center space-y-1">
+            <div>
+              📅 Reserva: {(() => {
+                const reservationDate = data.reservation?.date
+                  ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
+                  : null;
+                if (reservationDate) {
+                  return reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
+                }
+                return 'Fecha no disponible';
+              })()}
+            </div>
+            <div>
+              ⏰ Expira: {(() => {
+                const expiresAtLima = DateTime.fromJSDate(new Date(token.expiresAt)).setZone('America/Lima');
+                return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
+              })()}
+            </div>
           </div>
-          <div>
-            ⏰ Expira: {(() => {
-              const expiresAtLima = DateTime.fromJSDate(new Date(token.expiresAt)).setZone('America/Lima');
-              return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
-            })()}
-          </div>
-        </div>
+        )}
         {token.isHost && (
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>
         )}

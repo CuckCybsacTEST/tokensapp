@@ -39,9 +39,10 @@ type AdminReservationCardProps = {
   onApprove: (id:string)=>void;
   onGenerateCards: (id:string)=>void;
   onViewCards: (id:string)=>void;
+  onReload: ()=>void;
 };
 
-const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove, busyGenerate, onApprove, onGenerateCards, onViewCards }: AdminReservationCardProps){
+const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove, busyGenerate, onApprove, onGenerateCards, onViewCards, onReload }: AdminReservationCardProps){
   // Mirror estilo de /u/birthdays
   const isApproved = r.status==='approved' || r.status==='completed';
   const isAlert = r.status==='pending_review' || r.status==='canceled';
@@ -84,7 +85,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
               const j = await res.json();
               if (!res.ok || !j?.ok) throw new Error(j?.code || j?.message || res.status);
               // Recargar lista
-              if (typeof window !== 'undefined' && window.load) window.load();
+              onReload();
             } catch(e:any) { /* manejar error */ }
           }}>Cancelar</button>
         )}
@@ -95,7 +96,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
               const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(r.id)}/complete`, { method: 'POST' });
               const j = await res.json();
               if (!res.ok || !j?.ok) throw new Error(j?.code || j?.message || res.status);
-              if (typeof window !== 'undefined' && window.load) window.load();
+              onReload();
             } catch(e:any) { /* manejar error */ }
           }}>Completar</button>
         )}
@@ -448,6 +449,7 @@ export default function AdminBirthdaysPage() {
               onViewCards={(id)=>{
                 window.open(`/marketing/birthdays/${encodeURIComponent(id)}/qrs?mode=admin`, '_blank', 'noopener');
               }}
+              onReload={load}
             />
           </div>
         ))}

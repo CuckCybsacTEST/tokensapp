@@ -82,7 +82,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
           date: r.date ? r.date.toISOString() : null,
           timeSlot: r.timeSlot || null,
           guestArrivals: r.guestArrivals || 0
-        }
+        },
+        isAdmin: false
       });
     }
     // Staff/Admin extended fields
@@ -111,7 +112,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       guestArrivals: r.guestArrivals || 0,
       lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null,
     };
-    return apiOk({ public: false, token: base, reservation: extended });
+    return apiOk({ public: false, token: base, reservation: extended, isAdmin: isStaff && session?.role === 'ADMIN' });
   } catch (e) {
   return apiError('INTERNAL_ERROR', 'Error interno');
   }

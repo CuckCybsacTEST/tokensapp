@@ -22,8 +22,13 @@ export async function GET(request: NextRequest) {
     // Calculate stats for each referrer
     const referrerStats = referrers.map((referrer: any) => {
       const totalReservations = referrer.reservations.length;
-      // Usar precio fijo de S/10 por reserva
-      const totalRevenue = totalReservations * 10;
+      const completedReservations = referrer.reservations.filter((r: any) => r.status === 'completed').length;
+      
+      // Virtual earnings: all reservations (S/10 each)
+      const virtualEarnings = totalReservations * 10;
+      
+      // Real earnings: only completed reservations (S/10 each)
+      const realEarnings = completedReservations * 10;
 
       // Calculate conversion rate (assuming all reservations are "converted" for now)
       // In a real scenario, you might track visits vs conversions
@@ -52,7 +57,9 @@ export async function GET(request: NextRequest) {
         slug: referrer.slug,
         active: referrer.active,
         totalReservations,
-        totalRevenue,
+        completedReservations,
+        virtualEarnings,
+        realEarnings,
         conversionRate,
         lastReservation,
         reservationsByMonth
@@ -63,7 +70,9 @@ export async function GET(request: NextRequest) {
     const totalReferrers = referrers.length;
     const activeReferrers = referrers.filter((r: any) => r.active).length;
     const totalReservations = referrerStats.reduce((sum: number, r: any) => sum + r.totalReservations, 0);
-    const totalRevenue = referrerStats.reduce((sum: number, r: any) => sum + r.totalRevenue, 0);
+    const totalCompletedReservations = referrerStats.reduce((sum: number, r: any) => sum + r.completedReservations, 0);
+    const totalVirtualEarnings = referrerStats.reduce((sum: number, r: any) => sum + r.virtualEarnings, 0);
+    const totalRealEarnings = referrerStats.reduce((sum: number, r: any) => sum + r.realEarnings, 0);
     const averageConversionRate = referrerStats.length > 0
       ? referrerStats.reduce((sum: number, r: any) => sum + r.conversionRate, 0) / referrerStats.length
       : 0;
@@ -72,7 +81,9 @@ export async function GET(request: NextRequest) {
       totalReferrers,
       activeReferrers,
       totalReservations,
-      totalRevenue,
+      totalCompletedReservations,
+      totalVirtualEarnings,
+      totalRealEarnings,
       averageConversionRate
     };
 

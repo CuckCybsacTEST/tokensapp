@@ -8,8 +8,10 @@ type ReferrerStats = {
   slug: string;
   active: boolean;
   totalReservations: number;
-  totalRevenue: number; // estimado basado en packs
-  conversionRate: number; // porcentaje de reservas activas
+  completedReservations: number;
+  virtualEarnings: number;
+  realEarnings: number;
+  conversionRate: number;
   lastReservation: string | null;
   reservationsByMonth: { month: string; count: number }[];
 };
@@ -18,7 +20,9 @@ type OverallStats = {
   totalReferrers: number;
   activeReferrers: number;
   totalReservations: number;
-  totalRevenue: number;
+  totalCompletedReservations: number;
+  totalVirtualEarnings: number;
+  totalRealEarnings: number;
   averageConversionRate: number;
 };
 
@@ -148,20 +152,37 @@ export default function ReferrersMetricsPage() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Reservas</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{overallStats.totalReservations}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{overallStats.totalCompletedReservations} completadas</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                <svg className="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ingresos Totales</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(overallStats.totalRevenue)}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ganancias Virtuales</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(overallStats.totalVirtualEarnings)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Todas las reservas</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ganancias Reales</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(overallStats.totalRealEarnings)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Reservas completadas</p>
               </div>
             </div>
           </div>
@@ -181,7 +202,13 @@ export default function ReferrersMetricsPage() {
                   Reservas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Ingresos
+                  Completadas
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Ganancias Virtuales
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Ganancias Reales
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Conversión
@@ -211,7 +238,13 @@ export default function ReferrersMetricsPage() {
                     {referrer.totalReservations}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {formatCurrency(referrer.totalRevenue)}
+                    {referrer.completedReservations}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {formatCurrency(referrer.virtualEarnings)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600 dark:text-green-400">
+                    {formatCurrency(referrer.realEarnings)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {referrer.conversionRate.toFixed(1)}%
