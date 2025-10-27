@@ -79,6 +79,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         token: { ...base, celebrantName: firstName },
         hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
         reservation: {
+          date: r.date ? r.date.toISOString() : null,
+          timeSlot: r.timeSlot || null,
           guestArrivals: r.guestArrivals || 0
         }
       });
