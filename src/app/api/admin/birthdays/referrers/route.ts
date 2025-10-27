@@ -9,6 +9,7 @@ const CreateReferrerSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug debe contener solo letras minúsculas, números y guiones'),
   email: z.string().optional(),
   phone: z.string().optional(),
+  commissionAmount: z.number().min(0).max(1000).optional(),
 }).refine((data) => {
   // Si se proporciona email, debe ser válido
   if (data.email && data.email.trim()) {
@@ -26,6 +27,7 @@ const UpdateReferrerSchema = z.object({
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  commissionAmount: z.number().min(0).max(1000).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -41,7 +43,13 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    return apiOk({ referrers }, 200, cors);
+    // Convert Decimal to number for commissionAmount
+    const formattedReferrers = referrers.map(referrer => ({
+      ...referrer,
+      commissionAmount: Number(referrer.commissionAmount || 10.00)
+    }));
+
+    return apiOk({ referrers: formattedReferrers }, 200, cors);
   } catch (error) {
     console.error('Error fetching referrers:', error);
     return apiError('INTERNAL_ERROR', 'Failed to fetch referrers', undefined, 500, cors);
@@ -60,7 +68,7 @@ export async function POST(req: NextRequest) {
       return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400, cors);
     }
 
-    const { name, slug, email, phone } = parsed.data;
+    const { name, slug, email, phone, commissionAmount } = parsed.data;
 
     // Verificar que el slug sea único
     const existing = await prisma.birthdayReferrer.findUnique({
@@ -80,6 +88,7 @@ export async function POST(req: NextRequest) {
         code,
         email: email?.trim() || null,
         phone: phone?.trim() || null,
+        commissionAmount: commissionAmount || 10.00,
         active: true,
       }
     });

@@ -10,6 +10,7 @@ type Referrer = {
   code: string;
   email: string | null;
   phone: string | null;
+  commissionAmount: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +24,7 @@ type ReferrerFormData = {
   slug: string;
   email: string;
   phone: string;
+  commissionAmount: number;
 };
 
 export default function AdminReferrersPage() {
@@ -39,6 +41,7 @@ export default function AdminReferrersPage() {
     slug: '',
     email: '',
     phone: '',
+    commissionAmount: 10.00,
   });
 
   const [qrModal, setQrModal] = useState<{ open: boolean; slug: string; name: string } | null>(null);
@@ -84,7 +87,7 @@ export default function AdminReferrersPage() {
       await loadReferrers();
       setShowCreateForm(false);
       setEditingId(null);
-      setFormData({ name: '', slug: '', email: '', phone: '' });
+      setFormData({ name: '', slug: '', email: '', phone: '', commissionAmount: 10.00 });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -100,6 +103,7 @@ export default function AdminReferrersPage() {
       slug: referrer.slug,
       email: referrer.email || '',
       phone: referrer.phone || '',
+      commissionAmount: referrer.commissionAmount,
     });
     setShowCreateForm(true);
   };
@@ -156,7 +160,7 @@ export default function AdminReferrersPage() {
           onClick={() => {
             setShowCreateForm(true);
             setEditingId(null);
-            setFormData({ name: '', slug: '', email: '', phone: '' });
+            setFormData({ name: '', slug: '', email: '', phone: '', commissionAmount: 10.00 });
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
         >
@@ -218,6 +222,18 @@ export default function AdminReferrersPage() {
                   className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Monto de Comisión (S/)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.commissionAmount}
+                  onChange={(e) => setFormData({ ...formData, commissionAmount: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  required
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -257,6 +273,9 @@ export default function AdminReferrersPage() {
                   Reservas
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Comisión (S/)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -285,6 +304,9 @@ export default function AdminReferrersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {referrer._count.reservations}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    S/ {referrer.commissionAmount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

@@ -10,6 +10,7 @@ const UpdateReferrerSchema = z.object({
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  commissionAmount: z.number().min(0).max(1000).optional(),
 });
 
 export async function GET(
@@ -45,7 +46,13 @@ export async function GET(
       return apiError('NOT_FOUND', 'Referrer not found', undefined, 404, cors);
     }
 
-    return apiOk({ referrer }, 200, cors);
+    // Convert Decimal to number for commissionAmount
+    const formattedReferrer = {
+      ...referrer,
+      commissionAmount: Number(referrer.commissionAmount || 10.00)
+    };
+
+    return apiOk({ referrer: formattedReferrer }, 200, cors);
   } catch (error) {
     console.error('Error fetching referrer:', error);
     return apiError('INTERNAL_ERROR', 'Failed to fetch referrer', undefined, 500, cors);

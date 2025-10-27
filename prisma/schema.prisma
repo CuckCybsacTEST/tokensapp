@@ -286,6 +286,7 @@ model BirthdayReferrer {
   code          String                @unique // Código generado único
   email         String?
   phone         String?
+  commissionAmount Decimal?            @default(10.00) @db.Decimal(10,2) // Monto de comisión por referido en S/
   active        Boolean               @default(true)
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt

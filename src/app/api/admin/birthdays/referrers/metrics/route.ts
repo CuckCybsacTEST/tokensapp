@@ -24,11 +24,14 @@ export async function GET(request: NextRequest) {
       const totalReservations = referrer.reservations.length;
       const completedReservations = referrer.reservations.filter((r: any) => r.status === 'completed').length;
       
-      // Virtual earnings: all reservations (S/10 each)
-      const virtualEarnings = totalReservations * 10;
+      // Use referrer's commission amount, default to 10.00 if not set
+      const commissionAmount = Number(referrer.commissionAmount || 10.00);
       
-      // Real earnings: only completed reservations (S/10 each)
-      const realEarnings = completedReservations * 10;
+      // Virtual earnings: all reservations (commission amount each)
+      const virtualEarnings = totalReservations * commissionAmount;
+      
+      // Real earnings: only completed reservations (commission amount each)
+      const realEarnings = completedReservations * commissionAmount;
 
       // Calculate conversion rate (assuming all reservations are "converted" for now)
       // In a real scenario, you might track visits vs conversions
