@@ -122,7 +122,16 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>
       <div className="w-full max-w-xl mx-auto rounded-2xl shadow-2xl bg-gradient-to-br from-white/5 to-white/2 border border-white/10 p-6 md:p-10 flex flex-col items-center">
-        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white">← Volver</a>
+        <a
+          href={
+            isPublic
+              ? "/marketing"
+              : (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+                ? "/admin/scanner"
+                : "/u/scanner")
+          }
+          className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white"
+        >← Volver</a>
         
         <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg text-center text-[#FF4D2E]">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
         
