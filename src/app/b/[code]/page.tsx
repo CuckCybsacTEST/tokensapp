@@ -74,21 +74,50 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   const isPublic = data.public;
   const isStaff = !isPublic;
   const firstName = isPublic ? token.celebrantName : token.celebrantName.split(/\s+/)[0];
-  
   // Get hostArrivedAt from the correct location based on user type
   const hostArrivedAt = isPublic ? data.hostArrivedAt : data.reservation?.hostArrivedAt;
-  
+
+  // Detectar expiración del token
+  const nowLima = DateTime.now().setZone('America/Lima');
+  const expiresAtLima = DateTime.fromISO(token.expiresAt).setZone('America/Lima');
+  const isExpired = nowLima > expiresAtLima;
+
   // Determinar si el token está disponible basado en la fecha de reserva
   const isTokenAvailable = () => {
     if (!isStaff || !data.reservation?.date) return true; // Vista pública siempre muestra, staff necesita fecha de reserva
-    
-    const nowLima = DateTime.now().setZone('America/Lima').startOf('day');
     const reservationLima = DateTime.fromISO(data.reservation.date).setZone('America/Lima').startOf('day');
-    
-    return nowLima >= reservationLima;
+    return nowLima.startOf('day') >= reservationLima;
   };
-
   const tokenAvailable = isTokenAvailable();
+
+  if (isExpired) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d0a0a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">⏰</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
+        <p className="text-base opacity-80 mb-4">Este pase ya expiró y no es válido para ingresar.</p>
+        <div className="text-sm opacity-70 mb-2">Expiró el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
+        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+      </div>
+    );
+  }
+
+  if (!tokenAvailable) {
+    const reservationDate = data.reservation?.date
+      ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
+      : null;
+    const expiresAtLima = DateTime.fromISO(token.expiresAt).setZone('America/Lima');
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#0a2d2d] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">🕒</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#2ECFFF]">Token aún no válido</h1>
+        <p className="text-base opacity-80 mb-4">Este pase solo será válido el día de la reserva.</p>
+        <div className="text-sm opacity-70 mb-2">Reserva para: {reservationDate ? reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' }) : 'Fecha desconocida'}</div>
+        <div className="text-sm opacity-70 mb-2">Expira el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
+        <a href={isPublic ? "/u" : "/admin"} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>
@@ -101,11 +130,12 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         <div className="text-sm opacity-70 mt-2 mb-2 text-center space-y-1">
           <div>
             📅 Reserva: {(() => {
-              // Mostrar fecha de reserva (ya viene en formato local)
-              const reservationDate = data.reservation?.date ? new Date(data.reservation.date) : null;
+              // Mostrar fecha de reserva en zona Lima
+              const reservationDate = data.reservation?.date
+                ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
+                : null;
               if (reservationDate) {
-                const reservationLocal = DateTime.fromJSDate(reservationDate);
-                return reservationLocal.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
+                return reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
               }
               return 'Fecha no disponible';
             })()}
