@@ -298,7 +298,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
         timeSlot: input.timeSlot.trim(),
         packId: input.packId,
         guestsPlanned: input.guestsPlanned,
-        status: 'pending_review',
+  status: 'approved',
         createdBy: input.createdBy || null,
         referrerId: input.referrerId || null,
       },

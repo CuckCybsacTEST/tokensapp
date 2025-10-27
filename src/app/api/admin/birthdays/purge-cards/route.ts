@@ -38,16 +38,35 @@ export async function POST(req: NextRequest) {
         console.log('[PURGE] Registros InviteTokenCard eliminados:', tokenIds);
       } catch(e) { console.log('[PURGE] Error al eliminar InviteTokenCard:', e); }
       try {
+        await prisma.tokenRedemption.deleteMany({ where: { tokenId: { in: tokenIds } } });
+        console.log('[PURGE] TokenRedemptions eliminados para tokens:', tokenIds);
+      } catch(e) { console.log('[PURGE] Error al eliminar TokenRedemption por tokenId:', e); }
+      try {
         await prisma.inviteToken.deleteMany({ where: { id: { in: tokenIds } } });
         console.log('[PURGE] Tokens eliminados:', tokenIds);
       } catch(e) { console.log('[PURGE] Error al eliminar InviteToken:', e); }
+    }
+    // Borrar registros relacionados con las reservas antes de eliminar las reservas
+    if (ids.length) {
+      try {
+        await prisma.courtesyItem.deleteMany({ where: { reservationId: { in: ids } } });
+        console.log('[PURGE] CourtesyItems eliminados para reservas:', ids);
+      } catch(e) { console.log('[PURGE] Error al eliminar CourtesyItem:', e); }
+      try {
+        await prisma.photoDeliverable.deleteMany({ where: { reservationId: { in: ids } } });
+        console.log('[PURGE] PhotoDeliverables eliminados para reservas:', ids);
+      } catch(e) { console.log('[PURGE] Error al eliminar PhotoDeliverable:', e); }
+      try {
+        await prisma.tokenRedemption.deleteMany({ where: { reservationId: { in: ids } } });
+        console.log('[PURGE] TokenRedemptions eliminados para reservas:', ids);
+      } catch(e) { console.log('[PURGE] Error al eliminar TokenRedemption:', e); }
     }
     // Borrar reservas
     if (ids.length) {
       try {
         await prisma.birthdayReservation.deleteMany({ where: { id: { in: ids } } });
         console.log('[PURGE] Reservas eliminadas:', ids);
-      } catch(e) { console.log('[PURGE] Error al eliminar BirthdayReservation:', e); }
+      } catch(e) { console.log('[PURGE] Error al eliminar birthdayReservation:', e); }
     }
     return apiOk({ ok:true, purgedReservations: ids.length, filesRemoved });
   } catch(e:any) {

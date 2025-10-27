@@ -75,6 +75,30 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
         {!r.tokensGeneratedAt && <button className="btn h-8 px-3" disabled={busyGenerate} onClick={()=>onGenerateCards(r.id)}>{busyGenerate? 'Generando…':'Generar tarjetas'}</button>}
         {r.tokensGeneratedAt && <button className="btn h-8 px-3" onClick={()=>onViewCards(r.id)}>Ver tarjetas</button>}
         <a className="btn h-8 px-3" href={`/admin/birthdays/${encodeURIComponent(r.id)}`}>Detalle</a>
+        {/* Botones para cancelar y completar reserva */}
+        {r.status !== 'canceled' && (
+          <button className="btn h-8 px-3 bg-rose-600 text-white" onClick={async()=>{
+            if (!confirm('¿Cancelar esta reserva?')) return;
+            try {
+              const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(r.id)}/cancel`, { method: 'POST' });
+              const j = await res.json();
+              if (!res.ok || !j?.ok) throw new Error(j?.code || j?.message || res.status);
+              // Recargar lista
+              if (typeof window !== 'undefined' && window.load) window.load();
+            } catch(e:any) { /* manejar error */ }
+          }}>Cancelar</button>
+        )}
+        {r.status !== 'completed' && r.status !== 'canceled' && (
+          <button className="btn h-8 px-3 bg-emerald-600 text-white" onClick={async()=>{
+            if (!confirm('¿Completar esta reserva?')) return;
+            try {
+              const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(r.id)}/complete`, { method: 'POST' });
+              const j = await res.json();
+              if (!res.ok || !j?.ok) throw new Error(j?.code || j?.message || res.status);
+              if (typeof window !== 'undefined' && window.load) window.load();
+            } catch(e:any) { /* manejar error */ }
+          }}>Completar</button>
+        )}
       </div>
     </div>
   );
@@ -209,6 +233,15 @@ export default function AdminBirthdaysPage() {
   }
 
   const empty = !loading && items.length === 0;
+
+  // Pestañas de estado
+  const statusTabs = [
+    { value: '', label: 'Todas' },
+    { value: 'approved', label: 'Aprobadas' },
+    { value: 'completed', label: 'Completadas' },
+    { value: 'canceled', label: 'Canceladas' },
+    { value: 'pending_review', label: 'Pendientes' },
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -413,13 +446,9 @@ export default function AdminBirthdaysPage() {
               onApprove={approve}
               onGenerateCards={async (id)=>{ await generateCards(id); }}
               onViewCards={(id)=>{
-                // Para admins usamos modo admin; la página intentará endpoints protegidos y fallback a public-secret si no autorizado.
                 window.open(`/marketing/birthdays/${encodeURIComponent(id)}/qrs?mode=admin`, '_blank', 'noopener');
               }}
             />
-            {!r.tokensGeneratedAt && cardGenErr[r.id] && (
-              <div className="text-[11px] text-rose-500 dark:text-rose-300 ml-1">{cardGenErr[r.id]}</div>
-            )}
           </div>
         ))}
       </div>
