@@ -97,16 +97,25 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         
         <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg text-center text-[#FF4D2E]">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
         
-        {/* Información de expiración */}
-        <div className="text-sm opacity-70 mt-2 mb-2 text-center">
-          {hostArrivedAt && hostArrivedAt !== null ? (
-            <>Expira: {(() => {
+        {/* Información de reserva y expiración */}
+        <div className="text-sm opacity-70 mt-2 mb-2 text-center space-y-1">
+          <div>
+            📅 Reserva: {(() => {
+              // Mostrar fecha de reserva (ya viene en formato local)
+              const reservationDate = data.reservation?.date ? new Date(data.reservation.date) : null;
+              if (reservationDate) {
+                const reservationLocal = DateTime.fromJSDate(reservationDate);
+                return reservationLocal.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
+              }
+              return 'Fecha no disponible';
+            })()}
+          </div>
+          <div>
+            ⏰ Expira: {(() => {
               const expiresAtLima = DateTime.fromJSDate(new Date(token.expiresAt)).setZone('America/Lima');
               return expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
-            })()}</>
-          ) : (
-            <>Expira: 45 min después de llegada del cumpleañero</>
-          )}
+            })()}
+          </div>
         </div>
         {token.isHost && (
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>
