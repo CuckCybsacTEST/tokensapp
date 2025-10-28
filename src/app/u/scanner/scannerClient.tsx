@@ -60,13 +60,20 @@ export default function ScannerClient() {
   // Function to check if user has staff/admin role
   const checkUserIsStaff = useCallback(async (): Promise<boolean> => {
     try {
+      console.log('[SCANNER] Checking user role...');
       const cookies = document.cookie.split(';');
+      console.log('[SCANNER] All cookies:', cookies);
       const sessionCookie = cookies.find(cookie => cookie.trim().startsWith('admin_session='));
+      console.log('[SCANNER] Session cookie found:', !!sessionCookie);
       if (!sessionCookie) return false;
       
       const rawCookie = sessionCookie.split('=')[1];
+      console.log('[SCANNER] Raw cookie value:', rawCookie);
       const session = await verifySessionCookie(rawCookie);
-      return hasAnyRole(session, ['ADMIN', 'STAFF']);
+      console.log('[SCANNER] Session data:', session);
+      const hasRole = hasAnyRole(session, ['ADMIN', 'STAFF']);
+      console.log('[SCANNER] Has staff/admin role:', hasRole);
+      return hasRole;
     } catch (e) {
       console.error('Error checking user role:', e);
       return false;
@@ -75,24 +82,33 @@ export default function ScannerClient() {
 
   // Function to navigate to birthday pages
   const maybeNavigate = useCallback(async (raw: string) => {
+    console.log('[SCANNER] maybeNavigate called with:', raw);
     if (redirectedRef.current) return;
     try {
       const url = new URL(raw);
+      console.log('[SCANNER] URL parsed:', url.pathname);
       // Patrón principal: /b/<code> (tanto relativo como absoluto)
       if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
+        console.log('[SCANNER] Birthday QR detected');
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         const code = url.pathname.split('/')[2];
+        console.log('[SCANNER] Extracted code:', code);
         const isStaffUser = await checkUserIsStaff();
+        console.log('[SCANNER] Is staff user:', isStaffUser);
         
         if (isStaffUser) {
+          console.log('[SCANNER] Redirecting to admin page');
           // For staff/admin users, get reservation ID and redirect to admin page
           try {
             const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`);
+            console.log('[SCANNER] API response status:', res.status);
             if (res.ok) {
               const data = await res.json();
+              console.log('[SCANNER] API data:', data);
               if (data?.reservation?.id) {
                 const targetUrl = `/admin/birthdays/${data.reservation.id}`;
+                console.log('[SCANNER] Redirecting to:', targetUrl);
                 setTimeout(()=>{ window.location.href = targetUrl; }, 120);
                 return;
               }
@@ -101,8 +117,10 @@ export default function ScannerClient() {
             console.error('Error fetching reservation ID:', e);
           }
           // Fallback if API call fails
+          console.log('[SCANNER] API call failed, using fallback');
           setTimeout(()=>{ window.location.href = raw; }, 120);
         } else {
+          console.log('[SCANNER] Not staff user, redirecting to public page');
           // Public users: redirect to public birthday page
           setTimeout(()=>{ window.location.href = raw; }, 120);
         }
