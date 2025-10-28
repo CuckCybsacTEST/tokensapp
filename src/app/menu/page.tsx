@@ -205,18 +205,13 @@ export default function MenuPage() {
     product.categoryId === selectedCategory && product.available
   );
   const submitOrder = async () => {
-    if (!tableId) {
-      alert("Por favor selecciona una mesa o zona de servicio");
-      return;
-    }
-
     if (cart.length === 0) {
       alert("El carrito está vacío");
       return;
     }
 
-    // Si viene desde QR (tiene tableId), pedir nombre del cliente
-    if (tableId && !customerName.trim()) {
+    // Pedir nombre del cliente para identificación (siempre, para pedidos públicos y con mesa)
+    if (!customerName.trim()) {
       setShowCustomerNameModal(true);
       return;
     }
@@ -233,7 +228,7 @@ export default function MenuPage() {
     setIsSubmitting(true);
     try {
       const orderData = {
-        servicePointId: tableId,
+        ...(tableId && { servicePointId: tableId }), // Solo enviar servicePointId si hay tableId
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -266,14 +261,11 @@ export default function MenuPage() {
         // Emitir evento de Socket.IO
         if (socket) {
           const selectedTable = tables.find(t => t.id === tableId);
-          let locationName = "";
-          if (selectedTable) {
-            locationName = selectedTable.name || `${selectedTable.type} ${selectedTable.number}`;
-          }
+          let locationName = tableId ? (selectedTable?.name || `${selectedTable?.type} ${selectedTable?.number}`) : "Pedido Público";
 
           socket.emit("new-order", {
             orderId: result.order.id,
-            tableId: tableId,
+            tableId: tableId || null,
             tableName: locationName,
             items: cart,
             total: getTotalPrice(),
@@ -429,7 +421,7 @@ export default function MenuPage() {
               </div>
               <button
                 onClick={submitOrder}
-                disabled={isSubmitting || !tableId}
+                disabled={isSubmitting}
                 className="bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 {isSubmitting ? "Enviando..." : "Hacer Pedido"}

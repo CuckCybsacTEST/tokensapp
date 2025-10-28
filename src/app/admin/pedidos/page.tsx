@@ -466,7 +466,17 @@ export default function AdminPedidosPage() {
                     {getStatusIcon(order.status)}
                     <span>{getStatusText(order.status)}</span>
                   </div>
-                  
+
+                  {/* Indicador de Auto-pedido QR - Muy prominente */}
+                  {order.isFromQR && (
+                    <div className="bg-purple-500/20 border-2 border-purple-500/50 px-3 py-1.5 rounded-full">
+                      <div className="flex items-center gap-2">
+                        <span className="text-purple-400">📱</span>
+                        <span className="text-purple-300 font-bold text-sm">AUTO-PEDIDO</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Zona/Mesa - Mayor jerarquía */}
                   <div className="bg-gray-800/50 px-3 py-2 rounded-lg">
                     <span className="text-white font-bold text-base md:text-lg">{getOrderLocationName(order)}</span>
@@ -517,7 +527,7 @@ export default function AdminPedidosPage() {
                         <span className="sm:hidden">{order.customerName.split(' ')[0]}</span>
                         {order.isFromQR && (
                           <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-medium border border-purple-500/30">
-                            QR
+                            📱 Auto-pedido
                           </span>
                         )}
                       </div>

@@ -65,6 +65,7 @@ interface ServicePoint {
   qrCode?: string;
   createdAt: Date;
   updatedAt: Date;
+  _qrRefresh?: number; // Campo temporal para forzar regeneración de QR
 }
 
 export default function LocationsManager() {
@@ -223,6 +224,39 @@ export default function LocationsManager() {
     }
   };
 
+  const handleRegenerateQR = async (servicePoint: ServicePoint) => {
+    try {
+      const response = await fetch(`/api/admin/service-points/${servicePoint.id}/regenerate-qr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al regenerar QR');
+      }
+
+      const result = await response.json();
+
+      // Actualizar el estado local con el service point actualizado
+      setLocations(prevLocations =>
+        prevLocations.map(location => ({
+          ...location,
+          servicePoints: location.servicePoints.map(sp =>
+            sp.id === servicePoint.id
+              ? { ...sp, qrCode: result.qrUrl, updatedAt: new Date() }
+              : sp
+          )
+        }))
+      );
+
+      alert(result.message);
+    } catch (error) {
+      console.error('Error regenerating QR:', error);
+      alert(error instanceof Error ? error.message : 'Error al regenerar QR');
+    }
+  };
+
   const getLocationTypeLabel = (type: LocationType) => {
     switch (type) {
       case LocationType.DINING: return "Zona general";
@@ -350,6 +384,12 @@ export default function LocationsManager() {
                             Editar
                           </button>
                           <button 
+                            onClick={() => handleRegenerateQR(servicePoint)}
+                            className="text-green-600 hover:text-green-800 text-sm"
+                          >
+                            🔄 Regenerar QR
+                          </button>
+                          <button 
                             onClick={() => handleDeleteServicePoint(servicePoint)}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
@@ -361,15 +401,26 @@ export default function LocationsManager() {
                             <div className="space-y-2">
                               <span className="text-xs text-gray-500 dark:text-gray-400 block">QR del menú</span>
                               <div className="flex items-center space-x-3">
-                                <QRDisplay 
-                                  url={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                <QRDisplay
+                                  key={servicePoint.qrCode || servicePoint.id}
+                                  url={servicePoint.qrCode || `${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
                                   size={80}
                                 />
                                 <div className="flex flex-col space-y-1">
-                                  <QrDownloadButton 
-                                    data={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                  <QrDownloadButton
+                                    key={`download-${servicePoint.qrCode || servicePoint.id}`}
+                                    data={servicePoint.qrCode || `${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
                                     fileName={`qr-${servicePoint.name || servicePoint.number}.png`}
                                   />
+                                  <a
+                                    href={servicePoint.qrCode || `${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline"
+                                    title="Abrir enlace del menú"
+                                  >
+                                    Abrir enlace →
+                                  </a>
                                   <span className="text-xs text-gray-400">
                                     {servicePoint.name || `${servicePoint.type} ${servicePoint.number}`}
                                   </span>
