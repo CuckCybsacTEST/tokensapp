@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { verifySessionCookie, hasAnyRole } from '@/lib/auth';
 
 interface ScanResult { 
   text: string; 
@@ -56,8 +57,24 @@ export default function ScannerClient() {
     return false;
   }, []);
 
+  // Function to check if user has staff/admin role
+  const checkUserIsStaff = useCallback(async (): Promise<boolean> => {
+    try {
+      const cookies = document.cookie.split(';');
+      const sessionCookie = cookies.find(cookie => cookie.trim().startsWith('admin_session='));
+      if (!sessionCookie) return false;
+      
+      const rawCookie = sessionCookie.split('=')[1];
+      const session = await verifySessionCookie(rawCookie);
+      return hasAnyRole(session, ['ADMIN', 'STAFF']);
+    } catch (e) {
+      console.error('Error checking user role:', e);
+      return false;
+    }
+  }, []);
+
   // Function to navigate to birthday pages
-  const maybeNavigate = useCallback((raw: string) => {
+  const maybeNavigate = useCallback(async (raw: string) => {
     if (redirectedRef.current) return;
     try {
       const url = new URL(raw);
@@ -65,8 +82,30 @@ export default function ScannerClient() {
       if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
-        // pequeña pausa para permitir sonido/flash visual
-        setTimeout(()=>{ window.location.href = raw; }, 120);
+        const code = url.pathname.split('/')[2];
+        const isStaffUser = await checkUserIsStaff();
+        
+        if (isStaffUser) {
+          // For staff/admin users, get reservation ID and redirect to admin page
+          try {
+            const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data?.reservation?.id) {
+                const targetUrl = `/admin/birthdays/${data.reservation.id}`;
+                setTimeout(()=>{ window.location.href = targetUrl; }, 120);
+                return;
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching reservation ID:', e);
+          }
+          // Fallback if API call fails
+          setTimeout(()=>{ window.location.href = raw; }, 120);
+        } else {
+          // Public users: redirect to public birthday page
+          setTimeout(()=>{ window.location.href = raw; }, 120);
+        }
         return;
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
@@ -83,11 +122,34 @@ export default function ScannerClient() {
         if (code && code.length >= 4 && !redirectedRef.current) {
           redirectedRef.current = true;
           setActive(false);
-          setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
+          const isStaffUser = await checkUserIsStaff();
+          
+          if (isStaffUser) {
+            // For staff/admin users, get reservation ID and redirect to admin page
+            try {
+              const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data?.reservation?.id) {
+                  const targetUrl = `/admin/birthdays/${data.reservation.id}`;
+                  setTimeout(()=>{ window.location.href = targetUrl; }, 120);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error('Error fetching reservation ID:', e);
+            }
+            // Fallback
+            const targetUrl = `/b/${encodeURIComponent(code)}`;
+            setTimeout(()=>{ window.location.href = targetUrl; }, 120);
+          } else {
+            const targetUrl = `/b/${encodeURIComponent(code)}`;
+            setTimeout(()=>{ window.location.href = targetUrl; }, 120);
+          }
         }
       }
     }
-  }, []);
+  }, [checkUserIsStaff]);
 
   // Function to process QR text (extracted for reuse)
   const processQrText = useCallback(async (raw: string) => {
