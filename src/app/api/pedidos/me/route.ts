@@ -8,6 +8,8 @@ import { StaffRole } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticación con user_session o admin_session

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
@@ -51,7 +51,7 @@ interface CartItem {
   notes?: string;
 }
 
-export default function MenuPage() {
+function MenuPageContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
@@ -572,5 +572,20 @@ export default function MenuPage() {
         autoCloseDelay={8000}
       />
     </div>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Cargando menú...</p>
+        </div>
+      </div>
+    }>
+      <MenuPageContent />
+    </Suspense>
   );
 }

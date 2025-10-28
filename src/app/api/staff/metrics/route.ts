@@ -3,6 +3,8 @@ import { prisma } from "../../../../lib/prisma";
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
 import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticación con user_session o admin_session
