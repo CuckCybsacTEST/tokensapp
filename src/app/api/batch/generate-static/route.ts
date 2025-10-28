@@ -31,7 +31,7 @@ const validitySchema = z.union([byDaysValidity, singleDayValidity, singleHourVal
 
 const bodySchema = z.object({
   name: z.string().min(1).max(120),
-  targetUrl: z.string().url().refine(u => /^https?:\/\//.test(u), 'TARGET_URL_PROTOCOL'),
+  targetUrl: z.string().url().refine(u => /^https?:\/\//.test(u), 'TARGET_URL_PROTOCOL').optional(),
   prizes: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().positive().max(100000) })).min(1),
   validity: validitySchema,
   includeQr: z.boolean().optional().default(true),
@@ -105,6 +105,11 @@ export async function POST(req: Request) {
     return apiError('STATIC_GEN_FAIL', 'Fallo generación', { message: e?.message }, 500);
   }
 
+  // Anotar batch como estático con URL destino ANTES del post-proceso
+  console.log(`[GENERATE-STATIC] Setting staticTargetUrl for batch ${result.batch.id}, targetUrl: ${targetUrl}`);
+  await prisma.batch.update({ where: { id: result.batch.id }, data: { staticTargetUrl: targetUrl || '' } as any });
+  console.log(`[GENERATE-STATIC] staticTargetUrl set successfully`);
+
   // Recalculate new stocks: original - requested
   try {
     await prisma.$transaction(async (tx) => {
@@ -114,22 +119,36 @@ export async function POST(req: Request) {
         if (remainder < 0) throw new Error('NEGATIVE_STOCK');
         await tx.prize.update({ where: { id: p.id }, data: { stock: remainder, emittedTotal: { increment: requested } } });
       }
-  // Anotar batch como estático con URL destino
-  await tx.batch.update({ where: { id: result.batch.id }, data: { staticTargetUrl: targetUrl } as any });
     });
   } catch (e) {
     await logEvent('STATIC_PATCH_STOCK_ERROR', 'Error al ajustar stock post generación', { batchId: result.batch.id });
   }
 
   // Post-processing validity
+  console.log(`[GENERATE-STATIC] Starting post-processing for batch ${result.batch.id}, validity mode: ${validity.mode}`);
   let windowStart: Date | null = null;
   let windowEnd: Date | null = null;
   if (validity.mode === 'singleDay') {
+    console.log(`[GENERATE-STATIC] Processing singleDay for batch ${result.batch.id}, date: ${validity.date}`);
+    // Validate that the date is not in the past
+    const dt = DateTime.fromISO(validity.date, { zone: 'America/Lima' });
+    if (!dt.isValid) return apiError('INVALID_DATE', 'Fecha inválida', undefined, 400);
+    const now = DateTime.now().setZone('America/Lima').startOf('day');
+    if (dt.startOf('day') < now) return apiError('PAST_DATE', 'No se pueden crear lotes para fechas pasadas', undefined, 400);
+    
     try {
       const r = await applySingleDayWindow({ batchId: result.batch.id, isoDate: validity.date });
       windowStart = r.windowStart; windowEnd = r.windowEnd;
     } catch { return apiError('INVALID_DATE', 'Fecha inválida', undefined, 400); }
   } else if (validity.mode === 'singleHour') {
+    // Validate that the date/time is not in the past
+    const base = DateTime.fromISO(validity.date, { zone: 'America/Lima' });
+    if (!base.isValid) return apiError('INVALID_DATE', 'Fecha inválida', undefined, 400);
+    const [hh, mm] = validity.hour.split(':').map(Number);
+    const startDateTime = base.set({ hour: hh, minute: mm, second: 0, millisecond: 0 });
+    const now = DateTime.now().setZone('America/Lima');
+    if (startDateTime < now) return apiError('PAST_DATE', 'No se pueden crear lotes para fechas/horas pasadas', undefined, 400);
+    
     try {
       const r = await applySingleHourWindow({ batchId: result.batch.id, isoDate: validity.date, hour: validity.hour, durationMinutes: validity.durationMinutes });
       windowStart = r.windowStart; windowEnd = r.windowEnd;
@@ -175,7 +194,7 @@ export async function POST(req: Request) {
     const first = list[0];
     manifest.prizes.push({ prizeId, prizeKey: first.prize.key, prizeLabel: first.prize.label, count: list.length });
     for (const t of list) {
-      const redirectUrl = `${baseUrl}/s/${t.id}`;
+      const redirectUrl = `${baseUrl}/static/${t.id}`;
       csvRows.push([
         t.id,
         result.batch.id,

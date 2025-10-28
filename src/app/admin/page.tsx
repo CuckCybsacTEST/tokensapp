@@ -31,6 +31,7 @@ export default async function AdminDashboard() {
             <a href="/admin/tokens" className="btn">Panel de Control</a>
             <a href="/admin/prizes" className="btn">Gestión de Tokens</a>
             <a href="/admin/batches" className="btn">Lotes</a>
+            <a href="/admin/static-batches" className="btn">Lotes Estáticos</a>
             <a href="/admin/print" className="btn">Impresión</a>
           </div>
         </div>

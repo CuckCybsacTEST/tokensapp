@@ -5,9 +5,9 @@ interface Props { prizes: any[]; }
 
 type ValidityMode = 'byDays' | 'singleDay' | 'singleHour';
 
-interface PayloadByDays { name: string; targetUrl: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'byDays'; expirationDays: number }; }
-interface PayloadSingleDay { name: string; targetUrl: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'singleDay'; date: string }; }
-interface PayloadSingleHour { name: string; targetUrl: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'singleHour'; date: string; hour: string; durationMinutes: number }; }
+interface PayloadByDays { name: string; targetUrl?: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'byDays'; expirationDays: number }; }
+interface PayloadSingleDay { name: string; targetUrl?: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'singleDay'; date: string }; }
+interface PayloadSingleHour { name: string; targetUrl?: string; includeQr: boolean; lazyQr: boolean; prizes: { prizeId: string; count: number }[]; validity: { mode: 'singleHour'; date: string; hour: string; durationMinutes: number }; }
 
 type StaticRequest = PayloadByDays | PayloadSingleDay | PayloadSingleHour;
 
@@ -51,14 +51,15 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
 
   async function generate() {
     if (loading) return;
-    if (!/^https?:\/\//i.test(targetUrl.trim())) { setError('URL debe iniciar con http(s)://'); return; }
+    const trimmedUrl = targetUrl.trim();
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) { setError('URL debe iniciar con http(s)://'); return; }
     if (totalRequested <= 0) { setError('Define cantidades'); return; }
     setLoading(true); setError(null); setSuccess(null);
     try {
       let payload: StaticRequest;
       const base = {
         name: name || 'Lote estático',
-        targetUrl: targetUrl.trim(),
+        ...(trimmedUrl && { targetUrl: trimmedUrl }),
         includeQr,
         lazyQr: false,
         prizes: Object.entries(counts).filter(([,v]) => v>0).map(([prizeId,v]) => ({ prizeId, count: v }))
@@ -113,7 +114,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
   return (
     <div className="card">
       <div className="card-header flex items-center justify-between">
-        <span className="text-sm font-medium">Lote Estático (una sola URL)</span>
+        <span className="text-sm font-medium">Lote Estático (interfaz interna)</span>
         <button type="button" className="text-[10px] underline" onClick={fillMax}>Rellenar máximos</button>
       </div>
       <div className="card-body grid gap-4 md:grid-cols-4">
@@ -136,7 +137,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
           <input className="input" value={name} maxLength={120} placeholder="Ej: Campaña Octubre" onChange={e=>setName(e.target.value)} />
         </div>
         <div className="form-row md:col-span-2">
-          <label className="text-xs font-medium">URL destino</label>
+          <label className="text-xs font-medium">URL del Premio <span className="text-slate-500">(opcional)</span></label>
           <input className="input" value={targetUrl} placeholder="https://..." onChange={e=>setTargetUrl(e.target.value)} />
         </div>
         <div className="form-row">
@@ -195,7 +196,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
           {error && <span className="text-[11px] text-rose-600">{error}</span>}
           {success && <span className="text-[11px] text-emerald-600">{success}</span>}
         </div>
-        <p className="col-span-full text-[10px] text-slate-500">Este modo emite tokens que redirigen a una sola URL y no entran a ruleta. Se aplica la misma lógica de ventanas (singleDay / singleHour).</p>
+        <p className="col-span-full text-[10px] text-slate-500">Los tokens muestran una interfaz interna con información del premio. Si se proporciona una URL, el usuario puede reclamar el premio haciendo clic en el botón. Si no se proporciona URL, se muestra un mensaje de premio disponible.</p>
       </div>
     </div>
   );

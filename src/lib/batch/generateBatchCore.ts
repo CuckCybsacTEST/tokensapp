@@ -82,7 +82,7 @@ function buildPrizeTokens(args: BuildPrizeTokensArgs) {
     const tokenId = crypto.randomUUID();
     const expiresAt = new Date(expiresAtBase + expirationDays * 24 * 3600 * 1000);
     const signature = signToken(secret, tokenId, prize.id, expiresAt, CURRENT_SIGNATURE_VERSION);
-    const baseRow: any = { id: tokenId, prizeId: prize.id, batchId, expiresAt, signature };
+    const baseRow: any = { id: tokenId, prizeId: prize.id, batchId, expiresAt, signature, disabled: false };
     if (supportsSignatureVersion) baseRow.signatureVersion = CURRENT_SIGNATURE_VERSION;
     rows.push(baseRow);
     tokens.push({
