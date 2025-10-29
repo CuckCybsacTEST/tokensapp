@@ -69,6 +69,14 @@ export default function ScannerClient() {
         setTimeout(()=>{ window.location.href = raw; }, 120);
         return;
       }
+      // QR estáticos: /static/<tokenId>
+      if (/^\/static\/[^/]{4,}$/.test(url.pathname)) {
+        redirectedRef.current = true;
+        setActive(false); // detener cámara antes de salir
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = raw; }, 120);
+        return;
+      }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
         redirectedRef.current = true;

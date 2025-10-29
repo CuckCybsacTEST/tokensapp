@@ -499,8 +499,15 @@ export async function generateInviteTokens(
   // Parsear timeSlot y calcular expiración: hora_reserva + 45 minutos
   const [hours, minutes] = reservation.timeSlot.split(':').map(Number);
   const reservationDateTime = reservationDateLima.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
-  const expirationLima = reservationDateTime.plus({ minutes: 45 });
-  const exp = limaDateTimeToJSDate(expirationLima);
+
+  // Calcular diferentes expiraciones según el tipo de token:
+  // - Host: hora_reserva + 45 minutos
+  // - Guest: 23:59:59 del día de la reserva
+  const hostExpirationLima = reservationDateTime.plus({ minutes: 45 });
+  const guestExpirationLima = reservationDateLima.set({ hour: 23, minute: 59, second: 59, millisecond: 999 });
+
+  const hostExp = limaDateTimeToJSDate(hostExpirationLima);
+  const guestExp = limaDateTimeToJSDate(guestExpirationLima);
 
   // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
   if (isReservationDatePast(reservation.date)) {
@@ -510,15 +517,18 @@ export async function generateInviteTokens(
     console.error('[BIRTHDAYS] generateInviteTokens: Fecha de reserva pasada', {
       reservaLima: reservationParts,
       actualLima: nowParts,
-      expira: exp
+      hostExpira: hostExp,
+      guestExpira: guestExp
     });
     throw new Error('RESERVATION_DATE_PAST');
   }
 
   console.log('[BIRTHDAYS] generateInviteTokens: Fechas calculadas con Luxon', {
     reservationDateLima: reservationDateLima.toISO(),
-    expirationLima: expirationLima.toISO(),
-    expira: exp
+    hostExpirationLima: hostExpirationLima.toISO(),
+    guestExpirationLima: guestExpirationLima.toISO(),
+    hostExpira: hostExp,
+    guestExpira: guestExp
   });
 
   console.log('[BIRTHDAYS] generateInviteTokens: Fecha válida, iniciando transacción');
@@ -560,13 +570,15 @@ export async function generateInviteTokens(
         code = generateCode(10);
       }
       const baseStatus = 'active';
+      // Usar expiración diferente según el tipo de token
+      const tokenExpiration = kind === 'host' ? hostExp : guestExp;
       const token = await tx.inviteToken.create({
         data: {
           reservationId,
           code,
           kind,
           status: baseStatus,
-          expiresAt: exp,
+          expiresAt: tokenExpiration,
           claim: '',
           metadata: null,
           maxUses,
@@ -575,7 +587,7 @@ export async function generateInviteTokens(
       });
       // Build claim with explicit expiration anchored to reservation date (already computed above)
       const iatSec = Math.floor(Date.now() / 1000);
-      const expSec = Math.floor(exp.getTime() / 1000);
+      const expSec = Math.floor(tokenExpiration.getTime() / 1000);
       const claimPayload = { t: 'birthday', rid: reservationId, kind, code, iat: iatSec, exp: expSec };
       const signed = signBirthdayClaim(claimPayload as any);
       const updated = await tx.inviteToken.update({ where: { id: token.id }, data: { claim: JSON.stringify(signed) } });
@@ -600,9 +612,10 @@ export async function generateInviteTokens(
   await audit('birthday.generateInviteTokens', byUserId, {
     reservationId,
     created: result.created,
-    exp: toIso(exp),
+    hostExp: toIso(hostExp),
+    guestExp: toIso(guestExp),
     force: Boolean(opts?.force),
-    mode: 'RES_DATE_ANCHORED',
+    mode: 'RES_DATE_ANCHORED_DIFFERENTIATED',
     resDate: toIso(reservation.date),
     // Se omite ahora Lima exacto (aprox implícito en cálculo manual)
   });
