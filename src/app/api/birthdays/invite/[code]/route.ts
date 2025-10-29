@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
 import { redeemToken } from '@/lib/birthdays/service';
@@ -17,11 +18,27 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     // Still allow ADMIN/STAFF to inspect if feature disabled? For simplicity: yes.
     // We'll continue but mark flag state.
   }
-  const raw = getSessionCookieFromRequest(req as unknown as Request);
-  const session = await verifySessionCookie(raw);
-  const isStaff = !!session && requireRole(session, ['ADMIN','STAFF']).ok;
+  
+  // Check both admin_session and user_session for staff privileges
+  const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
+  const adminSession = await verifySessionCookie(adminRaw);
+  const userRaw = getUserSessionCookieFromRequest(req as unknown as Request);
+  const userSession = await verifyUserSessionCookie(userRaw);
+  
+  // User is staff if they have admin session with ADMIN/STAFF role, or user session with STAFF role
+  const isAdminStaff = !!adminSession && requireRole(adminSession, ['ADMIN','STAFF']).ok;
+  const isUserStaff = !!userSession && userSession.role === 'STAFF';
+  const isStaff = isAdminStaff || isUserStaff;
+  
   try {
-    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff });
+    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { 
+      code: params.code, 
+      isStaff,
+      adminSession: !!adminSession,
+      userSession: !!userSession,
+      isAdminStaff,
+      isUserStaff
+    });
     const token = await prisma.inviteToken.findUnique({ where: { code: params.code }, include: { reservation: { include: { pack: true } } } });
     
     // Debug: Check hostArrivedAt directly from database
@@ -112,7 +129,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       guestArrivals: r.guestArrivals || 0,
       lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null,
     };
-    return apiOk({ public: false, token: base, reservation: extended, isAdmin: isStaff && session?.role === 'ADMIN' });
+        return apiOk({ public: false, token: base, reservation: extended, isAdmin: isAdminStaff && adminSession?.role === 'ADMIN' });
   } catch (e) {
   return apiError('INTERNAL_ERROR', 'Error interno');
   }
@@ -128,10 +145,20 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     - returns updated token info + arrival counters (guestArrivals, hostArrivedAt)
 */
 export async function POST(req: NextRequest, { params }: { params: { code: string } }) {
-  const raw = getSessionCookieFromRequest(req as unknown as Request);
-  const session = await verifySessionCookie(raw);
-  const auth = requireRole(session, ['ADMIN','STAFF']);
-  if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo STAFF/ADMIN', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403);
+  // Check both admin_session and user_session for staff privileges
+  const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
+  const adminSession = await verifySessionCookie(adminRaw);
+  const userRaw = getUserSessionCookieFromRequest(req as unknown as Request);
+  const userSession = await verifyUserSessionCookie(userRaw);
+  
+  // User is authorized if they have admin session with ADMIN/STAFF role, or user session with STAFF role
+  const isAdminStaff = !!adminSession && requireRole(adminSession, ['ADMIN','STAFF']).ok;
+  const isUserStaff = !!userSession && userSession.role === 'STAFF';
+  
+  if (!isAdminStaff && !isUserStaff) {
+    return apiError('UNAUTHORIZED', 'Solo STAFF/ADMIN', undefined, 401);
+  }
+  
   const code = params.code;
   let body: any = {};
   try { const txt = await req.text(); body = txt ? JSON.parse(txt) : {}; } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400); }
@@ -192,7 +219,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
           }
         });
       }
-      redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
+      redeemedResult = await redeemToken(code, { by: adminSession?.role || userSession?.userId || 'unknown', device: body.device, location: body.location }, adminSession?.role || userSession?.userId);
       // Set hostArrivedAt to reservation time (not current time)
       const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
       const reservationDate = (reservation as any).date;
@@ -223,7 +250,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     } else {
       // guest token: redeem the token when staff validates it (this represents guest arrival)
       console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Redeeming guest token');
-      redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
+      redeemedResult = await redeemToken(code, { by: adminSession?.role || userSession?.userId || 'unknown', device: body.device, location: body.location }, adminSession?.role || userSession?.userId);
       // After redeem, recalculate total guestArrivals = sum of usedCount for all guest tokens in this reservation
       const allGuestTokens = await prisma.inviteToken.findMany({
         where: { reservationId: resId, kind: 'guest' },

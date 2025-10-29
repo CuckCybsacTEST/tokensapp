@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { verifySessionCookie, hasAnyRole } from '@/lib/auth';
+import { verifyUserSessionCookie } from '@/lib/auth-user';
 
 interface ScanResult { 
   text: string; 
@@ -60,22 +61,59 @@ export default function ScannerClient() {
   // Function to check if user has staff/admin role
   const checkUserIsStaff = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('[SCANNER] Checking user role...');
-      const cookies = document.cookie.split(';');
-      console.log('[SCANNER] All cookies:', cookies);
-      const sessionCookie = cookies.find(cookie => cookie.trim().startsWith('admin_session='));
-      console.log('[SCANNER] Session cookie found:', !!sessionCookie);
-      if (!sessionCookie) return false;
-      
-      const rawCookie = sessionCookie.split('=')[1];
-      console.log('[SCANNER] Raw cookie value:', rawCookie);
-      const session = await verifySessionCookie(rawCookie);
-      console.log('[SCANNER] Session data:', session);
-      const hasRole = hasAnyRole(session, ['ADMIN', 'STAFF']);
-      console.log('[SCANNER] Has staff/admin role:', hasRole);
-      return hasRole;
+      console.log('[SCANNER] 🔍 Checking user role...');
+      const allCookies = document.cookie;
+      console.log('[SCANNER] 📋 All cookies string:', allCookies);
+      const cookies = allCookies.split(';');
+      console.log('[SCANNER] 🍪 Parsed cookies array:', cookies);
+
+      // First check user_session (for /u/login users with STAFF role)
+      const userSessionCookie = cookies.find(cookie => cookie.trim().startsWith('user_session='));
+      console.log('[SCANNER] 👤 User session cookie found:', !!userSessionCookie);
+      if (userSessionCookie) {
+        const rawUserCookie = userSessionCookie.split('=')[1];
+        console.log('[SCANNER] 🔑 Raw user cookie value (first 20 chars):', rawUserCookie.substring(0, 20) + '...');
+        const userSession = await verifyUserSessionCookie(rawUserCookie);
+        console.log('[SCANNER] 📊 User session data:', userSession);
+        if (userSession) {
+          console.log('[SCANNER] 🏷️ User role:', userSession.role);
+          if (userSession.role === 'STAFF') {
+            console.log('[SCANNER] ✅ User has STAFF role from user_session - ACCESS GRANTED');
+            return true;
+          } else {
+            console.log('[SCANNER] ❌ User has role', userSession.role, 'but needs STAFF - ACCESS DENIED');
+          }
+        } else {
+          console.log('[SCANNER] ❌ User session verification failed');
+        }
+      } else {
+        console.log('[SCANNER] ❌ No user_session cookie found');
+      }
+
+      // Then check admin_session (for admin users)
+      const adminSessionCookie = cookies.find(cookie => cookie.trim().startsWith('admin_session='));
+      console.log('[SCANNER] 👑 Admin session cookie found:', !!adminSessionCookie);
+      if (adminSessionCookie) {
+        const rawAdminCookie = adminSessionCookie.split('=')[1];
+        console.log('[SCANNER] 🔑 Raw admin cookie value (first 20 chars):', rawAdminCookie.substring(0, 20) + '...');
+        const adminSession = await verifySessionCookie(rawAdminCookie);
+        console.log('[SCANNER] 📊 Admin session data:', adminSession);
+        const hasAdminRole = adminSession && hasAnyRole(adminSession, ['ADMIN', 'STAFF']);
+        console.log('[SCANNER] 🏷️ Has admin/staff role from admin_session:', hasAdminRole);
+        if (hasAdminRole) {
+          console.log('[SCANNER] ✅ User has admin/staff role from admin_session - ACCESS GRANTED');
+          return true;
+        } else {
+          console.log('[SCANNER] ❌ No admin/staff role from admin_session');
+        }
+      } else {
+        console.log('[SCANNER] ❌ No admin_session cookie found');
+      }
+
+      console.log('[SCANNER] 🚫 No staff/admin role found in any session - ACCESS DENIED');
+      return false;
     } catch (e) {
-      console.error('Error checking user role:', e);
+      console.error('[SCANNER] 💥 Error checking user role:', e);
       return false;
     }
   }, []);
@@ -101,7 +139,9 @@ export default function ScannerClient() {
           console.log('[SCANNER] Redirecting to admin page');
           // For staff/admin users, get reservation ID and redirect to admin page
           try {
-            const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`);
+            const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`, {
+              credentials: 'include' // Include cookies in the request
+            });
             console.log('[SCANNER] API response status:', res.status);
             if (res.ok) {
               const data = await res.json();
@@ -145,7 +185,9 @@ export default function ScannerClient() {
           if (isStaffUser) {
             // For staff/admin users, get reservation ID and redirect to admin page
             try {
-              const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`);
+              const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`, {
+                credentials: 'include' // Include cookies in the request
+              });
               if (res.ok) {
                 const data = await res.json();
                 if (data?.reservation?.id) {
