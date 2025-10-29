@@ -62,6 +62,12 @@ async function runAuto(args: Args) {
     description: args.desc,
   });
 
+  // Load complete batch info including staticTargetUrl
+  const fullBatch = await prisma.batch.findUnique({
+    where: { id: batch.id },
+    select: { id: true, createdAt: true, description: true, staticTargetUrl: true }
+  });
+
   const outDir = args.out || path.resolve(process.cwd(), `out_auto_batch_${batch.id}`);
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -96,8 +102,12 @@ async function runAuto(args: Args) {
   const baseUrl = process.env.PUBLIC_BASE_URL || 'https://example.com';
   const csvRows = [csvColumns.join(',')];
   const eagerQr = args.qr && !args.lazyQr;
+  
+  // Determine URL prefix based on whether this is a static batch
+  const urlPrefix = fullBatch?.staticTargetUrl !== null ? '/static/' : '/r/';
+  
   for (const t of tokens) {
-    const redeemUrl = `${baseUrl}/r/${t.id}`;
+    const redeemUrl = `${baseUrl}${urlPrefix}${t.id}`;
     csvRows.push([
       t.id,
       batch.id,

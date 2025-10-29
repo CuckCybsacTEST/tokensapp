@@ -77,7 +77,7 @@ export async function GET(req: Request) {
     // Preparar los tokens en el formato esperado
     const baseUrl = getPublicBaseUrl(req.url);
     // Usar /static/ para lotes estáticos, /r/ para lotes de ruleta
-    const urlPrefix = batch.staticTargetUrl ? '/static/' : '/r/';
+    const urlPrefix = batch.staticTargetUrl !== null ? '/static/' : '/r/';
     let tokenData = tokens.map((t: { id: string }) => ({ 
       token_id: t.id, 
       redeem_url: `${baseUrl}${urlPrefix}${t.id}` 

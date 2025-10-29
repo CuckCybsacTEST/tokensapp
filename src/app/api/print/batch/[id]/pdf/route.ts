@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { audit } from '@/lib/audit';
 import { apiError } from '@/lib/apiError';
+import { getPublicBaseUrl } from '@/lib/config';
 
 // Optional: try to import Prisma client if present for fallback
 // Do not require prisma at module load time; tests set global._prisma after import.
@@ -74,13 +75,44 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         const cols = lines[i].split(',');
         tokens.push({ token_id: cols[idxToken], redeem_url: cols[idxUrl] });
       }
+      
+      // Check if batch is static and correct URLs if necessary
+      if (prisma && tokens.length > 0) {
+        try {
+          const batchInfo = await prisma.batch.findUnique({
+            where: { id: batchId },
+            select: { staticTargetUrl: true }
+          });
+          
+          if (batchInfo?.staticTargetUrl !== null) {
+            // This is a static batch, ensure URLs use /static/ instead of /r/
+            const baseUrl = getPublicBaseUrl(req.url);
+            tokens = tokens.map(t => ({
+              ...t,
+              redeem_url: t.redeem_url.replace(/\/r\//, '/static/')
+            }));
+          }
+        } catch (e) {
+          console.warn('Failed to check batch static status for URL correction:', e);
+        }
+      }
   } else if (prisma) {
       // fallback: attempt to load from DB by batch id (Prisma uses camelCase fields)
       try {
+        // First get batch info to determine if it's static
+        const batchInfo = await prisma.batch.findUnique({
+          where: { id: batchId },
+          select: { staticTargetUrl: true }
+        });
+        
         const reservedRows: Array<{ id: string }> = await prisma.$queryRaw`SELECT tFunc.id as id FROM "Token" tRetry JOIN "Prize" pRetry ON pRetry.id = tRetry."prizeId" JOIN "Token" tFunc ON tFunc.id = tRetry."pairedNextTokenId" WHERE pRetry.key = 'retry' AND tFunc."batchId" = ${batchId}`;
         const reservedIdArr: string[] = Array.from(new Set((reservedRows || []).map((r: any) => r.id)));
         const rows = await prisma.token.findMany({ where: { batchId, id: { notIn: reservedIdArr } }, select: { id: true } });
-        tokens = rows.map((r: any) => ({ token_id: r.id, redeem_url: `https://example.com/r/${r.id}` }));
+        
+        // Use correct URL prefix based on batch type
+        const baseUrl = getPublicBaseUrl(req.url);
+        const urlPrefix = batchInfo?.staticTargetUrl ? '/static/' : '/r/';
+        tokens = rows.map((r: any) => ({ token_id: r.id, redeem_url: `${baseUrl}${urlPrefix}${r.id}` }));
       } catch (e) {
         console.error('prisma token load failed', e);
       }
