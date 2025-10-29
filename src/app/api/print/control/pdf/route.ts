@@ -54,6 +54,17 @@ export async function GET(req: Request) {
       WHERE pRetry.key = 'retry' AND tFunc."batchId" = ${batchId}
     `;
   const reservedIdArr: string[] = Array.from(new Set((reservedRows || []).map((r: { id: string }) => r.id)));
+    
+    // Cargar información del lote para determinar si es estático
+    const batch = await prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { staticTargetUrl: true }
+    });
+
+    if (!batch) {
+      return apiError('BATCH_NOT_FOUND','Lote no encontrado',undefined,404);
+    }
+
     const tokens = await prisma.token.findMany({
       where: { batchId, id: { notIn: reservedIdArr } },
       select: { id: true }
@@ -65,9 +76,11 @@ export async function GET(req: Request) {
 
     // Preparar los tokens en el formato esperado
     const baseUrl = getPublicBaseUrl(req.url);
+    // Usar /static/ para lotes estáticos, /r/ para lotes de ruleta
+    const urlPrefix = batch.staticTargetUrl ? '/static/' : '/r/';
     let tokenData = tokens.map((t: { id: string }) => ({ 
       token_id: t.id, 
-      redeem_url: `${baseUrl}/r/${t.id}` 
+      redeem_url: `${baseUrl}${urlPrefix}${t.id}` 
     }));
 
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.
