@@ -167,7 +167,58 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   // @ts-ignore - toFormat method exists in Luxon DateTime
   const formattedCreated = DateTime.fromISO(tokenData.batch.createdAt).toFormat('dd/MM/yyyy HH:mm');
 
-  // Si el token es futuro, mostrar UI especial
+  // Si el token está expirado, mostrar UI especial
+  if (isExpired && !tokenData.disabled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d0a0a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">⏰</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
+        <p className="text-base opacity-80 mb-4">Este premio ya expiró y no es válido para reclamar.</p>
+        <div className="text-sm opacity-70 mb-2">Expiró el: {formattedExpiry}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
+        >
+          ← Volver
+        </button>
+      </div>
+    );
+  }
+
+  // Si el token está deshabilitado, mostrar UI especial
+  if (tokenData.disabled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#1a1a1a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">🚫</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token deshabilitado</h1>
+        <p className="text-base opacity-80 mb-4">Este premio ha sido deshabilitado y no está disponible.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
+        >
+          ← Volver
+        </button>
+      </div>
+    );
+  }
+
+  // Si el token ya fue entregado, mostrar UI especial
+  if (tokenData.deliveredAt) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#0a2d0a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">✅</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#4CAF50]">Premio entregado</h1>
+        <p className="text-base opacity-80 mb-4">Este premio ya fue reclamado y entregado exitosamente.</p>
+        <div className="text-sm opacity-70 mb-2">Entregado el: {DateTime.fromISO(tokenData.deliveredAt).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
+        >
+          ← Volver
+        </button>
+      </div>
+    );
+  }
   if (isValidFromFuture && !tokenData.disabled) {
     const validFrom = DateTime.fromISO(tokenData.validFrom!);
     const now = DateTime.now();
@@ -180,6 +231,11 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
     // @ts-ignore - as method exists in Luxon Duration
     const minutes = Math.floor(diff.as('minutes') % 60);
 
+    // @ts-ignore - toFormat method exists in Luxon DateTime
+    const formattedValidFromDate = validFrom.toFormat('dd/MM/yyyy');
+    // @ts-ignore - toFormat method exists in Luxon DateTime
+    const formattedValidFromTime = validFrom.toFormat('HH:mm');
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
         <div className="max-w-2xl mx-auto px-4 py-8">
@@ -187,10 +243,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">⏰</div>
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-              ¡Premio Próximamente!
+              {isStaff ? 'Token Programado' : 'Token Aún No Válido'}
             </h1>
             <p className="text-lg text-slate-600 dark:text-slate-400">
-              Este token se activará pronto
+              {isStaff ? 'Este token se activará en la fecha programada' : `Este token se activará el ${formattedValidFromDate} a las ${formattedValidFromTime} hs`}
             </p>
           </div>
 
@@ -206,9 +262,11 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
                 {tokenData.prize.label}
               </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Código: {tokenData.prize.key}
-              </p>
+              {isStaff && (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Código: {tokenData.prize.key}
+                </p>
+              )}
             </div>
 
             {/* Countdown Timer */}
@@ -232,38 +290,34 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               </div>
             </div>
 
-            {/* Activation Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* Activation Info - Más prominente */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-6 mb-6">
+              <h3 className="text-center text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">
+                📅 Fecha y hora de activación
+              </h3>
               <div className="text-center">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Se activa el</div>
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {/* @ts-ignore - toFormat method exists in Luxon DateTime */}
-                  {validFrom.toFormat('dd/MM/yyyy')}
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                  {formattedValidFromDate}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {/* @ts-ignore - toFormat method exists in Luxon DateTime */}
-                  {validFrom.toFormat('HH:mm')} hs
+                <div className="text-lg text-blue-500 dark:text-blue-300 mb-4">
+                  {formattedValidFromTime} hs
                 </div>
-              </div>
-              <div className="text-center">
-                <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Expira el</div>
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {formattedExpiry.split(' ')[0]}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {formattedExpiry.split(' ')[1]} hs
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  Expira el {formattedExpiry}
                 </div>
               </div>
             </div>
 
             {/* Batch Info */}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
-              <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Información del lote</div>
-              <div className="text-sm text-slate-700 dark:text-slate-300">
-                <div>Lote: {tokenData.batch.description}</div>
-                <div>Creado: {formattedCreated}</div>
+            {isStaff && (
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Información del lote</div>
+                <div className="text-sm text-slate-700 dark:text-slate-300">
+                  <div>Lote: {tokenData.batch.description}</div>
+                  <div>Creado: {formattedCreated}</div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Instructions */}
@@ -272,13 +326,23 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               <div className="text-blue-500 text-xl">ℹ️</div>
               <div>
                 <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                  ¿Qué sucede ahora?
+                  {isStaff ? 'Información del token' : '¿Qué sucede ahora?'}
                 </h3>
                 <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>• Este token se activará automáticamente en la fecha indicada</li>
-                  <li>• Podrás reclamar tu premio una vez que esté disponible</li>
-                  <li>• Guarda este enlace para cuando llegue el momento</li>
-                  <li>• Si tienes alguna duda, contacta al administrador</li>
+                  {isStaff ? (
+                    <>
+                      <li>• El token se activará automáticamente en la fecha indicada</li>
+                      <li>• El usuario podrá canjear el premio una vez activado</li>
+                      <li>• Mantén este enlace para seguimiento administrativo</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>• Este token se activará automáticamente en la fecha indicada</li>
+                      <li>• Podrás reclamar tu premio una vez que esté disponible</li>
+                      <li>• Guarda este enlace para cuando llegue el momento</li>
+                      <li>• Si tienes alguna duda, contacta al administrador</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>
@@ -286,8 +350,8 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
 
           {/* Footer */}
           <div className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
-            <p>Token ID: {tokenData.id}</p>
-            <p className="mt-1">Sistema de Premios - Próximamente Disponible</p>
+            {isStaff && <p>Token ID: {tokenData.id}</p>}
+            <p className="mt-1">{isStaff ? 'Sistema de Administración de Premios' : 'Sistema de Premios - Próximamente Disponible'}</p>
           </div>
         </div>
       </div>
@@ -299,12 +363,12 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🎉</div>
+          <div className="text-6xl mb-4">{isStaff ? '⚙️' : '🎉'}</div>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-            ¡Felicidades!
+            {isStaff ? 'Panel de Administración' : '¡Felicidades!'}
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">
-            Has recibido un premio especial
+            {isStaff ? 'Gestión y canje de premio' : 'Has recibido un premio especial'}
           </p>
         </div>
 
@@ -320,9 +384,6 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
               {tokenData.prize.label}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Código: {tokenData.prize.key}
-            </p>
           </div>
 
           {/* Status */}
@@ -332,7 +393,7 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               <div className={`text-sm font-medium ${tokenData.disabled ? 'text-red-500' : isExpired ? 'text-orange-500' : isValidFromFuture ? 'text-blue-500' : 'text-green-500'}`}>
                 {tokenData.disabled ? 'Deshabilitado' :
                  isExpired ? 'Expirado' :
-                 isValidFromFuture ? 'Próximamente' : 'Válido'}
+                 isValidFromFuture ? 'Próximamente' : 'Disponible'}
               </div>
             </div>
             <div className="text-center">
@@ -343,50 +404,45 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             </div>
           </div>
 
-          {/* Batch Info */}
-          <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mb-6">
-            <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Información del lote</div>
-            <div className="text-sm text-slate-700 dark:text-slate-300">
-              <div>Lote: {tokenData.batch.description}</div>
-              <div>ID: {tokenData.batch.id}</div>
-              <div>Creado: {formattedCreated}</div>
+          {/* Batch Info - Solo para staff */}
+          {isStaff && (
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mb-6">
+              <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">Información del lote</div>
+              <div className="text-sm text-slate-700 dark:text-slate-300">
+                <div>Lote: {tokenData.batch.description}</div>
+                <div>ID: {tokenData.batch.id}</div>
+                <div>Creado: {formattedCreated}</div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Action Button */}
+          {/* Prize Available Card */}
           {!tokenData.disabled && !isExpired && !isValidFromFuture && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6">
+              <div className="text-center">
+                <div className="text-green-600 dark:text-green-400 text-3xl mb-3">🎉</div>
+                <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
+                  {isStaff ? 'Premio listo para canjear' : '¡Tu premio está disponible!'}
+                </h3>
+                <p className="text-sm text-green-800 dark:text-green-200 mb-4">
+                  {isStaff ? 'El usuario debe dirigirse a la barra y mostrar su pulsera o código QR para canjear el premio.' : 'Dirígete a la barra y muestra tu pulsera o este código QR para canjear tu premio.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Botón staff para marcar entrega */}
+          {isStaff && !tokenData.deliveredAt && !tokenData.disabled && !isExpired && !isValidFromFuture && (
             <div className="text-center">
-              {tokenData.batch.staticTargetUrl && tokenData.batch.staticTargetUrl.trim() !== '' ? (
-                <>
-                  <button
-                    onClick={() => window.open(tokenData.batch.staticTargetUrl, '_blank')}
-                    className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white px-8 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    🎁 Reclamar Premio
-                  </button>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                    Se abrirá en una nueva ventana
-                  </p>
-                </>
-              ) : (
-                <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-3 rounded-lg font-medium shadow-lg">
-                  🎉 ¡Premio Disponible!
-                </div>
-              )}
-              {/* Botón staff para marcar entrega */}
-              {isStaff && !tokenData.deliveredAt && (
-                <div className="mt-4">
-                  <button
-                    onClick={handleMarkDelivered}
-                    disabled={markingDelivery}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    {markingDelivery ? 'Marcando entrega…' : 'Marcar entrega (Staff)'}
-                  </button>
-                  {deliveryError && <div className="text-xs text-red-500 mt-2">{deliveryError}</div>}
-                  {deliverySuccess && <div className="text-xs text-green-500 mt-2">¡Entrega marcada correctamente!</div>}
-                </div>
-              )}
+              <button
+                onClick={handleMarkDelivered}
+                disabled={markingDelivery}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                {markingDelivery ? 'Marcando entrega…' : 'Marcar entrega'}
+              </button>
+              {deliveryError && <div className="text-xs text-red-500 mt-2">{deliveryError}</div>}
+              {deliverySuccess && <div className="text-xs text-green-500 mt-2">¡Entrega marcada correctamente!</div>}
             </div>
           )}
 
@@ -405,8 +461,8 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
 
         {/* Footer */}
         <div className="text-center text-sm text-slate-500 dark:text-slate-400">
-          <p>Token ID: {tokenData.id}</p>
-          <p className="mt-1">Sistema de Premios - Cumpleaños</p>
+          {isStaff && <p>Token ID: {tokenData.id}</p>}
+          <p className="mt-1">{isStaff ? 'Sistema de Administración de Premios' : 'Sistema de Premios - Cumpleaños'}</p>
         </div>
       </div>
     </div>

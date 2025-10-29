@@ -22,8 +22,8 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
 
   const rec = rows[0];
   // Note: staticTargetUrl is now optional for static batches
+  // Don't reject tokens that are not yet valid - let the UI handle the display
   if (rec.disabled) return apiError('DISABLED', 'Token deshabilitado', undefined, 403);
-  if (rec.validFrom && new Date(rec.validFrom).getTime() > Date.now()) return apiError('TOO_EARLY', 'Aún no válido', undefined, 403);
   if (new Date(rec.expiresAt).getTime() < Date.now()) return apiError('EXPIRED', 'Expirado', undefined, 410);
 
   const tokenData = {
