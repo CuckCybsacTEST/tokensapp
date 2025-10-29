@@ -219,9 +219,10 @@ export default async function BatchDetailPage({ params }: { params: { id: string
         )}
       </div>
 
-      {/* Tabla de tokens con QR (cliente, paginada) */}
+            {/* Tabla de tokens con QR (cliente, paginada) */}
       {batch.tokens && batch.tokens.length > 0 && (
         <TokensTable
+          isStatic={!!batch.staticTargetUrl}
           tokens={batch.tokens.map((t:any) => ({
             id: t.id,
             prizeLabel: t.prize?.label || t.prizeId,

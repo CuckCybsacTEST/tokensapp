@@ -62,7 +62,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       count: tokens.length,
     });
     for (const t of tokens) {
-      const redeemUrl = `${baseUrl}/r/${t.id}`;
+      const redeemUrl = batch.staticTargetUrl !== undefined && batch.staticTargetUrl !== null
+        ? `${baseUrl}/static/${t.id}`
+        : `${baseUrl}/r/${t.id}`;
       csvRows.push(
         [
           t.id,

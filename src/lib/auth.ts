@@ -86,7 +86,8 @@ export async function verifySessionCookie(
 export function buildSetCookie(cookie: string): string {
   // Secure flag left conditional for local http
   const secure = process.env.NODE_ENV === "production" ? "Secure; " : "";
-  return `${COOKIE_NAME}=${cookie}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=${
+  const httpOnly = process.env.NODE_ENV === "production" ? "HttpOnly; " : "";
+  return `${COOKIE_NAME}=${cookie}; Path=/; ${httpOnly}SameSite=Lax; ${secure}Max-Age=${
     SESSION_TTL_MS / 1000
   }`;
 }

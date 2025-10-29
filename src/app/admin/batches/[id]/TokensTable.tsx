@@ -28,7 +28,7 @@ function statusOf(t: TokenLight): { label: string; cls: string } {
   return { label: "Activo", cls: "badge border-indigo-300 bg-indigo-100 text-indigo-700 dark:border-indigo-600 dark:bg-indigo-800 dark:text-indigo-200" };
 }
 
-export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
+export default function TokensTable({ tokens, isStatic }: { tokens: TokenLight[]; isStatic?: boolean }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [qrMap, setQrMap] = useState<Record<string, string>>({});
@@ -47,7 +47,7 @@ export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
       // Generate QR only for visible rows not yet generated
       for (const t of pageItems) {
         if (qrMap[t.id]) continue;
-        const url = `${location.origin}/r/${encodeURIComponent(t.id)}`;
+        const url = `${location.origin}/${isStatic ? 'static' : 'r'}/${encodeURIComponent(t.id)}`;
         try {
           const dataUrl = await generateQrPngDataUrl(url);
           if (!cancelled) setQrMap((m) => ({ ...m, [t.id]: dataUrl }));
@@ -58,7 +58,7 @@ export default function TokensTable({ tokens }: { tokens: TokenLight[] }) {
     }
     run();
     return () => { cancelled = true; };
-  }, [pageItems]);
+  }, [pageItems, isStatic]);
 
   return (
     <div className="card">

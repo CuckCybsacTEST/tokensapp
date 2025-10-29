@@ -18,17 +18,62 @@ type TokenData = {
   expiresAt: string;
   validFrom: string | null;
   disabled: boolean;
+  deliveredAt?: string | null;
 };
 
 type StaticTokenPageProps = {
   params: { tokenId: string };
 };
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
+function decodeSessionCookie(raw: string | null): string | null {
+  if (!raw) return null;
+  const parts = raw.split('.');
+  if (parts.length !== 2) return null;
+  try {
+    const payload = parts[0];
+    const data = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return data.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   const { tokenId } = params;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
+  // Detectar modo staff por query param o por API
+  const [isStaff, setIsStaff] = useState(false);
+  useEffect(() => {
+    async function checkStaff() {
+      let staffParam = false;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        staffParam = urlParams.get('staff') === '1';
+      }
+      try {
+        const res = await fetch('/api/static/session');
+        const data = await res.json();
+        setIsStaff(staffParam || data.isStaff === true);
+      } catch {
+        setIsStaff(staffParam);
+      }
+    }
+    checkStaff();
+  }, []);
+
+  const [markingDelivery, setMarkingDelivery] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string|null>(null);
+  const [deliverySuccess, setDeliverySuccess] = useState(false);
 
   useEffect(() => {
     async function loadTokenData() {
@@ -55,6 +100,26 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
       loadTokenData();
     }
   }, [tokenId]);
+
+  async function handleMarkDelivered() {
+    setMarkingDelivery(true);
+    setDeliveryError(null);
+    try {
+      const res = await fetch('/api/static/mark-delivered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al marcar entrega');
+      setDeliverySuccess(true);
+      window.location.reload();
+    } catch (err: any) {
+      setDeliveryError(err.message || 'Error desconocido');
+    } finally {
+      setMarkingDelivery(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -306,6 +371,20 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               ) : (
                 <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-3 rounded-lg font-medium shadow-lg">
                   🎉 ¡Premio Disponible!
+                </div>
+              )}
+              {/* Botón staff para marcar entrega */}
+              {isStaff && !tokenData.deliveredAt && (
+                <div className="mt-4">
+                  <button
+                    onClick={handleMarkDelivered}
+                    disabled={markingDelivery}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    {markingDelivery ? 'Marcando entrega…' : 'Marcar entrega (Staff)'}
+                  </button>
+                  {deliveryError && <div className="text-xs text-red-500 mt-2">{deliveryError}</div>}
+                  {deliverySuccess && <div className="text-xs text-green-500 mt-2">¡Entrega marcada correctamente!</div>}
                 </div>
               )}
             </div>
