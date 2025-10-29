@@ -104,12 +104,14 @@ export function PrintControlClient() {
         const url = new URL(window.location.href);
         const preselectedBatchId = url.searchParams.get('preselect');
         
-        // Cargar batches
+        // Cargar batches estáticos
         const batchesRes = await fetch("/api/admin/batches", {
           headers: { 'Cache-Control': 'no-cache' }
         });
         if (!batchesRes.ok) throw new Error("Error al cargar los lotes");
-        const batchesData = await batchesRes.json();
+        const allBatchesData = await batchesRes.json();
+        // Filtrar solo batches estáticos (staticTargetUrl no es null)
+        const batchesData = allBatchesData.filter((batch: any) => batch.staticTargetUrl !== null && batch.staticTargetUrl !== undefined);
         if (!mounted) return;
         setBatches(batchesData);
 
@@ -659,7 +661,7 @@ export function PrintControlClient() {
 
       <div className="flex justify-between mt-8">
         <Link 
-          href="/admin/batches" 
+          href="/admin/roulettebatches" 
           className="px-4 py-2 bg-slate-700 text-slate-200 rounded hover:bg-slate-600"
         >
           Volver a Lotes

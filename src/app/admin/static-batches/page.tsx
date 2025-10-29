@@ -41,7 +41,7 @@ export default async function StaticBatchesListPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/admin/batches" className="btn-outline !px-3 !py-1.5 text-sm">
+          <Link href="/admin/roulettebatches" className="btn-outline !px-3 !py-1.5 text-sm">
             ← Todos los lotes
           </Link>
           <Link href="/admin/static-batches/metrics" className="btn-outline !px-3 !py-1.5 text-sm">
@@ -73,7 +73,7 @@ export default async function StaticBatchesListPage() {
                     {b.description ? (
                       <>
                         <Link
-                          href={`/admin/static-batches/${b.id}`}
+                          href={`/admin/static-batches/${b.id}/preview`}
                           className="text-base font-semibold hover:underline max-w-xl truncate"
                           title={b.description}
                         >
@@ -85,7 +85,7 @@ export default async function StaticBatchesListPage() {
                       </>
                     ) : (
                       <Link
-                        href={`/admin/static-batches/${b.id}`}
+                        href={`/admin/static-batches/${b.id}/preview`}
                         className="text-sm font-medium hover:underline"
                       >
                         Batch {b.id}

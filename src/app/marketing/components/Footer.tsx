@@ -151,7 +151,7 @@ export const Footer: React.FC<FooterProps> = () => {
               </a>
             </li>
             <li>
-              <a href="/admin/batches" className="hover:underline">
+              <a href="/admin/roulettebatches" className="hover:underline">
                 Lotes
               </a>
             </li>

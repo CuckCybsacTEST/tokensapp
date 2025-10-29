@@ -74,6 +74,7 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   const [markingDelivery, setMarkingDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string|null>(null);
   const [deliverySuccess, setDeliverySuccess] = useState(false);
+  const [qrSrc, setQrSrc] = useState('');
 
   useEffect(() => {
     async function loadTokenData() {
@@ -98,6 +99,16 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
 
     if (tokenId) {
       loadTokenData();
+    }
+    // Construir URL del QR para la sesión pública (cliente)
+    if (typeof window !== 'undefined') {
+      try {
+        const fullUrl = window.location.href;
+        // Usamos un servicio público de generación de QR (no persistente)
+        setQrSrc(`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(fullUrl)}`);
+      } catch (e) {
+        // silence
+      }
     }
   }, [tokenId]);
 
@@ -134,10 +145,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-        <div className="max-w-md mx-auto text-center p-6">
-          <div className="text-6xl mb-4">🎁</div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center">
+        <div className="max-w-sm sm:max-w-md mx-auto text-center p-6">
+          <div className="text-4xl sm:text-6xl mb-4">🎁</div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">
             Token No Válido
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mb-4">
@@ -145,7 +156,7 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
           >
             Reintentar
           </button>
@@ -170,11 +181,11 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   // Si el token está expirado, mostrar UI especial
   if (isExpired && !tokenData.disabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d0a0a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">⏰</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
-        <p className="text-base opacity-80 mb-4">Este premio ya expiró y no es válido para reclamar.</p>
-        <div className="text-sm opacity-70 mb-2">Expiró el: {formattedExpiry}</div>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 text-center bg-gradient-to-b from-[#2d0a0a] to-[#07070C] text-white">
+        <div className="text-4xl sm:text-5xl mb-4">⏰</div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
+        <p className="text-sm sm:text-base opacity-80 mb-4">Este premio ya expiró y no es válido para reclamar.</p>
+        <div className="text-xs sm:text-sm opacity-70 mb-2">Expiró el: {formattedExpiry}</div>
         <button
           onClick={() => window.location.reload()}
           className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
@@ -188,10 +199,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   // Si el token está deshabilitado, mostrar UI especial
   if (tokenData.disabled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#1a1a1a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">🚫</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token deshabilitado</h1>
-        <p className="text-base opacity-80 mb-4">Este premio ha sido deshabilitado y no está disponible.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 text-center bg-gradient-to-b from-[#1a1a1a] to-[#07070C] text-white">
+        <div className="text-4xl sm:text-5xl mb-4">🚫</div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token deshabilitado</h1>
+        <p className="text-sm sm:text-base opacity-80 mb-4">Este premio ha sido deshabilitado y no está disponible.</p>
         <button
           onClick={() => window.location.reload()}
           className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
@@ -205,11 +216,11 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   // Si el token ya fue entregado, mostrar UI especial
   if (tokenData.deliveredAt) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#0a2d0a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">✅</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#4CAF50]">Premio entregado</h1>
-        <p className="text-base opacity-80 mb-4">Este premio ya fue reclamado y entregado exitosamente.</p>
-        <div className="text-sm opacity-70 mb-2">Entregado el: {DateTime.fromISO(tokenData.deliveredAt).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 text-center bg-gradient-to-b from-[#0a2d0a] to-[#07070C] text-white">
+        <div className="text-4xl sm:text-5xl mb-4">✅</div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#4CAF50]">Premio entregado</h1>
+        <p className="text-sm sm:text-base opacity-80 mb-4">Este premio ya fue reclamado y entregado exitosamente.</p>
+        <div className="text-xs sm:text-sm opacity-70 mb-2">Entregado el: {DateTime.fromISO(tokenData.deliveredAt).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
         <button
           onClick={() => window.location.reload()}
           className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white"
@@ -237,29 +248,29 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
     const formattedValidFromTime = validFrom.toFormat('HH:mm');
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col items-center justify-center">
+        <div className="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">⏰</div>
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="text-4xl sm:text-6xl mb-4">⏰</div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
               {isStaff ? 'Token Programado' : 'Token Aún No Válido'}
             </h1>
-            <p className="text-lg text-slate-600 dark:text-slate-400">
+            <p className="text-sm sm:text-lg text-slate-600 dark:text-slate-400">
               {isStaff ? 'Este token se activará en la fecha programada' : `Este token se activará el ${formattedValidFromDate} a las ${formattedValidFromTime} hs`}
             </p>
           </div>
 
           {/* Countdown Card */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 mb-6">
-            <div className="text-center mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="text-center mb-4 sm:mb-6">
               <div
-                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
+                className="w-12 h-12 sm:w-16 sm:h-16 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center text-xl sm:text-2xl"
                 style={{ backgroundColor: tokenData.prize.color || '#e5e7eb' }}
               >
                 🎁
               </div>
-              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
                 {tokenData.prize.label}
               </h2>
               {isStaff && (
@@ -270,36 +281,36 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             </div>
 
             {/* Countdown Timer */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-6 mb-6">
-              <h3 className="text-center text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <h3 className="text-center text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4">
                 ⏳ Tiempo restante para activación
               </h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{days}</div>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{days}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">Días</div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{hours}</div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{hours}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">Horas</div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{minutes}</div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{minutes}</div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">Minutos</div>
                 </div>
               </div>
             </div>
 
             {/* Activation Info - Más prominente */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-6 mb-6">
-              <h3 className="text-center text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <h3 className="text-center text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3 sm:mb-4">
                 📅 Fecha y hora de activación
               </h3>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                   {formattedValidFromDate}
                 </div>
-                <div className="text-lg text-blue-500 dark:text-blue-300 mb-4">
+                <div className="text-base sm:text-lg text-blue-500 dark:text-blue-300 mb-3 sm:mb-4">
                   {formattedValidFromTime} hs
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -349,7 +360,7 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
           </div>
 
           {/* Footer */}
-          <div className="text-center text-sm text-slate-500 dark:text-slate-400 mt-8">
+          <div className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-6 sm:mt-8">
             {isStaff && <p>Token ID: {tokenData.id}</p>}
             <p className="mt-1">{isStaff ? 'Sistema de Administración de Premios' : 'Sistema de Premios - Próximamente Disponible'}</p>
           </div>
@@ -359,35 +370,47 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">{isStaff ? '⚙️' : '🎉'}</div>
-          <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">
-            {isStaff ? 'Panel de Administración' : '¡Felicidades!'}
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400">
-            {isStaff ? 'Gestión y canje de premio' : 'Has recibido un premio especial'}
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center">
+      <div className="max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Token Info Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 mb-6">
-          <div className="text-center mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="text-center mb-4 sm:mb-6">
             <div
-              className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center text-xl sm:text-2xl"
               style={{ backgroundColor: tokenData.prize.color || '#e5e7eb' }}
             >
               🎁
             </div>
-            <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-200 mb-1">
               {tokenData.prize.label}
             </h2>
           </div>
 
+          {/* Prize Available Card */}
+          {!tokenData.disabled && !isExpired && !isValidFromFuture && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <div className="text-center">
+                <div className="text-green-600 dark:text-green-400 text-2xl sm:text-3xl mb-2 sm:mb-3">🎉</div>
+                <h3 className="text-base sm:text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
+                  {isStaff ? 'Premio listo para canjear' : '¡Tu premio está disponible!'}
+                </h3>
+                <p className="text-sm text-green-800 dark:text-green-200 mb-3 sm:mb-4">
+                  {isStaff ? 'El usuario debe dirigirse a la barra y mostrar su pulsera o código QR para canjear el premio.' : 'Dirígete a la barra y muestra tu pulsera o este código QR para canjear tu premio.'}
+                </p>
+                  {/* QR para canje - solo público */}
+                  {qrSrc && !isStaff && (
+                    <div className="mt-4">
+                      <a href={qrSrc} target="_blank" rel="noopener noreferrer" title="Abrir QR en nueva pestaña">
+                        <img src={qrSrc} alt="Código QR para canjear" className="mx-auto w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain rounded-lg border p-2 bg-white" />
+                      </a>
+                    </div>
+                  )}
+              </div>
+            </div>
+          )}
+
           {/* Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="text-center">
               <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Estado</div>
               <div className={`text-sm font-medium ${tokenData.disabled ? 'text-red-500' : isExpired ? 'text-orange-500' : isValidFromFuture ? 'text-blue-500' : 'text-green-500'}`}>
@@ -416,18 +439,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             </div>
           )}
 
-          {/* Prize Available Card */}
-          {!tokenData.disabled && !isExpired && !isValidFromFuture && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6 mb-6">
-              <div className="text-center">
-                <div className="text-green-600 dark:text-green-400 text-3xl mb-3">🎉</div>
-                <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
-                  {isStaff ? 'Premio listo para canjear' : '¡Tu premio está disponible!'}
-                </h3>
-                <p className="text-sm text-green-800 dark:text-green-200 mb-4">
-                  {isStaff ? 'El usuario debe dirigirse a la barra y mostrar su pulsera o código QR para canjear el premio.' : 'Dirígete a la barra y muestra tu pulsera o este código QR para canjear tu premio.'}
-                </p>
-              </div>
+          {/* Logo - solo público */}
+          {!isStaff && (
+            <div className="text-center mt-4 sm:mt-6">
+              <img src="/logoblack.png" alt="Logo" className="mx-auto h-8 md:h-10 w-auto" />
             </div>
           )}
 
@@ -460,7 +475,7 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-6 sm:mt-8">
           {isStaff && <p>Token ID: {tokenData.id}</p>}
           <p className="mt-1">{isStaff ? 'Sistema de Administración de Premios' : 'Sistema de Premios - Cumpleaños'}</p>
         </div>

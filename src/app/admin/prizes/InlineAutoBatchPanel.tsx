@@ -199,7 +199,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
     if (postGen.blobUrl) URL.revokeObjectURL(postGen.blobUrl);
     const id = postGen.batchId;
     setPostGen(null);
-    router.push(`/admin/batches/${id}`);
+    router.push(`/admin/roulettebatches/${id}`);
   }
 
   function handleCloseModal() {

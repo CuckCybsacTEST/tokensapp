@@ -24,15 +24,30 @@ export default async function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Tokens</h3>
+            <h3 className="text-lg font-semibold">RULETA</h3>
           </div>
           
           <div className="flex flex-wrap gap-2">
             <a href="/admin/tokens" className="btn">Panel de Control</a>
-            <a href="/admin/prizes" className="btn">Gestión de Tokens</a>
-            <a href="/admin/batches" className="btn">Lotes</a>
-            <a href="/admin/static-batches" className="btn">Lotes Estáticos</a>
-            <a href="/admin/print" className="btn">Impresión</a>
+            <a href="/admin/prizes" className="btn">Gestión de Premios</a>
+            <a href="/admin/roulettebatches" className="btn">Lotes</a>
+            <a href="/admin/printroulette" className="btn">Imprimir Pulseras</a>
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">TOKENS INDIVIDUALES</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/prizesstatics" className="btn">Gestión de Premios</a>
+            <a href="/admin/static-batches" className="btn">Lotes</a>
+            <a href="/admin/printstatics" className="btn">Imprimir Pulseras</a>
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">

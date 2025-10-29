@@ -2,7 +2,6 @@
 import React, { useState, useTransition } from "react";
 import PrizeManager from "./PrizeManager";
 import InlineAutoBatchPanel from "./InlineAutoBatchPanel";
-import InlineStaticBatchPanel from "./InlineStaticBatchPanel";
 
 export default function PrizesClient({
   initialPrizes,
@@ -166,7 +165,6 @@ export default function PrizesClient({
   {hasPrizes && (
     <>
       <InlineAutoBatchPanel prizes={prizes} />
-      <InlineStaticBatchPanel prizes={prizes} />
     </>
   )}
 
