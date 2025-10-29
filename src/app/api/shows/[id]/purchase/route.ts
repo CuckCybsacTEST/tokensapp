@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
-import { QRUtils } from '@/lib/qrUtils';
 
 interface PurchaseRequest {
   customerName: string;
@@ -63,7 +62,7 @@ export async function POST(
     // Verificar que el show existe y está publicado
     const show = await prisma.show.findUnique({
       where: { id: showId },
-      select: { id: true, status: true, title: true, startsAt: true, endsAt: true }
+      select: { id: true, status: true, title: true, startsAt: true }
     });
 
     if (!show || show.status !== 'PUBLISHED') {
@@ -157,54 +156,6 @@ export async function POST(
         purchases.push(purchase);
       }
 
-      // Generar tickets individuales con QR codes para cada compra
-      const generatedTickets = [];
-      for (const purchase of purchases) {
-        const ticketType = purchaseItems.find(item => item.ticketType.id === purchase.ticketTypeId);
-        if (!ticketType) continue;
-
-        // Generar un ticket por cada unidad comprada
-        for (let i = 0; i < purchase.quantity; i++) {
-          // Generar QR único para este ticket
-          const qrResult = await QRUtils.generateTicketQR({
-            id: `temp-${Date.now()}-${i}`, // ID temporal, se actualizará después
-            ticketPurchaseId: purchase.id,
-            ticketTypeId: purchase.ticketTypeId,
-            showId: showId,
-            customerDni: customerDni.trim(),
-            customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
-            ticketType: {
-              id: ticketType.ticketType.id,
-              name: ticketType.ticketType.name,
-              price: Number(ticketType.ticketType.price),
-              show: {
-                id: showId,
-                title: show.title,
-                startsAt: show.startsAt.toISOString(),
-                endsAt: show.endsAt?.toISOString() || null
-              }
-            }
-          });
-
-          // Crear el ticket individual en la base de datos
-          const ticket = await tx.ticket.create({
-            data: {
-              ticketPurchaseId: purchase.id,
-              ticketTypeId: purchase.ticketTypeId,
-              qrCode: qrResult.qrCode,
-              qrDataUrl: qrResult.qrDataUrl,
-              customerDni: customerDni.trim(),
-              customerName: customerName.trim(),
-              customerPhone: customerPhone.trim(),
-              status: 'VALID'
-            }
-          });
-
-          generatedTickets.push(ticket);
-        }
-      }
-
       // Usar la primera compra como referencia para la respuesta
       const mainPurchase = purchases[0];
 
@@ -224,8 +175,7 @@ export async function POST(
         purchases,
         mainPurchase,
         items: purchaseItems,
-        totalAmount: calculatedTotal,
-        generatedTickets
+        totalAmount: calculatedTotal
       };
     });
 
@@ -241,8 +191,7 @@ export async function POST(
         customerDni,
         totalAmount: result.totalAmount,
         showId,
-        tickets: result.items,
-        ticketCount: result.generatedTickets.length
+        tickets: result.items
       });
     }
 
@@ -250,8 +199,7 @@ export async function POST(
       ok: true,
       purchaseId: result.mainPurchase.id,
       totalAmount: result.totalAmount,
-      ticketCount: result.generatedTickets.length,
-      message: `Compra procesada exitosamente. Se generaron ${result.generatedTickets.length} tickets individuales con QR codes.`
+      message: 'Compra procesada exitosamente'
     });
 
   } catch (error: any) {

@@ -4,24 +4,14 @@ import { apiError, apiOk } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
 import { corsHeadersFor } from '@/lib/cors';
 
 export async function GET(req: NextRequest) {
   const cors = corsHeadersFor(req as unknown as Request);
   // If public flag is off, still allow ADMIN/STAFF to fetch packs from admin UI.
-  
-  // Check both admin_session and user_session for staff privileges
-  const adminCookie = getSessionCookieFromRequest(req as unknown as Request);
-  const adminSession = await verifySessionCookie(adminCookie);
-  const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
-  const userSession = await verifyUserSessionCookie(userCookie);
-  
-  // User is admin/staff if they have admin session with ADMIN/STAFF role, or user session with STAFF role
-  const isAdminStaff = !!adminSession && requireRole(adminSession, ['ADMIN', 'STAFF']).ok;
-  const isUserStaff = !!userSession && userSession.role === 'STAFF';
-  const isAdmin = isAdminStaff || isUserStaff;
-  
+  const cookie = getSessionCookieFromRequest(req as unknown as Request);
+  const session = await verifySessionCookie(cookie);
+  const isAdmin = !!session && requireRole(session, ['ADMIN', 'STAFF']).ok;
   if (!isBirthdaysEnabledPublic() && !isAdmin) {
     return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
   }

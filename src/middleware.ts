@@ -45,32 +45,24 @@ export async function middleware(req: NextRequest) {
   if (pathname === "/admin/login") return NextResponse.next();
   if (pathname === "/u/login") return NextResponse.next();
   if (pathname === "/u/register") {
-    console.log('[MIDDLEWARE] Accessing /u/register');
     // Si ya existe una sesión (admin o colaborador) no permitir registrar otro usuario sin cerrar sesión
     try {
       const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
       const adminSession = await verifySessionCookie(adminRaw);
       const uRaw = getUserCookieEdge(req as unknown as Request);
       const uSession = await verifyUserCookieEdge(uRaw);
-      console.log('[MIDDLEWARE] /u/register - adminSession:', !!adminSession, 'uSession:', !!uSession);
       if (adminSession || uSession) {
-        console.log('[MIDDLEWARE] /u/register - redirecting to /u (session exists)');
         return NextResponse.redirect(new URL('/u', req.url));
       }
-    } catch (e) {
-      console.log('[MIDDLEWARE] /u/register - error checking session:', e);
-    }
-    console.log('[MIDDLEWARE] /u/register - allowing access (no session)');
+    } catch {}
     return NextResponse.next();
   }
   if (pathname === "/u/reset-password") return NextResponse.next();
 
   // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin (ADMIN/STAFF)
   if ((pathname === "/u" || pathname.startsWith("/u/")) && pathname !== '/u/register') {
-    console.log('[MIDDLEWARE] Protecting /u/** route:', pathname);
     // Allow unauthenticated access for the public reset page
     if (pathname === '/u/reset-password') {
-      console.log('[MIDDLEWARE] Allowing /u/reset-password');
       return NextResponse.next();
     }
     const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
@@ -79,9 +71,7 @@ export async function middleware(req: NextRequest) {
     const uSession = await verifyUserCookieEdge(uRaw);
     const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN', 'STAFF']).ok;
     const allowedByUser = !!uSession; // any valid collaborator
-    console.log('[MIDDLEWARE] /u/** - adminSession:', !!adminSession, 'allowedByAdmin:', allowedByAdmin, 'uSession:', !!uSession, 'allowedByUser:', allowedByUser);
     if (!allowedByAdmin && !allowedByUser) {
-      console.log('[MIDDLEWARE] /u/** - redirecting to login (no valid session)');
       const isApi = pathname.startsWith('/api');
       if (!isApi) {
         const loginUrl = new URL('/u/login', req.nextUrl.origin);
@@ -90,7 +80,6 @@ export async function middleware(req: NextRequest) {
       }
       return edgeApiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     }
-    console.log('[MIDDLEWARE] /u/** - access granted');
   }
   const needsAuth =
     PROTECTED_API_PREFIXES.some((p) => pathname.startsWith(p)) ||

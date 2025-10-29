@@ -45,10 +45,18 @@ export async function POST(request: NextRequest) {
     // Verificar si hay autenticación
     const isAuthenticated = userSession || adminSession;
 
-    // Si no hay autenticación, permitir pedido público (sin ubicación requerida)
+    // Si no hay autenticación pero hay servicePointId, permitir pedido público
     let allowPublicOrder = false;
-    if (!isAuthenticated) {
-      allowPublicOrder = true;
+    if (!isAuthenticated && servicePointId) {
+      // Verificar que el servicePoint existe y está activo
+      const servicePoint = await prisma.servicePoint.findUnique({
+        where: { id: servicePointId },
+        select: { id: true, active: true }
+      });
+
+      if (servicePoint && servicePoint.active) {
+        allowPublicOrder = true;
+      }
     }
 
     if (!isAuthenticated && !allowPublicOrder) {
@@ -74,10 +82,10 @@ export async function POST(request: NextRequest) {
 
     // Ya tenemos las variables del body de arriba
 
-    // Validar que hay items
-    if (!items || items.length === 0) {
+    // Validar que se proporcione al menos una referencia de ubicación
+    if ((!tableId && !servicePointId && !locationId) || !items || items.length === 0) {
       return NextResponse.json(
-        { error: "Se requiere al menos un item" },
+        { error: "Se requiere una ubicación (tableId, servicePointId o locationId) y al menos un item" },
         { status: 400 }
       );
     }
@@ -159,7 +167,7 @@ export async function POST(request: NextRequest) {
           ...(verifiedLocation?.id && { locationId: verifiedLocation.id }), // New system for zones
           staffId,
           customerName: customerName || null, // Nombre del cliente para pedidos públicos
-          isFromQR: !!verifiedServicePoint?.id, // Indica si viene desde QR (tiene servicePointId)
+          isFromQR: !isAuthenticated, // Indica si viene desde QR (sin autenticación)
           status: "PENDING",
           total,
           notes,

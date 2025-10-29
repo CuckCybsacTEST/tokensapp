@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
@@ -51,7 +51,7 @@ interface CartItem {
   notes?: string;
 }
 
-function MenuPageContent() {
+export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
@@ -205,13 +205,18 @@ function MenuPageContent() {
     product.categoryId === selectedCategory && product.available
   );
   const submitOrder = async () => {
+    if (!tableId) {
+      alert("Por favor selecciona una mesa o zona de servicio");
+      return;
+    }
+
     if (cart.length === 0) {
       alert("El carrito está vacío");
       return;
     }
 
-    // Pedir nombre del cliente para identificación (siempre, para pedidos públicos y con mesa)
-    if (!customerName.trim()) {
+    // Si viene desde QR (tiene tableId), pedir nombre del cliente
+    if (tableId && !customerName.trim()) {
       setShowCustomerNameModal(true);
       return;
     }
@@ -228,7 +233,7 @@ function MenuPageContent() {
     setIsSubmitting(true);
     try {
       const orderData = {
-        ...(tableId && { servicePointId: tableId }), // Solo enviar servicePointId si hay tableId
+        servicePointId: tableId,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -261,11 +266,14 @@ function MenuPageContent() {
         // Emitir evento de Socket.IO
         if (socket) {
           const selectedTable = tables.find(t => t.id === tableId);
-          let locationName = tableId ? (selectedTable?.name || `${selectedTable?.type} ${selectedTable?.number}`) : "Pedido Público";
+          let locationName = "";
+          if (selectedTable) {
+            locationName = selectedTable.name || `${selectedTable.type} ${selectedTable.number}`;
+          }
 
           socket.emit("new-order", {
             orderId: result.order.id,
-            tableId: tableId || null,
+            tableId: tableId,
             tableName: locationName,
             items: cart,
             total: getTotalPrice(),
@@ -421,7 +429,7 @@ function MenuPageContent() {
               </div>
               <button
                 onClick={submitOrder}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !tableId}
                 className="bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 {isSubmitting ? "Enviando..." : "Hacer Pedido"}
@@ -572,20 +580,5 @@ function MenuPageContent() {
         autoCloseDelay={8000}
       />
     </div>
-  );
-}
-
-export default function MenuPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Cargando menú...</p>
-        </div>
-      </div>
-    }>
-      <MenuPageContent />
-    </Suspense>
   );
 }

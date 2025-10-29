@@ -89,17 +89,6 @@ function decodeOfferQrFromText(text: string): { type: string; purchaseId: string
   return null;
 }
 
-function decodeTicketQrFromText(text: string): { type: string; ticketId: string; qrCode: string; showId: string; customerName: string } | null {
-  // Try JSON direct
-  try {
-    const j = JSON.parse(text);
-    if (j && typeof j === "object" && j.type === "show_ticket" && j.ticketId && j.qrCode && j.showId) {
-      return j as { type: string; ticketId: string; qrCode: string; showId: string; customerName: string };
-    }
-  } catch {}
-  return null;
-}
-
 function beep(freq = 880, duration = 120, type: OscillatorType = "sine", volume = 0.08) {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -139,11 +128,6 @@ export default function ScannerPage() {
     status: string;
     purchaseId?: string;
     canComplete?: boolean;
-  } | null>(null);
-  const [ticketOverlay, setTicketOverlay] = useState<{
-    ticket: { id: string; customerName: string; customerDni: string; ticketType: string; show: string; usedAt?: string };
-    valid: boolean;
-    message: string;
   } | null>(null);
   const [overlayHideTimeout, setOverlayHideTimeout] = useState<NodeJS.Timeout | null>(null);
   const [mode, setMode] = useState<Mode>("IN");
@@ -221,60 +205,6 @@ export default function ScannerPage() {
         }
       } catch (e: any) {
         setBanner({ variant: "error", message: `Error al validar oferta: ${String(e?.message || e)}` });
-        beep(220, 150, "square");
-        vibrate(120);
-        setCooldownUntil(Date.now() + 1000);
-      }
-      processingRef.current = false;
-      return;
-    }
-
-    // 3) Detect TICKET QR: validate show ticket
-    const ticketQrData = decodeTicketQrFromText(text);
-    if (ticketQrData) {
-      try {
-        const res = await fetch("/api/tickets/validate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ qrData: text }),
-        });
-        const json = await res.json();
-
-        if (json.valid) {
-          setTicketOverlay({
-            ticket: json.ticket,
-            valid: true,
-            message: json.message
-          });
-          // Hide overlay after 8 seconds for tickets
-          if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
-          setOverlayHideTimeout(setTimeout(() => setTicketOverlay(null), 8000));
-          setBanner({ variant: "success", message: `✅ Ticket válido: ${json.ticket.customerName} - ${json.ticket.show}` });
-          beep(880, 120, "sine");
-          vibrate(60);
-          setCooldownUntil(Date.now() + 1200);
-        } else {
-          setTicketOverlay({
-            ticket: json.ticket || { id: '', customerName: 'Desconocido', customerDni: '', ticketType: '', show: '' },
-            valid: false,
-            message: json.message
-          });
-          // Hide overlay after 6 seconds for invalid tickets
-          if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
-          setOverlayHideTimeout(setTimeout(() => setTicketOverlay(null), 6000));
-
-          let errorMsg = "QR de ticket inválido";
-          if (json.reason === 'TICKET_ALREADY_USED') errorMsg = "Ticket ya utilizado";
-          else if (json.reason === 'SHOW_ALREADY_STARTED') errorMsg = "El show ya comenzó";
-          else if (json.reason === 'TICKET_CANCELLED') errorMsg = "Ticket cancelado";
-
-          setBanner({ variant: "error", message: errorMsg });
-          beep(220, 150, "square");
-          vibrate(120);
-          setCooldownUntil(Date.now() + 1000);
-        }
-      } catch (e: any) {
-        setBanner({ variant: "error", message: `Error al validar ticket: ${String(e?.message || e)}` });
         beep(220, 150, "square");
         vibrate(120);
         setCooldownUntil(Date.now() + 1000);
@@ -399,7 +329,7 @@ export default function ScannerPage() {
         const already = ok.alerts?.includes('already_marked');
         const sameDir = ok.alerts?.includes('same_direction');
         const extraAlready = already ? ` · Ya estaba registrada hoy${ok.alreadyMarkedAt ? ` (${new Date(ok.alreadyMarkedAt).toLocaleTimeString()})` : ''}` : '';
-  const extraSame = !already && sameDir ? ` · Nota: misma dirección que la última marca${ok.lastSameAt ? ` (${new Date(ok.lastSameAt).toLocaleTimeString()})` : ''}` : '';
+        const extraSame = !already && sameDir ? ` · Nota: misma dirección que la última marca${ok.lastSameAt ? ` (${new Date(ok.lastSameAt).toLocaleTimeString()})` : ''}` : '';
         setBanner({ variant: "success", message: `${human}${who}${extraAlready}${extraSame}` });
         beep(880, 120, "sine");
         vibrate(60);
@@ -471,7 +401,7 @@ export default function ScannerPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-yellow-300 px-2 py-8">
       <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white/80 backdrop-blur-lg p-6 flex flex-col items-center">
         <h1 className="mb-2 text-3xl font-extrabold text-orange-700 tracking-tight text-center drop-shadow">Escáner QR</h1>
-        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea QR de personas, ofertas, tickets de shows o usa pósters para registrar entrada/salida.</p>
+        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea QR de personas, ofertas o usa pósters para registrar entrada/salida.</p>
 
         {banner && (
           <div className={`mb-4 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{banner.message}</div>
@@ -592,32 +522,6 @@ export default function ScannerPage() {
                   >
                     Completar Entrega
                   </button>
-                )}
-              </div>
-            </div>
-          )}
-          {ticketOverlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-blue-900/90 via-blue-800/50 to-transparent p-4 text-white rounded-2xl">
-              <div className="text-center">
-                <div className="text-lg font-bold leading-tight drop-shadow-lg mb-1">
-                  🎟️ Ticket Escaneado
-                </div>
-                <div className="text-base opacity-90">
-                  {ticketOverlay.ticket.customerName}
-                </div>
-                <div className="text-sm opacity-80">
-                  {ticketOverlay.ticket.show}
-                </div>
-                <div className="text-xs opacity-70 mt-1">
-                  {ticketOverlay.valid ? 'Validado' : 'Rechazado'} • {new Date().toLocaleString()}
-                </div>
-                <div className="text-xs opacity-70 mt-1">
-                  {ticketOverlay.valid ? "Válido" : "Inválido"}
-                </div>
-                {!ticketOverlay.valid && (
-                  <div className="text-xs text-red-400 mt-1">
-                    {ticketOverlay.message}
-                  </div>
                 )}
               </div>
             </div>
