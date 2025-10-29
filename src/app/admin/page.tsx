@@ -62,11 +62,26 @@ export default async function AdminDashboard() {
           
           <div className="flex flex-wrap gap-2">
             <a href="/admin/attendance" className="btn">Control de Asistencia</a>
-            <a href="/admin/tasks/metrics" className="btn">Métricas de Tareas</a>
             <a href="/admin/users" className="btn">Gestión de Colaboradores</a>
-            <a href="/admin/tasks" className="btn">Gestión de tareas</a>
-            <a href="/admin/day-brief" className="btn">Brief del día</a>
             <a href="/admin/scanner" className="btn">Escáner</a>
+          </div>
+        </div>
+
+        {/* Gestión de Tareas */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="flex items-center mb-3">
+            <div className="mr-3 p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold">Gestión de Tareas</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <a href="/admin/tasks" className="btn">Gestión de tareas</a>
+            <a href="/admin/tasks/metrics" className="btn">Métricas de Tareas</a>
+            <a href="/admin/day-brief" className="btn">Brief del día</a>
           </div>
         </div>
 
@@ -155,7 +170,7 @@ export default async function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold">Gestión de Restaurante</h3>
+            <h3 className="text-lg font-semibold">CARTA Y PEDIDOS</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 max-w-prose">
             Administra mesas, carta del menú, pedidos y operaciones del restaurante.
