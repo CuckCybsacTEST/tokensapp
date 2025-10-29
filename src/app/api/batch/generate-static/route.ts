@@ -2,7 +2,7 @@ import { Readable } from 'stream';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { prisma } from '@/lib/prisma';
-import { generateBatchCore } from '@/lib/batch/generateBatchCore';
+import { generateBatchStatic } from '@/lib/batch/generateBatchStatic';
 import { applySingleDayWindow, applySingleHourWindow } from '@/lib/batch/postProcess';
 import { apiError } from '@/lib/apiError';
 import { logEvent } from '@/lib/log';
@@ -58,9 +58,7 @@ export async function POST(req: Request) {
     return apiError('PRIZE_NOT_FOUND', 'Algún premio no existe o está inactivo', { prizeIds }, 400);
   }
 
-  // Build prizeRequests respecting counts; reuse generateBatchCore but it currently consumes full stock. We bypass by temporarily setting stock to desired count semantics via in-memory patching approach.
-  // Instead of modifying core, we simulate: set prize.stock = requested count and after generation restore manually.
-  // WARNING: generateBatchCore sets generationCount = currentStock. So we must ensure DB stock >= requested count else error.
+  // Validate sufficient stock for each prize
   for (const reqP of prizes) {
     const dbp = dbPrizes.find(p => p.id === reqP.prizeId)!;
     if (typeof dbp.stock !== 'number' || dbp.stock < reqP.count) {
@@ -68,40 +66,17 @@ export async function POST(req: Request) {
     }
   }
 
-  // Strategy: temporarily update stock to requested count for each prize, run core, then subtract exactly that count (core will set stock=0, so we pre-store original and restore remainder). This keeps core untouched.
-  const originalStocks: Record<string, number> = {};
-  try {
-    await prisma.$transaction(async (tx) => {
-      for (const p of dbPrizes) {
-        originalStocks[p.id] = p.stock ?? 0;
-        const requested = prizes.find(pp => pp.prizeId === p.id)!.count;
-        // Set stock to requested so core will emit exactly that many (since generationCount = currentStock)
-        await tx.prize.update({ where: { id: p.id }, data: { stock: requested } });
-      }
-    });
-  } catch (e) {
-    return apiError('STOCK_PATCH_FAIL', 'No se pudo preparar stock', undefined, 500);
-  }
-
   // Determine base expirationDays for initial generation (will be patched for singleDay/hour)
   let baseExpirationDays: number = 1;
   if (validity.mode === 'byDays') baseExpirationDays = validity.expirationDays;
 
-  // Prepare prizeRequests with per-prize expiration inheritance
-  const prizeRequests = prizes.map(p => ({ prizeId: p.prizeId, count: 1, expirationDays: baseExpirationDays }));
-
-  // Expand counts into repeated entries? generateBatchCore currently ignores count property because it derives from stock. So we just need one entry per prize to ensure it validates expirationDays; actual count comes from patched stock.
-  const uniquePrizeRequests = [...new Map(prizeRequests.map(p => [p.prizeId, p])).values()];
+  // Prepare prizeRequests with exact counts
+  const prizeRequests = prizes.map(p => ({ prizeId: p.prizeId, count: p.count, expirationDays: baseExpirationDays }));
 
   let result;
   try {
-    result = await generateBatchCore(uniquePrizeRequests, { description: name, includeQr, lazyQr, expirationDays: baseExpirationDays });
+    result = await generateBatchStatic(prizeRequests, { description: name, includeQr, lazyQr, expirationDays: baseExpirationDays });
   } catch (e: any) {
-    // Attempt to restore stocks best-effort
-    for (const p of dbPrizes) {
-      const orig = originalStocks[p.id];
-      await prisma.prize.update({ where: { id: p.id }, data: { stock: orig } }).catch(() => {});
-    }
     return apiError('STATIC_GEN_FAIL', 'Fallo generación', { message: e?.message }, 500);
   }
 
@@ -109,20 +84,6 @@ export async function POST(req: Request) {
   console.log(`[GENERATE-STATIC] Setting staticTargetUrl for batch ${result.batch.id}, targetUrl: ${targetUrl}`);
   await prisma.batch.update({ where: { id: result.batch.id }, data: { staticTargetUrl: targetUrl || '' } as any });
   console.log(`[GENERATE-STATIC] staticTargetUrl set successfully`);
-
-  // Recalculate new stocks: original - requested
-  try {
-    await prisma.$transaction(async (tx) => {
-      for (const p of dbPrizes) {
-        const requested = prizes.find(pp => pp.prizeId === p.id)!.count;
-        const remainder = (originalStocks[p.id] ?? 0) - requested;
-        if (remainder < 0) throw new Error('NEGATIVE_STOCK');
-        await tx.prize.update({ where: { id: p.id }, data: { stock: remainder, emittedTotal: { increment: requested } } });
-      }
-    });
-  } catch (e) {
-    await logEvent('STATIC_PATCH_STOCK_ERROR', 'Error al ajustar stock post generación', { batchId: result.batch.id });
-  }
 
   // Post-processing validity
   console.log(`[GENERATE-STATIC] Starting post-processing for batch ${result.batch.id}, validity mode: ${validity.mode}`);

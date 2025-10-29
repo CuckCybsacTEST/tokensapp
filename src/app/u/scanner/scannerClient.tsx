@@ -1,7 +1,5 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { verifySessionCookie, hasAnyRole } from '@/lib/auth';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
 
 interface ScanResult { 
   text: string; 
@@ -58,112 +56,17 @@ export default function ScannerClient() {
     return false;
   }, []);
 
-  // Function to check if user has staff/admin role
-  const checkUserIsStaff = useCallback(async (): Promise<boolean> => {
-    try {
-      console.log('[SCANNER] 🔍 Checking user role...');
-      const allCookies = document.cookie;
-      console.log('[SCANNER] 📋 All cookies string:', allCookies);
-      const cookies = allCookies.split(';');
-      console.log('[SCANNER] 🍪 Parsed cookies array:', cookies);
-
-      // First check user_session (for /u/login users with STAFF role)
-      const userSessionCookie = cookies.find(cookie => cookie.trim().startsWith('user_session='));
-      console.log('[SCANNER] 👤 User session cookie found:', !!userSessionCookie);
-      if (userSessionCookie) {
-        const rawUserCookie = userSessionCookie.split('=')[1];
-        console.log('[SCANNER] 🔑 Raw user cookie value (first 20 chars):', rawUserCookie.substring(0, 20) + '...');
-        const userSession = await verifyUserSessionCookie(rawUserCookie);
-        console.log('[SCANNER] 📊 User session data:', userSession);
-        if (userSession) {
-          console.log('[SCANNER] 🏷️ User role:', userSession.role);
-          if (userSession.role === 'STAFF') {
-            console.log('[SCANNER] ✅ User has STAFF role from user_session - ACCESS GRANTED');
-            return true;
-          } else {
-            console.log('[SCANNER] ❌ User has role', userSession.role, 'but needs STAFF - ACCESS DENIED');
-          }
-        } else {
-          console.log('[SCANNER] ❌ User session verification failed');
-        }
-      } else {
-        console.log('[SCANNER] ❌ No user_session cookie found');
-      }
-
-      // Then check admin_session (for admin users)
-      const adminSessionCookie = cookies.find(cookie => cookie.trim().startsWith('admin_session='));
-      console.log('[SCANNER] 👑 Admin session cookie found:', !!adminSessionCookie);
-      if (adminSessionCookie) {
-        const rawAdminCookie = adminSessionCookie.split('=')[1];
-        console.log('[SCANNER] 🔑 Raw admin cookie value (first 20 chars):', rawAdminCookie.substring(0, 20) + '...');
-        const adminSession = await verifySessionCookie(rawAdminCookie);
-        console.log('[SCANNER] 📊 Admin session data:', adminSession);
-        const hasAdminRole = adminSession && hasAnyRole(adminSession, ['ADMIN', 'STAFF']);
-        console.log('[SCANNER] 🏷️ Has admin/staff role from admin_session:', hasAdminRole);
-        if (hasAdminRole) {
-          console.log('[SCANNER] ✅ User has admin/staff role from admin_session - ACCESS GRANTED');
-          return true;
-        } else {
-          console.log('[SCANNER] ❌ No admin/staff role from admin_session');
-        }
-      } else {
-        console.log('[SCANNER] ❌ No admin_session cookie found');
-      }
-
-      console.log('[SCANNER] 🚫 No staff/admin role found in any session - ACCESS DENIED');
-      return false;
-    } catch (e) {
-      console.error('[SCANNER] 💥 Error checking user role:', e);
-      return false;
-    }
-  }, []);
-
   // Function to navigate to birthday pages
-  const maybeNavigate = useCallback(async (raw: string) => {
-    console.log('[SCANNER] maybeNavigate called with:', raw);
+  const maybeNavigate = useCallback((raw: string) => {
     if (redirectedRef.current) return;
     try {
       const url = new URL(raw);
-      console.log('[SCANNER] URL parsed:', url.pathname);
       // Patrón principal: /b/<code> (tanto relativo como absoluto)
       if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
-        console.log('[SCANNER] Birthday QR detected');
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
-        const code = url.pathname.split('/')[2];
-        console.log('[SCANNER] Extracted code:', code);
-        const isStaffUser = await checkUserIsStaff();
-        console.log('[SCANNER] Is staff user:', isStaffUser);
-        
-        if (isStaffUser) {
-          console.log('[SCANNER] Redirecting to admin page');
-          // For staff/admin users, get reservation ID and redirect to admin page
-          try {
-            const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`, {
-              credentials: 'include' // Include cookies in the request
-            });
-            console.log('[SCANNER] API response status:', res.status);
-            if (res.ok) {
-              const data = await res.json();
-              console.log('[SCANNER] API data:', data);
-              if (data?.reservation?.id) {
-                const targetUrl = `/admin/birthdays/${data.reservation.id}`;
-                console.log('[SCANNER] Redirecting to:', targetUrl);
-                setTimeout(()=>{ window.location.href = targetUrl; }, 120);
-                return;
-              }
-            }
-          } catch (e) {
-            console.error('Error fetching reservation ID:', e);
-          }
-          // Fallback if API call fails
-          console.log('[SCANNER] API call failed, using fallback');
-          setTimeout(()=>{ window.location.href = raw; }, 120);
-        } else {
-          console.log('[SCANNER] Not staff user, redirecting to public page');
-          // Public users: redirect to public birthday page
-          setTimeout(()=>{ window.location.href = raw; }, 120);
-        }
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = raw; }, 120);
         return;
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
@@ -180,36 +83,11 @@ export default function ScannerClient() {
         if (code && code.length >= 4 && !redirectedRef.current) {
           redirectedRef.current = true;
           setActive(false);
-          const isStaffUser = await checkUserIsStaff();
-          
-          if (isStaffUser) {
-            // For staff/admin users, get reservation ID and redirect to admin page
-            try {
-              const res = await fetch(`/api/birthdays/invite/${encodeURIComponent(code)}`, {
-                credentials: 'include' // Include cookies in the request
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (data?.reservation?.id) {
-                  const targetUrl = `/admin/birthdays/${data.reservation.id}`;
-                  setTimeout(()=>{ window.location.href = targetUrl; }, 120);
-                  return;
-                }
-              }
-            } catch (e) {
-              console.error('Error fetching reservation ID:', e);
-            }
-            // Fallback
-            const targetUrl = `/b/${encodeURIComponent(code)}`;
-            setTimeout(()=>{ window.location.href = targetUrl; }, 120);
-          } else {
-            const targetUrl = `/b/${encodeURIComponent(code)}`;
-            setTimeout(()=>{ window.location.href = targetUrl; }, 120);
-          }
+          setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
         }
       }
     }
-  }, [checkUserIsStaff]);
+  }, []);
 
   // Function to process QR text (extracted for reuse)
   const processQrText = useCallback(async (raw: string) => {

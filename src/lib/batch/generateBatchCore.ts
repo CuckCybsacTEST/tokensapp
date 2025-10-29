@@ -326,8 +326,8 @@ export async function generateBatchCore(
     : options.includeQr === false
       ? "none"
       : "eager";
-  const meta: BatchManifestMeta = {
-    mode: "auto",
+  const meta = {
+    mode: "auto" as const,
     expirationDays: options.expirationDays ?? null,
     aggregatedPrizeCount: prizeIds.length,
     totalTokens: createdTokens.length,
@@ -479,8 +479,8 @@ export async function generateBatchPlanned(
 
   if (!batchRecord) throw new Error('BATCH_NOT_CREATED');
   const qrMode: "lazy" | "eager" | "none" = options.lazyQr ? 'lazy' : (options.includeQr === false ? 'none' : 'eager');
-  const meta: BatchManifestMeta = {
-    mode: 'auto',
+  const meta = {
+    mode: "auto" as const,
     expirationDays: options.expirationDays ?? null,
     aggregatedPrizeCount: prizeIds.length,
     totalTokens: createdTokens.length,

@@ -13,9 +13,9 @@ export interface PrizeEmissionSnapshot {
   emitted: number; // cantidad de tokens emitidos (stock consumido)
 }
 
-// Meta incluida en manifest.json para lotes auto
+// Meta incluida en manifest.json para lotes auto y estáticos
 export interface BatchManifestMeta {
-  mode: "auto";
+  mode: "auto" | "static";
   expirationDays: number | null;
   aggregatedPrizeCount: number;
   totalTokens: number;
