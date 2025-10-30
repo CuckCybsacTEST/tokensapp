@@ -190,6 +190,48 @@ model User {
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
 
+model Customer {
+  id                String            @id @default(cuid())
+  dni               String            @unique
+  name              String
+  email             String?           @unique
+  phone             String
+  whatsapp          String?
+  birthday          DateTime?         @db.Timestamp(6)
+  membershipLevel   String            @default("MEMBER") // VIP, MEMBER, GUEST
+  points            Int               @default(0)
+  totalSpent        Float             @default(0)
+  visitCount        Int               @default(0)
+  lastVisit         DateTime?
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  // Relations
+  ticketPurchases   TicketPurchase[]
+  orders            Order[]
+  customerVisits    CustomerVisit[]
+
+  @@index([dni])
+  @@index([email])
+  @@index([membershipLevel])
+  @@index([isActive])
+}
+
+model CustomerVisit {
+  id          String    @id @default(cuid())
+  customerId  String
+  visitDate   DateTime  @default(now())
+  visitType   String    @default("VISIT") // VISIT, BIRTHDAY, SPECIAL_EVENT
+  notes       String?
+  spent       Float     @default(0)
+  pointsEarned Int      @default(0)
+  createdAt   DateTime  @default(now())
+  customer    Customer  @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([visitDate])
+}
+
 model Task {
   id             String             @id @default(cuid())
   label          String
@@ -461,6 +503,7 @@ model TicketType {
 model TicketPurchase {
   id             String         @id @default(cuid())
   userId         String?
+  customerId     String?        // Relación opcional con Customer
   ticketTypeId   String
   quantity       Int
   totalAmount    Decimal        @db.Decimal(10,2)
@@ -477,9 +520,11 @@ model TicketPurchase {
 
   ticketType     TicketType     @relation(fields: [ticketTypeId], references: [id])
   user           User?           @relation(fields: [userId], references: [id])
+  customer       Customer?      @relation(fields: [customerId], references: [id])
   tickets        Ticket[]       // Tickets individuales generados para esta compra
 
   @@index([userId])
+  @@index([customerId])
   @@index([ticketTypeId])
   @@index([status])
   @@index([culqiOrderId])
@@ -736,6 +781,7 @@ model Order {
   location      Location?     @relation(fields: [locationId], references: [id])
   staffId       String?       // mozo asignado
   staff         Staff?        @relation(fields: [staffId], references: [id])
+  customerId    String?       // Relación opcional con Customer
   customerName  String?       // Nombre del cliente (para pedidos desde QR)
   isFromQR      Boolean       @default(false) // Indica si el pedido viene desde QR
   status        OrderStatus   @default(PENDING)
@@ -747,11 +793,13 @@ model Order {
   readyAt       DateTime?
   deliveredAt   DateTime?
   items         OrderItem[]
+  customer      Customer?     @relation(fields: [customerId], references: [id])
 
   @@index([tableId])
   @@index([servicePointId])
   @@index([locationId])
   @@index([staffId])
+  @@index([customerId])
   @@index([status])
   @@index([createdAt])
 }

@@ -19,6 +19,9 @@ export async function applySingleDayWindow({ batchId, isoDate }: SingleDayWindow
   console.log(`[POST-PROCESS] applySingleDayWindow: batchId=${batchId}, future=${future}, isStaticBatch=${isStaticBatch}, staticTargetUrl="${batch?.staticTargetUrl}", description=${batch?.description}`);
   
   await prisma.token.updateMany({ where: { batchId }, data: { expiresAt: end.toJSDate(), disabled: future && !isStaticBatch } });
+  if (future) {
+    try { await prisma.$executeRawUnsafe(`UPDATE "Token" SET "validFrom" = $1 WHERE "batchId" = $2`, start.toJSDate() as any, batchId as any); } catch {}
+  }
   await logEvent('BATCH_SINGLE_DAY_POST', 'post-proceso singleDay aplicado (helper)', { batchId, singleDayDate: start.toISO(), future, isStaticBatch });
   return { windowStart: start.toJSDate(), windowEnd: end.toJSDate(), future };
 }

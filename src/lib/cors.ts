@@ -15,7 +15,7 @@ export function corsHeadersFor(req: Request): Record<string, string> {
     'Access-Control-Allow-Origin': allowOrigin,
     'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,Content-Range',
     'Access-Control-Max-Age': '600',
   };
 }

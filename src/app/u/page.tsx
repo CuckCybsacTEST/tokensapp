@@ -71,6 +71,11 @@ export default async function UHome() {
               <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
               <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver mis tareas →</div>
             </Link>
+            <Link href="/u/profile" className="block rounded-lg border border-blue-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-blue-800/60 dark:bg-slate-800">
+              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Mi Perfil</div>
+              <p className="text-sm text-gray-600 dark:text-slate-300">Ver mi información personal y cambiar mi contraseña.</p>
+              <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver perfil →</div>
+            </Link>
             {session.role === 'STAFF' && (
               <Link href="/u/scanner" className="block rounded-lg border border-teal-300/70 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-teal-700 dark:bg-slate-800">
                 <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Escáner QR</div>

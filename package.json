@@ -56,6 +56,9 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.4",
     "@prisma/client": "^5.22.0",
     "@tabler/icons-react": "^3.35.0",
     "@zxing/browser": "^0.1.5",
@@ -73,7 +76,9 @@
     "node-cron": "^4.2.1",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.3",
+    "ra-data-simple-rest": "^5.12.2",
     "react": "18.2.0",
+    "react-admin": "^5.12.2",
     "react-culqi-next": "^0.1.2",
     "react-dom": "18.2.0",
     "recharts": "^2.12.0",

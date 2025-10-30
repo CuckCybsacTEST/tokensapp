@@ -152,8 +152,9 @@ export async function POST(req: Request) {
 
     const username = String(body.username).trim();
     const password = String(body.password);
-    // Role defaults to COLLAB; allow STAFF explicitly if passed, otherwise ignore
-    const role = (body.role === 'STAFF' ? 'STAFF' : 'COLLAB') as 'COLLAB' | 'STAFF';
+    // Valid roles including community levels
+    const validRoles = ['ADMIN', 'STAFF', 'COLLAB', 'VIP', 'MEMBER', 'GUEST'];
+    const role = validRoles.includes(body.role) ? body.role : 'COLLAB';
 
     if (!isValidUsername(username)) {
       return NextResponse.json({ ok: false, code: 'INVALID_USERNAME' }, { status: 400 });

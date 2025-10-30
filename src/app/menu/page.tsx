@@ -68,6 +68,13 @@ function MenuPageContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string>("");
 
+  // Customer lookup states
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [showCustomerLookupModal, setShowCustomerLookupModal] = useState(false);
+  const [customerSearchDni, setCustomerSearchDni] = useState<string>("");
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [foundCustomer, setFoundCustomer] = useState<any>(null);
+
   const searchParams = useSearchParams();
 
   // Socket.IO para actualizaciones en tiempo real
@@ -215,9 +222,9 @@ function MenuPageContent() {
       return;
     }
 
-    // Si viene desde QR (tiene tableId), pedir nombre del cliente
-    if (tableId && !customerName.trim()) {
-      setShowCustomerNameModal(true);
+    // Si viene desde QR (tiene tableId) y no hay cliente seleccionado, mostrar búsqueda de cliente
+    if (tableId && !selectedCustomer) {
+      setShowCustomerLookupModal(true);
       return;
     }
 
@@ -234,6 +241,7 @@ function MenuPageContent() {
     try {
       const orderData = {
         servicePointId: tableId,
+        customerId: selectedCustomer?.id,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -291,6 +299,41 @@ function MenuPageContent() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Customer lookup functions
+  const searchCustomer = async () => {
+    if (!customerSearchDni.trim()) return;
+
+    setCustomerSearchLoading(true);
+    try {
+      const response = await fetch(`/api/customers/search?dni=${customerSearchDni}`);
+      if (response.ok) {
+        const data = await response.json();
+        setFoundCustomer(data.customer);
+      } else {
+        setFoundCustomer(null);
+        alert('Cliente no encontrado');
+      }
+    } catch (error) {
+      console.error('Error searching customer:', error);
+      alert('Error al buscar cliente');
+    } finally {
+      setCustomerSearchLoading(false);
+    }
+  };
+
+  const selectCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    setCustomerName(customer.name);
+    setShowCustomerLookupModal(false);
+    setFoundCustomer(null);
+    setCustomerSearchDni("");
+  };
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerName("");
   };
 
   if (loading) {
@@ -491,6 +534,24 @@ function MenuPageContent() {
                 />
               </div>
 
+              {/* Customer Information */}
+              {selectedCustomer && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Cliente: {selectedCustomer.name}</p>
+                      <p className="text-xs text-blue-700">DNI: {selectedCustomer.dni} | Membresía: {selectedCustomer.membershipLevel}</p>
+                    </div>
+                    <button
+                      onClick={clearCustomer}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="border-t pt-4">
                 <div className="flex justify-between text-sm text-gray-600 mb-2">
                   <span>{getTotalItems()} productos</span>
@@ -564,6 +625,83 @@ function MenuPageContent() {
                 className="flex-1 px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
               >
                 Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Lookup Modal */}
+      {showCustomerLookupModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-black/90 border border-white/20 rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-white mb-4">Buscar Cliente</h3>
+            <p className="text-gray-300 mb-4 text-sm">
+              Busca un cliente registrado para asociarlo con este pedido
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white mb-1">
+                  DNI del cliente
+                </label>
+                <input
+                  type="text"
+                  value={customerSearchDni}
+                  onChange={(e) => setCustomerSearchDni(e.target.value)}
+                  placeholder="Ingresa DNI"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+                  autoFocus
+                  onKeyPress={(e) => e.key === 'Enter' && searchCustomer()}
+                />
+              </div>
+
+              {foundCustomer && (
+                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">Cliente encontrado:</h4>
+                  <div className="text-gray-300 text-sm space-y-1">
+                    <p><strong>Nombre:</strong> {foundCustomer.name}</p>
+                    <p><strong>DNI:</strong> {foundCustomer.dni}</p>
+                    <p><strong>Membresía:</strong> {foundCustomer.membershipLevel}</p>
+                    <p><strong>Puntos:</strong> {foundCustomer.points}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCustomerLookupModal(false)}
+                className="flex-1 px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={searchCustomer}
+                disabled={customerSearchLoading || !customerSearchDni.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {customerSearchLoading ? 'Buscando...' : 'Buscar'}
+              </button>
+              {foundCustomer && (
+                <button
+                  onClick={() => selectCustomer(foundCustomer)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Seleccionar
+                </button>
+              )}
+            </div>
+
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  setShowCustomerLookupModal(false);
+                  window.open('/register', '_blank');
+                }}
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                ¿Cliente nuevo? Regístralo aquí
               </button>
             </div>
           </div>

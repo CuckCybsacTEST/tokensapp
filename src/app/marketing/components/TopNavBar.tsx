@@ -168,9 +168,31 @@ export function TopNavBar() {
         </span>
         <span className="text-sm md:text-base font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>Go Lounge</span>
       </a>
-      {/* Acciones derechas: en Hero = Staff/Admin; fuera = Carta/Ofertas */}
+      {/* Acciones derechas: en Hero = Login/Register/Staff/Admin; fuera = Carta/Ofertas */}
       {inHero ? (
         <div className="flex items-center gap-2 md:gap-3">
+          <a
+            href="/login"
+            className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
+            style={{
+              color: "#ffffffd0",
+              ["--ring-color" as unknown as string]: `${brand.primary}60`,
+            }}
+            aria-label="Iniciar sesión cliente"
+          >
+            <span className="opacity-80 group-hover:opacity-100 transition-opacity">Login</span>
+          </a>
+          <a
+            href="/register"
+            className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
+            style={{
+              color: "#ffffffc0",
+              ["--ring-color" as unknown as string]: `${brand.primary}50`,
+            }}
+            aria-label="Registrarse como cliente"
+          >
+            <span className="opacity-70 group-hover:opacity-100 transition-opacity">Register</span>
+          </a>
           <a
             href="/u/login"
             className="group inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0 focus-visible:ring-[--ring-color]"
@@ -196,6 +218,28 @@ export function TopNavBar() {
         </div>
       ) : (
         <div className="flex items-center gap-2 md:gap-3">
+          <a
+            href="/login"
+            className="group inline-flex items-center rounded-sm px-2 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
+            style={{
+              color: "#ffffffd0",
+              ["--ring-color" as unknown as string]: `${brand.primary}60`,
+            }}
+            aria-label="Iniciar sesión cliente"
+          >
+            <span className="opacity-80 group-hover:opacity-100 transition-opacity">Login</span>
+          </a>
+          <a
+            href="/register"
+            className="group inline-flex items-center rounded-sm px-2 py-1 text-[11px] md:text-[12px] font-medium tracking-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0"
+            style={{
+              color: "#ffffffc0",
+              ["--ring-color" as unknown as string]: `${brand.primary}50`,
+            }}
+            aria-label="Registrarse como cliente"
+          >
+            <span className="opacity-70 group-hover:opacity-100 transition-opacity">Register</span>
+          </a>
           {/* Carta: botón fantasma con borde sutil */}
           <a
             href="/menu"

@@ -4,6 +4,47 @@ import { prisma } from '@/lib/prisma';
 import { isValidArea, ALLOWED_AREAS } from '@/lib/areas';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
+import bcrypt from 'bcryptjs';
+
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    const ok = requireRole(session, ['ADMIN']);
+    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
+
+    const id = params.id;
+    if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        person: true
+      }
+    });
+
+    if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+
+    // Transform to React Admin format
+    const result = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      personName: user.person.name,
+      dni: user.person.dni,
+      area: user.person.area,
+      whatsapp: user.person.whatsapp,
+      birthday: user.person.birthday,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+
+    return NextResponse.json(result);
+  } catch (e: any) {
+    console.error('admin get user error', e);
+    return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });
+  }
+}
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -52,16 +93,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const id = params.id;
     if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
-    const body = await req.json().catch(() => null) as { personName?: string; role?: string; area?: string; whatsapp?: string } | null;
-    if (!body || (!body.personName && !body.role && !body.area && !body.whatsapp)) {
+    const body = await req.json().catch(() => null) as { personName?: string; role?: string; area?: string; whatsapp?: string; password?: string } | null;
+    if (!body || (!body.personName && !body.role && !body.area && !body.whatsapp && !body.password)) {
       return NextResponse.json({ ok: false, code: 'NO_FIELDS' }, { status: 400 });
     }
 
-    const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean } = {};
+    const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean; passwordChanged?: boolean } = {};
 
     // Role update (optional)
     if (body.role != null) {
-      const role = body.role === 'STAFF' ? 'STAFF' : (body.role === 'COLLAB' ? 'COLLAB' : null);
+      const validRoles = ['ADMIN', 'STAFF', 'COLLAB', 'VIP', 'MEMBER', 'GUEST'];
+      const role = validRoles.includes(body.role) ? body.role : null;
       if (!role) return NextResponse.json({ ok: false, code: 'INVALID_ROLE' }, { status: 400 });
       const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
       if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
@@ -107,6 +149,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (user.person?.whatsapp !== digits) {
         await prisma.person.update({ where: { id: user.personId }, data: { whatsapp: digits } });
         updates.whatsappChanged = true;
+      }
+    }
+
+    // Password update (optional)
+    if (body.password != null) {
+      const password = String(body.password || '').trim();
+      if (password && (password.length < 6 || password.length > 128)) {
+        return NextResponse.json({ ok: false, code: 'INVALID_PASSWORD' }, { status: 400 });
+      }
+      if (password) {
+        // Hash the password
+        const salt = bcrypt.genSaltSync(10);
+        const hashedPassword = bcrypt.hashSync(password, salt);
+        await prisma.user.update({ where: { id }, data: { passwordHash: hashedPassword } });
+        updates.passwordChanged = true;
+        await audit('ADMIN_USER_PASSWORD_CHANGE', undefined, { id, actorRole: session?.role });
       }
     }
 

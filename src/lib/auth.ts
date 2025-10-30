@@ -2,7 +2,7 @@
 const COOKIE_NAME = "admin_session";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8h
 
-export type SessionRole = 'ADMIN' | 'STAFF';
+export type SessionRole = 'ADMIN' | 'STAFF' | 'COLLAB' | 'VIP' | 'MEMBER' | 'GUEST';
 
 export interface SessionData {
   iat: number; // issued at (ms)

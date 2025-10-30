@@ -2,7 +2,7 @@
  * so it can be safely used from Next.js middleware (Edge runtime).
  */
 
-export type SessionRole = 'ADMIN' | 'STAFF';
+export type SessionRole = 'ADMIN' | 'STAFF' | 'COLLAB' | 'VIP' | 'MEMBER' | 'GUEST';
 
 export interface SessionData {
   iat: number;

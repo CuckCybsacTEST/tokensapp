@@ -9,6 +9,39 @@ export const dynamic = 'force-dynamic';
 
 function esc(s: string) { return s.replace(/'/g, "''"); }
 
+export async function GET(req: Request) {
+  try {
+    // Authn + Authz
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
+    const role = requireRole(session, ['ADMIN', 'STAFF']);
+    if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
+
+    const persons = await prisma.person.findMany({
+      orderBy: { code: 'asc' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        dni: true,
+        area: true,
+        jobTitle: true,
+        whatsapp: true,
+        birthday: true,
+      },
+    });
+
+    return apiOk({ persons });
+  } catch (e: any) {
+    console.error('admin persons GET error', e);
+    return apiError('INTERNAL_ERROR','Error interno',{ message: String(e?.message || e) },500);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     // Authn + Authz
@@ -50,5 +83,94 @@ export async function POST(req: Request) {
   } catch (e: any) {
     console.error('admin persons POST error', e);
   return apiError('INTERNAL_ERROR','Error interno',{ message: String(e?.message || e) },500);
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    // Authn + Authz
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
+    const role = requireRole(session, ['ADMIN']);
+    if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
+
+    const body = await req.json().catch(() => null);
+    if (!body || !body.id) {
+      return apiError('BAD_REQUEST','ID requerido',undefined,400);
+    }
+
+    const { id, ...updates } = body;
+
+    // Validate updates
+    const allowedFields = ['name', 'active', 'dni', 'area', 'jobTitle', 'whatsapp', 'birthday'];
+    const filteredUpdates: any = {};
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        filteredUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(filteredUpdates).length === 0) {
+      return apiError('BAD_REQUEST','No hay campos para actualizar',undefined,400);
+    }
+
+    const updated = await prisma.person.update({
+      where: { id },
+      data: filteredUpdates,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        dni: true,
+        area: true,
+        jobTitle: true,
+        whatsapp: true,
+        birthday: true,
+      },
+    });
+
+    return apiOk(updated);
+  } catch (e: any) {
+    console.error('admin persons PUT error', e);
+    return apiError('INTERNAL_ERROR','Error interno',{ message: String(e?.message || e) },500);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    // Authn + Authz
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
+    if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
+    const role = requireRole(session, ['ADMIN']);
+    if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
+
+    const url = new URL(req.url);
+    const id = url.searchParams.get('id');
+    if (!id) {
+      return apiError('BAD_REQUEST','ID requerido',undefined,400);
+    }
+
+    // Check if person has associated users
+    const userCount = await prisma.user.count({
+      where: { personId: id },
+    });
+
+    if (userCount > 0) {
+      return apiError('CONFLICT','No se puede eliminar una persona con usuarios asociados',undefined,409);
+    }
+
+    await prisma.person.delete({
+      where: { id },
+    });
+
+    return apiOk({ deleted: true });
+  } catch (e: any) {
+    console.error('admin persons DELETE error', e);
+    return apiError('INTERNAL_ERROR','Error interno',{ message: String(e?.message || e) },500);
   }
 }

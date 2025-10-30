@@ -15,6 +15,7 @@ async function getBatchWithTokens(batchId: string) {
           id: true,
           prizeId: true,
           prize: { select: { key: true, label: true, color: true } },
+          validFrom: true,
           redeemedAt: true,
           expiresAt: true,
           disabled: true,
@@ -35,10 +36,15 @@ async function getBatchWithTokens(batchId: string) {
 export default async function StaticBatchPreviewPage({ params }: PageProps) {
   const batch = await getBatchWithTokens(params.id);
 
+  const now = new Date();
   const redeemed = batch.tokens.filter((t: any) => t.redeemedAt).length;
-  const expired = batch.tokens.filter((t: any) => t.expiresAt < new Date()).length;
   const disabled = batch.tokens.filter((t: any) => t.disabled).length;
-  const active = batch.tokens.length - redeemed - expired - disabled;
+  const upcoming = batch.tokens.filter((t: any) => t.validFrom && new Date(t.validFrom) > now).length;
+  const expired = batch.tokens.filter((t: any) => {
+    if (t.validFrom && new Date(t.validFrom) > now) return false; // future = not expired
+    return t.expiresAt && new Date(t.expiresAt) < now;
+  }).length;
+  const active = batch.tokens.length - redeemed - expired - disabled - upcoming;
 
   return (
     <div className="space-y-8">
@@ -179,9 +185,11 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
               </thead>
               <tbody>
                 {batch.tokens.map((token: any) => {
-                  const isExpired = token.expiresAt < new Date();
+                  const now = new Date();
                   const isRedeemed = !!token.redeemedAt;
                   const isDisabled = token.disabled;
+                  const isUpcoming = token.validFrom && new Date(token.validFrom) > now;
+                  const isExpired = !isUpcoming && token.expiresAt && new Date(token.expiresAt) < now;
 
                   let statusText = 'Activo';
                   let statusColor = 'text-green-600 dark:text-green-400';
@@ -192,6 +200,9 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   } else if (isDisabled) {
                     statusText = 'Deshabilitado';
                     statusColor = 'text-orange-600 dark:text-orange-400';
+                  } else if (isUpcoming) {
+                    statusText = 'Próximamente';
+                    statusColor = 'text-purple-600 dark:text-purple-400';
                   } else if (isExpired) {
                     statusText = 'Expirado';
                     statusColor = 'text-red-600 dark:text-red-400';
@@ -219,7 +230,11 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                         </span>
                       </td>
                       <td className="py-2 px-3 text-sm text-slate-600 dark:text-slate-400">
-                        {new Date(token.expiresAt).toLocaleString()}
+                        {token.validFrom && new Date(token.validFrom) > new Date() ? (
+                          <span>Activa el {new Date(token.validFrom).toLocaleString()}</span>
+                        ) : (
+                          token.expiresAt ? new Date(token.expiresAt).toLocaleString() : '-'
+                        )}
                       </td>
                       <td className="py-2 px-3 text-sm text-slate-600 dark:text-slate-400">
                         {token.redeemedAt ? new Date(token.redeemedAt).toLocaleString() : '-'}
