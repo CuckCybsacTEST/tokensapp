@@ -29,7 +29,7 @@ interface CustomerVisit {
   pointsEarned: number;
 }
 
-export default function CustomerProfile() {
+function CustomerProfile() {
   const searchParams = useSearchParams();
   const customerId = searchParams?.get('id');
 
