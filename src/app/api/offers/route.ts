@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { OfferTimeUtils } from '@/lib/offerTimeUtils';
 import { OfferWithPurchases, FormattedOffer } from '@/lib/types/offers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Obtener todas las ofertas activas

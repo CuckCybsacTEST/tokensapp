@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface Customer {
@@ -244,3 +244,13 @@ export default function CustomerProfile() {
     </div>
   );
 }
+
+function ProfileWrapper() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <CustomerProfile />
+    </Suspense>
+  );
+}
+
+export default ProfileWrapper;

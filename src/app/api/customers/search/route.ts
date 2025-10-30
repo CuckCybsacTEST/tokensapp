@@ -4,6 +4,8 @@ import { apiError, apiOk } from "@/lib/apiError";
 import { corsHeadersFor } from "@/lib/cors";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 const searchSchema = z.object({
   dni: z.string().min(1, "DNI es requerido"),
 });
