@@ -5,7 +5,8 @@ import { DateTime } from 'luxon';
 import StaffValidateControls from './StaffValidateControls';
 
 async function fetchToken(code: string, cookieHeader: string | undefined) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/birthdays/invite/${encodeURIComponent(code)}`, {
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+  const res = await fetch(`${baseUrl}/api/birthdays/invite/${encodeURIComponent(code)}`, {
     cache: 'no-store',
     headers: {
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
