@@ -368,16 +368,18 @@ export async function listReservations(
       const tokens = await prisma.inviteToken.findMany({ where: { reservationId: { in: ids } }, select: { id: true, reservationId: true } });
       if (tokens.length) {
         const tokenIds = tokens.map(t => t.id);
-        try {
-          const cards = await prisma.$queryRawUnsafe<{ inviteTokenId: string }[]>(
-            `SELECT "inviteTokenId" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_,i)=>'$'+(i+1)).join(',')})`,
-            ...tokenIds
-          );
-          const tokenIdSet = new Set(cards.map(c => c.inviteTokenId));
-          for (const t of tokens) {
-            if (tokenIdSet.has(t.id)) cardsByReservation[t.reservationId] = true;
-          }
-        } catch {}
+        if (tokenIds.length > 0) {
+          try {
+            const cards = await prisma.$queryRawUnsafe<{ inviteTokenId: string }[]>(
+              `SELECT "inviteTokenId" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_,i)=>'$'+(i+1)).join(',')})`,
+              ...tokenIds
+            );
+            const tokenIdSet = new Set(cards.map(c => c.inviteTokenId));
+            for (const t of tokens) {
+              if (tokenIdSet.has(t.id)) cardsByReservation[t.reservationId] = true;
+            }
+          } catch {}
+        }
       }
     } catch {}
   }
@@ -418,12 +420,49 @@ export async function listReservations(
   return { items: decorated, total, page, pageSize };
 }
 
-export async function getReservation(id: string): Promise<ReservationWithRelations | null> {
-  const r = await prisma.birthdayReservation.findUnique({
+export async function getReservation(id: string): Promise<any | null> {
+  const reservation = await prisma.birthdayReservation.findUnique({
     where: { id },
-    include: { pack: true, inviteTokens: true, courtesyItems: true, photoDeliveries: true },
+    include: {
+      pack: true,
+      courtesyItems: true,
+      photoDeliveries: true,
+    },
   });
-  return (r as ReservationWithRelations) || null;
+  if (!reservation) return null;
+
+  return {
+    id: reservation.id,
+    celebrantName: reservation.celebrantName,
+    phone: reservation.phone,
+    documento: reservation.documento,
+    email: reservation.email,
+    date: reservation.date.toISOString().slice(0, 10), // YYYY-MM-DD
+    timeSlot: reservation.timeSlot,
+    pack: {
+      id: reservation.pack.id,
+      name: reservation.pack.name,
+      qrCount: reservation.pack.qrCount,
+      bottle: reservation.pack.bottle,
+      perks: reservation.pack.perks ? JSON.parse(reservation.pack.perks) : null,
+    },
+    guestsPlanned: reservation.guestsPlanned,
+    status: reservation.status,
+    tokensGeneratedAt: reservation.tokensGeneratedAt?.toISOString() || null,
+    createdAt: reservation.createdAt.toISOString(),
+    courtesyItems: reservation.courtesyItems.map(item => ({
+      id: item.id,
+      type: item.type,
+      status: item.status,
+      notes: item.notes,
+    })),
+    photoDeliveries: reservation.photoDeliveries.map(photo => ({
+      id: photo.id,
+      kind: photo.kind,
+      url: photo.url,
+      status: photo.status,
+    })),
+  };
 }
 
 export async function approveReservation(id: string, byUserId?: string): Promise<BirthdayReservation> {

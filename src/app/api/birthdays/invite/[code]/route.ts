@@ -5,6 +5,7 @@ import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
 import { redeemToken } from '@/lib/birthdays/service';
 import { DateTime } from 'luxon';
+import { corsHeadersFor } from '@/lib/cors';
 
 /*
   GET /api/birthdays/invite/:code
@@ -13,6 +14,7 @@ import { DateTime } from 'luxon';
   Error codes: NOT_FOUND, FEATURE_DISABLED
 */
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
+  const cors = corsHeadersFor(req);
   if (!isBirthdaysEnabledPublic()) {
     // Still allow ADMIN/STAFF to inspect if feature disabled? For simplicity: yes.
     // We'll continue but mark flag state.
@@ -22,20 +24,51 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const isStaff = !!session && requireRole(session, ['ADMIN','STAFF']).ok;
   try {
     console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff });
-    const token = await prisma.inviteToken.findUnique({ where: { code: params.code }, include: { reservation: { include: { pack: true } } } });
+    const token = await prisma.inviteToken.findUnique({ 
+      where: { code: params.code }, 
+      include: { 
+        reservation: { 
+          include: { pack: true } 
+        } 
+      } 
+    });
     
     // Debug: Check hostArrivedAt directly from database
     if (token) {
-      const directCheck = await prisma.$queryRaw`SELECT "hostArrivedAt" FROM "BirthdayReservation" WHERE id = ${token.reservationId}`;
-      console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Direct DB check', { 
+      console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token encontrado en DB', { 
+        code: params.code,
         reservationId: token.reservationId,
-        directHostArrivedAt: directCheck,
-        includeHostArrivedAt: (token.reservation as any).hostArrivedAt
+        hasReservation: !!token.reservation
       });
+      if (token.reservation) {
+        const directCheck = await prisma.$queryRaw`SELECT "hostArrivedAt" FROM "BirthdayReservation" WHERE id = ${token.reservationId}`;
+        console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Direct DB check', { 
+          reservationId: token.reservationId,
+          directHostArrivedAt: directCheck,
+          includeHostArrivedAt: (token.reservation as any).hostArrivedAt
+        });
+      } else {
+        // If include didn't work, try to fetch reservation separately
+        console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Include no funcionó, buscando reserva por separado');
+        const reservation = await prisma.birthdayReservation.findUnique({
+          where: { id: token.reservationId },
+          include: { pack: true }
+        });
+        if (reservation) {
+          (token as any).reservation = reservation;
+          console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Reserva encontrada por separado', { id: reservation.id });
+        } else {
+          console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Reserva NO encontrada por separado', { reservationId: token.reservationId });
+        }
+      }
     }
     if (!token) {
       console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token NO encontrado', { code: params.code });
-      return apiError('NOT_FOUND', 'Token no encontrado', undefined, 404);
+      return apiError('NOT_FOUND', 'Token no encontrado', undefined, 404, cors);
+    }
+    if (!token.reservation) {
+      console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token encontrado pero sin reserva', { code: params.code });
+      return apiError('NOT_FOUND', 'Reserva no encontrada', undefined, 404, cors);
     }
     console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Token encontrado', {
       code: params.code,
@@ -49,7 +82,10 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       reservationId: r.id,
       hostArrivedAt: r.hostArrivedAt,
       hostArrivedAtType: typeof r.hostArrivedAt,
-      celebrantName: r.celebrantName
+      celebrantName: r.celebrantName,
+      date: r.date,
+      dateType: typeof r.date,
+      timeSlot: r.timeSlot
     });
     const firstName = (r.celebrantName || '').trim().split(/\s+/)[0] || r.celebrantName;
     const base = {
@@ -79,12 +115,12 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         token: { ...base, celebrantName: firstName },
         hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
         reservation: {
-          date: r.date ? r.date.toISOString() : null,
+          date: r.date && r.date instanceof Date ? r.date.toISOString() : null,
           timeSlot: r.timeSlot || null,
           guestArrivals: r.guestArrivals || 0
         },
         isAdmin: false
-      });
+      }, 200, cors);
     }
     // Staff/Admin extended fields
     // Get last guest arrival time
@@ -99,7 +135,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     
     const extended = {
       reservationId: r.id,
-      date: r.date.toISOString().slice(0,10),
+      date: r.date && r.date instanceof Date ? r.date.toISOString().slice(0,10) : null,
       timeSlot: r.timeSlot,
       phone: r.phone,
       documento: r.documento,
@@ -112,9 +148,9 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       guestArrivals: r.guestArrivals || 0,
       lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null,
     };
-    return apiOk({ public: false, token: base, reservation: extended, isAdmin: isStaff && session?.role === 'ADMIN' });
+    return apiOk({ public: false, token: base, reservation: extended, isAdmin: isStaff && session?.role === 'ADMIN' }, 200, cors);
   } catch (e) {
-  return apiError('INTERNAL_ERROR', 'Error interno');
+  return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500, cors);
   }
 }
 
@@ -128,17 +164,18 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     - returns updated token info + arrival counters (guestArrivals, hostArrivedAt)
 */
 export async function POST(req: NextRequest, { params }: { params: { code: string } }) {
+  const cors = corsHeadersFor(req);
   const raw = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(raw);
   const auth = requireRole(session, ['ADMIN','STAFF']);
-  if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo STAFF/ADMIN', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403);
+  if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo STAFF/ADMIN', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403, cors);
   const code = params.code;
   let body: any = {};
-  try { const txt = await req.text(); body = txt ? JSON.parse(txt) : {}; } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400); }
+  try { const txt = await req.text(); body = txt ? JSON.parse(txt) : {}; } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400, cors); }
   try {
     // Fetch existing token + reservation to know kind before redeem
   const tokenPre = await prisma.inviteToken.findUnique({ where: { code }, include: { reservation: true } });
-    if (!tokenPre) return apiError('NOT_FOUND','Token no encontrado',undefined,404);
+    if (!tokenPre) return apiError('NOT_FOUND','Token no encontrado',undefined,404, cors);
     const resId = tokenPre.reservationId;
     // Redeem (multi-use aware)
     let redeemedResult = null as any;
@@ -190,7 +227,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
             guestArrivals: (reservation as any)?.guestArrivals ?? 0,
             lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
           }
-        });
+        }, 200, cors);
       }
       redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
       // Set hostArrivedAt to reservation time (not current time)
@@ -263,14 +300,14 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         guestArrivals: (reservation as any)?.guestArrivals ?? 0,
         lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
       }
-    });
+    }, 200, cors);
   } catch (e: any) {
     const msg = String(e?.message || e);
-    if (msg === 'TOKEN_EXHAUSTED') return apiError('TOKEN_EXHAUSTED','Token agotado');
-    if (msg === 'TOKEN_ALREADY_REDEEMED') return apiError('TOKEN_ALREADY_REDEEMED','Token ya usado');
-    if (msg === 'TOKEN_EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado');
-    if (msg === 'INVALID_SIGNATURE') return apiError('INVALID_SIGNATURE','Firma inválida');
-    if (msg === 'RESERVATION_DATE_FUTURE') return apiError('RESERVATION_DATE_FUTURE','La fecha de la reserva es futura - los tokens solo funcionan en la fecha de la reserva o después');
-    return apiError('INTERNAL_ERROR','Error interno');
+    if (msg === 'TOKEN_EXHAUSTED') return apiError('TOKEN_EXHAUSTED','Token agotado', undefined, 400, cors);
+    if (msg === 'TOKEN_ALREADY_REDEEMED') return apiError('TOKEN_ALREADY_REDEEMED','Token ya usado', undefined, 400, cors);
+    if (msg === 'TOKEN_EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado', undefined, 400, cors);
+    if (msg === 'INVALID_SIGNATURE') return apiError('INVALID_SIGNATURE','Firma inválida', undefined, 400, cors);
+    if (msg === 'RESERVATION_DATE_FUTURE') return apiError('RESERVATION_DATE_FUTURE','La fecha de la reserva es futura - los tokens solo funcionan en la fecha de la reserva o después', undefined, 400, cors);
+    return apiError('INTERNAL_ERROR','Error interno', undefined, 500, cors);
   }
 }
