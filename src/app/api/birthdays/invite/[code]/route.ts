@@ -256,6 +256,13 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       });
       console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: First update result', { firstUpdateResult });
       
+      // Auto-complete the reservation when host arrives
+      await prisma.birthdayReservation.update({
+        where: { id: resId },
+        data: { status: 'completed' }
+      });
+      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Auto-completed reservation due to host arrival', { resId });
+      
       // REMOVED: No longer recalculate expirations when host arrives - expiration is fixed to reservation_time + 45min
     } else {
       // guest token: redeem the token when staff validates it (this represents guest arrival)

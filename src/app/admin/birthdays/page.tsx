@@ -18,6 +18,22 @@ function fmtLima(iso?: string | null) {
   } catch { return ''; }
 }
 
+// Formatear fecha de celebración de manera legible
+function fmtCelebrationDate(iso?: string | null) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    // Interpretar como fecha en zona Lima (restar 5 horas de UTC)
+    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
+    const day = lima.getUTCDate();
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const month = monthNames[lima.getUTCMonth()];
+    const year = lima.getUTCFullYear();
+    return `${day} ${month} ${year}`;
+  } catch { return ''; }
+}
+
 type Reservation = {
   id: string;
   celebrantName: string;
@@ -29,6 +45,8 @@ type Reservation = {
   guestsPlanned: number;
   status: string;
   tokensGeneratedAt: string | null;
+  hostArrivedAt: string | null;
+  guestArrivals: number;
   createdAt: string; // fecha creación reserva
 };
 
@@ -56,7 +74,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
         : r.status === 'canceled'
           ? 'CANCELADO'
           : r.status;
-  const cleanDate = r.date?.replace(/T00:00:00\.000Z$/,'');
+  const celebrationDate = fmtCelebrationDate(r.date);
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -65,11 +83,20 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
         <span className="text-base font-bold text-blue-900 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded">DNI: {r.documento}</span>
       </div>
       <div className="grid gap-y-1 text-[13px] sm:grid-cols-2">
-        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Fecha celebración:</span> <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-1 rounded">{cleanDate}</span></div>
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Fecha celebración:</span> <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-1 rounded">{celebrationDate}</span></div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Hora llegada:</span> {r.timeSlot}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Invitados (QR):</span> {r.guestsPlanned || r.pack?.qrCount || '-'}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Pack:</span> {r.pack?.name || '-'}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Creada:</span> {fmtLima(r.createdAt)}</div>
+        <div className="text-slate-600 dark:text-slate-300 col-span-2">
+          <span className="font-semibold text-slate-700 dark:text-slate-200">Llegadas:</span>
+          <span className={`ml-2 ${r.hostArrivedAt ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+            {r.hostArrivedAt ? '✅ Host llegó' : '⏳ Esperando host'}
+          </span>
+          <span className="ml-4 text-blue-600 dark:text-blue-400">
+            {r.guestArrivals}/{r.guestsPlanned || r.pack?.qrCount || 0} invitados
+          </span>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2">
         {r.status==='pending_review' && <button className="btn h-8 px-3" disabled={busyApprove} onClick={()=>onApprove(r.id)}>{busyApprove? 'Aprobando…':'Aprobar'}</button>}
@@ -113,6 +140,7 @@ export default function AdminBirthdaysPage() {
     const [pageSize] = useState(5);
     const [total, setTotal] = useState(0);
   const [status, setStatus] = useState<string | "">("");
+  const [dateFilter, setDateFilter] = useState<string>("all"); // "all", "upcoming", "past", "today"
   const [search, setSearch] = useState("");
   const [busyApprove, setBusyApprove] = useState<Record<string, boolean>>({});
   const [busyGenerate, setBusyGenerate] = useState<Record<string, boolean>>({});
@@ -137,6 +165,7 @@ export default function AdminBirthdaysPage() {
       const q = new URLSearchParams();
       if (status) q.set('status', status);
       if (search) q.set('search', search);
+      if (dateFilter && dateFilter !== 'all') q.set('dateFilter', dateFilter);
       q.set('page', String(page));
       q.set('pageSize', String(pageSize));
       const url = `/api/admin/birthdays?${q.toString()}`;
@@ -158,12 +187,12 @@ export default function AdminBirthdaysPage() {
   }
 
   useEffect(()=>{ load(); }, [page, pageSize]);
-  // Búsqueda instantánea (debounced) por status / search
+  // Búsqueda instantánea (debounced) por status / search / dateFilter
   useEffect(()=>{
     const h = setTimeout(()=>{ setPage(1); load(); }, 300); // 300ms debounce
     return () => clearTimeout(h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, status]);
+  }, [search, status, dateFilter]);
   // Cargar packs desde endpoint admin para incluir isCustom y evitar filtrado público
   useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/admin/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
 
@@ -235,13 +264,39 @@ export default function AdminBirthdaysPage() {
 
   const empty = !loading && items.length === 0;
 
-  // Pestañas de estado
+  // Calcular páginas para mejor paginación
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const getVisiblePages = () => {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, page - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  // Pestañas de estado mejoradas
   const statusTabs = [
     { value: '', label: 'Todas' },
     { value: 'approved', label: 'Aprobadas' },
     { value: 'completed', label: 'Completadas' },
     { value: 'canceled', label: 'Canceladas' },
     { value: 'pending_review', label: 'Pendientes' },
+  ];
+
+  // Opciones de filtro de fecha
+  const dateFilterOptions = [
+    { value: 'all', label: 'Todas las fechas' },
+    { value: 'upcoming', label: 'Próximas (desde hoy)' },
+    { value: 'past', label: 'Pasadas' },
+    { value: 'today', label: 'Hoy' },
   ];
 
   return (
@@ -410,28 +465,58 @@ export default function AdminBirthdaysPage() {
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
+        {/* Pestañas de estado */}
         <div className="grid gap-1">
-          <label className="text-xs">Estado</label>
-          <select className="input-sm" value={status} onChange={(e)=>setStatus(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="pending_review">Pendientes</option>
-            <option value="approved">Aprobadas</option>
-            <option value="completed">Completadas</option>
-            <option value="canceled">Canceladas</option>
-                    {(() => { const totalPages = Math.max(1, Math.ceil(total / pageSize)); return (
-                      <div className="flex items-center gap-3 pt-2">
-                        {(page>1) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>}
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Página {page} de {totalPages}</span>
-                        {(page < totalPages) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.min(totalPages, p+1))}>Siguiente</button>}
-                      </div>
-                    ); })()}
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Estado</label>
+          <div className="flex flex-wrap gap-1">
+            {statusTabs.map(tab => (
+              <button
+                key={tab.value}
+                onClick={() => {
+                  setStatus(tab.value);
+                  // Si se selecciona "Todas", resetear también el filtro de fecha
+                  if (tab.value === '') {
+                    setDateFilter('all');
+                  }
+                }}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  status === tab.value
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Selector de fechas */}
+        <div className="grid gap-1">
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Fechas</label>
+          <select 
+            className="input-sm min-w-[140px]" 
+            value={dateFilter} 
+            onChange={(e) => setDateFilter(e.target.value)}
+          >
+            {dateFilterOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
+
+        {/* Búsqueda */}
         <div className="grid gap-1">
-          <label className="text-xs">Buscar</label>
-          <input className="input-sm" value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="cumpleañero, WhatsApp, documento" />
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Buscar</label>
+          <input 
+            className="input-sm min-w-[200px]" 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            placeholder="cumpleañero, WhatsApp, documento" 
+          />
         </div>
-  {/* Búsqueda automática: botón ya no necesario */}
       </div>
 
       {loading && <div className="text-sm text-gray-400">Cargando…</div>}
@@ -454,10 +539,48 @@ export default function AdminBirthdaysPage() {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 pt-2">
-        {(page>1) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>Math.max(1,p-1))}>Anterior</button>}
-        <span className="text-xs text-slate-500 dark:text-slate-400">Página {page}</span>
-        {(!empty && items.length===pageSize) && <button className="btn h-8 px-3" onClick={()=>setPage(p=>p+1)}>Siguiente</button>}
+
+      {/* Paginación mejorada */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          {/* Botón anterior */}
+          <button
+            className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={page <= 1}
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+          >
+            ← Anterior
+          </button>
+
+          {/* Números de página */}
+          {getVisiblePages().map(pageNum => (
+            <button
+              key={pageNum}
+              className={`btn h-8 px-3 min-w-[40px] ${
+                pageNum === page
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              onClick={() => setPage(pageNum)}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          {/* Botón siguiente */}
+          <button
+            className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          >
+            Siguiente →
+          </button>
+        </div>
+      )}
+
+      {/* Información de paginación */}
+      <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
+        Página {page} de {totalPages} • Total: {total} reservas
       </div>
       </div>
     </div>

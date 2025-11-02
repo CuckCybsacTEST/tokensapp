@@ -318,7 +318,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
 export async function listReservations(
   filters: ListReservationFilters = {},
   pagination: Pagination = {}
-): Promise<{ items: (ReservationWithRelations & { cardsReady?: boolean })[]; total: number; page: number; pageSize: number }> {
+): Promise<{ items: (ReservationWithRelations & { cardsReady?: boolean; hostArrivedAt: string | null; guestArrivals: number })[]; total: number; page: number; pageSize: number }> {
   const page = Math.max(1, Math.floor(pagination.page ?? 1));
   const pageSize = Math.min(100, Math.max(1, Math.floor(pagination.pageSize ?? 20)));
 
@@ -386,7 +386,12 @@ export async function listReservations(
 
   // Post-order to push approved/completed first maintaining internal date ordering.
   // Además: fallback a filesystem si aún no existe la tabla o no se pudo insertar registro.
-  const decorated = (items as ReservationWithRelations[]).map(r => Object.assign(r, { cardsReady: !!cardsByReservation[r.id] }));
+  const decorated = (items as ReservationWithRelations[]).map(r => ({
+    ...r,
+    cardsReady: !!cardsByReservation[r.id],
+    hostArrivedAt: r.hostArrivedAt?.toISOString() || null,
+    guestArrivals: r.guestArrivals || 0
+  } as ReservationWithRelations & { cardsReady?: boolean; hostArrivedAt: string | null; guestArrivals: number }));
 
   // Filesystem fallback (solo para los que aún no marcan cardsReady)
   const toCheckFs = decorated.filter(r => !r.cardsReady);
@@ -449,6 +454,8 @@ export async function getReservation(id: string): Promise<any | null> {
     guestsPlanned: reservation.guestsPlanned,
     status: reservation.status,
     tokensGeneratedAt: reservation.tokensGeneratedAt?.toISOString() || null,
+    hostArrivedAt: reservation.hostArrivedAt?.toISOString() || null,
+    guestArrivals: reservation.guestArrivals || 0,
     createdAt: reservation.createdAt.toISOString(),
     courtesyItems: reservation.courtesyItems.map(item => ({
       id: item.id,

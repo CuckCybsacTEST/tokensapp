@@ -11,6 +11,7 @@ const ListSchema = z.object({
   packId: z.string().optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateFilter: z.enum(['all', 'upcoming', 'past', 'today']).optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
       packId: searchParams.get('packId') || undefined,
       dateFrom: searchParams.get('dateFrom') || undefined,
       dateTo: searchParams.get('dateTo') || undefined,
+      dateFilter: searchParams.get('dateFilter') || undefined,
       search: searchParams.get('search') || undefined,
       page: searchParams.get('page') || undefined,
       pageSize: searchParams.get('pageSize') || undefined,
@@ -58,9 +60,38 @@ export async function GET(req: NextRequest) {
     }
 
     const f = parsed.data;
-    const dateFrom = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00.000Z') : undefined;
-    const dateTo = f.dateTo ? new Date(f.dateTo + 'T23:59:59.999Z') : undefined;
-    const res = await listReservations({ status: f.status, packId: f.packId, dateFrom, dateTo, search: f.search }, { page: f.page, pageSize: f.pageSize });
+    
+    // Calcular filtros de fecha basados en dateFilter
+    let effectiveDateFrom = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00.000Z') : undefined;
+    let effectiveDateTo = f.dateTo ? new Date(f.dateTo + 'T23:59:59.999Z') : undefined;
+    
+    if (f.dateFilter && f.dateFilter !== 'all') {
+      // Obtener fecha actual en zona Lima (UTC-5)
+      const now = new Date();
+      const limaNow = new Date(now.getTime() - 5 * 3600 * 1000);
+      const today = new Date(limaNow.getUTCFullYear(), limaNow.getUTCMonth(), limaNow.getUTCDate());
+      
+      switch (f.dateFilter) {
+        case 'upcoming':
+          effectiveDateFrom = today;
+          break;
+        case 'past':
+          effectiveDateTo = new Date(today.getTime() - 24 * 3600 * 1000); // Ayer
+          break;
+        case 'today':
+          effectiveDateFrom = today;
+          effectiveDateTo = new Date(today.getTime() + 24 * 3600 * 1000 - 1); // Fin del día
+          break;
+      }
+    }
+    
+    const res = await listReservations({ 
+      status: f.status, 
+      packId: f.packId, 
+      dateFrom: effectiveDateFrom, 
+      dateTo: effectiveDateTo, 
+      search: f.search 
+    }, { page: f.page, pageSize: f.pageSize });
     return apiOk(res);
   } catch (e: any) {
     const msg = String(e?.message || e);

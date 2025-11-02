@@ -30,6 +30,8 @@ type Reservation = {
   guestsPlanned: number;
   status: string;
   tokensGeneratedAt: string | null;
+  hostArrivedAt: string | null;
+  guestArrivals: number;
   createdAt: string;
   courtesyItems: Array<{ id: string; type: string; status: string; notes?: string | null }>;
   photoDeliveries: Array<{ id: string; kind: string; url?: string | null; status: string }>;
@@ -107,6 +109,8 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       guestsPlanned: r.guestsPlanned,
       status: r.status,
       tokensGeneratedAt: r.tokensGeneratedAt,
+      hostArrivedAt: r.hostArrivedAt || null,
+      guestArrivals: r.guestArrivals || 0,
       createdAt: r.createdAt,
       courtesyItems: Array.isArray(r.courtesyItems) ? r.courtesyItems : [],
       photoDeliveries: Array.isArray(r.photoDeliveries) ? r.photoDeliveries : [],
@@ -185,6 +189,16 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
           <div className="text-sm text-slate-300">WhatsApp: {resv.phone}</div>
           <div className="text-sm text-slate-300">Email: {resv.email || '-'}</div>
           <div className="text-sm text-slate-300">Estado: {resv.status}</div>
+          <div className="text-sm text-slate-300">
+            <span className="font-semibold">Llegada Host:</span>
+            <span className={`ml-2 ${resv.hostArrivedAt ? 'text-green-400' : 'text-yellow-400'}`}>
+              {resv.hostArrivedAt ? `✅ ${fmtLima(resv.hostArrivedAt)}` : '⏳ Pendiente'}
+            </span>
+          </div>
+          <div className="text-sm text-slate-300">
+            <span className="font-semibold">Invitados:</span>
+            <span className="ml-2 text-blue-400">{resv.guestArrivals}/{resv.guestsPlanned || resv.pack?.qrCount || 0} llegaron</span>
+          </div>
           {resv.tokensGeneratedAt && <div className="text-xs text-slate-400">Tokens generados: {fmtLima(resv.tokensGeneratedAt)}</div>}
 
           <div className="flex flex-wrap gap-2 pt-2">
