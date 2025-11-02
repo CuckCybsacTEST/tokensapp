@@ -1,22 +1,10 @@
-'use client';
+﻿import { AdminLayout } from "@/components/AdminLayout";
+import { CustomerAdmin } from "./AdminCustomersClient";
 
-import { Admin, Resource, ListGuesser, EditGuesser } from 'react-admin';
-import simpleRestProvider from 'ra-data-simple-rest';
-import { CustomerList } from './CustomerList';
-import { CustomerCreate } from './CustomerCreate';
-import { CustomerEdit } from './CustomerEdit';
-
-const dataProvider = simpleRestProvider('/api');
-
-export default function CustomerAdmin() {
+export default function CustomersAdminPage() {
   return (
-    <Admin dataProvider={dataProvider}>
-      <Resource
-        name="customers"
-        list={CustomerList}
-        create={CustomerCreate}
-        edit={CustomerEdit}
-      />
-    </Admin>
+    <AdminLayout title="Gestión de Clientes" breadcrumbs={[{ label: "Clientes", href: "/admin/customers" }]}>
+      <CustomerAdmin />
+    </AdminLayout>
   );
 }
