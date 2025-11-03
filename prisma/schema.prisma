@@ -1048,3 +1048,73 @@ model OfferPurchase {
   @@index([userId])
   @@index([status])
 }
+
+// ===== TRIVIA SYSTEM MODELS =====
+
+model TriviaQuestion {
+  id          String          @id @default(cuid())
+  question    String
+  order       Int             @default(0)
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  answers     TriviaAnswer[]
+  progress    TriviaProgress[]
+
+  @@index([order])
+  @@index([active])
+}
+
+model TriviaAnswer {
+  id          String          @id @default(cuid())
+  questionId  String
+  answer      String
+  isCorrect   Boolean         @default(false)
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  question    TriviaQuestion  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  progress    TriviaProgress[]
+
+  @@index([questionId])
+  @@index([isCorrect])
+}
+
+model TriviaSession {
+  id                   String            @id @default(cuid())
+  sessionId            String            @unique // Identificador público único
+  currentQuestionIndex Int               @default(0)
+  completed            Boolean           @default(false)
+  prizeTokenId         String?           // Token generado al completar
+  startedAt            DateTime          @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  progress             TriviaProgress[]
+
+  @@index([sessionId])
+  @@index([completed])
+  @@index([prizeTokenId])
+}
+
+model TriviaProgress {
+  id               String          @id @default(cuid())
+  sessionId        String
+  questionId       String
+  selectedAnswerId String?
+  isCorrect        Boolean?
+  answeredAt       DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+
+  session          TriviaSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question         TriviaQuestion  @relation(fields: [questionId], references: [id])
+  selectedAnswer   TriviaAnswer?   @relation(fields: [selectedAnswerId], references: [id])
+
+  @@unique([sessionId, questionId]) // Una respuesta por pregunta por sesión
+  @@index([sessionId])
+  @@index([questionId])
+  @@index([isCorrect])
+}
