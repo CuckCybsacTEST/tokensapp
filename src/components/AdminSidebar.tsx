@@ -284,6 +284,15 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     setExpandedGroups(newExpanded);
   };
 
+  const handleGroupClick = (groupTitle: string) => {
+    if (isCollapsed && onToggle) {
+      // If collapsed, expand sidebar first
+      onToggle();
+    }
+    // Then toggle the group
+    toggleGroup(groupTitle);
+  };
+
   const isItemActive = (href: string) => {
     if (href === "#") return false;
     if (!pathname) return false;
@@ -391,7 +400,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
             <div key={group.title} className="space-y-1">
               {/* Group Header */}
               <button
-                onClick={() => toggleGroup(group.title)}
+                onClick={() => handleGroupClick(group.title)}
                 className={cn(
                   "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors",
                   isCollapsed && "justify-center",
@@ -485,27 +494,6 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
           <Link
             href="/admin/scanner"
-            className={cn(
-              "w-full flex items-center justify-center space-x-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]",
-              isCollapsed ? "px-3" : ""
-            )}
-          >
-            <span className="flex-shrink-0">{ICONS.qr}</span>
-            {!isCollapsed && (
-              <div className="flex flex-col items-center">
-                <span className="font-semibold text-sm">Escanear Códigos</span>
-                <span className="text-xs opacity-90">Acceso rápido al scanner</span>
-              </div>
-            )}
-          </Link>
-        </div>
-      )}
-
-      {/* Scanner Button for User Interface */}
-      {basePath === 'u' && (
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-          <Link
-            href="/u/scanner"
             className={cn(
               "w-full flex items-center justify-center space-x-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]",
               isCollapsed ? "px-3" : ""

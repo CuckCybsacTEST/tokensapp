@@ -12,7 +12,25 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', hasSession = true }: AdminLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Function to check if we're on mobile
+  const isMobile = () => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768; // md breakpoint in Tailwind
+    }
+    return false;
+  };
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile());
+
+  // Update sidebar state when window resizes
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarCollapsed(isMobile());
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // If no session, show content without sidebar
   if (!hasSession) {

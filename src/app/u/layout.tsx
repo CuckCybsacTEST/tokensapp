@@ -4,7 +4,6 @@ import BackLink from "./components/BackLink";
 import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth-user";
 import { prisma } from "@/lib/prisma";
-import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = {
   title: "Colaborador | QR App",
@@ -13,7 +12,6 @@ export const metadata = {
 export default async function ULayout({ children }: { children: React.ReactNode }) {
   // Cargar datos del colaborador (si hay sesión activa)
   let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; role?: string | null } | null = null;
-  let isAdmin = false;
   try {
     const raw = cookies().get('user_session')?.value;
     const session = await verifyUserSessionCookie(raw);
@@ -27,9 +25,6 @@ export default async function ULayout({ children }: { children: React.ReactNode 
       } catch (e) {
         // ignore
       }
-
-      // Check if user has admin privileges
-      isAdmin = session.role === 'STAFF' || staffRecord?.role === 'ADMIN';
 
       // Map staff role to a human friendly label when available
       const mapRoleLabel = (r: string | null | undefined) => {
@@ -54,16 +49,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
     }
   } catch {}
 
-  // Si el usuario tiene privilegios de admin Y está logueado, usar AdminLayout
-  if (isAdmin && me) {
-    return (
-      <AdminLayout title="Panel de Colaborador" breadcrumbs={[{ label: "Inicio", href: "/u" }]} basePath="u" hasSession={true}>
-        {children}
-      </AdminLayout>
-    );
-  }
-
-  // Si no tiene privilegios de admin o no está logueado, usar layout normal sin sidebar
+  // Siempre usar layout normal sin sidebar para /u
   return (
     <div className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
       <header className="app-container py-4">
