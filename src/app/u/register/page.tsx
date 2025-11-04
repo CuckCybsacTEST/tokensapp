@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { ALLOWED_AREAS } from "@/lib/areas";
 import { MONTHS_ES, buildBirthdaySubmission } from '@/lib/birthday';
-import ThemeToggle from '@/components/theme/ThemeToggle';
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -82,8 +81,6 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col px-4 pt-16 pb-10 sm:pt-10 bg-[var(--color-bg)] relative">
-  {/* Toggle de tema (usa ThemeProvider del layout raíz) */}
-  <div className="absolute top-4 right-4"><ThemeToggle compact /></div>
   <div className="w-full max-w-md mx-auto space-y-5">
   <div className="text-center space-y-2">
     <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">¡Bienvenido al equipo El Lounge!</h1>

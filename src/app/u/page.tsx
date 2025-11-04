@@ -9,6 +9,7 @@ import AutoAttendanceCard from './AutoAttendanceCard';
 import { mapAreaToStaffRole } from '@/lib/staff-roles';
 import { isValidArea } from '@/lib/areas';
 import { StaffRole } from '@prisma/client';
+import { IconUser, IconListCheck, IconQrcode, IconClock } from '@tabler/icons-react';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -61,24 +62,32 @@ export default async function UHome() {
     // Página de selección de acciones: Acción principal (IN/OUT) / Ver lista de tareas / Control Caja (si aplica)
     <div className="min-h-screen bg-[var(--color-bg)]">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100 mb-6 text-center">Bienvenido{personName ? `, ${personName}` : ''}</h1>
         <div className="space-y-8">
           {/* Bloque inicial: acciones personales en una sola columna para mejor lectura */}
           <div className="grid grid-cols-1 gap-4">
             <AutoAttendanceCard initialLastType={lastType} />
-            <Link href="/u/checklist" className="block rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800">
-              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Ver mi lista de tareas</div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
-              <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver mis tareas →</div>
-            </Link>
             <Link href="/u/profile" className="block rounded-lg border border-blue-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-blue-800/60 dark:bg-slate-800">
-              <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Mi Perfil</div>
+              <div className="flex items-center gap-3 mb-2">
+                <IconUser className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="text-lg font-medium text-gray-900 dark:text-slate-100">Mi Perfil</div>
+              </div>
               <p className="text-sm text-gray-600 dark:text-slate-300">Ver mi información personal y cambiar mi contraseña.</p>
               <div className="mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm">Ver perfil →</div>
             </Link>
+            <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
+              <div className="flex items-center gap-3 mb-2">
+                <IconListCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                <div className="text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-slate-300">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
+              <div className="mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">Ver mis tareas →</div>
+            </Link>
             {session.role === 'STAFF' && (
               <Link href="/u/scanner" className="block rounded-lg border border-teal-300/70 bg-white p-5 shadow-sm hover:shadow-md transition dark:border-teal-700 dark:bg-slate-800">
-                <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Escáner QR</div>
+                <div className="flex items-center gap-3 mb-2">
+                  <IconQrcode className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                  <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Escáner QR</div>
+                </div>
                 <p className="text-sm text-gray-600 dark:text-slate-300">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
                 <div className="mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm">Abrir escáner →</div>
               </Link>

@@ -1,6 +1,7 @@
 import React from "react";
 import UserLogoutButton from "./components/LogoutButton";
 import BackLink from "./components/BackLink";
+import ThemeToggle from '@/components/theme/ThemeToggle';
 import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth-user";
 import { prisma } from "@/lib/prisma";
@@ -52,7 +53,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
   // Siempre usar layout normal sin sidebar para /u
   return (
     <div className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
-      <header className="app-container py-4">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200/50 dark:border-slate-700/50 app-container py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col">
             <a href="/u" className="text-sm text-slate-600 dark:text-slate-300 hover:underline">Colaborador</a>
@@ -72,6 +73,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
           </div>
             <div className="flex items-center gap-2">
               <BackLink />
+              <ThemeToggle compact />
               {me ? <UserLogoutButton /> : <div />}
             </div>
         </div>

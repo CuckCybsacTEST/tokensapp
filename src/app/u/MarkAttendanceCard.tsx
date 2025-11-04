@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { IconClock } from '@tabler/icons-react';
 
 type Props = {
   nextAction: "IN" | "OUT";
@@ -49,8 +50,13 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-  <div className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">Marcar mi asistencia</div>
+    <div className="rounded-lg border border-green-200 bg-white p-5 shadow-sm dark:border-green-800/60 dark:bg-slate-800">
+      <div className="flex items-center gap-3 mb-2">
+        <IconClock className="w-6 h-6 text-green-600 dark:text-green-400" />
+        <div className="text-lg font-medium text-gray-900 dark:text-slate-100">
+          {nextAction === 'IN' ? 'Marcar entrada' : 'Marcar salida'}
+        </div>
+      </div>
       <p className="text-sm text-gray-600 dark:text-slate-300">
         {nextAction === 'IN' ? 'Comienza tu turno registrando tu Entrada.' : 'Finaliza tu turno registrando tu Salida.'}
       </p>
