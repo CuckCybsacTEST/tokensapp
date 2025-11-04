@@ -66,7 +66,11 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
       <div className="mt-4">
         <button
           type="button"
-          className="btn relative select-none overflow-hidden"
+          className={`btn relative select-none overflow-hidden ${
+            nextAction === 'OUT' 
+              ? 'bg-red-500 hover:bg-red-600 text-white border-red-500 dark:bg-red-600 dark:hover:bg-red-700 dark:border-red-600' 
+              : ''
+          }`}
           disabled={loading}
           onPointerDown={onPointerDown}
           onPointerUp={endPress}
@@ -90,7 +94,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
               )
           )}
           {nextAction === 'OUT' && holdMs > 0 && (
-            <span className="absolute left-0 bottom-0 h-1 bg-orange-500/80 transition-[width] duration-75 ease-linear" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
+            <span className="absolute left-0 bottom-0 h-1 bg-white/80 transition-[width] duration-75 ease-linear" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
           )}
         </button>
       </div>

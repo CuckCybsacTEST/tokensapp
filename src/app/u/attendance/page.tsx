@@ -36,23 +36,21 @@ export default function StaffAttendanceLitePage() {
   const [error, setError] = useState<string|null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 20;
-  const [area, setArea] = useState('');
-  const [person, setPerson] = useState('');
 
   const queryTable = useMemo(()=>{
-    const p = new URLSearchParams(); p.set('period', period); p.set('page', String(page)); p.set('pageSize', String(pageSize)); if (area) p.set('area', area); if (person) p.set('person', person); return p.toString();
-  }, [period, page, pageSize, area, person]);
+    const p = new URLSearchParams(); p.set('period', period); p.set('page', String(page)); p.set('pageSize', String(pageSize)); return p.toString();
+  }, [period, page, pageSize]);
 
   // Eliminado fetch de métricas
-  useEffect(()=>{ setLoading(false); }, [period, area, person]);
+  useEffect(()=>{ setLoading(false); }, [period]);
   useEffect(()=>{
-    fetch(`/api/admin/attendance/table?${queryTable}`)
+    fetch(`/api/user/attendance/history?${queryTable}`)
       .then(r=>r.json())
       .then(j=>{ if(j?.ok) setTable(j as TableResp); })
       .catch(()=>{});
   }, [queryTable]);
 
-  useEffect(()=>{ setPage(1); }, [period, area, person]);
+  useEffect(()=>{ setPage(1); }, [period]);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -60,7 +58,7 @@ export default function StaffAttendanceLitePage() {
         {/* Header & filters */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">Control de Asistencia</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">Mi Registro de Asistencia</h1>
             <div className="flex flex-wrap items-center gap-2 text-sm -m-0.5">
               {/* Day navigation with arrows */}
               <div className="flex items-center gap-2">
@@ -91,13 +89,8 @@ export default function StaffAttendanceLitePage() {
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
               </div>
-              <div className="flex items-center gap-2">
-                <input value={area} onChange={e=>setArea(e.target.value)} placeholder="Área" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 w-28 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                <input value={person} onChange={e=>setPerson(e.target.value)} placeholder="Código o persona" className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 w-36 sm:w-44 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-              </div>
             </div>
           </div>
-          <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Vista ligera solo lectura. Usa filtros arriba. En móviles puedes deslizar la tabla horizontalmente o ver la versión compacta por tarjetas.</div>
         </div>
 
         {loading && <div className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm">Cargando…</div>}
