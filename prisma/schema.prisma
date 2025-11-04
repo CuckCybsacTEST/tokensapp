@@ -1059,11 +1059,15 @@ model TriviaQuestion {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
+  questionSetId String?           // Asociación opcional con conjunto
+  questionSet   TriviaQuestionSet? @relation(fields: [questionSetId], references: [id])
+
   answers     TriviaAnswer[]
   progress    TriviaProgress[]
 
   @@index([order])
   @@index([active])
+  @@index([questionSetId])
 }
 
 model TriviaAnswer {
@@ -1085,9 +1089,12 @@ model TriviaAnswer {
 model TriviaSession {
   id                   String            @id @default(cuid())
   sessionId            String            @unique // Identificador público único
+  questionSetId        String            // Set de preguntas para esta sesión
+  questionSet          TriviaQuestionSet @relation(fields: [questionSetId], references: [id])
   currentQuestionIndex Int               @default(0)
   completed            Boolean           @default(false)
-  prizeTokenId         String?           // Token generado al completar
+  prizeId              String?           // Premio ganado (opcional)
+  prize                TriviaPrize?      @relation(fields: [prizeId], references: [id])
   startedAt            DateTime          @default(now())
   completedAt          DateTime?
   createdAt            DateTime          @default(now())
@@ -1097,7 +1104,8 @@ model TriviaSession {
 
   @@index([sessionId])
   @@index([completed])
-  @@index([prizeTokenId])
+  @@index([prizeId])
+  @@index([questionSetId])
 }
 
 model TriviaProgress {
@@ -1117,4 +1125,45 @@ model TriviaProgress {
   @@index([sessionId])
   @@index([questionId])
   @@index([isCorrect])
+}
+
+// ===== TRIVIA SYSTEM MODELS =====
+
+model TriviaQuestionSet {
+  id          String   @id @default(cuid())
+  name        String   // Nombre del conjunto (ej: "Trivia Lunes", "Trivia Especial")
+  description String?  // Descripción
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions   TriviaQuestion[]
+  prizes      TriviaPrize[]
+  sessions    TriviaSession[]
+
+  @@index([active])
+}
+
+model TriviaPrize {
+  id            String   @id @default(cuid())
+  name          String   // Nombre del premio
+  description   String?  // Descripción detallada
+  qrCode        String   // Código QR único para el premio
+  imageUrl      String?  // URL de imagen
+  value         Float?   // Valor en puntos/moneda
+  validFrom     DateTime // Fecha/hora válida desde (zona Lima)
+  validUntil    DateTime // Fecha/hora válida hasta (zona Lima)
+  questionSetId String   // Asociación con conjunto de preguntas
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  questionSet   TriviaQuestionSet @relation(fields: [questionSetId], references: [id])
+  sessions      TriviaSession[]   // Sesiones que ganaron este premio
+
+  @@unique([questionSetId, qrCode]) // QR único por question set
+  @@index([questionSetId])
+  @@index([active])
+  @@index([validFrom])
+  @@index([validUntil])
 }

@@ -1,12 +1,20 @@
 import { z } from "zod";
 import { randomUUID } from "crypto";
 
-import { apiError, apiOk } from "@/lib/apiError";
 import { prisma } from "@/lib/prisma";
-import { logEvent } from "@/lib/log";
-import { checkRateLimitCustom } from "@/lib/rateLimit";
+import {
+  createTriviaSuccessResponse,
+  createTriviaErrorResponse,
+  handleTriviaValidationError,
+  withTriviaErrorHandler,
+  getClientIP
+} from "@/lib/trivia-api";
+import { checkTriviaAnswerRateLimit, checkTriviaSessionRateLimit } from "@/lib/trivia-rate-limit";
+import { logTriviaEvent, logTriviaSession, logTriviaAnswer } from "@/lib/trivia-log";
+import { nowInLima, isValidInLima } from "@/lib/trivia-time";
 
 const startSessionSchema = z.object({
+  questionSetId: z.string(), // ID del set de preguntas a usar
   sessionId: z.string().optional(), // Si se proporciona, continúa sesión existente
 });
 
@@ -16,122 +24,161 @@ const answerQuestionSchema = z.object({
   answerId: z.string(),
 });
 
-export async function GET(req: Request) {
-  try {
-    const url = new URL(req.url);
-    const sessionId = url.searchParams.get('sessionId');
+export const GET = withTriviaErrorHandler(async (req: Request) => {
+  const url = new URL(req.url);
+  const sessionId = url.searchParams.get('sessionId');
 
-    if (!sessionId) {
-      return apiError("MISSING_SESSION", "Se requiere sessionId", {}, 400);
-    }
+  if (!sessionId) {
+    return createTriviaErrorResponse('VALIDATION_ERROR', 'Se requiere sessionId', 400);
+  }
 
-    const session = await prisma.triviaSession.findUnique({
-      where: { sessionId },
-      include: {
-        progress: {
-          include: {
-            question: {
-              include: {
-                answers: {
-                  orderBy: { order: 'asc' }
-                }
+  const session = await prisma.triviaSession.findUnique({
+    where: { sessionId },
+    include: {
+      questionSet: true,
+      prize: {
+        include: {
+          questionSet: true
+        }
+      },
+      progress: {
+        include: {
+          question: {
+            include: {
+              answers: {
+                orderBy: { order: 'asc' }
               }
-            },
-            selectedAnswer: true
+            }
           },
-          orderBy: { answeredAt: 'asc' }
-        }
+          selectedAnswer: true
+        },
+        orderBy: { answeredAt: 'asc' }
       }
-    });
-
-    if (!session) {
-      return apiError("SESSION_NOT_FOUND", "Sesión no encontrada", {}, 404);
     }
+  });
 
-    // Obtener todas las preguntas activas
-    const allQuestions = await prisma.triviaQuestion.findMany({
-      where: { active: true },
-      include: {
-        answers: {
-          orderBy: { order: 'asc' }
-        }
-      },
-      orderBy: { order: 'asc' }
-    });
+  if (!session) {
+    return createTriviaErrorResponse('SESSION_EXPIRED', 'Sesión no encontrada', 404);
+  }
 
-    // Determinar la siguiente pregunta
-    const answeredQuestionIds = session.progress.map(p => p.questionId);
-    const nextQuestion = allQuestions.find(q => !answeredQuestionIds.includes(q.id));
+  // Obtener todas las preguntas del set activo
+  const allQuestions = await prisma.triviaQuestion.findMany({
+    where: {
+      questionSetId: session.questionSetId,
+      active: true
+    },
+    include: {
+      answers: {
+        orderBy: { order: 'asc' }
+      }
+    },
+    orderBy: { order: 'asc' }
+  });
 
-    const response = {
-      session: {
-        id: session.sessionId,
-        currentQuestionIndex: session.currentQuestionIndex,
-        completed: session.completed,
-        startedAt: session.startedAt,
-        completedAt: session.completedAt,
-        totalQuestions: allQuestions.length,
-        answeredQuestions: session.progress.length
-      },
-      nextQuestion: nextQuestion ? {
-        id: nextQuestion.id,
-        question: nextQuestion.question,
-        answers: nextQuestion.answers.map(a => ({
-          id: a.id,
-          answer: a.answer
-        }))
-      } : null,
-      progress: session.progress.map(p => ({
-        questionId: p.questionId,
-        isCorrect: p.isCorrect,
-        answeredAt: p.answeredAt
+  // Determinar la siguiente pregunta
+  const answeredQuestionIds = session.progress.map(p => p.questionId);
+  const nextQuestion = allQuestions.find(q => !answeredQuestionIds.includes(q.id));
+
+  const response = {
+    session: {
+      id: session.sessionId,
+      currentQuestionIndex: session.currentQuestionIndex,
+      completed: session.completed,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      totalQuestions: allQuestions.length,
+      answeredQuestions: session.progress.length,
+      questionSet: {
+        id: session.questionSet.id,
+        name: session.questionSet.name
+      }
+    },
+    nextQuestion: nextQuestion ? {
+      id: nextQuestion.id,
+      question: nextQuestion.question,
+      answers: nextQuestion.answers.map(a => ({
+        id: a.id,
+        answer: a.answer
       }))
-    };
+    } : null,
+    progress: session.progress.map(p => ({
+      questionId: p.questionId,
+      isCorrect: p.isCorrect,
+      answeredAt: p.answeredAt
+    })),
+    prize: session.prize ? {
+      id: session.prize.id,
+      name: session.prize.name,
+      description: session.prize.description,
+      qrCode: session.prize.qrCode
+    } : null
+  };
 
-    return apiOk(response, 200);
-  } catch (error) {
-    console.error('Error getting trivia session:', error);
-    return apiError("DB_ERROR", "Error al obtener sesión", {}, 500);
+  logTriviaEvent('SESSION_STATUS_RETRIEVED', 'Estado de sesión de trivia recuperado', {
+    questionSetId: session.questionSetId,
+    completed: session.completed,
+    progressCount: session.progress.length
+  }, 'INFO', session.sessionId);
+
+  return createTriviaSuccessResponse(response);
+});
+
+export const POST = withTriviaErrorHandler(async (req: Request) => {
+  const json = await req.json();
+
+  // Determinar si es inicio de sesión o respuesta a pregunta
+  if (json.questionId && json.answerId) {
+    // Es una respuesta a pregunta
+    return await handleAnswerQuestion(json, req);
+  } else {
+    // Es inicio de sesión
+    return await handleStartSession(json, req);
   }
-}
+});
 
-export async function POST(req: Request) {
-  try {
-    const json = await req.json();
-
-    // Determinar si es inicio de sesión o respuesta a pregunta
-    if (json.questionId && json.answerId) {
-      // Es una respuesta a pregunta
-      return await handleAnswerQuestion(json);
-    } else {
-      // Es inicio de sesión
-      return await handleStartSession(json);
-    }
-  } catch (error) {
-    console.error('Error in trivia session:', error);
-    return apiError("INTERNAL_ERROR", "Error interno", {}, 500);
-  }
-}
-
-async function handleStartSession(data: any) {
+async function handleStartSession(data: any, req: Request) {
   const parsed = startSessionSchema.safeParse(data);
   if (!parsed.success) {
-    return apiError("INVALID_BODY", "Datos inválidos", parsed.error.flatten(), 400);
+    return handleTriviaValidationError(parsed.error);
   }
 
-  const { sessionId } = parsed.data;
+  const { questionSetId, sessionId } = parsed.data;
+  const clientIP = getClientIP(req as any);
+
+  // Rate limiting para iniciar sesiones
+  const sessionRateLimit = checkTriviaSessionRateLimit(clientIP);
+  if (!sessionRateLimit.ok) {
+    return createTriviaErrorResponse(
+      'RATE_LIMIT_EXCEEDED',
+      'Demasiadas sesiones iniciadas. Intente nuevamente más tarde.',
+      429
+    );
+  }
+
+  // Verificar que el question set existe y está activo
+  const questionSet = await prisma.triviaQuestionSet.findUnique({
+    where: { id: questionSetId, active: true }
+  });
+
+  if (!questionSet) {
+    return createTriviaErrorResponse('QUESTION_SET_NOT_FOUND', 'Set de preguntas no encontrado o inactivo', 404);
+  }
 
   if (sessionId) {
-    // Verificar que la sesión existe
+    // Verificar que la sesión existe y pertenece al mismo question set
     const existingSession = await prisma.triviaSession.findUnique({
       where: { sessionId }
     });
 
     if (!existingSession) {
-      return apiError("SESSION_NOT_FOUND", "Sesión no encontrada", {}, 404);
+      return createTriviaErrorResponse('SESSION_EXPIRED', 'Sesión no encontrada', 404);
     }
 
-    await logEvent("TRIVIA_SESSION_RESUME", "Sesión de trivia reanudada", { sessionId });
+    if (existingSession.questionSetId !== questionSetId) {
+      return createTriviaErrorResponse('INVALID_QUESTION_SET', 'La sesión pertenece a un set de preguntas diferente', 400);
+    }
+
+    logTriviaSession('RESUME', sessionId, { questionSetId });
   } else {
     // Crear nueva sesión
     const newSessionId = randomUUID();
@@ -139,56 +186,54 @@ async function handleStartSession(data: any) {
     await prisma.triviaSession.create({
       data: {
         sessionId: newSessionId,
+        questionSetId
       }
     });
 
-    await logEvent("TRIVIA_SESSION_START", "Sesión de trivia iniciada", { sessionId: newSessionId });
+    logTriviaSession('START', newSessionId, { questionSetId });
 
-    return apiOk({
+    // Contar preguntas activas en el set
+    const totalQuestions = await prisma.triviaQuestion.count({
+      where: { questionSetId, active: true }
+    });
+
+    return createTriviaSuccessResponse({
       session: {
         id: newSessionId,
         currentQuestionIndex: 0,
         completed: false,
         startedAt: new Date(),
-        totalQuestions: await prisma.triviaQuestion.count({ where: { active: true } }),
-        answeredQuestions: 0
+        totalQuestions,
+        answeredQuestions: 0,
+        questionSet: {
+          id: questionSet.id,
+          name: questionSet.name
+        }
       },
       message: "Sesión iniciada correctamente"
-    }, 201);
+    });
   }
 
   // Si llegó aquí, es una sesión existente - redirigir a GET
-  return apiOk({ redirect: true, sessionId }, 200);
+  return createTriviaSuccessResponse({ redirect: true, sessionId });
 }
 
-async function handleAnswerQuestion(data: any) {
+async function handleAnswerQuestion(data: any, req: Request) {
   const parsed = answerQuestionSchema.safeParse(data);
   if (!parsed.success) {
-    return apiError("INVALID_BODY", "Datos inválidos", parsed.error.flatten(), 400);
+    return handleTriviaValidationError(parsed.error);
   }
 
   const { sessionId, questionId, answerId } = parsed.data;
+  const clientIP = getClientIP(req as any);
 
-  // Rate limiting por sesión
-  const ipHeader =
-    new Request('http://localhost').headers.get("x-forwarded-for") ||
-    new Request('http://localhost').headers.get("x-real-ip") ||
-    "unknown";
-  const ip = ipHeader.split(",")[0].trim();
-  const rateLimitKey = `trivia-answer:${sessionId}:${ip}`;
-  const rl = checkRateLimitCustom(rateLimitKey, 10, 60000); // 10 respuestas por minuto por sesión/IP
-  if (!rl.ok) {
-    await logEvent("TRIVIA_RATE_LIMIT", "Rate limit excedido en trivia", {
-      sessionId,
-      ip,
-      retryAfterSeconds: rl.retryAfterSeconds
-    });
-    return apiError(
-      "RATE_LIMIT",
-      "Demasiadas respuestas. Espera un momento.",
-      { retryAfterSeconds: rl.retryAfterSeconds },
-      429,
-      { "Retry-After": rl.retryAfterSeconds.toString() }
+  // Rate limiting para respuestas
+  const answerRateLimit = checkTriviaAnswerRateLimit(sessionId, clientIP);
+  if (!answerRateLimit.ok) {
+    return createTriviaErrorResponse(
+      'RATE_LIMIT_EXCEEDED',
+      'Demasiadas respuestas. Intente nuevamente más tarde.',
+      429
     );
   }
 
@@ -196,6 +241,7 @@ async function handleAnswerQuestion(data: any) {
   const session = await prisma.triviaSession.findUnique({
     where: { sessionId },
     include: {
+      questionSet: true,
       progress: {
         orderBy: { answeredAt: 'desc' },
         take: 1
@@ -204,11 +250,11 @@ async function handleAnswerQuestion(data: any) {
   });
 
   if (!session) {
-    return apiError("SESSION_NOT_FOUND", "Sesión no encontrada", {}, 404);
+    return createTriviaErrorResponse('SESSION_EXPIRED', 'Sesión no encontrada', 404);
   }
 
   if (session.completed) {
-    return apiError("SESSION_COMPLETED", "Sesión ya completada", {}, 409);
+    return createTriviaErrorResponse('SESSION_EXPIRED', 'Sesión ya completada', 409);
   }
 
   // Verificar tiempo entre respuestas (mínimo 2 segundos para prevenir bots)
@@ -216,28 +262,33 @@ async function handleAnswerQuestion(data: any) {
     const lastAnswer = session.progress[0];
     const timeSinceLastAnswer = Date.now() - lastAnswer.answeredAt.getTime();
     if (timeSinceLastAnswer < 2000) { // 2 segundos
-      await logEvent("TRIVIA_TOO_FAST", "Respuesta demasiado rápida", {
+      logTriviaEvent('answer_too_fast', `Answer too fast (${timeSinceLastAnswer}ms) for session ${sessionId}`, {
         sessionId,
-        timeSinceLastAnswer
+        timeSinceLastAnswer,
+        ip: clientIP
       });
-      return apiError("TOO_FAST", "Espera un momento antes de responder", {}, 429);
+      return createTriviaErrorResponse('VALIDATION_ERROR', 'Espera un momento antes de responder', 429);
     }
   }
 
-  // Verificar que la pregunta existe y está activa
+  // Verificar que la pregunta existe, está activa y pertenece al question set de la sesión
   const question = await prisma.triviaQuestion.findUnique({
-    where: { id: questionId, active: true },
+    where: {
+      id: questionId,
+      active: true,
+      questionSetId: session.questionSetId
+    },
     include: { answers: true }
   });
 
   if (!question) {
-    return apiError("QUESTION_NOT_FOUND", "Pregunta no encontrada", {}, 404);
+    return createTriviaErrorResponse('INVALID_ANSWER', 'Pregunta no encontrada o no pertenece a este set', 404);
   }
 
   // Verificar que la respuesta pertenece a la pregunta
   const selectedAnswer = question.answers.find(a => a.id === answerId);
   if (!selectedAnswer) {
-    return apiError("INVALID_ANSWER", "Respuesta inválida", {}, 400);
+    return createTriviaErrorResponse('INVALID_ANSWER', 'Respuesta inválida', 400);
   }
 
   // Verificar que no haya respondido esta pregunta antes
@@ -251,28 +302,31 @@ async function handleAnswerQuestion(data: any) {
   });
 
   if (existingProgress) {
-    return apiError("QUESTION_ALREADY_ANSWERED", "Pregunta ya respondida", {}, 409);
+    return createTriviaErrorResponse('INVALID_ANSWER', 'Pregunta ya respondida', 409);
   }
 
   // Verificar orden de preguntas (debe responder en orden)
-  const totalActiveQuestions = await prisma.triviaQuestion.count({ where: { active: true } });
+  const totalActiveQuestions = await prisma.triviaQuestion.count({
+    where: { questionSetId: session.questionSetId, active: true }
+  });
   const expectedQuestionOrder = session.currentQuestionIndex + 1;
 
-  // Obtener todas las preguntas ordenadas
+  // Obtener todas las preguntas ordenadas del set
   const allQuestions = await prisma.triviaQuestion.findMany({
-    where: { active: true },
+    where: { questionSetId: session.questionSetId, active: true },
     orderBy: { order: 'asc' }
   });
 
   if (expectedQuestionOrder <= allQuestions.length) {
     const expectedQuestion = allQuestions[expectedQuestionOrder - 1];
     if (expectedQuestion.id !== questionId) {
-      await logEvent("TRIVIA_WRONG_ORDER", "Intento de responder pregunta fuera de orden", {
+      logTriviaEvent('wrong_question_order', `Wrong question order for session ${sessionId}`, {
         sessionId,
         expectedQuestionId: expectedQuestion.id,
-        attemptedQuestionId: questionId
+        attemptedQuestionId: questionId,
+        ip: clientIP
       });
-      return apiError("WRONG_ORDER", "Debes responder las preguntas en orden", {}, 400);
+      return createTriviaErrorResponse('INVALID_ANSWER', 'Debes responder las preguntas en orden', 400);
     }
   }
 
@@ -287,12 +341,7 @@ async function handleAnswerQuestion(data: any) {
     }
   });
 
-  await logEvent("TRIVIA_QUESTION_ANSWERED", "Pregunta de trivia respondida", {
-    sessionId,
-    questionId,
-    answerId,
-    isCorrect
-  });
+  logTriviaAnswer(sessionId, questionId, answerId, isCorrect);
 
   // Actualizar el índice de pregunta actual en la sesión
   const currentProgressCount = await prisma.triviaProgress.count({
@@ -305,78 +354,75 @@ async function handleAnswerQuestion(data: any) {
   });
 
   // Verificar si completó todas las preguntas
-  const totalQuestions = await prisma.triviaQuestion.count({ where: { active: true } });
+  const totalQuestions = await prisma.triviaQuestion.count({
+    where: { questionSetId: session.questionSetId, active: true }
+  });
   const completed = currentProgressCount >= totalQuestions;
 
-  let prizeToken = null;
+  let prize = null;
   if (completed) {
-    // Completó la trivia - generar token de premio
-    prizeToken = await generatePrizeToken(session.id);
+    // Completó la trivia - asignar premio del question set
+    prize = await assignTriviaPrize(session.id, session.questionSetId);
     await prisma.triviaSession.update({
       where: { id: session.id },
       data: {
         completed: true,
         completedAt: new Date(),
-        prizeTokenId: prizeToken?.id
+        prizeId: prize?.id
       }
     });
 
-    await logEvent("TRIVIA_COMPLETED", "Trivia completada exitosamente", {
-      sessionId,
-      prizeTokenId: prizeToken?.id
+    logTriviaSession('COMPLETE', sessionId, {
+      questionSetId: session.questionSetId,
+      prizeId: prize?.id
     });
   }
 
-  return apiOk({
+  return createTriviaSuccessResponse({
     isCorrect,
     completed,
     currentQuestionIndex: currentProgressCount,
     totalQuestions,
-    prizeToken: prizeToken ? {
-      id: prizeToken.id,
-      prize: prizeToken.prize
+    prize: prize ? {
+      id: prize.id,
+      name: prize.name,
+      description: prize.description,
+      qrCode: prize.qrCode
     } : null
-  }, 200);
+  });
 }
 
-async function generatePrizeToken(sessionId: string) {
-  // Obtener un premio activo aleatorio
-  const prizes = await prisma.prize.findMany({
-    where: { active: true }
+async function assignTriviaPrize(sessionId: string, questionSetId: string) {
+  // Obtener premios disponibles para este question set que estén válidos en el tiempo actual
+  const now = nowInLima();
+
+  const availablePrizes = await prisma.triviaPrize.findMany({
+    where: {
+      questionSetId,
+      active: true,
+      validFrom: { lte: now.toJSDate() },
+      validUntil: { gte: now.toJSDate() }
+    }
   });
 
-  if (prizes.length === 0) {
-    throw new Error("No hay premios disponibles");
+  if (availablePrizes.length === 0) {
+    logTriviaEvent('no_prizes_available', `No prizes available for session ${sessionId}`, {
+      sessionId,
+      questionSetId,
+      currentTime: now.toISO()
+    });
+    return null; // No hay premios disponibles
   }
 
-  const randomPrize = prizes[Math.floor(Math.random() * prizes.length)];
+  // Seleccionar un premio aleatorio
+  const randomPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)];
 
-  // Crear batch primero
-  const batch = await prisma.batch.create({
-    data: {
-      description: `Trivia completion - ${new Date().toISOString().split('T')[0]}`,
-      functionalDate: new Date()
-    }
+  logTriviaEvent('prize_assigned', `Prize "${randomPrize.name}" assigned to session ${sessionId}`, {
+    sessionId,
+    questionSetId,
+    prizeId: randomPrize.id,
+    prizeName: randomPrize.name
   });
 
-  // Generar signature para el token (simplificada para este ejemplo)
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
-  const signature = `trivia-${sessionId}-${Date.now()}`;
-
-  // Crear token con el batch
-  const token = await prisma.token.create({
-    data: {
-      prizeId: randomPrize.id,
-      batchId: batch.id,
-      expiresAt,
-      signature,
-      signatureVersion: 1
-    },
-    include: {
-      prize: true,
-      batch: true
-    }
-  });
-
-  return token;
+  return randomPrize;
 }
