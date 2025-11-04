@@ -33,6 +33,17 @@ function LoginClient() {
         throw new Error(data.error || "LOGIN_FAIL");
       }
 
+      const data = await res.json().catch(() => ({}));
+      
+      if (data.forcePasswordChange) {
+        // Redirect to password change page
+        setRedirecting(true);
+        setTimeout(() => {
+          window.location.href = "/u/change-password?next=" + encodeURIComponent(next);
+        }, 100);
+        return;
+      }
+
       setRedirecting(true);
       setTimeout(() => {
         window.location.href = next;

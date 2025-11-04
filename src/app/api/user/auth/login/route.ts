@@ -17,13 +17,13 @@ export async function POST(req: Request) {
     }
 
     const normDni = (s: string | undefined | null) => String(s || '').replace(/\D+/g, '');
-    let user: { id: string; username: string; passwordHash: string; role: string; personId: string } | null = null;
+    let user: { id: string; username: string; passwordHash: string; role: string; personId: string; forcePasswordChange?: boolean } | null = null;
 
     // 1) Intentar por username si está presente
     if (username) {
       const byUsername = await prisma.user.findUnique({
         where: { username },
-        select: { id: true, username: true, passwordHash: true, role: true, personId: true },
+        select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true },
       });
       if (byUsername) user = byUsername;
     }
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       if (dniInput) {
         const byDni = await prisma.user.findFirst({
           where: { person: { dni: dniInput } },
-          select: { id: true, username: true, passwordHash: true, role: true, personId: true },
+          select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true },
         });
         if (byDni) user = byDni;
       }
@@ -64,7 +64,13 @@ export async function POST(req: Request) {
 
     await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", { username, role });
 
-    return apiOk({ ok: true, role, userId: user.id, personId: user.personId }, 200, { 'Set-Cookie': buildSetUserCookie(token) });
+    return apiOk({ 
+      ok: true, 
+      role, 
+      userId: user.id, 
+      personId: user.personId,
+      forcePasswordChange: user.forcePasswordChange || false
+    }, 200, { 'Set-Cookie': buildSetUserCookie(token) });
   } catch (e: any) {
     await logEvent("USER_AUTH_ERROR", "Login colaborador error", { message: String(e?.message || e) });
     return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500);

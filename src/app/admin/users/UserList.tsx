@@ -45,6 +45,7 @@ const UserListActions = () => {
   const [backupLoading, setBackupLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const downloadUsersBackup = async () => {
     try {
@@ -134,6 +135,46 @@ const UserListActions = () => {
     }
   };
 
+  const resetAllPasswords = async () => {
+    // Confirmación de seguridad
+    const confirmed = window.confirm(
+      '⚠️ ADVERTENCIA CRÍTICA: Esta acción reseteará TODAS las contraseñas de usuarios.\n\n' +
+      '• TODOS los usuarios tendrán la contraseña "123456789"\n' +
+      '• Esto afectará a todos los usuarios del sistema\n' +
+      '• Se recomienda hacer un backup antes de proceder\n' +
+      '• Los usuarios deberán cambiar su contraseña después\n\n' +
+      '¿Estás ABSOLUTAMENTE seguro de que quieres continuar?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setResetLoading(true);
+
+      const res = await fetch('/api/admin/users/reset-passwords', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password: '123456789'
+        }),
+      });
+
+      const j = await res.json().catch(()=>({}));
+      if (res.ok && j?.ok) {
+        notify(j.message || 'Contraseñas reseteadas exitosamente', { type: 'success' });
+      } else {
+        const back = j?.message || res.status;
+        notify(`Error al resetear contraseñas: ${back}`, { type: 'error' });
+      }
+    } catch (e: any) {
+      notify(`Error de red: ${String(e?.message || e)}`, { type: 'error' });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <TopToolbar>
       <CreateButton />
@@ -175,6 +216,22 @@ const UserListActions = () => {
         ) : (
           <>
             📥 Backup
+          </>
+        )}
+      </button>
+      <button
+        onClick={resetAllPasswords}
+        disabled={resetLoading}
+        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm rounded transition-colors flex items-center gap-1 ml-2"
+      >
+        {resetLoading ? (
+          <>
+            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+            Reseteando...
+          </>
+        ) : (
+          <>
+            🔑 Reset Passwords
           </>
         )}
       </button>

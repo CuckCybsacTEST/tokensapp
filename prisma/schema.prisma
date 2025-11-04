@@ -174,6 +174,7 @@ model User {
   passwordHash              String
   role                      String                 @default("COLLAB")
   personId                  String                 @unique
+  forcePasswordChange       Boolean                @default(false)
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
   commitmentVersionAccepted Int                    @default(0)
