@@ -54,16 +54,16 @@ export default async function ULayout({ children }: { children: React.ReactNode 
     }
   } catch {}
 
-  // Si el usuario tiene privilegios de admin, usar AdminLayout
-  if (isAdmin) {
+  // Si el usuario tiene privilegios de admin Y está logueado, usar AdminLayout
+  if (isAdmin && me) {
     return (
-      <AdminLayout title="Panel de Colaborador" breadcrumbs={[{ label: "Inicio", href: "/u" }]} basePath="u">
+      <AdminLayout title="Panel de Colaborador" breadcrumbs={[{ label: "Inicio", href: "/u" }]} basePath="u" hasSession={true}>
         {children}
       </AdminLayout>
     );
   }
 
-  // Layout normal para colaboradores regulares
+  // Si no tiene privilegios de admin o no está logueado, usar layout normal sin sidebar
   return (
     <div className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
       <header className="app-container py-4">

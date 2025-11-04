@@ -305,16 +305,17 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
       if (res.ok) {
         // Clear user info immediately after successful logout
         setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-        router.push(loginPath);
+        // Use window.location for full page reload to re-evaluate server-side layout
+        window.location.href = loginPath;
       } else {
         // Clear user info even on logout failure to be safe
         setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-        router.push(loginPath);
+        window.location.href = loginPath;
       }
     } catch {
       // Clear user info on error as well
       setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-      router.push(basePath === 'admin' ? '/admin/login' : '/u/login');
+      window.location.href = basePath === 'admin' ? '/admin/login' : '/u/login';
     } finally {
       setIsLoggingOut(false);
     }
