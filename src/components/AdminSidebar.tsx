@@ -303,11 +303,17 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
 
       const res = await fetch(logoutEndpoint, { method: "POST" });
       if (res.ok) {
+        // Clear user info immediately after successful logout
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
         router.push(loginPath);
       } else {
+        // Clear user info even on logout failure to be safe
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
         router.push(loginPath);
       }
     } catch {
+      // Clear user info on error as well
+      setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
       router.push(basePath === 'admin' ? '/admin/login' : '/u/login');
     } finally {
       setIsLoggingOut(false);
@@ -478,6 +484,27 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
           <Link
             href="/admin/scanner"
+            className={cn(
+              "w-full flex items-center justify-center space-x-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]",
+              isCollapsed ? "px-3" : ""
+            )}
+          >
+            <span className="flex-shrink-0">{ICONS.qr}</span>
+            {!isCollapsed && (
+              <div className="flex flex-col items-center">
+                <span className="font-semibold text-sm">Escanear Códigos</span>
+                <span className="text-xs opacity-90">Acceso rápido al scanner</span>
+              </div>
+            )}
+          </Link>
+        </div>
+      )}
+
+      {/* Scanner Button for User Interface */}
+      {basePath === 'u' && (
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+          <Link
+            href="/u/scanner"
             className={cn(
               "w-full flex items-center justify-center space-x-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]",
               isCollapsed ? "px-3" : ""
