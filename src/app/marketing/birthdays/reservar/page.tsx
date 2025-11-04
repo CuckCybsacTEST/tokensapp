@@ -338,6 +338,15 @@ function ReservarCumplePageInner() {
                 const day = String(nowLima.day).padStart(2, '0');
                 return `${year}-${month}-${day}`;
               })()}
+              max={(() => {
+                // Fecha máxima: 10 días en el futuro desde hoy
+                const nowLima = DateTime.now().setZone('America/Lima') as any;
+                const maxDate = nowLima.plus({ days: 10 });
+                const year = maxDate.year;
+                const month = String(maxDate.month).padStart(2, '0');
+                const day = String(maxDate.day).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })()}
               onChange={(e) => setDate(e.target.value)}
             />
             {/* Sugerencia removida según requerimiento */}

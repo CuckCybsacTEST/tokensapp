@@ -116,7 +116,7 @@ async function getPrizesWithLastBatch(): Promise<{
 export default async function PrizesPage() {
   const { prizes, lastBatch, batchPrizeStats } = await getPrizesWithLastBatch();
   return (
-    <AdminLayout title="Gestión de Premios" breadcrumbs={[{ label: "Premios", href: "/admin/prizes" }]}>
+    <AdminLayout>
       <PrizesClient
         initialPrizes={prizes}
         lastBatch={lastBatch}

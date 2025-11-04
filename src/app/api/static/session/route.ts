@@ -48,6 +48,14 @@ export async function GET(req: Request) {
               area: user.person.area
             });
           }
+        } else {
+          // Usuario colaborador sin área asignada - permitir acceso a interfaz staff
+          return apiOk({
+            isStaff: false,
+            isAdmin: false,
+            isCollaborator: true,
+            role: 'COLLAB'
+          });
         }
       } catch (err) {
         console.error('Error verificando área de usuario:', err);

@@ -1,1 +1,0 @@
-SELECT username, role FROM "User" WHERE username = 'ana';

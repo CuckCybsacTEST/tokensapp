@@ -22,8 +22,44 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const raw = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(raw);
   const isStaff = !!session && requireRole(session, ['ADMIN','STAFF']).ok;
+
+  // Also check for collaborator sessions with restaurant area
+  let isCollaboratorStaff = false;
+  if (!isStaff) {
+    const { getUserSessionCookieFromRequest, verifyUserSessionCookie } = await import('@/lib/auth-user');
+    const userRaw = getUserSessionCookieFromRequest(req as unknown as Request);
+    const userSession = await verifyUserSessionCookie(userRaw);
+
+    if (userSession) {
+      // Check if user has restaurant area
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+
+        const user = await prisma.user.findUnique({
+          where: { id: userSession.userId },
+          include: { person: true }
+        });
+
+        await prisma.$disconnect();
+
+        if (user?.person?.area) {
+          // Map area to staff role
+          const { mapAreaToStaffRole } = require('@/lib/staff-roles');
+          const restaurantRole = mapAreaToStaffRole(user.person.area);
+          if (restaurantRole) {
+            isCollaboratorStaff = true;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking collaborator staff status:', err);
+      }
+    }
+  }
+
+  const effectiveIsStaff = isStaff || isCollaboratorStaff;
   try {
-    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff });
+    console.log('[BIRTHDAYS] GET /api/birthdays/invite/[code]: Buscando token', { code: params.code, isStaff: effectiveIsStaff });
     const token = await prisma.inviteToken.findUnique({ 
       where: { code: params.code }, 
       include: { 
@@ -101,7 +137,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       multiUse: (token as any).maxUses ? { used: (token as any).usedCount, max: (token as any).maxUses } : null,
       packGuestLimit: (token as any).maxUses || r.pack?.qrCount || null,
     };
-    if (!isStaff) {
+    if (!effectiveIsStaff) {
       // Mensaje diferenciado: si es el token del cumpleañero no hablamos en segunda persona "estás invitado".
       let publicMessage: string;
       if (token.kind === 'host') {
@@ -148,7 +184,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       guestArrivals: r.guestArrivals || 0,
       lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null,
     };
-    return apiOk({ public: false, token: base, reservation: extended, isAdmin: isStaff && session?.role === 'ADMIN' }, 200, cors);
+    return apiOk({ public: false, token: base, reservation: extended,       isAdmin: effectiveIsStaff && session?.role === 'ADMIN' }, 200, cors);
   } catch (e) {
   return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500, cors);
   }

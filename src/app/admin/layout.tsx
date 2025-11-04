@@ -1,6 +1,4 @@
 import React from "react";
-import LogoutButton from "./components/LogoutButton";
-import ThemeToggle from "@/components/theme/ThemeToggle";
 import { verifySessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
 // Garantizar arranque del scheduler también al renderizar el layout de admin
@@ -21,23 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const role = session?.role || null;
   return (
   <>
-      <header className="border-b border-slate-200 dark:border-slate-700 bg-[var(--color-bg-soft)]/60 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-bg-soft)]/40">
-        <div className="app-container flex items-center justify-between py-3">
-          <a href="/admin" className="font-semibold tracking-tight">QR Prize Admin</a>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-              {role ? (
-                <span className="inline-flex items-center gap-2"><span className="inline-flex items-center justify-center rounded bg-slate-700/20 px-2 py-0.5">{role}</span></span>
-              ) : (
-                <span className="opacity-60">Sin sesión</span>
-              )}
-            </div>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
-      <div className="app-container pt-8">{children}</div>
+      <div className="pt-4">{children}</div>
   </>
   );
 }

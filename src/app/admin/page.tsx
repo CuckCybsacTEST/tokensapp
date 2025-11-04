@@ -13,19 +13,8 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <AdminLayout
-      title="Panel de Administración"
-      breadcrumbs={[{ label: "Inicio" }]}
-    >
+    <AdminLayout>
       <div className="space-y-8">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-          <h2 className="text-2xl font-bold mb-2">¡Bienvenido al Panel de Administración!</h2>
-          <p className="text-blue-100">
-            Gestiona todos los aspectos de tu negocio desde aquí. Usa la barra lateral para navegar entre las diferentes secciones.
-          </p>
-        </div>
-
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Juegos & Sorteos */}
@@ -47,7 +36,7 @@ export default async function AdminDashboard() {
             </div>
           </div>
 
-          {/* Gestión Humana */}
+          {/* Gestión de Personal */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
             <div className="flex items-center mb-4">
               <div className="mr-3 p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -55,13 +44,30 @@ export default async function AdminDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Gestión Humana</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Gestión de Personal</h3>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
-              Control de asistencia, gestión de colaboradores y base de clientes.
+              Control de asistencia de colaboradores.
             </p>
             <div className="flex flex-wrap gap-2">
               <a href="/admin/attendance" className="btn-sm">Asistencia</a>
+            </div>
+          </div>
+
+          {/* Clientes */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+            <div className="flex items-center mb-4">
+              <div className="mr-3 p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Clientes</h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">
+              Gestión de la base de clientes.
+            </p>
+            <div className="flex flex-wrap gap-2">
               <a href="/admin/customers" className="btn-sm">Clientes</a>
             </div>
           </div>

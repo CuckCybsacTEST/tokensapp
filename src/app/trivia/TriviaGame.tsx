@@ -65,7 +65,7 @@ export default function TriviaGame() {
     error: null,
     completed: false,
     prize: null,
-    questionSets: undefined, // undefined inicialmente para mostrar loading
+    questionSets: [], // array vacío inicialmente para mostrar loading
     selectedQuestionSet: null,
     showQuestionSetSelection: true
   });
@@ -289,7 +289,6 @@ export default function TriviaGame() {
             </div>
           ) : (!gameState.questionSets || gameState.questionSets.length === 0) ? (
             <div>
-              {console.log('❌ No hay sets disponibles. Estado actual:', gameState.questionSets)}
               <div className="text-center text-gray-500 dark:text-slate-400">
                 <p>No hay sets de preguntas disponibles en este momento.</p>
                 <p className="text-sm mt-2">Vuelve más tarde.</p>

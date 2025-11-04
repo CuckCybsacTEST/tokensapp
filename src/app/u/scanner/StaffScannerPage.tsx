@@ -129,7 +129,7 @@ function vibrate(ms = 80) {
   } catch {}
 }
 
-export default function ScannerPage() {
+export default function StaffScannerPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const processingRef = useRef(false);
@@ -233,12 +233,12 @@ export default function ScannerPage() {
     const birthdayClaim = decodeBirthdayQrFromText(text);
     if (birthdayClaim) {
       try {
-        // Check if user is staff
+        // Check if user has valid session (admin/staff or collaborator)
         const sessionRes = await fetch("/api/static/session");
         const sessionJson = await sessionRes.json();
-        const isStaff = sessionJson.isStaff || false;
+        const hasValidSession = sessionJson.isStaff || sessionJson.isAdmin || sessionJson.isCollaborator;
 
-        if (isStaff) {
+        if (hasValidSession) {
           // Redirect to staff birthday interface
           window.location.href = `/u/birthdays/${encodeURIComponent(birthdayClaim.rid)}`;
         } else {
@@ -260,6 +260,27 @@ export default function ScannerPage() {
       return;
     }
 
+    // 3.5) Detect BIRTHDAY URL: redirect to birthday page
+    try {
+      const url = new URL(text);
+      if (url.pathname.startsWith('/b/')) {
+        // Extract code from URL
+        const code = url.pathname.split('/b/')[1];
+        if (code && code.length >= 4) {
+          // Redirect to birthday page
+          window.location.href = url.pathname + url.search + url.hash;
+          setBanner({ variant: "success", message: `🎂 Código de cumpleaños detectado - Redirigiendo...` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 2000);
+          processingRef.current = false;
+          return;
+        }
+      }
+    } catch {
+      // Not a URL, continue with normal processing
+    }
+
     const payload = decodePersonPayloadFromQr(text);
     if (!payload) {
       setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });
@@ -269,6 +290,8 @@ export default function ScannerPage() {
       processingRef.current = false;
       return;
     }
+
+    // 4) Process PERSON QR: scan attendance
 
     // 4) Process PERSON QR: scan attendance
 

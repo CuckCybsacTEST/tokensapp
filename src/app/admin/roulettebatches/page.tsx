@@ -2,6 +2,7 @@ import Link from "next/link";
 import React from "react";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { AdminLayout } from "@/components/AdminLayout";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
   }
   const batches = await getBatches();
   return (
-    <div className="space-y-8">
+    <AdminLayout>
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-lg font-semibold">Todos los Lotes</h1>
@@ -247,6 +248,6 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
           </Link>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }

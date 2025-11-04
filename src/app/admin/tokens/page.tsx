@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function TokensPanelPage() {
   const tz = process.env.TOKENS_TIMEZONE || 'America/Lima';
   return (
-    <AdminLayout title="Sistema de Tokens" breadcrumbs={[{ label: "Tokens", href: "/admin/tokens" }]}>
+    <AdminLayout>
       <div className="space-y-8">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
           <div className="flex items-center mb-5">

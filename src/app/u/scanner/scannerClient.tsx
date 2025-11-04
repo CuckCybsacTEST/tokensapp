@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { verifyBirthdayClaim, type BirthdayClaim } from '@/lib/birthdays/token';
 
 interface ScanResult { 
   text: string; 
@@ -56,6 +57,22 @@ export default function ScannerClient() {
     return false;
   }, []);
 
+  // Function to decode birthday QR tokens
+  const decodeBirthdayQrFromText = useCallback((text: string): BirthdayClaim | null => {
+    // Try JSON direct - birthday tokens are SignedBirthdayToken objects
+    try {
+      const j = JSON.parse(text);
+      if (j && typeof j === "object" && j.payload && j.sig) {
+        const token = j as { payload: BirthdayClaim; sig: string };
+        const verification = verifyBirthdayClaim(token);
+        if (verification.ok) {
+          return verification.payload;
+        }
+      }
+    } catch {}
+    return null;
+  }, []);
+
   // Function to navigate to birthday pages
   const maybeNavigate = useCallback((raw: string) => {
     if (redirectedRef.current) return;
@@ -66,7 +83,7 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
-        setTimeout(()=>{ window.location.href = raw; }, 120);
+        setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
         return;
       }
       // QR estáticos: /static/<tokenId>
@@ -74,14 +91,14 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
-        setTimeout(()=>{ window.location.href = raw; }, 120);
+        setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
         return;
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
         redirectedRef.current = true;
         setActive(false);
-        setTimeout(()=>{ window.location.href = raw; }, 120);
+        setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
       }
     } catch {
       // no es URL absoluta; podría venir un code simple futuro: birthday:<code>
@@ -121,6 +138,37 @@ export default function ScannerClient() {
       // Not a JSON QR, continue with normal processing
     }
 
+    // Check if it's a birthday QR token
+    const birthdayClaim = decodeBirthdayQrFromText(raw);
+    if (birthdayClaim) {
+      // It's a birthday QR - redirect to appropriate interface
+      if (!redirectedRef.current) {
+        redirectedRef.current = true;
+        setActive(false); // detener cámara antes de salir
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(async () => {
+          try {
+            // Check if user is staff
+            const sessionRes = await fetch("/api/static/session");
+            const sessionJson = await sessionRes.json();
+            const isStaff = sessionJson.isStaff || false;
+
+            if (isStaff) {
+              // Redirect to staff birthday interface
+              window.location.href = `/u/birthdays/${encodeURIComponent(birthdayClaim.rid)}`;
+            } else {
+              // Redirect to public birthday interface
+              window.location.href = `/marketing/birthdays/${encodeURIComponent(birthdayClaim.rid)}/qrs`;
+            }
+          } catch (e) {
+            // Fallback to public interface if session check fails
+            window.location.href = `/marketing/birthdays/${encodeURIComponent(birthdayClaim.rid)}/qrs`;
+          }
+        }, 120);
+      }
+      return;
+    }
+
     // Normal QR processing
     if (!resultsRef.current.some(r=>r.text===raw)) {
       setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
@@ -129,7 +177,7 @@ export default function ScannerClient() {
     }
     // Intentar navegación automática si es un QR de cumpleaños (/b/<code>)
     maybeNavigate(raw);
-  }, [maybeNavigate]);
+  }, [maybeNavigate, decodeBirthdayQrFromText]);
 
   // Function to handle file upload for QR image processing
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

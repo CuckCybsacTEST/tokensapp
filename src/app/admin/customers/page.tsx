@@ -3,7 +3,7 @@ import { CustomerAdmin } from "./AdminCustomersClient";
 
 export default function CustomersAdminPage() {
   return (
-    <AdminLayout title="Gestión de Clientes" breadcrumbs={[{ label: "Clientes", href: "/admin/customers" }]}>
+    <AdminLayout>
       <CustomerAdmin />
     </AdminLayout>
   );

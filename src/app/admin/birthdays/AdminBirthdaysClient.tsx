@@ -410,6 +410,12 @@ export function AdminBirthdaysPage() {
             <button type="button" onClick={restorePacks} className="px-2 py-1 rounded border border-amber-500 text-amber-200 hover:bg-amber-500/10">Recrear packs por defecto</button>
           </div>
         )}
+        {packs.length > 0 && (
+          <div className="mt-4 text-xs text-slate-400 flex items-center gap-3">
+            <span>Packs cargados: {packs.length}</span>
+            <button type="button" onClick={restorePacks} className="px-2 py-1 rounded border border-amber-500 text-amber-200 hover:bg-amber-500/10">Recrear packs por defecto</button>
+          </div>
+        )}
       </div>
 
       {/* Gestión de Packs */}

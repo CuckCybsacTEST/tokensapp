@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button, ActionButton } from "@/components";
+import { AdminLayout } from "@/components/AdminLayout";
 
 interface Supplier {
   id: string;
@@ -139,11 +140,15 @@ export default function SuppliersPage() {
   };
 
   if (loading) {
-    return <div className="p-6">Cargando proveedores...</div>;
+    return (
+      <AdminLayout>
+        <div className="p-6">Cargando proveedores...</div>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout>
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Gestión de Proveedores</h1>
@@ -320,12 +325,14 @@ export default function SuppliersPage() {
           </table>
         </div>
 
+        {/* cierre del contenedor de tabla */}
+        </div>
+
         {suppliers.length === 0 && (
           <div className="text-center py-8 text-slate-500 dark:text-slate-400">
             No hay proveedores registrados
           </div>
         )}
-      </div>
-    </div>
+    </AdminLayout>
   );
 }

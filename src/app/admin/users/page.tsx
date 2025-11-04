@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { verifySessionCookie } from '@/lib/auth';
 import { UsersClient } from './UsersClient';
 import ReactAdminUsers from './ReactAdminUsers';
+import { AdminLayout } from "@/components/AdminLayout";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -15,12 +16,14 @@ export default async function AdminUsersPage({
   // STAFF users get limited interface
   if (role === 'STAFF') {
     return (
-      <div className="mx-auto p-6 max-w-[1600px]">
-        <UsersClient role={role} />
-      </div>
+      <AdminLayout>
+        <div className="mx-auto p-6 max-w-[1600px]">
+          <UsersClient role={role} />
+        </div>
+      </AdminLayout>
     );
   }
 
   // ADMIN users get full React Admin interface
-  return <ReactAdminUsers />;
+  return <AdminLayout><ReactAdminUsers /></AdminLayout>;
 }

@@ -3,7 +3,7 @@ import { AdminBirthdaysPage } from "./AdminBirthdaysClient";
 
 export default function BirthdaysAdminPage() {
   return (
-    <AdminLayout title="Gestión de Cumpleaños" breadcrumbs={[{ label: "Cumpleaños", href: "/admin/birthdays" }]}>
+    <AdminLayout>
       <AdminBirthdaysPage />
     </AdminLayout>
   );

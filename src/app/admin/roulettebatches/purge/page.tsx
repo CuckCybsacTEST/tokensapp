@@ -1,11 +1,13 @@
 import React, { Suspense } from 'react';
 import PurgeBatchesClient from './ui';
+import { AdminLayout } from "@/components/AdminLayout";
 
 export const dynamic = 'force-dynamic';
 
 export default async function PurgeBatchesPage() {
   return (
-    <div className="space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Purgar Batches</h1>
         <a href="/admin/roulettebatches" className="btn-outline !px-3 !py-1.5 text-sm">Volver</a>
@@ -18,5 +20,6 @@ export default async function PurgeBatchesPage() {
         <PurgeBatchesClient />
       </Suspense>
     </div>
+    </AdminLayout>
   );
 }
