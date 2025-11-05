@@ -16,6 +16,47 @@ declare global {
 //   - Prod (o FORCE_PRISMA_PROD=1): se exige DATABASE_URL explícito → throw.
 //   - Nunca volvemos a un DSN SQLite porque el provider actual es `postgresql`.
 const ensureDatabaseUrl = () => {
+  // During build, skip checks as DATABASE_URL may not be injected yet
+  if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.BUILD_PHASE === '1' || process.env.BUILDING === '1') {
+    return;
+  }
+  const isProdLike = process.env.NODE_ENV === "production" || process.env.FORCE_PRISMA_PROD === "1";
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === "") {
+    if (isProdLike) {
+      throw new Error("Missing DATABASE_URL environment variable. Set it in your production environment.");
+    }
+    const fallback = "postgresql://postgres:postgres@localhost:5433/qrprizes?schema=public"; // coincide docker-compose
+    process.env.DATABASE_URL = fallback;
+    if (!process.env.__PRISMA_FALLBACK_LOGGED) {
+      // eslint-disable-next-line no-console
+      console.info(`[prisma] Dev fallback DATABASE_URL=${fallback} (define your own in .env to silence this message)`);
+      process.env.__PRISMA_FALLBACK_LOGGED = "1";
+    }
+  }
+};
+if (typeof window === 'undefined') {
+  ensureDatabaseUrl();
+}
+const ensureDatabaseUrl = () => {
+  // During build, skip checks as DATABASE_URL may not be injected yet
+  if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.BUILD_PHASE === '1' || process.env.BUILDING === '1') {
+    return;
+  }
+  const isProdLike = process.env.NODE_ENV === "production" || process.env.FORCE_PRISMA_PROD === "1";
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === "") {
+    if (isProdLike) {
+      throw new Error("Missing DATABASE_URL environment variable. Set it in your production environment.");
+    }
+    const fallback = "postgresql://postgres:postgres@localhost:5433/qrprizes?schema=public"; // coincide docker-compose
+    process.env.DATABASE_URL = fallback;
+    if (!process.env.__PRISMA_FALLBACK_LOGGED) {
+      // eslint-disable-next-line no-console
+      console.info(`[prisma] Dev fallback DATABASE_URL=${fallback} (define your own in .env to silence this message)`);
+      process.env.__PRISMA_FALLBACK_LOGGED = "1";
+    }
+  }
+};
+const ensureDatabaseUrl = () => {
   const isProdLike = process.env.NODE_ENV === "production" || process.env.FORCE_PRISMA_PROD === "1";
   if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim() === "") {
     if (isProdLike) {
