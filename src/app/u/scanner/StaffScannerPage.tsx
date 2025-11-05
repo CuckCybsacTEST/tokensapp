@@ -470,26 +470,26 @@ export default function StaffScannerPage() {
   }, [handleResult]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-yellow-300 px-2 py-8">
-      <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white/80 backdrop-blur-lg p-6 flex flex-col items-center">
-        <h1 className="mb-2 text-3xl font-extrabold text-orange-700 tracking-tight text-center drop-shadow">Escáner QR</h1>
-        <p className="mb-6 text-base text-orange-900 text-center font-medium">Escanea QR de personas, ofertas o usa pósters para registrar entrada/salida.</p>
+    <div className="w-full bg-[var(--color-bg)] px-2 py-4 sm:py-8">
+      <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-3 sm:p-4 flex flex-col justify-start">
+        <h1 className="mb-2 text-3xl font-extrabold text-gray-900 dark:text-slate-100 tracking-tight text-center drop-shadow">Escáner de Códigos</h1>
+        <p className="mb-5 text-base text-gray-700 dark:text-slate-300 text-center font-medium">Escanea códigos QR de invitaciones, tokens y ofertas especiales.</p>
 
         {banner && (
-          <div className={`mb-4 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-orange-100 text-orange-700 border border-orange-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{banner.message}</div>
+          <div className={`mb-2 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>{banner.message}</div>
         )}
 
         {awaitingCode && (
-          <div className="mb-4 w-full rounded-xl border border-orange-200 bg-white/90 p-4 shadow flex flex-col items-center">
-            <div className="mb-2 text-base text-orange-700 font-semibold">
-              Modo: <span className={mode === "IN" ? "text-green-600" : "text-yellow-600"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
+          <div className="mb-2 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow flex flex-col items-center">
+            <div className="mb-2 text-base text-gray-700 dark:text-slate-300 font-semibold">
+              Modo: <span className={mode === "IN" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
             </div>
             <div className="flex items-center gap-2 w-full justify-center">
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="Código de persona"
-                className="input max-w-xs text-lg font-bold text-center border-orange-300 focus:border-orange-500 focus:ring-orange-400"
+                className="input max-w-xs text-lg font-bold text-center border-gray-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-400 dark:bg-slate-700 dark:text-slate-100"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -499,14 +499,14 @@ export default function StaffScannerPage() {
                 }}
               />
               <button
-                className="btn bg-orange-500 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-orange-600"
+                className="btn bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-blue-700"
                 disabled={code.trim().toUpperCase().length < 4}
                 onClick={submitCode}
               >
                 Registrar
               </button>
               <button
-                className="btn-outline border-orange-300 text-orange-700 px-4 py-2 rounded-lg"
+                className="btn-outline border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
                 onClick={() => {
                   setAwaitingCode(false);
                   setCode("");
@@ -518,21 +518,21 @@ export default function StaffScannerPage() {
           </div>
         )}
 
-        <div className="relative mx-auto w-full max-w-xs sm:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-orange-300 bg-black shadow-lg">
+        <div className="relative w-full max-w-xs sm:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-gray-300 dark:border-slate-600 bg-black shadow-lg">
           <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
 
           {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
           {!overlay && !cameraError && (
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-4 top-4 h-8 w-8 border-l-4 border-t-4 border-orange-400 rounded-tl-xl"></div>
-              <div className="absolute right-4 top-4 h-8 w-8 border-r-4 border-t-4 border-orange-400 rounded-tr-xl"></div>
-              <div className="absolute left-4 bottom-4 h-8 w-8 border-l-4 border-b-4 border-orange-400 rounded-bl-xl"></div>
-              <div className="absolute right-4 bottom-4 h-8 w-8 border-r-4 border-b-4 border-orange-400 rounded-br-xl"></div>
+              <div className="absolute left-4 top-4 h-8 w-8 border-l-4 border-t-4 border-blue-400 rounded-tl-xl"></div>
+              <div className="absolute right-4 top-4 h-8 w-8 border-r-4 border-t-4 border-blue-400 rounded-tr-xl"></div>
+              <div className="absolute left-4 bottom-4 h-8 w-8 border-l-4 border-b-4 border-blue-400 rounded-bl-xl"></div>
+              <div className="absolute right-4 bottom-4 h-8 w-8 border-r-4 border-b-4 border-blue-400 rounded-br-xl"></div>
             </div>
           )}
 
           {overlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 text-white rounded-2xl">
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-2 px-4 pt-4 text-white rounded-2xl">
               <div>
                 <div className="text-xl font-bold leading-tight drop-shadow-lg">{overlay.person.name}</div>
                 <div className="text-base opacity-90 font-mono">{overlay.person.code}</div>
@@ -546,7 +546,7 @@ export default function StaffScannerPage() {
           )}
 
           {offerOverlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent p-4 text-white rounded-2xl">
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent pb-2 px-4 pt-4 text-white rounded-2xl">
               <div className="text-center">
                 <div className="text-lg font-bold leading-tight drop-shadow-lg mb-1">
                   🎁 {offerOverlay.offer.title}
@@ -610,12 +610,9 @@ export default function StaffScannerPage() {
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-4 w-full items-center">
-          <p className="text-base text-orange-900 text-center font-medium">
-            Consejo: acércate al QR y mantén la cámara estable. Si el navegador te pide permiso de cámara, acepta para poder escanear. En caso de problemas, puedes subir una foto del QR.
-          </p>
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border-2 border-orange-300 bg-white px-4 py-2 text-base font-semibold text-orange-700 shadow hover:bg-orange-50 active:shadow">
-            Subir imagen del QR
+        <div className="mt-3 flex flex-col gap-4 w-full items-center">
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 active:shadow">
+            Subir imagen
             <input
               type="file"
               accept="image/*"
@@ -625,7 +622,7 @@ export default function StaffScannerPage() {
           </label>
           {cameraError && (
             <button
-              className="w-fit rounded-xl border-2 border-orange-300 bg-white px-4 py-2 text-base font-semibold text-orange-700 shadow hover:bg-orange-50"
+              className="w-fit rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600"
               onClick={() => {
                 setCameraError(null);
                 readerRef.current?.reset();

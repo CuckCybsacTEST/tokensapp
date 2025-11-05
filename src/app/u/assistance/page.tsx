@@ -225,7 +225,7 @@ export default function AssistanceScannerPage(){
   const firstName = collaboratorName.split(/\s+/)[0] || '';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 px-4 py-6 text-slate-800">
+    <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6 text-gray-900 dark:text-slate-100">
       <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
       <audio ref={audioWarnRef} src="/sounds/scan-warn.mp3" preload="auto" />
       {flashRef.current && Date.now()-flashRef.current.ts < 650 && (
@@ -251,7 +251,7 @@ export default function AssistanceScannerPage(){
                 <span><span className="text-indigo-600">Buen trabajo</span>, registra tu <span className="text-indigo-700">SALIDA</span></span>
               )}
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               {nextExpected === 'IN' ? 'Escanea el código IN para registrar.' : 'Escanea el código OUT para cerrar.'}
             </p>
           </div>
@@ -265,24 +265,24 @@ export default function AssistanceScannerPage(){
           />
         )}
         {entryRegistered && (
-          <div className="rounded-md border border-emerald-300 bg-emerald-50 p-4 space-y-3 animate-fadeIn shadow-sm">
-            <div className="text-emerald-700 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
-            <div className="text-sm text-emerald-800 space-y-1">
-              <div><span className="text-emerald-600/90">Nombre:</span> {entryRegistered?.person?.name}</div>
-              <div><span className="text-emerald-600/90">Código:</span> {entryRegistered?.person?.code}</div>
-              <div><span className="text-emerald-600/90">Hora local:</span> {entryRegistered?.at?.toLocaleTimeString()}</div>
-              <div><span className="text-emerald-600/90">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
-              {entryRegistered?.businessDay && <div><span className="text-emerald-600/90">Business Day:</span> {entryRegistered?.businessDay}</div>}
+          <div className="rounded-md border border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 p-4 space-y-3 animate-fadeIn shadow-sm">
+            <div className="text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-2">✓ Entrada registrada</div>
+            <div className="text-sm text-emerald-800 dark:text-emerald-200 space-y-1">
+              <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Nombre:</span> {entryRegistered?.person?.name}</div>
+              <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Código:</span> {entryRegistered?.person?.code}</div>
+              <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Hora local:</span> {entryRegistered?.at?.toLocaleTimeString()}</div>
+              <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
+              {entryRegistered?.businessDay && <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Business Day:</span> {entryRegistered?.businessDay}</div>}
             </div>
             <div className="pt-2 flex gap-2">
-              <a href={`/u/checklist?day=${encodeURIComponent(entryRegistered.businessDay || new Date().toISOString().slice(0,10))}&mode=IN`} className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-500 shadow-sm">Ver lista de tareas</a>
-              <a href="/u" className="inline-flex items-center justify-center rounded-md border border-emerald-300 bg-white text-emerald-700 text-sm font-medium px-4 py-2 hover:bg-emerald-50">Panel</a>
+              <a href={`/u/checklist?day=${encodeURIComponent(entryRegistered.businessDay || new Date().toISOString().slice(0,10))}&mode=IN`} className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 shadow-sm">Ver lista de tareas</a>
+              <a href="/u" className="inline-flex items-center justify-center rounded-md border border-emerald-300 dark:border-emerald-600 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 text-sm font-medium px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/30">Panel</a>
             </div>
           </div>
         )}
         {!entryRegistered && !exitRegistered && !pendingMode && (
           <>
-            <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
               <div className="relative">
                 <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
                 {/* Scan frame overlay */}
@@ -306,45 +306,45 @@ export default function AssistanceScannerPage(){
                 )}
               </div>
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                     <span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                     Escaneando…
                   </div>
                 </div>
-              {error && <div className="mt-2 text-xs text-red-600 font-medium">{error}</div>}
+              {error && <div className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">{error}</div>}
               <div className="mt-4">
-                <button onClick={manualFallback} className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 active:scale-[.985] transition shadow-sm">
+                <button onClick={manualFallback} className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 active:scale-[.985] transition shadow-sm">
                   <span>Modo manual</span>
                 </button>
               </div>
             </div>
             {message && (
-              <div className={`rounded-md px-3 py-2 text-sm border shadow-sm ${message.startsWith('✓') ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-amber-50 border-amber-300 text-amber-700'}`}>{message}</div>
+              <div className={`rounded-md px-3 py-2 text-sm border shadow-sm ${message.startsWith('✓') ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-600 text-emerald-700 dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300'}`}>{message}</div>
             )}
-            <div className="text-xs text-slate-500">{nextExpected==='IN' ? 'Prepárate para comenzar.' : 'Cierra cuando estés listo.'}</div>
+            <div className="text-xs text-gray-500 dark:text-slate-400">{nextExpected==='IN' ? 'Prepárate para comenzar.' : 'Cierra cuando estés listo.'}</div>
             {recent?.recent && (
-              <div className="text-xs text-slate-500">Último registro: {recent.recent.type} {recent.recent.scannedAt ? '· '+ new Date(recent.recent.scannedAt).toLocaleTimeString() : ''} {recent.recent.businessDay ? '· '+recent.recent.businessDay : ''}</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">Último registro: {recent.recent.type} {recent.recent.scannedAt ? '· '+ new Date(recent.recent.scannedAt).toLocaleTimeString() : ''} {recent.recent.businessDay ? '· '+recent.recent.businessDay : ''}</div>
             )}
           </>
         )}
         {exitRegistered && (
-          <div className="rounded-md border border-indigo-300 bg-indigo-50 p-4 space-y-3 shadow-sm">
-            <div className="text-indigo-700 font-semibold flex items-center gap-2">✓ Salida registrada</div>
-            <div className="text-sm text-indigo-800 space-y-1">
-              <div><span className="text-indigo-600/90">Nombre:</span> {exitRegistered.person.name}</div>
-              <div><span className="text-indigo-600/90">Código:</span> {exitRegistered.person.code}</div>
-              <div><span className="text-indigo-600/90">Hora local:</span> {exitRegistered.at.toLocaleTimeString()}</div>
-              <div><span className="text-indigo-600/90">Fecha:</span> {exitRegistered.at.toLocaleDateString()}</div>
-              {exitRegistered.businessDay && <div><span className="text-indigo-600/90">Business Day:</span> {exitRegistered.businessDay}</div>}
+          <div className="rounded-md border border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 p-4 space-y-3 shadow-sm">
+            <div className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center gap-2">✓ Salida registrada</div>
+            <div className="text-sm text-indigo-800 dark:text-indigo-200 space-y-1">
+              <div><span className="text-indigo-600/90 dark:text-indigo-400/90">Nombre:</span> {exitRegistered.person.name}</div>
+              <div><span className="text-indigo-600/90 dark:text-indigo-400/90">Código:</span> {exitRegistered.person.code}</div>
+              <div><span className="text-indigo-600/90 dark:text-indigo-400/90">Hora local:</span> {exitRegistered.at.toLocaleTimeString()}</div>
+              <div><span className="text-indigo-600/90 dark:text-indigo-400/90">Fecha:</span> {exitRegistered.at.toLocaleDateString()}</div>
+              {exitRegistered.businessDay && <div><span className="text-indigo-600/90 dark:text-indigo-400/90">Business Day:</span> {exitRegistered.businessDay}</div>}
             </div>
-            <div className="text-xs text-indigo-600/80">¡Buen trabajo hoy! Descansa y nos vemos en tu próxima jornada.</div>
+            <div className="text-xs text-indigo-600/80 dark:text-indigo-400/80">¡Buen trabajo hoy! Descansa y nos vemos en tu próxima jornada.</div>
             <div className="pt-2">
-              <a href="/u" className="block w-full text-center px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-indigo-300">Volver al panel</a>
+              <a href="/u" className="block w-full text-center px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600 text-sm font-semibold text-white shadow focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-600">Volver al panel</a>
             </div>
           </div>
         )}
         <div>
-          <a href="/u" className="text-blue-600 text-sm hover:underline">← Volver</a>
+          <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver</a>
         </div>
       </div>
       <style jsx global>{`

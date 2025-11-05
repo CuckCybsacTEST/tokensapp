@@ -401,9 +401,9 @@ export default function ScannerClient() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
       <div className="max-w-md mx-auto space-y-5">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Escáner QR</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Escáner de Códigos</h1>
         <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
-        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">Escanea códigos operativos (invitaciones, tokens, cortesías). <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">No registra</strong> entradas / salidas; usa el panel de asistencia para eso.</p>
+        <p className="text-xs leading-relaxed text-gray-600 dark:text-slate-400">Escanea códigos QR de invitaciones, tokens y ofertas especiales. <strong className="text-blue-600 dark:text-blue-400 font-semibold">No registra</strong> asistencia; usa la sección de asistencia para entradas y salidas.</p>
         {notice && <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 text-[11px] px-3 py-2 flex items-start gap-2"><span className="mt-0.5">⚠</span><span>{notice}</span></div>}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
           <div className="relative">
@@ -411,22 +411,22 @@ export default function ScannerClient() {
             {active && (
               <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="w-[82%] aspect-square relative">
-                  <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
-                  <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-scanline" />
+                  <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                  <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scanline" />
                 </div>
               </div>
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-3 items-center">
-            <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Detener':'Iniciar'}</button>
-            {active && <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />Escaneando…</div>}
-            {!active && <div className="text-[11px] text-slate-500 dark:text-slate-400">Pausado</div>}
+            <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Pausar':'Iniciar Escaneo'}</button>
+            {active && <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />Escaneando…</div>}
+            {!active && <div className="text-[11px] text-gray-500 dark:text-slate-400">Escáner pausado</div>}
             <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">
-              Subir imagen QR
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-[11px] font-medium text-gray-700 dark:text-slate-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600">
+              Subir imagen
               <input
                 type="file"
                 accept="image/*"
@@ -439,10 +439,10 @@ export default function ScannerClient() {
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Resultados</h2>
-            {results.length>0 && <span className="text-[11px] text-slate-400 dark:text-slate-500">{results.length}</span>}
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Códigos Escaneados</h2>
+            {results.length>0 && <span className="text-[11px] text-gray-400 dark:text-slate-500">{results.length}</span>}
           </div>
-          {results.length===0 && <div className="text-xs text-slate-500 dark:text-slate-400">Sin lecturas todavía.</div>}
+          {results.length===0 && <div className="text-xs text-gray-500 dark:text-slate-400">No se han escaneado códigos aún.</div>}
           {results.length>0 && (
             <ul className="space-y-1 max-h-64 overflow-auto text-[13px] pr-1">
               {results.map(r => (
@@ -450,7 +450,7 @@ export default function ScannerClient() {
                   {r.type === 'offer' && r.data ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded">Oferta QR</span>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">Oferta QR</span>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                           <button 
                             onClick={() => {
@@ -459,11 +459,11 @@ export default function ScannerClient() {
                               sessionStorage.setItem('scannedQRData', r.text);
                               window.location.href = validationUrl;
                             }} 
-                            className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
+                            className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             Validar
                           </button>
-                          <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
+                          <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
                         </div>
                       </div>
                       <div className="space-y-1 text-xs">
@@ -477,7 +477,7 @@ export default function ScannerClient() {
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate" title={r.text}>{r.text}</span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Copiar</button>
+                        <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
                       </div>
                     </div>
                   )}
@@ -487,12 +487,12 @@ export default function ScannerClient() {
           )}
         </div>
         <div>
-          <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver</a>
+          <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver al panel</a>
         </div>
       </div>
       {flashRef.current && Date.now()-flashRef.current.ts < 550 && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
-          <div className="h-24 w-24 rounded-full bg-teal-500/80 ring-4 ring-teal-300 flex items-center justify-center animate-scanpop">
+          <div className="h-24 w-24 rounded-full bg-blue-500/80 ring-4 ring-blue-300 flex items-center justify-center animate-scanpop">
             <svg viewBox="0 0 24 24" className="h-14 w-14 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
           </div>
         </div>
