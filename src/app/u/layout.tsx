@@ -53,7 +53,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
   // Siempre usar layout normal sin sidebar para /u
   return (
     <div className="min-h-full antialiased bg-[var(--color-bg)] text-[var(--color-text)]">
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200/50 dark:border-slate-700/50 app-container py-3">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200/50 dark:border-slate-700/50 app-container py-2 sm:py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col">
             <a href="/u" className="text-sm text-slate-600 dark:text-slate-300 hover:underline">Colaborador</a>

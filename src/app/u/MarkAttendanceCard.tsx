@@ -98,9 +98,6 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
           )}
         </button>
       </div>
-      {nextAction === 'OUT' && (
-        <div className="mt-2 text-xs text-slate-500">Mantén presionado 2s para abrir el escáner y registrar tu salida.</div>
-      )}
     </div>
   );
 }
