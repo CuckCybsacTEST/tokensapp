@@ -29,9 +29,9 @@ const ensureDatabaseUrl = () => {
       process.env.__PRISMA_FALLBACK_LOGGED = "1";
     }
   }
-};
-
-ensureDatabaseUrl();
+if (typeof window === 'undefined') {
+  ensureDatabaseUrl();
+}
 
 
 const datasourceUrl = process.env.DATABASE_URL!; // garantizado por ensureDatabaseUrl
