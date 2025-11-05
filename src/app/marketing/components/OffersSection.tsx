@@ -294,9 +294,8 @@ function OffersSectionContent({ offers: initialOffers }: OffersSectionProps = {}
 
   if (offers.length === 0) {
     return (
-      <section className="min-h-screen flex items-center justify-center">
+      <section className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Ofertas Especiales</h2>
           <p className="text-white/70">No hay ofertas disponibles en este momento.</p>
         </div>
       </section>

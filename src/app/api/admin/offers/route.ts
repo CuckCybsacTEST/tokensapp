@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { OfferTimeUtils } from '@/lib/offerTimeUtils';
 import { emitOfferCreated } from '@/lib/socket/offers';
+import { DateTime } from 'luxon';
 
 export async function GET(request: NextRequest) {
   try {
@@ -167,8 +168,8 @@ export async function POST(request: NextRequest) {
         height: 0, // TODO: Obtener dimensiones cuando se suba imagen
         maxQuantity: maxQuantity ? parseInt(maxQuantity) : null,
         isActive,
-        validFrom: validFrom ? new Date(validFrom) : null,
-        validUntil: validUntil ? new Date(validUntil) : null,
+        validFrom: validFrom ? DateTime.fromISO(validFrom, { zone: 'America/Lima' }).toJSDate() : null,
+        validUntil: validUntil ? DateTime.fromISO(validUntil, { zone: 'America/Lima' }).toJSDate() : null,
         availableDays: availableDays ? availableDays.map((d: any) => parseInt(d)) : null,
         startTime,
         endTime

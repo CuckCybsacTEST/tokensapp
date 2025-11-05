@@ -240,6 +240,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         icon: ICONS.cake,
         items: [
           { href: `${pathPrefix}/birthdays`, label: "Reservas", icon: ICONS.cake },
+          { href: `${pathPrefix}/birthdays/packs`, label: "Gestión de packs", icon: ICONS.box },
           { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.usersSmall },
           { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart }
         ]

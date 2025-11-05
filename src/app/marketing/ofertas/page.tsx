@@ -1,12 +1,19 @@
 import React from 'react';
 import { Metadata } from 'next';
 import dynamic from 'next/dynamic';
+import { brand } from '../styles/brand';
+import { Footer } from '../components/Footer';
+import { TopNavBar } from '../components/TopNavBar';
 
 // Importar OffersSection dinámicamente para evitar problemas de SSR con Culqi
 const OffersSection = dynamic(() => import('../components/OffersSection').then(mod => ({ default: mod.OffersSection })), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" style={{
+      background: `radial-gradient(1200px 600px at 15% -10%, ${brand.primary}10, transparent),
+                 radial-gradient(900px 500px at 110% 10%, ${brand.secondary}10, transparent),
+                 linear-gradient(180deg, ${brand.darkA}, ${brand.darkB})`,
+    }}>
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
         <p className="text-white/70">Cargando ofertas...</p>
@@ -22,34 +29,24 @@ export const metadata: Metadata = {
 
 export default function OffersPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative z-10 app-container py-16 text-center">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
-            Ofertas Especiales
-          </h1>
-          <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Descubre nuestras promociones exclusivas y ofertas temporales.
-            ¡Aprovecha antes de que se acaben!
-          </p>
-        </div>
-      </div>
+    <div
+      className="min-h-screen w-full text-white overflow-x-hidden relative"
+      style={{
+        background: `radial-gradient(1200px 600px at 15% -10%, ${brand.primary}10, transparent),
+                   radial-gradient(900px 500px at 110% 10%, ${brand.secondary}10, transparent),
+                   linear-gradient(180deg, ${brand.darkA}, ${brand.darkB})`,
+      }}
+    >
+      {/* Top Navigation Bar */}
+      <TopNavBar />
 
       {/* Offers Section */}
-      <div className="app-container py-16">
+      <div className="pt-16">
         <OffersSection />
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-black/20 backdrop-blur">
-        <div className="app-container py-8 text-center">
-          <p className="text-white/60">
-            © 2025 Go Lounge. Todos los derechos reservados.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

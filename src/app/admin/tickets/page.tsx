@@ -581,20 +581,77 @@ export default function AdminTicketsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                // Si no hay QR, generarlo primero
+                                if (!ticket.qrDataUrl) {
+                                  try {
+                                    const response = await fetch('/api/tickets/generate-qr', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ ticketId: ticket.id })
+                                    });
+                                    const data = await response.json();
+                                    if (data.success) {
+                                      // Actualizar el ticket localmente con el nuevo QR
+                                      setTickets(prev => prev.map(t => 
+                                        t.id === ticket.id ? { ...t, qrDataUrl: data.qrDataUrl } : t
+                                      ));
+                                      // Actualizar el ticket actual para mostrar el modal
+                                      ticket.qrDataUrl = data.qrDataUrl;
+                                    } else {
+                                      alert('Error al generar QR: ' + (data.error || 'Error desconocido'));
+                                      return;
+                                    }
+                                  } catch (error) {
+                                    alert('Error de conexión al generar QR');
+                                    return;
+                                  }
+                                }
+
+                                // Mostrar el modal con el QR
                                 const link = document.createElement('a');
                                 link.href = ticket.qrDataUrl;
                                 link.download = `ticket-${ticket.id}.png`;
                                 link.click();
                               }}
-                              disabled={!ticket.qrDataUrl}
-                              className={`mr-3 ${!ticket.qrDataUrl ? 'text-gray-400 cursor-not-allowed' : 'text-[#FF4D2E] hover:text-[#e6442a]'}`}
-                              title={!ticket.qrDataUrl ? 'QR se genera después del pago' : 'Descargar QR'}
+                              disabled={processingTicket === ticket.id}
+                              className={`mr-3 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : !ticket.qrDataUrl ? 'text-[#FF4D2E] hover:text-[#e6442a] animate-pulse' : 'text-[#FF4D2E] hover:text-[#e6442a]'}`}
+                              title={!ticket.qrDataUrl ? 'Generar y descargar QR' : 'Descargar QR'}
                             >
                               <Download size={16} />
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                // Si no hay QR, generarlo primero
+                                if (!ticket.qrDataUrl) {
+                                  setProcessingTicket(ticket.id);
+                                  try {
+                                    const response = await fetch('/api/tickets/generate-qr', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ ticketId: ticket.id })
+                                    });
+                                    const data = await response.json();
+                                    if (data.success) {
+                                      // Actualizar el ticket localmente con el nuevo QR
+                                      setTickets(prev => prev.map(t => 
+                                        t.id === ticket.id ? { ...t, qrDataUrl: data.qrDataUrl } : t
+                                      ));
+                                      // Actualizar el ticket actual para mostrar el modal
+                                      ticket.qrDataUrl = data.qrDataUrl;
+                                    } else {
+                                      alert('Error al generar QR: ' + (data.error || 'Error desconocido'));
+                                      setProcessingTicket(null);
+                                      return;
+                                    }
+                                  } catch (error) {
+                                    alert('Error de conexión al generar QR');
+                                    setProcessingTicket(null);
+                                    return;
+                                  }
+                                  setProcessingTicket(null);
+                                }
+
                                 // Mostrar QR en modal
                                 const modal = document.createElement('div');
                                 modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
@@ -624,9 +681,9 @@ export default function AdminTicketsPage() {
                                 `;
                                 document.body.appendChild(modal);
                               }}
-                              disabled={!ticket.qrDataUrl}
-                              className={`mr-2 ${!ticket.qrDataUrl ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300'}`}
-                              title={!ticket.qrDataUrl ? 'QR se genera después del pago' : 'Ver QR'}
+                              disabled={processingTicket === ticket.id}
+                              className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : !ticket.qrDataUrl ? 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 animate-pulse' : 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300'}`}
+                              title={!ticket.qrDataUrl ? 'Generar y ver QR' : 'Ver QR'}
                             >
                               <Eye size={16} />
                             </button>

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { OfferTimeUtils } from '@/lib/offerTimeUtils';
 import { emitOfferUpdated, emitOfferDeleted } from '@/lib/socket/offers';
+import { DateTime } from 'luxon';
 
 export async function PUT(
   request: NextRequest,
@@ -77,8 +78,8 @@ export async function PUT(
     if (imagePath !== undefined) updateData.imagePath = imagePath;
     if (maxQuantity !== undefined) updateData.maxQuantity = maxQuantity ? parseInt(maxQuantity) : null;
     if (isActive !== undefined) updateData.isActive = isActive;
-    if (validFrom !== undefined) updateData.validFrom = validFrom ? new Date(validFrom) : null;
-    if (validUntil !== undefined) updateData.validUntil = validUntil ? new Date(validUntil) : null;
+    if (validFrom !== undefined) updateData.validFrom = validFrom ? DateTime.fromISO(validFrom, { zone: 'America/Lima' }).toJSDate() : null;
+    if (validUntil !== undefined) updateData.validUntil = validUntil ? DateTime.fromISO(validUntil, { zone: 'America/Lima' }).toJSDate() : null;
     if (availableDays !== undefined) updateData.availableDays = availableDays ? availableDays.map((d: any) => parseInt(d)) : null;
     if (startTime !== undefined) updateData.startTime = startTime;
     if (endTime !== undefined) updateData.endTime = endTime;

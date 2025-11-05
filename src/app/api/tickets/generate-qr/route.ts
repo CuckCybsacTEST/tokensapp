@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { generateQrPngDataUrl } from "@/lib/qr";
-import { verifyUserSessionCookie } from "@/lib/auth-user";
+import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -13,22 +13,11 @@ const generateQrSchema = z.object({
 // POST /api/tickets/generate-qr - Regenerar QR para un ticket específico
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticación del usuario
-    const cookie = request.headers.get('cookie');
-    if (!cookie) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 401 }
-      );
-    }
-
-    const session = await verifyUserSessionCookie(cookie);
-    if (!session) {
-      return NextResponse.json(
-        { error: "Sesión inválida" },
-        { status: 401 }
-      );
-    }
+    // Verificar sesión de administrador
+    const raw = getSessionCookieFromRequest(request);
+    const session = await verifySessionCookie(raw);
+    const ok = requireRole(session, ['ADMIN', 'STAFF']);
+    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await request.json();
     const parsed = generateQrSchema.safeParse(body);
@@ -42,19 +31,14 @@ export async function POST(request: NextRequest) {
 
     const { ticketId } = parsed.data;
 
-    // Verificar que el ticket pertenece al usuario
-    const ticket = await prisma.ticket.findFirst({
-      where: {
-        id: ticketId,
-        ticketPurchase: {
-          userId: session.userId
-        }
-      }
+    // Verificar que el ticket existe (admin puede acceder a cualquier ticket)
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId }
     });
 
     if (!ticket) {
       return NextResponse.json(
-        { error: "Ticket no encontrado o no autorizado" },
+        { error: "Ticket no encontrado" },
         { status: 404 }
       );
     }
@@ -71,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      ticket: updatedTicket,
+      success: true,
       qrDataUrl: qrDataUrl
     });
   } catch (error) {

@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { QrCode, CheckCircle, XCircle, Clock, AlertTriangle, User, Phone, Mail, Calendar, DollarSign, Package } from 'lucide-react';
+import { QrCode, CheckCircle, XCircle, Clock, AlertTriangle, User, Phone, Mail, Calendar, DollarSign, Package, ArrowLeft } from 'lucide-react';
+import { DateTime } from 'luxon';
+import Link from 'next/link';
 
 interface QRValidationResult {
   valid: boolean;
@@ -51,8 +53,9 @@ export default function ValidateQROffersPage() {
   const [result, setResult] = useState<QRValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [delivering, setDelivering] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Check for scanned QR data on component mount
+  // Check for scanned QR data on component mount and get user role
   useEffect(() => {
     const scannedData = sessionStorage.getItem('scannedQRData');
     if (scannedData) {
@@ -60,7 +63,22 @@ export default function ValidateQROffersPage() {
       // Auto-validate if we have scanned data
       setTimeout(() => validateQRFromData(scannedData), 100);
     }
+
+    // Get user role
+    fetchUserRole();
   }, []);
+
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
 
   const validateQRFromData = async (data: string) => {
     setLoading(true);
@@ -91,13 +109,9 @@ export default function ValidateQROffersPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-PE', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Parsear la fecha como zona horaria de Lima (ya que se almacenó así)
+    const date = DateTime.fromISO(dateString, { zone: 'America/Lima' });
+    return date.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-PE' });
   };
 
   const getStatusColor = (status: string) => {
@@ -168,6 +182,19 @@ export default function ValidateQROffersPage() {
               Detalles del Código QR Escaneado
             </h1>
           </div>
+
+          {/* Botón de regreso al scanner */}
+          {userRole && (
+            <div className="mb-6">
+              <Link
+                href={userRole === 'ADMIN' || userRole === 'STAFF' ? '/admin/scanner' : '/u/scanner'}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Volver al Scanner
+              </Link>
+            </div>
+          )}
 
           {/* Mensaje cuando no hay datos escaneados */}
           {!result && !loading && !error && (

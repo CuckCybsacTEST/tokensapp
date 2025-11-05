@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { QrCode, CheckCircle, XCircle, Clock, AlertTriangle, User, Phone, Calendar, DollarSign, RefreshCw } from 'lucide-react';
+import { DateTime } from 'luxon';
 
 interface QRValidationResult {
   valid: boolean;
@@ -158,13 +159,9 @@ export default function ValidateQRPublicPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('es-PE', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Parsear la fecha como zona horaria de Lima (ya que se almacenó así)
+    const date = DateTime.fromISO(dateString, { zone: 'America/Lima' });
+    return date.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-PE' });
   };
 
   const statusConfig = result ? getStatusConfig(result.status) : null;

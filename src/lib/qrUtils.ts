@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { randomBytes } from 'crypto';
+import { DateTime } from 'luxon';
 
 export class QRUtils {
   /**
@@ -46,8 +47,8 @@ export class QRUtils {
         title: purchaseData.offer.title,
         price: purchaseData.amount, // Usar el monto pagado como precio
         isActive: purchaseData.offer.isActive,
-        validFrom: purchaseData.offer.validFrom instanceof Date ? purchaseData.offer.validFrom.toISOString() : purchaseData.offer.validFrom || null,
-        validUntil: purchaseData.offer.validUntil instanceof Date ? purchaseData.offer.validUntil.toISOString() : purchaseData.offer.validUntil || null,
+        validFrom: purchaseData.offer.validFrom instanceof Date ? DateTime.fromJSDate(purchaseData.offer.validFrom, { zone: 'America/Lima' }).toISO() : purchaseData.offer.validFrom || null,
+        validUntil: purchaseData.offer.validUntil instanceof Date ? DateTime.fromJSDate(purchaseData.offer.validUntil, { zone: 'America/Lima' }).toISO() : purchaseData.offer.validUntil || null,
         timezone: purchaseData.offer.timezone,
         availableDays: purchaseData.offer.availableDays,
         startTime: purchaseData.offer.startTime,
