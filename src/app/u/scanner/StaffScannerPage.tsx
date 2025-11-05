@@ -447,10 +447,14 @@ export default function StaffScannerPage() {
 
     reader
       .decodeFromConstraints(constraints, videoEl!, (result: Result | null, _err: unknown) => {
-        if (result) handleResult(result);
+        if (!mounted) return; // Component was unmounted
+        if (result) {
+          processDecodedText(result.getText());
+        }
         // Ignorar errores frecuentes de decodificación; la librería llama continuamente
       })
       .catch((e: unknown) => {
+        if (!mounted) return; // Component was unmounted
         const msg = typeof e === 'object' && e && 'toString' in e ? (e as any).toString() : String(e);
         setCameraError(msg || "Permiso denegado o cámara no disponible");
         setBanner({ variant: "error", message: `No se pudo abrir la cámara: ${msg}` });
@@ -467,7 +471,7 @@ export default function StaffScannerPage() {
         s?.getTracks().forEach((t) => t.stop());
       } catch {}
     };
-  }, [handleResult]);
+  }, [processDecodedText]);
 
   return (
     <div className="w-full bg-[var(--color-bg)] px-2 py-4 sm:py-8">
