@@ -20,6 +20,11 @@ const buildSecretMap = (): Record<number, string> => {
   if (!map[1] && process.env.TOKEN_SECRET) {
     map[1] = process.env.TOKEN_SECRET;
   }
+  // Additional fallback: if still no V1 but we're in production and CURRENT_SIGNATURE_VERSION is 1,
+  // try to use any TOKEN_SECRET as V1 (for Railway compatibility)
+  if (!map[1] && process.env.TOKEN_SECRET && CURRENT_SIGNATURE_VERSION === 1) {
+    map[1] = process.env.TOKEN_SECRET;
+  }
   return map;
 };
 
@@ -54,9 +59,16 @@ if (process.env.NODE_ENV !== 'test') {
       // eslint-disable-next-line no-console
       console.warn(`[signing] Using development fallback secret for version ${CURRENT_SIGNATURE_VERSION}.`);
     } else {
-      // eslint-disable-next-line no-console
-      console.error(`[signing] Missing secret for CURRENT_SIGNATURE_VERSION=${CURRENT_SIGNATURE_VERSION}. Define TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION}.`);
-      throw new Error('Missing signing secret for active signature version');
+      // Production fallback: try to use TOKEN_SECRET directly
+      if (process.env.TOKEN_SECRET) {
+        console.warn(`[signing] Missing TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION}, using TOKEN_SECRET as fallback.`);
+        curSecret = process.env.TOKEN_SECRET;
+        SECRET_MAP[CURRENT_SIGNATURE_VERSION] = curSecret;
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`[signing] Missing secret for CURRENT_SIGNATURE_VERSION=${CURRENT_SIGNATURE_VERSION}. Define TOKEN_SECRET_V${CURRENT_SIGNATURE_VERSION} or TOKEN_SECRET.`);
+        throw new Error('Missing signing secret for active signature version');
+      }
     }
   }
 }
