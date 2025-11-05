@@ -305,7 +305,9 @@ export function OffersAdminPage() {
       imageFile: null,
       maxStock: offer.maxStock?.toString() || '',
       isActive: offer.isActive,
+      // @ts-ignore - toFormat method exists in Luxon DateTime
       validFrom: offer.validFrom ? DateTime.fromJSDate(new Date(offer.validFrom)).setZone('America/Lima').toFormat("yyyy-MM-dd'T'HH:mm") : '',
+      // @ts-ignore - toFormat method exists in Luxon DateTime
       validUntil: offer.validUntil ? DateTime.fromJSDate(new Date(offer.validUntil)).setZone('America/Lima').toFormat("yyyy-MM-dd'T'HH:mm") : '',
       availableDays: offer.availableDays || [],
       startTime: offer.startTime || '',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import QRCode from 'qrcode';
 
 interface PurchaseRequest {
   customerName: string;
@@ -138,9 +139,12 @@ export async function POST(
         throw new Error('El total calculado no coincide con el enviado');
       }
 
-      // Crear las compras (una por cada tipo de ticket)
+      // Crear las compras y paquetes de tickets
       const purchases = [];
+      const ticketPackages = [];
+
       for (const item of purchaseItems) {
+        // Crear la compra
         const purchase = await tx.ticketPurchase.create({
           data: {
             userId,
@@ -154,10 +158,41 @@ export async function POST(
           }
         });
         purchases.push(purchase);
+
+        // Generar código QR único para el paquete
+        const qrCode = `PKG-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+        // Generar QR data URL
+        const qrDataUrl = await QRCode.toDataURL(qrCode, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+
+        // Crear el paquete de tickets
+        const pkg = await tx.ticketPackage.create({
+          data: {
+            ticketPurchaseId: purchase.id,
+            ticketTypeId: item.ticketType.id,
+            qrCode,
+            qrDataUrl,
+            totalTickets: item.quantity,
+            usedTickets: 0,
+            customerDni: customerDni.trim(),
+            customerName: customerName.trim(),
+            customerPhone: customerPhone.trim(),
+            status: 'CONFIRMED'
+          }
+        });
+        ticketPackages.push(pkg);
       }
 
       // Usar la primera compra como referencia para la respuesta
       const mainPurchase = purchases[0];
+      const mainPackage = ticketPackages[0];
 
       // Actualizar contadores de tickets vendidos
       for (const item of purchaseItems) {
@@ -173,7 +208,9 @@ export async function POST(
 
       return {
         purchases,
+        ticketPackages,
         mainPurchase,
+        mainPackage,
         items: purchaseItems,
         totalAmount: calculatedTotal
       };
@@ -187,18 +224,33 @@ export async function POST(
     if (io) {
       io.to("staff-general").emit("ticket-purchased", {
         purchaseId: result.mainPurchase.id,
+        packageId: result.mainPackage.id,
+        qrCode: result.mainPackage.qrCode,
         customerName,
         customerDni,
         totalAmount: result.totalAmount,
         showId,
-        tickets: result.items
+        ticketPackages: result.ticketPackages.map(pkg => ({
+          id: pkg.id,
+          qrCode: pkg.qrCode,
+          totalTickets: pkg.totalTickets,
+          ticketTypeName: result.items.find(item => item.ticketType.id === pkg.ticketTypeId)?.ticketType.name
+        }))
       });
     }
 
     return NextResponse.json({
       ok: true,
       purchaseId: result.mainPurchase.id,
+      packageId: result.mainPackage.id,
+      qrCode: result.mainPackage.qrCode,
       totalAmount: result.totalAmount,
+      ticketPackages: result.ticketPackages.map(pkg => ({
+        id: pkg.id,
+        qrCode: pkg.qrCode,
+        totalTickets: pkg.totalTickets,
+        ticketTypeName: result.items.find(item => item.ticketType.id === pkg.ticketTypeId)?.ticketType.name
+      })),
       message: 'Compra procesada exitosamente'
     });
 

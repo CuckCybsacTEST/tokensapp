@@ -11,8 +11,18 @@ export function mapAreaToStaffRole(area: Area | null): StaffRole | null {
       return 'BARTENDER';
     case 'Mozos':
       return 'WAITER';
+    case 'Seguridad':
+      return 'SECURITY';
+    case 'Animación':
+      return 'ANIMATION';
+    case 'DJs':
+      return 'DJ';
+    case 'Multimedia':
+      return 'MULTIMEDIA';
+    case 'Otros':
+      return 'GENERAL_STAFF';
     default:
-      return null; // Seguridad, Animación, DJs, etc. no tienen rol en restaurante
+      return 'GENERAL_STAFF'; // Cualquier área nueva tendrá acceso básico de staff
   }
 }
 
@@ -77,6 +87,20 @@ export function getStaffPermissions(role: StaffRole | null): {
         canMarkReady: true,
         canViewMetrics: true,
         allowedStatuses: ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED']
+      };
+    case 'SECURITY':
+    case 'ANIMATION':
+    case 'DJ':
+    case 'MULTIMEDIA':
+    case 'GENERAL_STAFF':
+      return {
+        canViewOrders: true,
+        canUpdateOrderStatus: false,
+        canAssignTables: false,
+        canCloseOrders: false,
+        canMarkReady: false,
+        canViewMetrics: true,
+        allowedStatuses: [] // Solo puede ver, no modificar estados
       };
     default:
       return {

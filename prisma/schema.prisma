@@ -495,7 +495,8 @@ model TicketType {
 
   show          Show            @relation(fields: [showId], references: [id], onDelete: Cascade)
   purchases     TicketPurchase[]
-  tickets       Ticket[]        // Tickets individuales de este tipo
+  tickets       Ticket[]        // Tickets individuales (legacy)
+  ticketPackages TicketPackage[] // Nuevo: paquetes de tickets
 
   @@index([showId])
   @@index([availableFrom, availableTo])
@@ -522,7 +523,8 @@ model TicketPurchase {
   ticketType     TicketType     @relation(fields: [ticketTypeId], references: [id])
   user           User?           @relation(fields: [userId], references: [id])
   customer       Customer?      @relation(fields: [customerId], references: [id])
-  tickets        Ticket[]       // Tickets individuales generados para esta compra
+  tickets        Ticket[]       // Tickets individuales (legacy)
+  ticketPackage  TicketPackage? // Nuevo: paquete único de tickets
 
   @@index([userId])
   @@index([customerId])
@@ -552,6 +554,29 @@ model Ticket {
 
   ticketPurchase   TicketPurchase @relation(fields: [ticketPurchaseId], references: [id])
   ticketType       TicketType     @relation(fields: [ticketTypeId], references: [id])
+
+  @@index([ticketPurchaseId])
+  @@index([qrCode])
+  @@index([status])
+}
+
+model TicketPackage {
+  id               String            @id @default(cuid())
+  ticketPurchaseId String            @unique // Un paquete por compra
+  ticketTypeId     String
+  qrCode           String            @unique // Código único del paquete QR
+  qrDataUrl        String?           // DataURL del PNG del QR generado en frontend
+  totalTickets     Int               // Total de entradas en el paquete
+  usedTickets      Int               @default(0) // Entradas ya utilizadas
+  customerDni      String            // DNI obligatorio (8 dígitos)
+  customerName     String
+  customerPhone    String
+  status           PurchaseStatus    @default(CONFIRMED)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  ticketPurchase   TicketPurchase    @relation(fields: [ticketPurchaseId], references: [id], onDelete: Cascade)
+  ticketType       TicketType        @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
 
   @@index([ticketPurchaseId])
   @@index([qrCode])
@@ -742,10 +767,15 @@ enum ServicePointType {
 }
 
 enum StaffRole {
-  WAITER    // Mozo
-  CASHIER   // Caja
-  ADMIN     // Administrador
-  BARTENDER // Bartender
+  WAITER        // Mozo
+  CASHIER       // Caja
+  ADMIN         // Administrador
+  BARTENDER     // Bartender
+  SECURITY      // Seguridad
+  ANIMATION     // Animación
+  DJ            // DJs
+  MULTIMEDIA    // Multimedia
+  GENERAL_STAFF // Personal general
 }
 
 model Staff {

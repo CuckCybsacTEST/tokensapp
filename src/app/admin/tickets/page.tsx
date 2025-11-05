@@ -19,21 +19,24 @@ interface TicketType {
   updatedAt: string;
 }
 
-interface Ticket {
+interface TicketPackage {
   id: string;
   ticketPurchaseId: string;
+  ticketTypeId: string;
   showTitle: string;
   showDate: string;
-  ticketType: string;
-  quantity: number;
+  ticketTypeName: string;
+  qrCode: string;
+  qrDataUrl?: string;
+  totalTickets: number;
+  usedTickets: number;
+  remainingTickets: number;
   totalAmount: number;
   status: string;
   purchasedAt: string;
   customerName: string;
   customerDni: string;
   customerPhone: string;
-  qrCode: string;
-  qrDataUrl: string;
 }
 
 interface Show {
@@ -47,7 +50,7 @@ interface Show {
 interface ApiResponse {
   ok: boolean;
   ticketTypes?: TicketType[];
-  tickets?: Ticket[];
+  ticketPackages?: TicketPackage[];
   shows?: Show[];
   error?: string;
 }
@@ -57,7 +60,7 @@ type TabType = 'types' | 'tickets';
 export default function AdminTicketsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketPackages, setTicketPackages] = useState<TicketPackage[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShow, setSelectedShow] = useState<string>('all');
@@ -65,6 +68,7 @@ export default function AdminTicketsPage() {
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [processingTicket, setProcessingTicket] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
@@ -79,8 +83,25 @@ export default function AdminTicketsPage() {
   const { socket } = useStaffSocket("general");
 
   useEffect(() => {
-    fetchData();
+    checkSession();
   }, []);
+
+  async function checkSession() {
+    try {
+      const sessionResponse = await fetch('/api/static/session');
+      const sessionData = await sessionResponse.json();
+      
+      if (sessionData.ok && (sessionData.isStaff || sessionData.isAdmin)) {
+        setHasSession(true);
+        fetchData();
+      } else {
+        setHasSession(false);
+      }
+    } catch (error) {
+      console.error('Error checking session:', error);
+      setHasSession(false);
+    }
+  }
 
   // Escuchar eventos de socket para actualizaciones en tiempo real
   useEffect(() => {
@@ -99,12 +120,20 @@ export default function AdminTicketsPage() {
         }, 300);
       };
 
+      const handleTicketValidated = (data: any) => {
+        console.log('Ticket validado recibido:', data);
+        // Refrescar datos para mostrar el contador actualizado de entradas usadas
+        fetchData();
+      };
+
       socket.on('ticket-purchased', handleTicketPurchased);
       socket.on('ticket-status-changed', handleTicketStatusChanged);
+      socket.on('ticket-validated', handleTicketValidated);
 
       return () => {
         socket.off('ticket-purchased', handleTicketPurchased);
         socket.off('ticket-status-changed', handleTicketStatusChanged);
+        socket.off('ticket-validated', handleTicketValidated);
       };
     }
   }, [socket]);
@@ -129,12 +158,15 @@ export default function AdminTicketsPage() {
         setTicketTypes(ticketsData.ticketTypes);
       }
 
-      // Fetch individual tickets
-      const individualTicketsResponse = await fetch('/api/admin/tickets/all');
-      const individualTicketsData = await individualTicketsResponse.json();
+      // Fetch ticket packages
+      const ticketPackagesResponse = await fetch('/api/admin/ticket-packages');
+      const ticketPackagesData = await ticketPackagesResponse.json();
 
-      if (individualTicketsData.ok) {
-        setTickets(individualTicketsData.tickets);
+      if (ticketPackagesData.ok) {
+        setTicketPackages(ticketPackagesData.ticketPackages);
+      } else {
+        console.error('Error fetching ticket packages:', ticketPackagesData.error);
+        setError(`Error al cargar paquetes de tickets: ${ticketPackagesData.error || 'Error desconocido'}`);
       }
 
     } catch (error) {
@@ -326,6 +358,14 @@ export default function AdminTicketsPage() {
     ? ticketTypes
     : ticketTypes.filter(ticket => ticket.showId === selectedShow);
 
+  const filteredTicketPackages = selectedShow === 'all'
+    ? ticketPackages
+    : ticketPackages.filter(pkg => {
+        // Encontrar el show correspondiente al paquete
+        const ticketType = ticketTypes.find(tt => tt.id === pkg.ticketTypeId);
+        return ticketType?.showId === selectedShow;
+      });
+
   const groupedTickets = filteredTickets.reduce((acc, ticket) => {
     if (!acc[ticket.showTitle]) {
       acc[ticket.showTitle] = [];
@@ -334,12 +374,59 @@ export default function AdminTicketsPage() {
     return acc;
   }, {} as Record<string, TicketType[]>);
 
+  const groupedTicketPackages = filteredTicketPackages.reduce((acc, pkg) => {
+    if (!acc[pkg.showTitle]) {
+      acc[pkg.showTitle] = [];
+    }
+    acc[pkg.showTitle].push(pkg);
+    return acc;
+  }, {} as Record<string, TicketPackage[]>);
+
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg text-gray-900 dark:text-gray-100">Cargando...</div>
       </div>
+    );
+  }
+
+  if (hasSession === false) {
+    return (
+      <AdminLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Acceso Denegado
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Necesitas iniciar sesión como administrador o staff para acceder a esta página.
+            </p>
+            <a
+              href="/admin/login"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#FF4D2E] hover:bg-[#FF4D2E]/90"
+            >
+              Ir al Login
+            </a>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (hasSession === null || loading) {
+    return (
+      <AdminLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF4D2E]"></div>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando...</span>
+          </div>
+        </div>
+      </AdminLayout>
     );
   }
 
@@ -393,7 +480,7 @@ export default function AdminTicketsPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Tickets Vendidos ({tickets.length})
+              Paquetes de Tickets ({ticketPackages.length})
             </button>
           </nav>
         </div>
@@ -497,15 +584,15 @@ export default function AdminTicketsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
-                Tickets Vendidos
+                Paquetes de Tickets Vendidos
               </h3>
 
-              {tickets.length === 0 ? (
+              {ticketPackages.length === 0 ? (
                 <div className="text-center py-12">
                   <Ticket className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay tickets vendidos</h3>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay paquetes de tickets</h3>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Los tickets aparecerán aquí cuando se realicen compras.
+                    Los paquetes de tickets aparecerán aquí cuando se realicen compras.
                   </p>
                 </div>
               ) : (
@@ -523,6 +610,9 @@ export default function AdminTicketsPage() {
                           Tipo
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Entradas
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Estado
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -534,191 +624,110 @@ export default function AdminTicketsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {tickets.map((ticket) => (
-                        <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      {ticketPackages.map((ticketPackage) => (
+                        <tr key={ticketPackage.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {ticket.customerName}
+                              {ticketPackage.customerName}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              DNI: {ticket.customerDni}
+                              DNI: {ticketPackage.customerDni}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900 dark:text-gray-100">
-                              {ticket.showTitle}
+                              {ticketPackage.showTitle}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {new Date(ticket.showDate).toLocaleDateString('es-ES')}
+                              {new Date(ticketPackage.showDate).toLocaleDateString('es-ES')}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900 dark:text-gray-100">
-                              {ticket.ticketType}
+                              {ticketPackage.ticketTypeName}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              S/ {ticket.totalAmount.toFixed(2)}
+                              S/ {ticketPackage.totalAmount.toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {ticketPackage.usedTickets}/{ticketPackage.totalTickets}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {ticketPackage.remainingTickets} restantes
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              ticket.status === 'VALID'
+                              ticketPackage.status === 'CONFIRMED'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : ticket.status === 'USED'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                                : ticket.status === 'SUSPICIOUS'
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : ticketPackage.status === 'CANCELLED'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }`}>
-                              {ticket.status === 'VALID' ? 'Válido' :
-                               ticket.status === 'USED' ? 'Usado' :
-                               ticket.status === 'SUSPICIOUS' ? 'Sospechoso' :
-                               ticket.status === 'CANCELLED' ? 'Cancelado' : 'Otro'}
+                              {ticketPackage.status === 'CONFIRMED' ? 'Confirmado' :
+                               ticketPackage.status === 'CANCELLED' ? 'Cancelado' : 'Otro'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(ticket.purchasedAt).toLocaleDateString('es-ES')} {new Date(ticket.purchasedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(ticketPackage.purchasedAt).toLocaleDateString('es-ES')} {new Date(ticketPackage.purchasedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={async () => {
-                                // Si no hay QR, generarlo primero
-                                if (!ticket.qrDataUrl) {
-                                  try {
-                                    const response = await fetch('/api/tickets/generate-qr', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ ticketId: ticket.id })
-                                    });
-                                    const data = await response.json();
-                                    if (data.success) {
-                                      // Actualizar el ticket localmente con el nuevo QR
-                                      setTickets(prev => prev.map(t => 
-                                        t.id === ticket.id ? { ...t, qrDataUrl: data.qrDataUrl } : t
-                                      ));
-                                      // Actualizar el ticket actual para mostrar el modal
-                                      ticket.qrDataUrl = data.qrDataUrl;
-                                    } else {
-                                      alert('Error al generar QR: ' + (data.error || 'Error desconocido'));
-                                      return;
-                                    }
-                                  } catch (error) {
-                                    alert('Error de conexión al generar QR');
-                                    return;
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  // Mostrar QR del paquete
+                                  const qrWindow = window.open('', '_blank', 'width=400,height=600');
+                                  if (qrWindow) {
+                                    qrWindow.document.write(`
+                                      <html>
+                                        <head>
+                                          <title>Código QR - ${ticketPackage.qrCode}</title>
+                                          <style>
+                                            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                                            .qr-code { margin: 20px 0; }
+                                            .info { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+                                          </style>
+                                        </head>
+                                        <body>
+                                          <h2>Código QR de Entrada</h2>
+                                          <div class="qr-code">
+                                            <img src="${ticketPackage.qrDataUrl || ''}" alt="QR Code" style="max-width: 100%; height: auto;" />
+                                          </div>
+                                          <div class="info">
+                                            <p><strong>Código:</strong> ${ticketPackage.qrCode}</p>
+                                            <p><strong>Cliente:</strong> ${ticketPackage.customerName}</p>
+                                            <p><strong>Show:</strong> ${ticketPackage.showTitle}</p>
+                                            <p><strong>Entradas:</strong> ${ticketPackage.totalTickets}</p>
+                                            <p><strong>Usadas:</strong> ${ticketPackage.usedTickets}</p>
+                                          </div>
+                                        </body>
+                                      </html>
+                                    `);
                                   }
-                                }
-
-                                // Mostrar el modal con el QR
-                                const link = document.createElement('a');
-                                link.href = ticket.qrDataUrl;
-                                link.download = `ticket-${ticket.id}.png`;
-                                link.click();
-                              }}
-                              disabled={processingTicket === ticket.id}
-                              className={`mr-3 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : !ticket.qrDataUrl ? 'text-[#FF4D2E] hover:text-[#e6442a] animate-pulse' : 'text-[#FF4D2E] hover:text-[#e6442a]'}`}
-                              title={!ticket.qrDataUrl ? 'Generar y descargar QR' : 'Descargar QR'}
-                            >
-                              <Download size={16} />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                // Si no hay QR, generarlo primero
-                                if (!ticket.qrDataUrl) {
-                                  setProcessingTicket(ticket.id);
-                                  try {
-                                    const response = await fetch('/api/tickets/generate-qr', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ ticketId: ticket.id })
-                                    });
-                                    const data = await response.json();
-                                    if (data.success) {
-                                      // Actualizar el ticket localmente con el nuevo QR
-                                      setTickets(prev => prev.map(t => 
-                                        t.id === ticket.id ? { ...t, qrDataUrl: data.qrDataUrl } : t
-                                      ));
-                                      // Actualizar el ticket actual para mostrar el modal
-                                      ticket.qrDataUrl = data.qrDataUrl;
-                                    } else {
-                                      alert('Error al generar QR: ' + (data.error || 'Error desconocido'));
-                                      setProcessingTicket(null);
-                                      return;
-                                    }
-                                  } catch (error) {
-                                    alert('Error de conexión al generar QR');
-                                    setProcessingTicket(null);
-                                    return;
+                                }}
+                                className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                                title="Ver QR"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  // Descargar QR
+                                  if (ticketPackage.qrDataUrl) {
+                                    const link = document.createElement('a');
+                                    link.href = ticketPackage.qrDataUrl;
+                                    link.download = `qr-${ticketPackage.qrCode}.png`;
+                                    link.click();
                                   }
-                                  setProcessingTicket(null);
-                                }
-
-                                // Mostrar QR en modal
-                                const modal = document.createElement('div');
-                                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
-                                modal.innerHTML = `
-                                  <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
-                                    <div class="flex justify-between items-center mb-4">
-                                      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Código QR de Entrada</h3>
-                                      <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                    <div class="text-center">
-                                      <img src="${ticket.qrDataUrl}" alt="QR Code" class="mx-auto border rounded-lg mb-4" style="max-width: 200px;" />
-                                      <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                        <p><strong>Cliente:</strong> ${ticket.customerName}</p>
-                                        <p><strong>DNI:</strong> ${ticket.customerDni}</p>
-                                        <p><strong>Show:</strong> ${ticket.showTitle}</p>
-                                        <p><strong>Fecha:</strong> ${new Date(ticket.showDate).toLocaleDateString('es-ES')}</p>
-                                      </div>
-                                      <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                        Cerrar
-                                      </button>
-                                    </div>
-                                  </div>
-                                `;
-                                document.body.appendChild(modal);
-                              }}
-                              disabled={processingTicket === ticket.id}
-                              className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : !ticket.qrDataUrl ? 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 animate-pulse' : 'text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300'}`}
-                              title={!ticket.qrDataUrl ? 'Generar y ver QR' : 'Ver QR'}
-                            >
-                              <Eye size={16} />
-                            </button>
-                            {(ticket.status === 'VALID' || ticket.status === 'SUSPICIOUS') && (
-                              <>
-                                <button
-                                  onClick={() => handleCancelTicket(ticket.id)}
-                                  disabled={processingTicket === ticket.id}
-                                  className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300'}`}
-                                  title="Cancelar ticket"
-                                >
-                                  {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <X size={16} />}
-                                </button>
-                                {ticket.status === 'VALID' && (
-                                  <button
-                                    onClick={() => handleMarkSuspicious(ticket.id)}
-                                    disabled={processingTicket === ticket.id}
-                                    className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300'}`}
-                                    title="Marcar como sospechoso"
-                                  >
-                                    {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <AlertTriangle size={16} />}
-                                  </button>
-                                )}
-                                {ticket.status === 'SUSPICIOUS' && (
-                                  <button
-                                    onClick={() => handleMarkValid(ticket.id)}
-                                    disabled={processingTicket === ticket.id}
-                                    className={`mr-2 ${processingTicket === ticket.id ? 'text-gray-400 cursor-not-allowed' : 'text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300'}`}
-                                    title="Marcar como válido"
-                                  >
-                                    {processingTicket === ticket.id ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                                  </button>
-                                )}
-                              </>
-                            )}
+                                }}
+                                className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                title="Descargar QR"
+                              >
+                                <Download size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

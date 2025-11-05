@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CreditCard, User, MessageCircle, Loader2 } from "lucide-react";
+import { X, CreditCard, User, MessageCircle, Loader2, Download, QrCode } from "lucide-react";
 
 // Declaración de tipos para Culqi
 declare global {
@@ -11,6 +11,7 @@ declare global {
   }
 }
 import { CulqiProvider, useCheckout } from "react-culqi-next";
+import QRCode from 'qrcode';
 
 interface TicketType {
   id: string;
@@ -56,6 +57,10 @@ export function CheckoutModal({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [orderData, setOrderData] = useState<any>(null);
+  const [purchaseResult, setPurchaseResult] = useState<any>(null);
+  const [purchaseId, setPurchaseId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Función simple para abrir Culqi checkout
   const handleOpenCulqi = () => {
@@ -121,10 +126,12 @@ export function CheckoutModal({
       const chargeResult = await chargeResponse.json();
 
       if (chargeResult.ok) {
-        // Pago exitoso
-        onPurchaseComplete();
-        onClose();
-        alert('¡Pago procesado exitosamente! Recibirás confirmación por WhatsApp.');
+        // Pago exitoso - generar QR y mostrar modal de éxito
+        if (purchaseId) {
+          await generateAndShowQR(purchaseId);
+        }
+        setShowPaymentModal(false);
+        setShowSuccessModal(true);
       } else {
         throw new Error(chargeResult.error || 'Error procesando el pago');
       }
@@ -143,8 +150,29 @@ export function CheckoutModal({
     }, 0);
   };
 
-  const getTotalQuantity = () => {
-    return Object.values(selectedTickets).reduce((sum, qty) => sum + qty, 0);
+  const generateAndShowQR = async (purchaseId: string) => {
+    try {
+      // Obtener información del paquete desde la API
+      const response = await fetch(`/api/purchase/${purchaseId}/package-info`);
+      if (response.ok) {
+        const packageData = await response.json();
+        if (packageData.qrCode) {
+          // Generar QR code
+          const qrDataUrl = await QRCode.toDataURL(packageData.qrCode, {
+            width: 256,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            }
+          });
+          setQrDataUrl(qrDataUrl);
+          setPurchaseResult(packageData);
+        }
+      }
+    } catch (error) {
+      console.error('Error generando QR:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,6 +222,9 @@ export function CheckoutModal({
 
       const purchaseResult = await purchaseResponse.json();
 
+      // Guardar el purchaseId para usarlo después
+      setPurchaseId(purchaseResult.purchaseId);
+
       // Crear orden de pago en Culqi
       const orderResponse = await fetch('/api/payments/create-order', {
         method: 'POST',
@@ -237,11 +268,18 @@ export function CheckoutModal({
 
               if (simulateResponse.ok) {
                 setPaymentStatus('success');
-                setTimeout(() => {
+                // Generar QR después del pago simulado
+                try {
+                  if (purchaseId) {
+                    await generateAndShowQR(purchaseId);
+                  }
                   setShowPaymentModal(false);
-                  onPurchaseComplete();
-                  onClose();
-                }, 2000);
+                  setShowSuccessModal(true);
+                } catch (error) {
+                  console.error('Error generando QR:', error);
+                  setShowPaymentModal(false);
+                  setShowSuccessModal(true); // Mostrar modal aunque falle el QR
+                }
               } else {
                 setPaymentStatus('error');
               }
@@ -280,6 +318,85 @@ export function CheckoutModal({
 
   return (
     <>
+      {/* Modal de éxito con QR */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="bg-gray-900 border border-white/20 rounded-xl max-w-md w-full mx-4"
+            >
+              <div className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                  <QrCode className="w-8 h-8 text-green-500" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    ¡Compra Exitosa!
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Tu código QR está listo. Muéstralo en la entrada del evento.
+                  </p>
+                </div>
+
+                {qrDataUrl && (
+                  <div className="space-y-4">
+                    <div className="bg-white p-4 rounded-lg inline-block">
+                      <img
+                        src={qrDataUrl}
+                        alt="Código QR de entrada"
+                        className="w-48 h-48"
+                      />
+                    </div>
+
+                    {purchaseResult && (
+                      <div className="text-left bg-gray-800 rounded-lg p-4 space-y-2">
+                        <div className="text-white text-sm">
+                          <strong>Cliente:</strong> {purchaseResult.customerName}
+                        </div>
+                        <div className="text-white text-sm">
+                          <strong>Entradas:</strong> {purchaseResult.totalTickets}
+                        </div>
+                        <div className="text-white text-sm">
+                          <strong>Código:</strong> {purchaseResult.qrCode}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = qrDataUrl;
+                          link.download = `qr-entrada-${purchaseResult?.qrCode || 'ticket'}.png`;
+                          link.click();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 transition-colors text-sm font-medium"
+                      >
+                        <Download className="w-4 h-4" />
+                        Descargar QR
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowSuccessModal(false);
+                          onPurchaseComplete();
+                          onClose();
+                        }}
+                        className="flex-1 py-2 px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Mini-modal de pago */}
       <AnimatePresence>
         {showPaymentModal && (
