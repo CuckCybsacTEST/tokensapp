@@ -44,7 +44,7 @@ const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
   || process.env.BUILDING === '1'
   || process.env.__NEXT_PRIVATE_BUILD_PHASE === 'true';
 
-if (process.env.NODE_ENV !== 'test') {
+if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
   let curSecret = getSecretForVersion(CURRENT_SIGNATURE_VERSION);
   if (!curSecret) {
     if (isBuildPhase) {
