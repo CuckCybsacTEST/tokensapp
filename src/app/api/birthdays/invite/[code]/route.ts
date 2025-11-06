@@ -153,7 +153,9 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
         reservation: {
           date: r.date && r.date instanceof Date ? r.date.toISOString() : null,
           timeSlot: r.timeSlot || null,
-          guestArrivals: r.guestArrivals || 0
+          guestArrivals: r.guestArrivals || 0,
+          // Exponer estado para UI pública (mostrar cancelado)
+          statusReservation: r.status
         },
         isAdmin: false
       }, 200, cors);

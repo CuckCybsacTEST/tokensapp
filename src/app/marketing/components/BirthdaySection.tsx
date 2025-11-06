@@ -62,7 +62,7 @@ export function BirthdaySection() {
       else if (low.includes("estrella")) accent = "#E24A3A";
       else if (low.includes("galaxia")) accent = "#8B5CF6";
       const level =
-        idx === 0 ? "Básico" : idx === 1 ? "Recomendado" : idx === 2 ? "Premium" : "Pack";
+        idx === 0 ? "Básico" : idx === 1 ? "Recomendado" : idx === 2 ? "Premium" : "Deluxe";
       const key = idx === 0 ? "basic" : idx === 1 ? "plus" : idx === 2 ? "elite" : `p${idx}`;
       return {
         id: p.id,
@@ -386,7 +386,8 @@ export function BirthdaySection() {
                         <li className="text-[11px] opacity-70">+{c.perks.length - 5} más…</li>
                       )}
                     </ul>
-                    <div className="relative z-10 mt-auto pt-2.5 flex items-center gap-3">
+                    {/* Botón Reservar (desktop) reposicionado: alineado a la derecha y más destacado */}
+                    <div className="relative z-10 mt-auto pt-4 flex justify-end">
                       <button
                         data-testid={`birthday-pack-cta-${c.key}`}
                         type="button"
@@ -395,12 +396,12 @@ export function BirthdaySection() {
                             `/marketing/birthdays/reservar?packId=${encodeURIComponent(c.id)}#form`
                           )
                         }
-                        className="inline-block rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-white/50"
+                        className="rounded-full px-5 py-2 text-[11px] font-bold uppercase tracking-wide transition-all hover:scale-[1.04] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-white/50"
                         style={{
-                          background: `${c.accent}30`,
-                          border: "1px solid rgba(255,255,255,0.16)",
-                          boxShadow: `0 6px 18px -10px ${c.accent}`,
-                          backdropFilter: "blur(6px)",
+                          background: `linear-gradient(135deg, ${c.accent}, ${c.accent}dd)`,
+                          border: "1px solid rgba(255,255,255,0.28)",
+                          boxShadow: `0 10px 26px -12px ${c.accent}90`,
+                          color: 'white'
                         }}
                       >
                         Reservar

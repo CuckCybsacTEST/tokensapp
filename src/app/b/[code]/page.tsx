@@ -78,6 +78,20 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   // Get hostArrivedAt from the correct location based on user type
   const hostArrivedAt = isPublic ? data.hostArrivedAt : data.reservation?.hostArrivedAt;
 
+  // Verificar si la reserva está cancelada (prioridad alta en UI)
+  const isReservationCanceled = data.reservation?.statusReservation === 'canceled' || data.reservation?.statusReservation === 'cancelled';
+  if (isReservationCanceled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d1a1a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">❌</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Reserva Cancelada</h1>
+        <p className="text-base opacity-80 mb-4">Esta reserva ha sido cancelada y ya no es válida.</p>
+        <div className="text-sm opacity-70 mb-2">Si crees que esto es un error, contacta al soporte.</div>
+        <a href={isPublic ? "/marketing" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+      </div>
+    );
+  }
+
   // Detectar expiración del token
   const nowLima = DateTime.now().setZone('America/Lima');
   const expiresAtLima = DateTime.fromISO(token.expiresAt).setZone('America/Lima');
@@ -120,19 +134,6 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
     );
   }
 
-  // Verificar si la reserva está cancelada
-  const isReservationCanceled = data.reservation?.statusReservation === 'canceled' || data.reservation?.statusReservation === 'cancelled';
-  if (isReservationCanceled) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d1a1a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">❌</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Reserva Cancelada</h1>
-        <p className="text-base opacity-80 mb-4">Esta reserva ha sido cancelada y ya no es válida.</p>
-        <div className="text-sm opacity-70 mb-2">Si crees que esto es un error, contacta al soporte.</div>
-        <a href={isPublic ? "/marketing" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>

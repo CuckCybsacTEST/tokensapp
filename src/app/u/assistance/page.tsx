@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { parseInOut } from '../../../lib/attendance/parseInOut';
+import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '../../../lib/attendanceDay';
 import PendingRegistrationCard from '../../../components/attendance/PendingRegistrationCard';
 
 interface Detection { raw: string; ts: number; mode: 'IN'|'OUT'; }
@@ -88,6 +89,8 @@ export default function AssistanceScannerPage(){
   const r = recentRef.current;
   const last = r?.recent;
   if(!last) return 'IN';
+  const currentBusinessDay = computeBusinessDayFromUtc(new Date(), getConfiguredCutoffHour());
+  if(last.businessDay !== currentBusinessDay) return 'IN';
   return last.type === 'IN' ? 'OUT' : 'IN';
   }
 
