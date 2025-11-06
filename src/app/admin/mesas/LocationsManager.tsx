@@ -16,14 +16,14 @@ function QRDisplay({ url, size = 120 }: { url: string; size?: number }) {
   }, [url, size]);
 
   if (!qrDataUrl) {
-    return <div className="w-20 h-20 bg-gray-200 animate-pulse rounded"></div>;
+    return <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>;
   }
 
   return (
     <img
       src={qrDataUrl}
       alt="QR Code"
-      className="border border-gray-300 rounded"
+      className="border border-gray-300 dark:border-gray-600 rounded"
       style={{ width: size, height: size }}
     />
   );
@@ -223,6 +223,31 @@ export default function LocationsManager() {
     }
   };
 
+  const handleDeleteLocation = async (location: LocationWithServicePoints) => {
+    if (!confirm(`¿Estás seguro de eliminar la ubicación "${location.name}"? Esto eliminará permanentemente la ubicación y todos sus datos asociados.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/locations/${location.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Error al eliminar la ubicación');
+        return;
+      }
+
+      // Recargar datos
+      await fetchLocations();
+      alert('Ubicación eliminada exitosamente');
+    } catch (error) {
+      console.error('Error deleting location:', error);
+      alert(error instanceof Error ? error.message : 'Error desconocido');
+    }
+  };
+
   const getLocationTypeLabel = (type: LocationType) => {
     switch (type) {
       case LocationType.DINING: return "Zona general";
@@ -248,21 +273,30 @@ export default function LocationsManager() {
       case ServicePointType.ZONE: return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default: return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Cargando ubicaciones...</span>
-      </div>
-    );
   }
 
   return (
-    <div className="space-y-4">
-      {locations.map((location) => (
-        <div key={location.id} className="border rounded-lg shadow-sm">
+    <div className="space-y-4 text-gray-900 dark:text-gray-100">
+      {loading ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2">Cargando ubicaciones...</span>
+        </div>
+      ) : (
+        <>
+          {/* Header con botón para agregar ubicación */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Ubicaciones</h2>
+            <button
+              onClick={() => setLocationModal({ isOpen: true, location: null, title: "Agregar Ubicación" })}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              + Agregar Ubicación
+            </button>
+          </div>
+
+          {locations.map((location) => (
+        <div key={location.id} className="border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800">
           <div
             className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
             onClick={() => toggleLocation(location.id)}
@@ -282,6 +316,16 @@ export default function LocationsManager() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
+                <QRDisplay 
+                  url={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?location=${location.id}`}
+                  size={40}
+                />
+                <QrDownloadButton 
+                  data={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?location=${location.id}`}
+                  fileName={`qr-location-${location.name}.png`}
+                />
+              </div>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -299,6 +343,15 @@ export default function LocationsManager() {
                 className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
               >
                 + Agregar Punto
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteLocation(location);
+                }}
+                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+              >
+                Eliminar
               </button>
               <svg
                 className={`w-5 h-5 transition-transform ${
@@ -345,13 +398,13 @@ export default function LocationsManager() {
                         <div className="flex space-x-2 mt-3">
                           <button 
                             onClick={() => handleEditServicePoint(servicePoint)}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm"
                           >
                             Editar
                           </button>
                           <button 
                             onClick={() => handleDeleteServicePoint(servicePoint)}
-                            className="text-red-600 hover:text-red-800 text-sm"
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 text-sm"
                           >
                             Eliminar
                           </button>
@@ -362,12 +415,12 @@ export default function LocationsManager() {
                               <span className="text-xs text-gray-500 dark:text-gray-400 block">QR del menú</span>
                               <div className="flex items-center space-x-3">
                                 <QRDisplay 
-                                  url={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                  url={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?table=${servicePoint.id}`}
                                   size={80}
                                 />
                                 <div className="flex flex-col space-y-1">
                                   <QrDownloadButton 
-                                    data={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu?table=${servicePoint.id}`}
+                                    data={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?table=${servicePoint.id}`}
                                     fileName={`qr-${servicePoint.name || servicePoint.number}.png`}
                                   />
                                   <span className="text-xs text-gray-400">
@@ -411,6 +464,8 @@ export default function LocationsManager() {
         locationId={servicePointModal.locationId}
         title={servicePointModal.title}
       />
+      </>
+    )}
     </div>
   );
 }

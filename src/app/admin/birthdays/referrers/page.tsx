@@ -67,7 +67,7 @@ export default function AdminReferrersPage() {
 
   // Generate link
   const generateLink = (slug: string) => {
-    return `${window.location.origin}/reservatucumple/${slug}`;
+    return `${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/reservatucumple/${slug}`;
   };
 
   // Handle submit
@@ -378,7 +378,7 @@ export default function AdminReferrersPage() {
 // Modal para mostrar QR
 function QRModal({ open, slug, name, onClose }: { open: boolean; slug: string; name: string; onClose: () => void }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
-  const url = typeof window !== "undefined" ? `${window.location.origin}/reservatucumple/${slug}` : '';
+  const url = typeof window !== "undefined" ? `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/reservatucumple/${slug}` : '';
   const hasGenerated = useRef(false);
 
   useEffect(() => {

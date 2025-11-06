@@ -59,6 +59,7 @@ function MenuPageContent() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableId, setTableId] = useState<string>("");
+  const [locationId, setLocationId] = useState<string>("");
   const [orderNotes, setOrderNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -68,23 +69,20 @@ function MenuPageContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string>("");
 
-  // Customer lookup states
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [showCustomerLookupModal, setShowCustomerLookupModal] = useState(false);
-  const [customerSearchDni, setCustomerSearchDni] = useState<string>("");
-  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
-  const [foundCustomer, setFoundCustomer] = useState<any>(null);
-
   const searchParams = useSearchParams();
 
   // Socket.IO para actualizaciones en tiempo real
   const { socket, isConnected } = useTableSocket(tableId);
 
-  // Leer tableId desde URL parameters
+  // Leer tableId y locationId desde URL parameters
   useEffect(() => {
     const tableParam = searchParams?.get('table');
+    const locationParam = searchParams?.get('location');
     if (tableParam) {
       setTableId(tableParam);
+    }
+    if (locationParam) {
+      setLocationId(locationParam);
     }
   }, [searchParams]);
 
@@ -98,6 +96,30 @@ function MenuPageContent() {
       loadTableData();
     }
   }, [tableId]);
+
+  useEffect(() => {
+    if (locationId && !tableId) {
+      loadLocationData();
+    }
+  }, [locationId, tableId]);
+
+  const loadLocationData = async () => {
+    if (!locationId) return;
+
+    try {
+      // Cargar mesas de la ubicación
+      const locationRes = await fetch(`/api/admin/service-points?locationId=${encodeURIComponent(locationId)}`);
+
+      if (locationRes.ok) {
+        const tablesData = await locationRes.json();
+        setTables(tablesData.filter((table: any) => table.active));
+      } else {
+        console.error("Error loading location data:", locationRes.status);
+      }
+    } catch (error) {
+      console.error("Error loading location data:", error);
+    }
+  };
 
   useEffect(() => {
     if (socket) {
@@ -212,19 +234,20 @@ function MenuPageContent() {
     product.categoryId === selectedCategory && product.available
   );
   const submitOrder = async () => {
-    if (!tableId) {
-      alert("Por favor selecciona una mesa o zona de servicio");
-      return;
-    }
-
     if (cart.length === 0) {
       alert("El carrito está vacío");
       return;
     }
 
-    // Si viene desde QR (tiene tableId) y no hay cliente seleccionado, mostrar búsqueda de cliente
-    if (tableId && !selectedCustomer) {
-      setShowCustomerLookupModal(true);
+    // Si no hay mesa seleccionada, mostrar modal para seleccionar
+    if (!tableId) {
+      setOrderSuccess(true);
+      return;
+    }
+
+    // Si viene desde QR (tiene tableId) y no hay nombre de cliente, mostrar modal para pedir nombre
+    if (tableId && !customerName.trim()) {
+      setShowCustomerNameModal(true);
       return;
     }
 
@@ -241,7 +264,6 @@ function MenuPageContent() {
     try {
       const orderData = {
         servicePointId: tableId,
-        customerId: selectedCustomer?.id,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -301,41 +323,6 @@ function MenuPageContent() {
     }
   };
 
-  // Customer lookup functions
-  const searchCustomer = async () => {
-    if (!customerSearchDni.trim()) return;
-
-    setCustomerSearchLoading(true);
-    try {
-      const response = await fetch(`/api/customers/search?dni=${customerSearchDni}`);
-      if (response.ok) {
-        const data = await response.json();
-        setFoundCustomer(data.customer);
-      } else {
-        setFoundCustomer(null);
-        alert('Cliente no encontrado');
-      }
-    } catch (error) {
-      console.error('Error searching customer:', error);
-      alert('Error al buscar cliente');
-    } finally {
-      setCustomerSearchLoading(false);
-    }
-  };
-
-  const selectCustomer = (customer: any) => {
-    setSelectedCustomer(customer);
-    setCustomerName(customer.name);
-    setShowCustomerLookupModal(false);
-    setFoundCustomer(null);
-    setCustomerSearchDni("");
-  };
-
-  const clearCustomer = () => {
-    setSelectedCustomer(null);
-    setCustomerName("");
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -346,8 +333,48 @@ function MenuPageContent() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
+      {locationId && !tableId ? (
+        /* Table Selection for Location */
+        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full">
+            <h1 className="text-3xl font-bold text-center mb-8 text-[#FF4D2E]">Selecciona tu Mesa</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tables.map((table) => (
+                <button
+                  key={table.id}
+                  onClick={() => setTableId(table.id)}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-6 transition-colors"
+                >
+                  <div className="text-center">
+                    <div className="text-2xl mb-2">
+                      {table.type === 'TABLE' ? '🍽️' : table.type === 'BOX' ? '🏠' : '📍'}
+                    </div>
+                    <h3 className="text-xl font-semibold mb-1">
+                      {table.name || `${table.type} ${table.number}`}
+                    </h3>
+                    <p className="text-gray-300">
+                      Capacidad: {table.capacity} personas
+                    </p>
+                    {table.location && (
+                      <p className="text-sm text-gray-400">
+                        {table.location.name}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {tables.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-400">No hay mesas disponibles en esta ubicación</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Main Menu */
+        <div>
+          <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-[#FF4D2E]">El Lounge</h1>
@@ -472,7 +499,7 @@ function MenuPageContent() {
               </div>
               <button
                 onClick={submitOrder}
-                disabled={isSubmitting || !tableId}
+                disabled={isSubmitting}
                 className="bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
               >
                 {isSubmitting ? "Enviando..." : "Hacer Pedido"}
@@ -535,15 +562,14 @@ function MenuPageContent() {
               </div>
 
               {/* Customer Information */}
-              {selectedCustomer && (
+              {customerName.trim() && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Cliente: {selectedCustomer.name}</p>
-                      <p className="text-xs text-blue-700">DNI: {selectedCustomer.dni} | Membresía: {selectedCustomer.membershipLevel}</p>
+                      <p className="text-sm font-medium text-blue-900">Cliente: {customerName}</p>
                     </div>
                     <button
-                      onClick={clearCustomer}
+                      onClick={() => setCustomerName("")}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
                       Cambiar
@@ -631,83 +657,6 @@ function MenuPageContent() {
         </div>
       )}
 
-      {/* Customer Lookup Modal */}
-      {showCustomerLookupModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-black/90 border border-white/20 rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-white mb-4">Buscar Cliente</h3>
-            <p className="text-gray-300 mb-4 text-sm">
-              Busca un cliente registrado para asociarlo con este pedido
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-white mb-1">
-                  DNI del cliente
-                </label>
-                <input
-                  type="text"
-                  value={customerSearchDni}
-                  onChange={(e) => setCustomerSearchDni(e.target.value)}
-                  placeholder="Ingresa DNI"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
-                  autoFocus
-                  onKeyPress={(e) => e.key === 'Enter' && searchCustomer()}
-                />
-              </div>
-
-              {foundCustomer && (
-                <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Cliente encontrado:</h4>
-                  <div className="text-gray-300 text-sm space-y-1">
-                    <p><strong>Nombre:</strong> {foundCustomer.name}</p>
-                    <p><strong>DNI:</strong> {foundCustomer.dni}</p>
-                    <p><strong>Membresía:</strong> {foundCustomer.membershipLevel}</p>
-                    <p><strong>Puntos:</strong> {foundCustomer.points}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowCustomerLookupModal(false)}
-                className="flex-1 px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={searchCustomer}
-                disabled={customerSearchLoading || !customerSearchDni.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {customerSearchLoading ? 'Buscando...' : 'Buscar'}
-              </button>
-              {foundCustomer && (
-                <button
-                  onClick={() => selectCustomer(foundCustomer)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Seleccionar
-                </button>
-              )}
-            </div>
-
-            <div className="mt-4 text-center">
-              <button
-                onClick={() => {
-                  setShowCustomerLookupModal(false);
-                  window.open('/register', '_blank');
-                }}
-                className="text-sm text-blue-400 hover:text-blue-300"
-              >
-                ¿Cliente nuevo? Regístralo aquí
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Success Modal */}
       <SuccessModal
         isOpen={showSuccessModal}
@@ -717,6 +666,8 @@ function MenuPageContent() {
         orderId={lastOrderId}
         autoCloseDelay={8000}
       />
+        </div>
+      )}
     </div>
   );
 }
