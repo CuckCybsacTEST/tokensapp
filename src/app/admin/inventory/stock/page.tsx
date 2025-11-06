@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ActionButton } from "@/components";
+import { AdminLayout } from "@/components/AdminLayout";
 
 interface ProductVariant {
   id: string;
@@ -133,7 +134,7 @@ export default function StockPage() {
             productId: formData.productId,
             variantId: formData.variantId || null,
             supplierId: formData.supplierId || null,
-            quantity: parseFloat(formData.quantity),
+            currentStock: parseFloat(formData.quantity),
             costPrice: formData.costPrice ? parseFloat(formData.costPrice) : null,
             location: formData.location || null,
             batchNumber: formData.batchNumber || null,
@@ -186,13 +187,13 @@ export default function StockPage() {
       variantId: item.variantId || "",
       supplierId: item.supplierId || "",
       quantity: item.currentStock.toString(),
-      minStock: item.minStock.toString(),
-      maxStock: item.maxStock.toString(),
+      minStock: item.minStock?.toString() || "0",
+      maxStock: item.maxStock?.toString() || "0",
       unitOfMeasureId: "",
       location: item.location || "",
       batchNumber: item.batchNumber || "",
       expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : "",
-      costPrice: item.costPrice.toString(),
+      costPrice: item.costPrice?.toString() || "0",
     });
     setShowForm(true);
   };
@@ -247,8 +248,8 @@ export default function StockPage() {
   };
 
   const getStockStatus = (item: InventoryItem) => {
-    if (item.currentStock <= item.minStock) return { status: "low", color: "text-red-600", bg: "bg-red-100" };
-    if (item.currentStock >= item.maxStock) return { status: "high", color: "text-orange-600", bg: "bg-orange-100" };
+    if (item.currentStock <= (item.minStock || 0)) return { status: "low", color: "text-red-600", bg: "bg-red-100" };
+    if (item.currentStock >= (item.maxStock || 0)) return { status: "high", color: "text-orange-600", bg: "bg-orange-100" };
     return { status: "normal", color: "text-green-600", bg: "bg-green-100" };
   };
 
@@ -263,11 +264,16 @@ export default function StockPage() {
       );
 
   if (loading) {
-    return <div className="p-6">Cargando inventario...</div>;
+    return (
+      <AdminLayout>
+        <div className="p-6">Cargando inventario...</div>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Control de Inventario</h1>
@@ -594,5 +600,6 @@ export default function StockPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   );
 }

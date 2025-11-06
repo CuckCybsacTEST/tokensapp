@@ -973,6 +973,8 @@ model InventoryItem {
   currentStock   Float    @default(0) // Stock actual disponible
   reservedStock  Float    @default(0) // Stock reservado para pedidos
   damagedStock   Float    @default(0) // Stock dañado/perdido
+  minStock       Float    @default(0) // Stock mínimo para alertas
+  maxStock       Float?   // Stock máximo recomendado
 
   // Ubicación en almacén
   location       String?  // "Estantería A1", "Refrigerado", etc.

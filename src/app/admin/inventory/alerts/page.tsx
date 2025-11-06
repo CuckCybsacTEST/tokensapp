@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AdminLayout } from "@/components/AdminLayout";
 
 interface AlertItem {
   id: string;
@@ -97,11 +98,16 @@ export default function AlertsPage() {
   const totalAlerts = alerts.length;
 
   if (loading) {
-    return <div className="p-6">Cargando alertas...</div>;
+    return (
+      <AdminLayout>
+        <div className="p-6">Cargando alertas...</div>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Alertas de Inventario</h1>
@@ -294,5 +300,6 @@ export default function AlertsPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   );
 }

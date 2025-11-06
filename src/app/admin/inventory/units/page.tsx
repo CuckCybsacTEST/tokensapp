@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { ActionButton } from "@/components";
+import { AdminLayout } from "@/components/AdminLayout";
 
 interface UnitOfMeasure {
   id: string;
   name: string;
   symbol: string;
-  category: string;
+  type: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -23,7 +24,7 @@ export default function UnitsPage() {
   const [formData, setFormData] = useState({
     name: "",
     symbol: "",
-    category: "weight",
+    type: "weight",
   });
 
   const categories = [
@@ -92,7 +93,7 @@ export default function UnitsPage() {
     setFormData({
       name: unit.name,
       symbol: unit.symbol,
-      category: unit.category,
+      type: unit.type,
     });
     setShowForm(true);
   };
@@ -127,7 +128,7 @@ export default function UnitsPage() {
     setFormData({
       name: "",
       symbol: "",
-      category: "weight",
+      type: "weight",
     });
   };
 
@@ -142,11 +143,16 @@ export default function UnitsPage() {
   };
 
   if (loading) {
-    return <div className="p-6">Cargando unidades...</div>;
+    return (
+      <AdminLayout>
+        <div className="p-6">Cargando unidades...</div>
+      </AdminLayout>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <AdminLayout>
+      <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Unidades de Medida</h1>
@@ -204,8 +210,8 @@ export default function UnitsPage() {
                 </label>
                 <select
                   required
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
                 >
                   {categories.map((category) => (
@@ -272,7 +278,7 @@ export default function UnitsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-500 dark:text-slate-300">
-                      {getCategoryLabel(unit.category)}
+                      {getCategoryLabel(unit.type)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
@@ -302,5 +308,6 @@ export default function UnitsPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   );
 }

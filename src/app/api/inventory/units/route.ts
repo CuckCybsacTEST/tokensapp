@@ -51,3 +51,43 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// PUT /api/inventory/units - Actualizar unidad de medida
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, name, symbol, type, active } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ID es obligatorio" },
+        { status: 400 }
+      );
+    }
+
+    if (!name?.trim() || !symbol?.trim() || !type) {
+      return NextResponse.json(
+        { error: "Nombre, símbolo y tipo son obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    const unit = await prisma.unitOfMeasure.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        symbol: symbol.trim(),
+        type,
+        active: active ?? true
+      }
+    });
+
+    return NextResponse.json(unit);
+  } catch (error) {
+    console.error("Error updating unit:", error);
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    );
+  }
+}

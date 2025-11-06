@@ -55,10 +55,11 @@ export async function GET(request: NextRequest) {
             id: true, 
             name: true, 
             minStock: true,
+            maxStock: true,
             unitOfMeasure: { select: { id: true, name: true, symbol: true } }
           } 
         },
-        variant: { select: { id: true, name: true, product: { select: { minStock: true } } } },
+        variant: { select: { id: true, name: true, product: { select: { minStock: true, maxStock: true } } } },
         supplier: { select: { id: true, name: true } }
       },
       orderBy: { createdAt: "desc" }
@@ -121,6 +122,8 @@ export async function POST(request: NextRequest) {
         unitCost: costPrice ? parseFloat(costPrice) : 0,
         totalCost,
         currentStock: parseFloat(quantity), // Inicialmente todo está disponible
+        minStock: minStock !== undefined ? parseFloat(minStock) : 0,
+        maxStock: maxStock !== undefined ? parseFloat(maxStock) : null,
         location
       },
       include: {
@@ -158,7 +161,7 @@ export async function PUT(request: NextRequest) {
       batchNumber,
       purchaseDate,
       expiryDate,
-      quantity,
+      currentStock,
       costPrice,
       location,
       minStock,
@@ -179,14 +182,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (!quantity) {
+    if (currentStock === undefined) {
       return NextResponse.json(
-        { error: "La cantidad es obligatoria" },
+        { error: "El stock actual es obligatorio" },
         { status: 400 }
       );
     }
 
-    const totalCost = costPrice ? parseFloat(quantity) * parseFloat(costPrice) : 0;
+    const totalCost = costPrice ? parseFloat(currentStock) * parseFloat(costPrice) : 0;
 
     const item = await prisma.inventoryItem.update({
       where: { id },
@@ -197,10 +200,12 @@ export async function PUT(request: NextRequest) {
         batchNumber,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
-        quantity: parseFloat(quantity),
+        currentStock: parseFloat(currentStock),
         unitCost: costPrice ? parseFloat(costPrice) : 0,
         totalCost,
-        location
+        location,
+        minStock: minStock !== undefined ? parseFloat(minStock) : undefined,
+        maxStock: maxStock !== undefined ? parseFloat(maxStock) : undefined
       },
       include: {
         product: { 
