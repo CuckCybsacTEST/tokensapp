@@ -22,8 +22,9 @@ export const ThemeToggle: React.FC<{ compact?: boolean }> = ({ compact }) => {
         )}
         title={"Cambiar a modo " + next}
         aria-label="Toggle theme"
+        suppressHydrationWarning
       >
-        <span className="text-lg">
+        <span className="text-lg" suppressHydrationWarning>
           {resolved === 'dark' ? '🌙' : '☀️'}
         </span>
       </button>
@@ -45,8 +46,9 @@ export const ThemeToggle: React.FC<{ compact?: boolean }> = ({ compact }) => {
         )}
         title={"Cambiar a modo " + next}
         aria-label="Toggle theme"
+        suppressHydrationWarning
       >
-        <span className="text-lg">
+        <span className="text-lg" suppressHydrationWarning>
           {resolved === 'dark' ? '🌙' : '☀️'}
         </span>
       </button>

@@ -297,7 +297,7 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
         {/* Hora del servidor */}
         <div className="flex flex-col items-center md:items-start p-3 bg-white dark:bg-slate-700/30 rounded-md shadow-sm">
-          <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400 mb-1">Hora del Servidor</div>
+          <div className="text-xs font-medium uppercase text-slate-600 dark:text-slate-400 mb-1">Hora del Servidor</div>
           <div className="text-2xl font-mono flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-slate-400"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             {formattedServerTime}
@@ -306,10 +306,10 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
         
         {/* Tiempo activo */}
         <div className="flex flex-col items-center p-3 bg-white dark:bg-slate-700/30 rounded-md shadow-sm">
-          <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400 mb-1">
+          <div className="text-xs font-medium uppercase text-slate-600 dark:text-slate-400 mb-1">
             {enabled ? "Tiempo Activo" : "Inactivo"}
           </div>
-          <div className={`text-2xl font-mono flex items-center ${enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`}>
+          <div className={`text-2xl font-mono flex items-center ${enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-slate-400"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
             {enabled ? timeActive : "--:--:--"}
           </div>
@@ -317,7 +317,7 @@ export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/a
         
         {/* Tiempo restante */}
         <div className="flex flex-col items-center md:items-center p-3 bg-white dark:bg-slate-700/30 rounded-md shadow-sm">
-          <div className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400 mb-1">
+          <div className="text-xs font-medium uppercase text-slate-600 dark:text-slate-400 mb-1">
             {enabled 
               ? "Tiempo hasta desactivación" 
               : "Tiempo hasta activación"

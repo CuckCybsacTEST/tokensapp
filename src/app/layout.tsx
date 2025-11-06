@@ -45,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   <meta name="apple-mobile-web-app-title" content="Go Lounge" />
   <meta name="description" content="Experiencias con tecnología QR: shows, rewards y más." />
       </head>
-      <body className="min-h-full w-full antialiased transition-colors duration-150 theme-hydrated">
+      <body className="min-h-full w-full antialiased transition-colors duration-150 theme-hydrated" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{__html:`document.documentElement.classList.add('theme-hydrated');document.body.classList.add('theme-hydrated');`}} />
         <ThemeProvider>
           {children}

@@ -20,16 +20,27 @@ function getSystemTheme(): 'light' | 'dark' {
 
 const STORAGE_KEY = 'app-theme';
 
+// Theme variables for inline styles
+const THEME_VARS = {
+  light: {"--color-bg":"#ffffff","--color-bg-rgb":"255,255,255","--color-bg-soft":"#f8fafc","--color-border":"#e2e8f0","--color-accent":"#0ea5e9"},
+  dark: {"--color-bg":"#0f172a","--color-bg-rgb":"15,23,42","--color-bg-soft":"#1e293b","--color-border":"#334155","--color-accent":"#38bdf8"}
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode; initial?: AppTheme }>= ({ children, initial = 'system' }) => {
   const [theme, setThemeState] = useState<AppTheme>(initial);
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => initial === 'system' ? getSystemTheme() : (initial as 'light' | 'dark'));
 
-  // Apply class to <html>
+  // Apply class and vars to <html>
   const apply = useCallback((mode: 'light' | 'dark') => {
     if (typeof document === 'undefined') return;
     const html = document.documentElement;
     html.classList.remove('light','dark');
     html.classList.add(mode);
+    // Update inline CSS vars
+    const vars = THEME_VARS[mode];
+    for (const [k, v] of Object.entries(vars)) {
+      html.style.setProperty(k, v);
+    }
   }, []);
 
   const syncServer = useCallback((t: AppTheme) => {

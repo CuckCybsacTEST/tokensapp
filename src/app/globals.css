@@ -230,3 +230,27 @@ body {
 .animate-color-change {
   animation: dynamicColor 5s infinite;
 }
+
+/* Dark mode styles for date inputs */
+.dark input[type="date"] {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.dark input[type="date"]::-webkit-datetime-edit,
+.dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="date"]::-webkit-datetime-edit-text,
+.dark input[type="date"]::-webkit-datetime-edit-month-field,
+.dark input[type="date"]::-webkit-datetime-edit-day-field,
+.dark input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #e2e8f0;
+}
+
+.dark input[type="date"]::-moz-calendar-picker-indicator {
+  filter: invert(1);
+}

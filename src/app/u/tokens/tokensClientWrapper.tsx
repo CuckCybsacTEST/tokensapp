@@ -23,8 +23,8 @@ export default function TokensClientWrapper(){
       {/* Métricas del día */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-100 dark:border-slate-700">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-          <h3 className="font-semibold text-sm flex items-center gap-2">Métricas del Día
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700">{day}</span>
+          <h3 className="font-semibold text-sm flex items-center gap-2 text-slate-900 dark:text-slate-100">Métricas del Día
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100">{day}</span>
           </h3>
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <input type="date" value={day} onChange={e=>{setDay(e.target.value);load(e.target.value);}} className="input !h-8 !text-xs max-w-[140px]" />
@@ -56,7 +56,7 @@ export default function TokensClientWrapper(){
       {/* Tabla premios/batches */}
       <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow border border-slate-100 dark:border-slate-700">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm">Premios y Batches</h3>
+          <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100">Premios y Batches</h3>
           <button
             onClick={()=>load()} disabled={loading}
             aria-label="Actualizar métricas"

@@ -10,6 +10,9 @@ type Reservation = {
 	id: string; celebrantName: string; phone: string; documento: string; date: string; timeSlot: string;
 	pack: { id: string; name: string; qrCount: number; bottle: string | null } | null;
 	guestsPlanned: number; status: string; tokensGeneratedAt: string | null; createdAt: string;
+	// Llegadas
+	hostArrivedAt?: string | null;
+	guestArrivals?: number;
 	cardsReady?: boolean;
 };
 
@@ -62,6 +65,25 @@ function fmtLima(iso?: string | null) {
 	} catch { return ''; }
 }
 
+// Formato legible para fecha de celebración: '6 Nov 2025'
+function fmtCelebrationDate(iso?: string | null) {
+	if (!iso) return '';
+	let base = iso;
+	// Aceptar formato corto YYYY-MM-DD agregando medianoche UTC
+	if (/^\d{4}-\d{2}-\d{2}$/.test(base)) base = base + 'T00:00:00.000Z';
+	try {
+		const d = new Date(base);
+		if (isNaN(d.getTime())) return '';
+		// Ajustar a Lima restando 5h UTC (simplificación sin DST)
+		const lima = new Date(d.getTime() - 5 * 3600 * 1000);
+		const day = lima.getUTCDate();
+		const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+		const month = monthNames[lima.getUTCMonth()];
+		const year = lima.getUTCFullYear();
+		return `${day} ${month} ${year}`;
+	} catch { return ''; }
+}
+
 type ReservationCardProps = {
 	r: Reservation;
 	busyApprove: boolean;
@@ -90,7 +112,7 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 				: r.status === 'canceled'
 					? 'CANCELADO'
 					: r.status;
-	const cleanDate = r.date?.replace(/T00:00:00\.000Z$/,'');
+	const celebrationDate = fmtCelebrationDate(r.date);
 
 	async function loadCards() {
 		if (!r.cardsReady) return;
@@ -134,7 +156,7 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 						<div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
 							<div className="flex items-center gap-2">
 								<span className="text-slate-400">📅</span>
-								<span>Fecha: <span className="font-medium text-pink-700 dark:text-pink-300">{cleanDate}</span></span>
+								<span>Fecha: <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded">{celebrationDate}</span></span>
 							</div>
 							<div className="flex items-center gap-2">
 								<span className="text-slate-400">⏰</span>
@@ -147,6 +169,17 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 							<div className="flex items-center gap-2">
 								<span className="text-slate-400">🎁</span>
 								<span>Pack: {r.pack?.name || '-'}</span>
+							</div>
+							<div className="flex items-center gap-2">
+								<span className="text-slate-400">🚪</span>
+								<span className="flex items-center gap-3">
+									<span className={r.hostArrivedAt ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-400'}>
+										{r.hostArrivedAt ? '✅ Host llegó' : '⏳ Esperando host'}
+									</span>
+									<span className="text-blue-600 dark:text-blue-400">
+										{(r.guestArrivals ?? 0)}/{r.guestsPlanned || r.pack?.qrCount || 0} invitados
+									</span>
+								</span>
 							</div>
 							<div className="flex items-center gap-2">
 								<span className="text-slate-400">🆔</span>
@@ -167,12 +200,12 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 						)}
 						{r.tokensGeneratedAt && (
 							<button className="btn-outline h-8 px-3 text-xs" onClick={()=>onViewCards(r.id)}>
-								👀 Ver QR
+								👀 Descargar Qr
 							</button>
 						)}
 						{r.cardsReady && (
 							<button className="btn-outline h-8 px-3 text-xs" onClick={()=>setShowCards(!showCards)}>
-								{showCards ? '🔽 Ocultar tarjetas' : '🔼 Mostrar tarjetas'}
+								{showCards ? '🔽 Ocultar tarjetas' : '🔼 Ver tarjetas'}
 							</button>
 						)}
 						<a className="btn-outline h-8 px-3 text-xs" href={`/u/birthdays/${encodeURIComponent(r.id)}`}>
@@ -392,7 +425,7 @@ export default function StaffBirthdaysPage() {
 		} catch(e:any){ setErr(String(e?.message||e)); } finally { setLoading(false); }
 	}
 	useEffect(()=>{ load(); }, [page]);
-	useEffect(()=>{ (async()=>{ try { const r = await fetch('/api/birthdays/packs'); const j = await r.json(); if (r.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
+	useEffect(()=>{ (async()=>{ try { const r = await fetch('/api/birthdays/packs'); const j = await r.json(); if (r.ok && j?.packs) { const uniquePacks = Array.from(new Map(j.packs.map((p: any) => [p.id, p as Pack])).values()) as Pack[]; setPacks(uniquePacks); } } catch{} })(); }, []);
 
 	async function approve(id:string){ setBusyApprove(p=>({...p,[id]:true})); try { const r=await fetch(`/api/admin/birthdays/${id}/approve`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusyApprove(p=>({...p,[id]:false})); } }
 	async function genTokens(id:string){ setBusyGenerate(p=>({...p,[id]:true})); try { const r=await fetch(`/api/admin/birthdays/${id}/tokens`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusyGenerate(p=>({...p,[id]:false})); } }
@@ -584,55 +617,6 @@ export default function StaffBirthdaysPage() {
 							</div>
 						)}
 
-						{activeTab === 'packs' && (
-							<div className="space-y-6">
-								{packs.length === 0 && (
-									<div className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
-										Cargando packs disponibles…
-									</div>
-								)}
-								{packs.length > 0 && (
-									<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-										{packs.map(p => {
-											const perks = (p.perks || []).filter(Boolean);
-											const hasBottlePerk = perks.some(perk => perk.toLowerCase().startsWith('botella'));
-											return (
-												<div key={p.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-													<div className="space-y-3">
-														<div className="flex items-center justify-between">
-															<h3 className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</h3>
-															<div className="text-sm font-bold text-blue-600 dark:text-blue-400">S/ {p.priceSoles ?? 0}</div>
-														</div>
-														<div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
-															<div className="flex items-center gap-2">
-																<span className="text-slate-400">👥</span>
-																<span>{p.qrCount} códigos QR para invitados</span>
-															</div>
-														</div>
-														{p.bottle && (
-															<div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-																<span>🍾</span>
-																<span>Botella: {p.bottle}</span>
-															</div>
-														)}
-														{perks.length > 0 && (
-															<ul className="space-y-1.5 text-[13px] text-slate-600 dark:text-slate-300">
-																{perks.map((perk: string, index: number) => (
-																	<li key={index} className={`flex items-start gap-2 ${perk.toLowerCase().startsWith('botella') ? 'font-semibold' : ''}`}>
-																		<span className="mt-0.5 text-[10px] text-slate-400">●</span>
-																		<span>{perk}</span>
-																	</li>
-																))}
-															</ul>
-														)}
-													</div>
-												</div>
-											);
-										})}
-									</div>
-								)}
-							</div>
-						)}
 					</div>
 				</div>
 			</div>
