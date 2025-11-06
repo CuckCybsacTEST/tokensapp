@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { apiOk, apiError } from '@/lib/apiError';
 import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
@@ -14,7 +15,8 @@ export async function GET(req: Request) {
 
     // Si hay sesión de admin
     if (adminSession && adminSession.role) {
-      return apiOk({
+      return NextResponse.json({
+        ok: true,
         isStaff: adminSession.role === 'STAFF' || adminSession.role === 'ADMIN',
         isAdmin: adminSession.role === 'ADMIN',
         role: adminSession.role
@@ -41,7 +43,8 @@ export async function GET(req: Request) {
           const restaurantRole = mapAreaToStaffRole(user.person.area);
 
           if (restaurantRole) {
-            return apiOk({
+            return NextResponse.json({
+              ok: true,
               isStaff: true,
               isAdmin: false,
               role: restaurantRole,
@@ -50,7 +53,8 @@ export async function GET(req: Request) {
           }
         } else {
           // Usuario colaborador sin área asignada - permitir acceso a interfaz staff
-          return apiOk({
+          return NextResponse.json({
+            ok: true,
             isStaff: false,
             isAdmin: false,
             isCollaborator: true,
@@ -62,7 +66,11 @@ export async function GET(req: Request) {
       }
     }
 
-    return apiOk({ isStaff: false, isAdmin: false });
+    return NextResponse.json({
+      ok: true,
+      isStaff: false,
+      isAdmin: false
+    });
   } catch (err) {
     return apiError('SESSION_ERROR', 'No se pudo obtener la sesión');
   }

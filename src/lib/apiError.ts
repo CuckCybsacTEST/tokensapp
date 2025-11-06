@@ -12,5 +12,8 @@ export function apiError(
 }
 
 export function apiOk(data: any, status = 200, headers?: Record<string, string>) {
-  return new Response(JSON.stringify(data), { status, headers });
+  const responseData = typeof data === 'object' && data !== null && !Array.isArray(data)
+    ? { ...data, ok: true }
+    : { data, ok: true };
+  return new Response(JSON.stringify(responseData), { status, headers });
 }

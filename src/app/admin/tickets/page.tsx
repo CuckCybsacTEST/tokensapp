@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Ticket, Eye, Download, RefreshCw, X, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Plus, Edit, Trash2, Ticket, Eye, Download, RefreshCw, X } from 'lucide-react';
 import { useStaffSocket } from '@/hooks/useSocket';
 import { AdminLayout } from "@/components/AdminLayout";
 
@@ -70,6 +70,8 @@ export default function AdminTicketsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [processingTicket, setProcessingTicket] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [formData, setFormData] = useState({
     showId: '',
@@ -88,42 +90,57 @@ export default function AdminTicketsPage() {
 
   async function checkSession() {
     try {
+      console.log('🔍 Checking session...');
       const sessionResponse = await fetch('/api/static/session');
       const sessionData = await sessionResponse.json();
       
+      console.log('📋 Session response:', sessionData);
+      console.log('🍪 Cookies sent:', document.cookie);
+      
       if (sessionData.ok && (sessionData.isStaff || sessionData.isAdmin)) {
+        console.log('✅ Session valid - user has staff/admin access');
         setHasSession(true);
         fetchData();
       } else {
+        console.log('❌ Session invalid or no staff/admin access');
+        console.log('isStaff:', sessionData.isStaff, 'isAdmin:', sessionData.isAdmin);
         setHasSession(false);
       }
     } catch (error) {
-      console.error('Error checking session:', error);
+      console.error('💥 Error checking session:', error);
       setHasSession(false);
     }
   }
+
+  // Función para refrescar datos con debounce
+  const refreshData = React.useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+    
+    refreshTimeoutRef.current = setTimeout(() => {
+      if (!isRefreshing) {
+        fetchData();
+      }
+    }, 500); // 500ms debounce
+  }, [isRefreshing]);
 
   // Escuchar eventos de socket para actualizaciones en tiempo real
   useEffect(() => {
     if (socket) {
       const handleTicketPurchased = (data: any) => {
         console.log('Nueva compra de ticket recibida:', data);
-        // Refrescar datos inmediatamente
-        fetchData();
+        refreshData();
       };
 
       const handleTicketStatusChanged = (data: any) => {
         console.log('Cambio de estado de ticket recibido:', data);
-        // Pequeño delay para una transición más suave, luego refrescar
-        setTimeout(() => {
-          fetchData();
-        }, 300);
+        refreshData();
       };
 
       const handleTicketValidated = (data: any) => {
         console.log('Ticket validado recibido:', data);
-        // Refrescar datos para mostrar el contador actualizado de entradas usadas
-        fetchData();
+        refreshData();
       };
 
       socket.on('ticket-purchased', handleTicketPurchased);
@@ -136,10 +153,13 @@ export default function AdminTicketsPage() {
         socket.off('ticket-validated', handleTicketValidated);
       };
     }
-  }, [socket]);
+  }, [socket, refreshData]);
 
   async function fetchData() {
+    if (isRefreshing) return; // Prevenir llamadas simultáneas
+    
     try {
+      setIsRefreshing(true);
       setLoading(true);
 
       // Fetch shows
@@ -174,6 +194,7 @@ export default function AdminTicketsPage() {
       setError('Error al cargar los datos');
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }
 
@@ -375,29 +396,25 @@ export default function AdminTicketsPage() {
   }, {} as Record<string, TicketType[]>);
 
   const groupedTicketPackages = filteredTicketPackages.reduce((acc, pkg) => {
-    if (!acc[pkg.showTitle]) {
-      acc[pkg.showTitle] = [];
+    // Asegurarse de que showTitle existe
+    const showTitle = pkg.showTitle || 'Sin título';
+    if (!acc[showTitle]) {
+      acc[showTitle] = [];
     }
-    acc[pkg.showTitle].push(pkg);
+    acc[showTitle].push(pkg);
     return acc;
   }, {} as Record<string, TicketPackage[]>);
 
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-gray-900 dark:text-gray-100">Cargando...</div>
-      </div>
-    );
-  }
-
   if (hasSession === false) {
     return (
-      <AdminLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="max-w-md w-full mx-4">
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+              <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Acceso Denegado
@@ -413,20 +430,18 @@ export default function AdminTicketsPage() {
             </a>
           </div>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 
   if (hasSession === null || loading) {
     return (
-      <AdminLayout>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF4D2E]"></div>
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando...</span>
-          </div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF4D2E] mr-2"></div>
+          <span className="text-gray-600 dark:text-gray-400">Cargando...</span>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 

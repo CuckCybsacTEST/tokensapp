@@ -1,6 +1,6 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
-import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getSessionCookieFromRequest, verifySessionCookie, requireRole, verifyStaffAccess } from '@/lib/auth';
 import { createDraft, listAdmin } from '@/lib/shows/service';
 import { isShowsFeatureEnabled } from '@/lib/featureFlags';
 
@@ -70,10 +70,8 @@ export async function GET(req: Request) {
   try {
     if (!isShowsFeatureEnabled()) return buildErrorResponse('FEATURE_DISABLED', 'Shows feature disabled', 503);
     const url = new URL(req.url);
-    const raw = getSessionCookieFromRequest(req);
-    const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN', 'STAFF']);
-    if (!auth.ok) return buildErrorResponse(auth.error || 'UNAUTHORIZED', 'ADMIN or STAFF required', auth.error === 'UNAUTHORIZED' ? 401 : 403);
+    const accessCheck = await verifyStaffAccess(req);
+    if (!accessCheck.hasAccess) return buildErrorResponse('UNAUTHORIZED', 'Staff access required', 401);
 
     const qp = url.searchParams;
     const filters = {

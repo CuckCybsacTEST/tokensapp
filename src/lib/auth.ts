@@ -117,3 +117,51 @@ export function requireRole(session: SessionData | null, roles: SessionRole[]): 
   if (!hasAnyRole(session, roles)) return { ok: false, error: 'FORBIDDEN' };
   return { ok: true };
 }
+
+// Función combinada para verificar acceso staff (admin o usuario staff)
+export async function verifyStaffAccess(req: Request): Promise<{ hasAccess: boolean; session?: any; user?: any }> {
+  const cookie = req.headers.get('cookie');
+  if (!cookie) return { hasAccess: false };
+
+  // Verificar sesión de admin primero
+  const adminCookie = getSessionCookieFromRequest(req);
+  const adminSession = await verifySessionCookie(adminCookie);
+  if (adminSession && adminSession.role && ['ADMIN', 'STAFF'].includes(adminSession.role)) {
+    return { hasAccess: true, session: adminSession };
+  }
+
+  // Verificar sesión de usuario staff
+  const { getUserSessionCookieFromRequest, verifyUserSessionCookie } = await import('@/lib/auth-user');
+  const userCookie = getUserSessionCookieFromRequest(req);
+  const userSession = await verifyUserSessionCookie(userCookie);
+  if (userSession) {
+    // Para usuarios staff, verificar si tienen área asignada o rol STAFF
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userSession.userId },
+        include: { person: true }
+      });
+
+      await prisma.$disconnect();
+
+      if (user?.person?.area) {
+        // Mapear área a rol de restaurante
+        const { mapAreaToStaffRole } = await import('@/lib/staff-roles');
+        const restaurantRole = mapAreaToStaffRole(user.person.area);
+        if (restaurantRole) {
+          return { hasAccess: true, session: userSession, user };
+        }
+      } else if (userSession.role === 'STAFF') {
+        // Usuario con rol STAFF explícito
+        return { hasAccess: true, session: userSession, user };
+      }
+    } catch (err) {
+      console.error('Error verificando área de usuario:', err);
+    }
+  }
+
+  return { hasAccess: false };
+}
