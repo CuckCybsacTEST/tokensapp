@@ -120,6 +120,20 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
     );
   }
 
+  // Verificar si la reserva está cancelada
+  const isReservationCanceled = data.reservation?.statusReservation === 'canceled' || data.reservation?.statusReservation === 'cancelled';
+  if (isReservationCanceled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d1a1a] to-[#07070C] text-white">
+        <div className="text-5xl mb-4">❌</div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Reserva Cancelada</h1>
+        <p className="text-base opacity-80 mb-4">Esta reserva ha sido cancelada y ya no es válida.</p>
+        <div className="text-sm opacity-70 mb-2">Si crees que esto es un error, contacta al soporte.</div>
+        <a href={isPublic ? "/marketing" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen flex flex-col px-4 py-8 items-center justify-center bg-gradient-to-b from-[#0E0606] to-[#07070C] text-white`}>
       <div className="w-full max-w-xl mx-auto rounded-2xl shadow-2xl bg-gradient-to-br from-white/5 to-white/2 border border-white/10 p-6 md:p-10 flex flex-col items-center">
@@ -282,7 +296,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
             {token.isHost && (
               <div className="text-xs opacity-70 pt-1 border-t border-white/10">
                 <div>Reserva: <span className="font-mono">{data.reservation.reservationId}</span></div>
-                <div>Estado: <span className={`font-medium ${data.reservation.statusReservation === 'confirmed' ? 'text-green-400' : data.reservation.statusReservation === 'cancelled' ? 'text-red-400' : 'text-yellow-400'}`}>{data.reservation.statusReservation}</span></div>
+                <div>Estado: <span className={`font-medium ${data.reservation.statusReservation === 'confirmed' ? 'text-green-400' : data.reservation.statusReservation === 'canceled' ? 'text-red-400' : 'text-yellow-400'}`}>{data.reservation.statusReservation}</span></div>
               </div>
             )}
           </div>
@@ -303,6 +317,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
               initialGuestArrivals={data.reservation?.guestArrivals || 0}
               lastGuestArrivalAt={data.reservation?.lastGuestArrivalAt}
               reservationDate={data.reservation?.date}
+              reservationStatus={data.reservation?.statusReservation}
             />
           </div>
         )}

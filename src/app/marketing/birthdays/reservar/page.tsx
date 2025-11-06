@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 import { ReservationMessageModal } from "@/components/ReservationMessageModal";
+import { BottleIceModal } from "@/components/BottleIceModal";
 import { getValidationErrorDetails, getServerErrorDetails } from "@/lib/reservation-errors";
 
 // Utilidad simple para validar fecha
@@ -53,6 +54,10 @@ function ReservarCumplePageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [phase, setPhase] = useState<"idle" | "creating" | "generating">("idle");
   const [referrerId, setReferrerId] = useState<string | null>(null);
+
+  // Modal de hielo/botella
+  const [showBottleIceModal, setShowBottleIceModal] = useState(false);
+  const [reservationData, setReservationData] = useState<{ id: string; clientSecret: string } | null>(null);
 
   // Modal
   const [modalMessage, setModalMessage] = useState<{
@@ -160,7 +165,9 @@ function ReservarCumplePageInner() {
       const res2 = await fetch(`/api/birthdays/reservations/${id}/tokens`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientSecret }) });
       const j2 = await res2.json().catch(() => ({}));
       if (!res2.ok || (!j2?.ok && !Array.isArray(j2?.items))) { const d2 = getServerErrorDetails(j2?.code, j2?.message || "No se pudieron generar los QRs"); setModalMessage({ ...d2, isOpen: true }); return; }
-      router.push(`/marketing/birthdays/${id}/qrs?cs=${encodeURIComponent(clientSecret)}`);
+      // En lugar de redirigir, mostrar el modal de hielo
+      setReservationData({ id, clientSecret });
+      setShowBottleIceModal(true);
     } catch (e:any) {
       const d = getServerErrorDetails(undefined, e?.message || "Ocurrió un error al procesar tu reserva");
       setModalMessage({ ...d, isOpen: true });
@@ -169,6 +176,66 @@ function ReservarCumplePageInner() {
       setPhase("idle");
     }
   }
+
+  // Handlers para el modal de hielo
+  const handleBottleIceContinue = () => {
+    if (reservationData) {
+      router.push(`/marketing/birthdays/${reservationData.id}/qrs?cs=${encodeURIComponent(reservationData.clientSecret)}`);
+    }
+    setShowBottleIceModal(false);
+    setReservationData(null);
+  };
+
+  const handleBottleIceCancel = async () => {
+    if (!reservationData) {
+      setShowBottleIceModal(false);
+      setReservationData(null);
+      setSubmitting(false);
+      setPhase("idle");
+      return;
+    }
+
+    try {
+      // Cancelar la reserva usando el endpoint de admin
+      const res = await fetch(`/api/admin/birthdays/${encodeURIComponent(reservationData.id)}/cancel`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Si falla la cancelación, mostrar error pero permitir continuar
+        console.error('Error al cancelar reserva:', j);
+        const d = getServerErrorDetails(j?.code, j?.message || "Error al cancelar la reserva");
+        setModalMessage({ ...d, isOpen: true });
+        return;
+      }
+
+      // Cancelación exitosa - mostrar mensaje y resetear
+      setModalMessage({
+        field: "general",
+        type: "info",
+        title: "Reserva cancelada",
+        message: "Tu reserva ha sido cancelada exitosamente.",
+        suggestions: [],
+        isOpen: true
+      });
+
+    } catch (error) {
+      console.error('Error al cancelar reserva:', error);
+      // En caso de error de red, mostrar mensaje genérico
+      setModalMessage({
+        field: "general",
+        type: "error",
+        title: "Error de conexión",
+        message: "No se pudo cancelar la reserva. Por favor contacta al soporte.",
+        suggestions: ["Intenta nuevamente más tarde", "Contacta al soporte técnico"],
+        isOpen: true
+      });
+    } finally {
+      setShowBottleIceModal(false);
+      setReservationData(null);
+      setSubmitting(false);
+      setPhase("idle");
+    }
+  };
 
   return (
     <section className="mx-auto w-full max-w-4xl px-4 py-8 md:py-10 lg:py-12">
@@ -327,6 +394,13 @@ function ReservarCumplePageInner() {
           <span className="text-[10px] mt-1">Taxi</span>
         </div>
       </div>
+
+      {/* Modal de información sobre hielo y complementos */}
+      <BottleIceModal
+        isOpen={showBottleIceModal}
+        onClose={handleBottleIceCancel}
+        onContinue={handleBottleIceContinue}
+      />
 
       {modalMessage && (
         <ReservationMessageModal

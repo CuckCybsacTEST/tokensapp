@@ -150,7 +150,7 @@ export async function verifyStaffAccess(req: Request): Promise<{ hasAccess: bool
       if (user?.person?.area) {
         // Mapear área a rol de restaurante
         const { mapAreaToStaffRole } = await import('@/lib/staff-roles');
-        const restaurantRole = mapAreaToStaffRole(user.person.area);
+        const restaurantRole = mapAreaToStaffRole(user.person.area as import('@/lib/areas').Area);
         if (restaurantRole) {
           return { hasAccess: true, session: userSession, user };
         }
