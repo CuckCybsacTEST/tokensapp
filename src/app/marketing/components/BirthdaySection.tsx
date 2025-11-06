@@ -60,6 +60,7 @@ export function BirthdaySection() {
       if (low.includes("chispa")) accent = "#3BA7F0";
       else if (low.includes("fuego")) accent = "#F39C2D";
       else if (low.includes("estrella")) accent = "#E24A3A";
+      else if (low.includes("galaxia")) accent = "#8B5CF6";
       const level =
         idx === 0 ? "Básico" : idx === 1 ? "Recomendado" : idx === 2 ? "Premium" : "Pack";
       const key = idx === 0 ? "basic" : idx === 1 ? "plus" : idx === 2 ? "elite" : `p${idx}`;
@@ -205,21 +206,20 @@ export function BirthdaySection() {
                           >
                             {c.name}
                           </div>
-                          <div className="mt-1 text-[13px] font-semibold">{c.highlight}</div>
                           <div className="mt-2 grid grid-cols-3 gap-2 text-[10px] font-medium opacity-80">
                             <div className="flex flex-col">
-                              <span className="uppercase opacity-60">Precio</span>
-                              <span className="text-xs font-bold">S/ {c.priceSoles}</span>
+                              <span className="uppercase opacity-60">Invitados</span>
+                              <span className="text-sm font-extrabold" style={{ color: c.accent }}>{c.qrCount}</span>
                             </div>
                             <div className="flex flex-col">
-                              <span className="uppercase opacity-60">Botella</span>
-                              <span className="text-[11px] font-semibold line-clamp-2">
+                              <span className="uppercase opacity-60">Precio</span>
+                              <span className="text-sm font-bold" style={{ color: c.priceSoles === 0 ? '#10b981' : 'inherit' }}>{c.priceSoles > 0 ? `S/ ${c.priceSoles}` : 'Gratis'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="uppercase opacity-60">CORTESÍA</span>
+                              <span className="text-[11px] font-semibold line-clamp-2" style={{ color: c.accent }}>
                                 {c.bottle}
                               </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="uppercase opacity-60">QRs</span>
-                              <span className="text-xs font-bold">{c.qrCount}</span>
                             </div>
                           </div>
                           <ul className="mt-3 space-y-1.5 text-[12px] opacity-90">
@@ -244,11 +244,12 @@ export function BirthdaySection() {
                                   `/marketing/birthdays/reservar?packId=${encodeURIComponent(c.id)}#form`
                                 )
                               }
-                              className="w-full rounded-full px-4 py-2 text-[11px] font-semibold"
+                              className="w-full rounded-full px-6 py-3 text-xs font-bold uppercase tracking-wide transition-all hover:scale-105"
                               style={{
-                                background: `${c.accent}30`,
-                                border: "1px solid rgba(255,255,255,0.16)",
-                                boxShadow: `0 6px 16px -10px ${c.accent}`,
+                                background: `linear-gradient(135deg, ${c.accent}, ${c.accent}dd)`,
+                                border: "1px solid rgba(255,255,255,0.3)",
+                                boxShadow: `0 8px 24px -12px ${c.accent}80`,
+                                color: "white",
                               }}
                             >
                               Reservar
@@ -352,18 +353,18 @@ export function BirthdaySection() {
                     </header>
                     <div className="relative z-10 grid grid-cols-3 gap-3 mb-1.5 text-[11px]">
                       <div className="flex flex-col">
-                        <span className="uppercase opacity-60">QRs</span>
-                        <span className="text-[15px] font-extrabold tracking-tight">
+                        <span className="uppercase opacity-60">Invitados</span>
+                        <span className="text-[18px] font-extrabold tracking-tight" style={{ color: c.accent }}>
                           {c.qrCount}
                         </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="uppercase opacity-60">Precio</span>
-                        <span className="text-[13px] font-semibold">S/ {c.priceSoles}</span>
+                        <span className="text-[15px] font-bold" style={{ color: c.priceSoles === 0 ? '#10b981' : 'inherit' }}>{c.priceSoles > 0 ? `S/ ${c.priceSoles}` : 'Gratis'}</span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="uppercase opacity-60">Botella</span>
-                        <span className="text-xs font-semibold line-clamp-2" title={c.bottle || ""}>
+                        <span className="uppercase opacity-60">CORTESÍA</span>
+                        <span className="text-sm font-semibold line-clamp-2" title={c.bottle || ""} style={{ color: c.accent }}>
                           {c.bottle}
                         </span>
                       </div>
@@ -404,7 +405,6 @@ export function BirthdaySection() {
                       >
                         Reservar
                       </button>
-                      <div className="text-[10px] opacity-60">Incluye QR + botella</div>
                     </div>
                   </motion.div>
                 ))}

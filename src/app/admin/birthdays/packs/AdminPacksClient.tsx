@@ -7,7 +7,7 @@ export function AdminPacksPage() {
   const [err, setErr] = useState<string | null>(null);
   const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[]; priceSoles?: number; isCustom?: boolean }[]>([]);
   const [editingPack, setEditingPack] = useState<string|null>(null);
-  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string; priceSoles: number }>>({});
+  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string; priceSoles: number; hasPrice: boolean }>>({});
 
   // Cargar packs desde endpoint admin para incluir isCustom y evitar filtrado público
   useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/admin/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
@@ -25,7 +25,7 @@ export function AdminPacksPage() {
     const p = packs.find(x=>x.id===pId);
     if(!p) return;
     setEditingPack(pId);
-    setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n'), priceSoles: p.priceSoles ?? 0 }}));
+    setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n'), priceSoles: p.priceSoles ?? 0, hasPrice: (p.priceSoles ?? 0) > 0 }}));
   }
 
   function cancelEdit(){
@@ -37,7 +37,7 @@ export function AdminPacksPage() {
     if(!e) return;
     try {
       const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean);
-      const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.priceSoles };
+      const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.hasPrice ? e.priceSoles : 0 };
       const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const j=await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(j?.code||j?.message||res.status);
@@ -85,7 +85,7 @@ export function AdminPacksPage() {
                       {p.isCustom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300">Custom</span>}
                     </div>
                     <div className="text-xs text-slate-600 dark:text-slate-400 transition-colors">Invitados (QRs): {p.qrCount}</div>
-                    <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Precio: S/ {p.priceSoles ?? 0}</div>
+                    <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Precio: {p.priceSoles ? `S/ ${p.priceSoles}` : 'Gratis'}</div>
                     {p.bottle && <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Botella: {p.bottle}</div>}
                     <ul className="text-[11px] list-disc ml-4 space-y-0.5 text-slate-700 dark:text-slate-300 transition-colors">
                       {(p.perks||[]).map(per=> <li key={per}>{per}</li>)}
@@ -99,7 +99,11 @@ export function AdminPacksPage() {
                     <input type="number" className="input text-sm px-2 py-1" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
                     <input className="input text-sm px-2 py-1" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
                     <textarea className="input h-28 text-xs px-2 py-1" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
-                    <input type="number" className="input text-sm px-2 py-1" value={edit.priceSoles} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], priceSoles: Math.max(0, parseInt(e.target.value)||0)}}))} placeholder="Precio (S/)" />
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" checked={edit.hasPrice} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], hasPrice:e.target.checked, priceSoles: e.target.checked ? prev[p.id].priceSoles : 0}}))} />
+                      Habilitar precio
+                    </label>
+                    <input type="number" className="input text-sm px-2 py-1" value={edit.priceSoles} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], priceSoles: Math.max(0, parseInt(e.target.value)||0)}}))} placeholder="Precio (S/)" disabled={!edit.hasPrice} />
                     <div className="flex gap-2 text-xs">
                       <button onClick={()=>savePack(p.id)} className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30">Guardar</button>
                       <button onClick={cancelEdit} className="px-2 py-1 rounded bg-slate-700 border border-slate-500 hover:bg-slate-600">Cancelar</button>
