@@ -66,10 +66,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Admin APIs (/api/admin/*) - requires ADMIN or STAFF (limited APIs)
+  // Admin APIs (/api/admin/*) - requires ADMIN or STAFF (limited APIs) or COLLAB
   if (pathname.startsWith("/api/admin/")) {
     if (!userSession) {
       return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    // Allow COLLAB for all admin APIs
+    if (userSession.role === 'COLLAB') {
+      return NextResponse.next();
     }
 
     // STAFF can access limited admin APIs
@@ -77,7 +82,8 @@ export async function middleware(req: NextRequest) {
       '/api/admin/attendance',
       '/api/admin/tokens',
       '/api/admin/day-brief',
-      '/api/admin/users'
+      '/api/admin/users',
+      '/api/admin/birthdays'  // Allow STAFF to access birthdays admin API
     ];
 
     const isStaffAllowedAPI = staffAllowedAPIs.some(api => pathname.startsWith(api));
