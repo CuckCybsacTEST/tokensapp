@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { initTestDbMulti } from '@/test/setupTestDb';
+import { initTestDbMulti } from '@/lib/setupTestDb';
 
 let prisma: PrismaClient;
 let createHandler: any; // POST /api/roulette

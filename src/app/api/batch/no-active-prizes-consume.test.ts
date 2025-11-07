@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTestDb } from "@/test/setupTestDb";
+import { initTestDb } from "@/lib/setupTestDb";
 
 let autoGenerate: any;
 let prisma: PrismaClient;

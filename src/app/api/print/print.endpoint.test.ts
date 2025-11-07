@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { initTestDb } from '@/test/setupTestDb';
-import { createSessionCookie } from '@/lib/auth';
+import { initTestDb } from '@/lib/setupTestDb';
+import { createUserSessionCookie } from '@/lib/auth';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
@@ -71,7 +71,7 @@ describe('Print PDF endpoint', () => {
     await seedBatchWithTokens(batchId, 1);
 
     // create admin cookie
-    const cookie = await createSessionCookie('ADMIN');
+    const cookie = await createUserSessionCookie('test-admin', 'ADMIN');
 
   const req = new Request(`http://localhost/api/print/batch/${batchId}/pdf`, { method: 'GET', headers: { cookie: `admin_session=${cookie}` } });
   const res = await printGet(req as any, { params: { id: batchId } }) as any;
@@ -88,7 +88,7 @@ describe('Print PDF endpoint', () => {
   it('returns single page for 8 tokens', async () => {
     const batchId = 'print8';
     await seedBatchWithTokens(batchId, 8);
-    const cookie = await createSessionCookie('ADMIN');
+    const cookie = await createUserSessionCookie('test-admin', 'ADMIN');
   const req = new Request(`http://localhost/api/print/batch/${batchId}/pdf`, { method: 'GET', headers: { cookie: `admin_session=${cookie}` } });
   const res = await printGet(req as any, { params: { id: batchId } }) as any;
   expect(res.status).toBe(200);
@@ -101,7 +101,7 @@ describe('Print PDF endpoint', () => {
   it('returns two pages for 9 tokens', async () => {
     const batchId = 'print9';
     await seedBatchWithTokens(batchId, 9);
-    const cookie = await createSessionCookie('ADMIN');
+    const cookie = await createUserSessionCookie('test-admin', 'ADMIN');
   const req = new Request(`http://localhost/api/print/batch/${batchId}/pdf`, { method: 'GET', headers: { cookie: `admin_session=${cookie}` } });
   const res = await printGet(req as any, { params: { id: batchId } }) as any;
   expect(res.status).toBe(200);
@@ -123,8 +123,8 @@ describe('Print PDF endpoint', () => {
   it('returns 403 for non-admin role', async () => {
     const batchId = 'print1';
     // create cookie with STAFF role
-    // createSessionCookie only supports role option but returns cookie value
-    const cookie = await createSessionCookie('STAFF' as any);
+    // createUserSessionCookie takes userId and role
+    const cookie = await createUserSessionCookie('test-staff', 'STAFF');
   const req = new Request(`http://localhost/api/print/batch/${batchId}/pdf`, { method: 'GET', headers: { cookie: `admin_session=${cookie}` } });
   const res = await printGet(req as any, { params: { id: batchId } }) as any;
   expect(res.status).toBe(403);

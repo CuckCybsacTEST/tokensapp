@@ -19,6 +19,6 @@
     "incremental": true,
     "plugins": [{ "name": "next" }]
   },
-  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "tests", "src/test", "src/tests"]
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts", "src/test/setupTestDb.ts"],
+  "exclude": ["node_modules", "tests", "src/tests"]
 }

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { initTestDb } from "@/test/setupTestDb";
+import { initTestDb } from "@/lib/setupTestDb";
 
 // Isolated Prisma for this suite; ensure route libs (if any) reuse same instance
 let prisma: PrismaClient;

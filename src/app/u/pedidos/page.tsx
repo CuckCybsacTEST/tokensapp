@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -115,10 +115,10 @@ export default function CartaDashboard() {
     }
   };
 
-  // Función wrapper para actualización manual (con loading del botón)
+  // Funciï¿½n wrapper para actualizaciï¿½n manual (con loading del botï¿½n)
   const handleManualRefresh = () => fetchOrders(false, true);
 
-  // Función wrapper para polling automático (sin loading del botón)
+  // Funciï¿½n wrapper para polling automï¿½tico (sin loading del botï¿½n)
   const handleAutoRefresh = () => fetchOrders(false, false);
 
   // Polling de respaldo cada 8 segundos si no hay socket conectado
@@ -133,7 +133,7 @@ export default function CartaDashboard() {
     }
   }, [socketConnected]);
 
-  // Función helper para verificar si una acción específica está en progreso
+  // Funciï¿½n helper para verificar si una acciï¿½n especï¿½fica estï¿½ en progreso
   const isUpdatingOrder = (orderId: string, action: string) => updatingOrders[orderId] === action;
   const isAnyActionInProgress = (orderId: string) => !!updatingOrders[orderId];
 
@@ -205,7 +205,7 @@ export default function CartaDashboard() {
   };
 
   const deleteOrder = async (orderId: string) => {
-    if (!confirm("¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.")) {
+    if (!confirm("ï¿½Estï¿½s seguro de eliminar este pedido? Esta acciï¿½n no se puede deshacer.")) {
       return;
     }
 
@@ -280,7 +280,7 @@ export default function CartaDashboard() {
   const userHasOwnOrders = orders.some(order => order.staff?.id === staffProfile?.staffId);
   const defaultFilter = userHasOwnOrders ? "mine" : "all";
 
-  // Usar el filtro predeterminado si aún no se ha seleccionado ninguno específico
+  // Usar el filtro predeterminado si aï¿½n no se ha seleccionado ninguno especï¿½fico
   const effectiveSelectedStatus = selectedStatus === "auto" 
     ? (userHasOwnOrders ? "mine" : "all") 
     : selectedStatus;
@@ -301,7 +301,7 @@ export default function CartaDashboard() {
             if (a.status !== "PENDING" && b.status === "PENDING") return 1;
           }
           
-          // Para pedidos con el mismo estado, ordenar por fecha de creación (más recientes primero)
+          // Para pedidos con el mismo estado, ordenar por fecha de creaciï¿½n (mï¿½s recientes primero)
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         })
     : effectiveSelectedStatus === "mine"
@@ -321,7 +321,7 @@ export default function CartaDashboard() {
             if (a.status !== "PENDING" && b.status === "PENDING") return 1;
           }
           
-          // Para pedidos con el mismo estado, ordenar por fecha de creación (más recientes primero)
+          // Para pedidos con el mismo estado, ordenar por fecha de creaciï¿½n (mï¿½s recientes primero)
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         })
     : orders.filter(order => order.status === effectiveSelectedStatus);
@@ -342,7 +342,7 @@ export default function CartaDashboard() {
 
   useEffect(() => {
     if (socket) {
-      // Actualizar estado de conexión
+      // Actualizar estado de conexiï¿½n
       socket.on("connect", () => {
         console.log("?? Socket conectado - modo tiempo real activado");
         setSocketConnected(true);
@@ -355,7 +355,7 @@ export default function CartaDashboard() {
 
       // Listener para actualizaciones de pedidos
       socket.on("order-status-update", (data: any) => {
-        console.log("?? Actualización de pedido recibida:", data);
+        console.log("?? Actualizaciï¿½n de pedido recibida:", data);
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === data.orderId?.toString() || order.id === data.orderId
@@ -370,7 +370,7 @@ export default function CartaDashboard() {
       socket.on("new-order", (orderData: any) => {
         console.log("??? Nuevo pedido recibido:", orderData);
         setNewOrderNotification(true);
-        // Pequeño delay para mostrar notificación antes de recargar
+        // Pequeï¿½o delay para mostrar notificaciï¿½n antes de recargar
         setTimeout(() => {
           fetchOrders(false);
           setNewOrderNotification(false);
@@ -379,8 +379,8 @@ export default function CartaDashboard() {
 
       // Listener para actualizaciones de inventario
       socket.on("inventory-update", (data: any) => {
-        console.log("?? Actualización de inventario recibida:", data);
-        // Aquí podríamos mostrar una notificación o actualizar algún estado relacionado con inventario
+        console.log("?? Actualizaciï¿½n de inventario recibida:", data);
+        // Aquï¿½ podrï¿½amos mostrar una notificaciï¿½n o actualizar algï¿½n estado relacionado con inventario
         // Por ahora solo loggeamos para debugging
       });
 
@@ -409,7 +409,7 @@ export default function CartaDashboard() {
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Acceso Restringido</h1>
           <p className="text-gray-400 mb-4">
-            Tu área actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
+            Tu ï¿½rea actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
           </p>
           <p className="text-gray-500 text-sm">
             Solo usuarios de Caja, Barra o Mozos pueden acceder al dashboard de restaurante.
@@ -434,7 +434,7 @@ export default function CartaDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {/* Indicador de conexión en tiempo real */}
+              {/* Indicador de conexiï¿½n en tiempo real */}
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${socketConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
                 <span className="text-sm text-gray-400">
@@ -442,16 +442,16 @@ export default function CartaDashboard() {
                 </span>
               </div>
 
-              {/* Última actualización */}
+              {/* ï¿½ltima actualizaciï¿½n */}
               <div className="text-sm text-gray-500">
-                Última actualización: {lastUpdate.toLocaleTimeString()}
+                ï¿½ltima actualizaciï¿½n: {lastUpdate.toLocaleTimeString()}
               </div>
 
-              {/* Notificación de nuevo pedido */}
+              {/* Notificaciï¿½n de nuevo pedido */}
               {newOrderNotification && (
                 <div className="flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-full text-sm animate-bounce">
                   <span className="animate-ping">??</span>
-                  ¡Nuevo pedido!
+                  ï¿½Nuevo pedido!
                 </div>
               )}
             </div>
@@ -602,7 +602,7 @@ export default function CartaDashboard() {
                     <span>{getStatusText(order.status)}</span>
                   </div>
                   
-                  {/* Zona/Mesa - Mayor jerarquía */}
+                  {/* Zona/Mesa - Mayor jerarquï¿½a */}
                   <div className="bg-gray-800/50 px-3 py-2 rounded-lg">
                     <span className="text-white font-bold text-base md:text-lg">{getOrderLocationName(order)}</span>
                   </div>
@@ -615,7 +615,7 @@ export default function CartaDashboard() {
                 </div>
               </div>
 
-              {/* Productos - Segunda jerarquía */}
+              {/* Productos - Segunda jerarquï¿½a */}
               <div className="mb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {order.items.map((item, idx) => (
@@ -623,7 +623,7 @@ export default function CartaDashboard() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-white truncate">{item.product.name}</h4>
-                          <p className="text-sm text-gray-300">×{item.quantity}</p>
+                          <p className="text-sm text-gray-300">ï¿½{item.quantity}</p>
                           {item.notes && (
                             <p className="text-xs text-yellow-400 mt-1 italic">"{item.notes}"</p>
                           )}
@@ -638,12 +638,12 @@ export default function CartaDashboard() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 {/* Precio y Staff */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  {/* Precio - Tercera jerarquía */}
+                  {/* Precio - Tercera jerarquï¿½a */}
                   <div className="text-xl md:text-2xl font-bold text-[#FF4D2E]">
                     S/ {order.total.toFixed(2)}
                   </div>
                   
-                  {/* Quién hizo el pedido - Cuarta jerarquía */}
+                  {/* Quiï¿½n hizo el pedido - Cuarta jerarquï¿½a */}
                   {order.staff && (
                     <div className="flex items-center gap-2 text-sm text-gray-300">
                       <span className="text-blue-400">??</span>
@@ -658,7 +658,7 @@ export default function CartaDashboard() {
                 <div className="flex gap-2 flex-wrap">
                   {staffProfile?.permissions.canUpdateOrderStatus && (
                     <>
-                      {/* Botón CONFIRMAR - Solo para usuarios que pueden confirmar */}
+                      {/* Botï¿½n CONFIRMAR - Solo para usuarios que pueden confirmar */}
                       {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CONFIRMED") && order.status === "PENDING" && (
                         <button
                           onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
@@ -673,7 +673,7 @@ export default function CartaDashboard() {
                         </button>
                       )}
 
-                      {/* Botón PREPARAR - Para usuarios que pueden preparar */}
+                      {/* Botï¿½n PREPARAR - Para usuarios que pueden preparar */}
                       {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("PREPARING") && order.status === "CONFIRMED" && (
                         <button
                           onClick={() => updateOrderStatus(order.id, "PREPARING")}
@@ -688,13 +688,13 @@ export default function CartaDashboard() {
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <span>
-                              {["PREPARING", "READY", "DELIVERED"].includes(order.status) ? "En preparación" : "Preparar"}
+                              {["PREPARING", "READY", "DELIVERED"].includes(order.status) ? "En preparaciï¿½n" : "Preparar"}
                             </span>
                           )}
                         </button>
                       )}
 
-                      {/* Botón LISTO - Para usuarios que pueden marcar como listo */}
+                      {/* Botï¿½n LISTO - Para usuarios que pueden marcar como listo */}
                       {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("READY") && order.status === "PREPARING" && (
                         <button
                           onClick={() => updateOrderStatus(order.id, "READY")}
@@ -711,7 +711,7 @@ export default function CartaDashboard() {
                         </button>
                       )}
 
-                      {/* Botón ENTREGAR - Para usuarios que pueden entregar */}
+                      {/* Botï¿½n ENTREGAR - Para usuarios que pueden entregar */}
                       {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("DELIVERED") && order.status === "READY" && (
                         <button
                           onClick={() => updateOrderStatus(order.id, "DELIVERED")}
@@ -726,7 +726,7 @@ export default function CartaDashboard() {
                         </button>
                       )}
 
-                      {/* Botón CANCELAR - Para usuarios que pueden cancelar */}
+                      {/* Botï¿½n CANCELAR - Para usuarios que pueden cancelar */}
                       {order.status !== "DELIVERED" && order.status !== "CANCELLED" && staffProfile.permissions.allowedStatuses.includes("CANCELLED") && (
                         <button
                           onClick={() => updateOrderStatus(order.id, "CANCELLED")}
@@ -743,7 +743,7 @@ export default function CartaDashboard() {
                     </>
                   )}
 
-                  {/* Botón de eliminar (solo para administradores) */}
+                  {/* Botï¿½n de eliminar (solo para administradores) */}
                   {staffProfile?.permissions.canCloseOrders && (
                     <button
                       onClick={() => deleteOrder(order.id)}
@@ -772,3 +772,4 @@ export default function CartaDashboard() {
     </div>
   );
 }
+

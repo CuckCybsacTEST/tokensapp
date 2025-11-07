@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { CURRENT_SIGNATURE_VERSION, signToken } from "@/lib/signing";
-import { initTestDb } from "@/test/setupTestDb";
+import { initTestDb } from "@/lib/setupTestDb";
 
 let redeemHandler: any;
 let prisma: PrismaClient;

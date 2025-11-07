@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTestDb } from "@/test/setupTestDb";
+import { initTestDb } from "@/lib/setupTestDb";
 // NOTE: We intentionally defer importing helpers that (directly or indirectly) import prisma
 // (e.g. parseBatchZip, prize cache) until AFTER we initialize the test DB and set global.prismaGlobal.
 // Otherwise a PrismaClient would be constructed pointing at a previous DATABASE_URL, and the route

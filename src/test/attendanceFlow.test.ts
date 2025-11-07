@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
 import { POST as markAttendance } from '../app/api/attendance/mark/route';
-import { createUserSessionCookie } from '../lib/auth-user';
+import { createUserSessionCookie } from '../lib/auth';
 
 async function makeRequest(mode: 'IN' | 'OUT', cookie: string) {
   const body = JSON.stringify({ mode, deviceId: 'test-device' });

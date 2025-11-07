@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -258,7 +258,7 @@ export default function StaffDashboard() {
     if (socket) {
       // Listener para actualizaciones de pedidos
       socket.on("order-status-update", (data: any) => {
-        console.log("?? Actualización de pedido recibida:", data);
+        console.log("?? Actualizaciï¿½n de pedido recibida:", data);
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === data.orderId?.toString() || order.id === data.orderId
@@ -296,7 +296,7 @@ export default function StaffDashboard() {
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Acceso Restringido</h1>
           <p className="text-gray-400 mb-4">
-            Tu área actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
+            Tu ï¿½rea actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
           </p>
           <p className="text-gray-500 text-sm">
             Solo usuarios de Caja, Barra o Mozos pueden acceder al dashboard de restaurante.
@@ -323,7 +323,7 @@ export default function StaffDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard de Restaurante</h1>
               <p className="text-sm text-gray-400">
-                ?? {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | Área: {getAreaDisplayName(staffProfile?.area)}
+                ?? {staffProfile?.name || 'Usuario'} - {getRoleDisplayName(staffProfile?.restaurantRole)} | ï¿½rea: {getAreaDisplayName(staffProfile?.area)}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -338,7 +338,7 @@ export default function StaffDashboard() {
                   className="flex items-center gap-2 px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors"
                 >
                   <BarChart3 className="w-4 h-4" />
-                  <span className="text-sm">Métricas</span>
+                  <span className="text-sm">Mï¿½tricas</span>
                 </button>
               )}
               <div className="flex items-center gap-2">
@@ -556,7 +556,7 @@ export default function StaffDashboard() {
                       <th className="text-center py-3 px-4 text-gray-400 font-medium">Entregados</th>
                       <th className="text-center py-3 px-4 text-gray-400 font-medium">Pendientes</th>
                       <th className="text-center py-3 px-4 text-gray-400 font-medium">Cancelados</th>
-                      <th className="text-center py-3 px-4 text-gray-400 font-medium">Éxito</th>
+                      <th className="text-center py-3 px-4 text-gray-400 font-medium">ï¿½xito</th>
                       <th className="text-center py-3 px-4 text-gray-400 font-medium">Tiempo Promedio</th>
                       <th className="text-center py-3 px-4 text-gray-400 font-medium">Ingresos</th>
                     </tr>
@@ -690,7 +690,7 @@ export default function StaffDashboard() {
                       onClick={() => updateOrderStatus(order.id, "PREPARING")}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                      Iniciar Preparación
+                      Iniciar Preparaciï¿½n
                     </button>
                   )}
                   {order.status === "PREPARING" && staffProfile.permissions.allowedStatuses.includes("READY") && (
@@ -732,3 +732,4 @@ export default function StaffDashboard() {
     </div>
   );
 }
+

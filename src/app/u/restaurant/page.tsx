@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -176,7 +176,7 @@ export default function RestaurantDashboard() {
     if (socket) {
       // Listener para actualizaciones de pedidos
       socket.on("order-status-update", (data: any) => {
-        console.log("?? Actualización de pedido recibida:", data);
+        console.log("?? Actualizaciï¿½n de pedido recibida:", data);
         setOrders(prevOrders =>
           prevOrders.map(order =>
             order.id === data.orderId?.toString() || order.id === data.orderId
@@ -214,7 +214,7 @@ export default function RestaurantDashboard() {
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Acceso Restringido</h1>
           <p className="text-gray-400 mb-4">
-            Tu área actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
+            Tu ï¿½rea actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
           </p>
           <p className="text-gray-500 text-sm">
             Solo usuarios de Caja, Barra o Mozos pueden acceder al dashboard de restaurante.
@@ -241,7 +241,7 @@ export default function RestaurantDashboard() {
             <div>
               <h1 className="text-2xl font-bold text-[#FF4D2E]">Dashboard de Restaurante</h1>
               <p className="text-sm text-gray-400">
-                Área: {staffProfile?.area} | Rol: {staffProfile?.restaurantRole}
+                ï¿½rea: {staffProfile?.area} | Rol: {staffProfile?.restaurantRole}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -388,7 +388,7 @@ export default function RestaurantDashboard() {
                       onClick={() => updateOrderStatus(order.id, "PREPARING")}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                      Iniciar Preparación
+                      Iniciar Preparaciï¿½n
                     </button>
                   )}
                   {order.status === "PREPARING" && staffProfile.permissions.allowedStatuses.includes("READY") && (
@@ -430,3 +430,4 @@ export default function RestaurantDashboard() {
     </div>
   );
 }
+
