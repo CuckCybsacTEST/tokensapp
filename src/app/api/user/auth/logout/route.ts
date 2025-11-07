@@ -1,4 +1,4 @@
-import { buildClearUserCookie } from "@/lib/auth-user";
+import { buildClearUserCookie } from "@/lib/auth";
 import { logEvent } from "@/lib/log";
 
 export async function POST() {

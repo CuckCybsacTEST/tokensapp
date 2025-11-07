@@ -1,0 +1,1 @@
+SELECT username, role, "createdAt" FROM "User" ORDER BY "createdAt";

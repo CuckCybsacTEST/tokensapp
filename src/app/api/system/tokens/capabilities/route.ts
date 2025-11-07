@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth';
 import { apiError, apiOk } from '@/lib/apiError';
 
 export async function GET(req: Request) {

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyPersonPayload, PersonQrPayload, CURRENT_SIGNATURE_VERSION } from '@/lib/signing';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie as verifyUserCookie } from '@/lib/auth';
 
 // Anti-replay window in seconds (reject duplicate scans for same person in this window)
 const REPLAY_WINDOW_SEC = 10;

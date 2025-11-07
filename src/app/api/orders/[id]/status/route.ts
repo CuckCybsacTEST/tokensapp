@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
 import { mapAreaToStaffRole, getStaffPermissions } from "@/lib/staff-roles";
 import { isValidArea } from "@/lib/areas";

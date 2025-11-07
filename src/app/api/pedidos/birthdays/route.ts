@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiError, apiOk } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { listReservations, createReservation, parseDateStringToLima, limaDateTimeToJSDate } from '@/lib/birthdays/service';
 
 // List reservations (STAFF via user_session)

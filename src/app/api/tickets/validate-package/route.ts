@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyUserSessionCookie, getUserSessionCookieFromRequest } from '@/lib/auth-user';
+import { verifyUserSessionCookie, getUserSessionCookieFromRequest } from '@/lib/auth';
 
 interface ValidatePackageRequest {
   qrCode: string;

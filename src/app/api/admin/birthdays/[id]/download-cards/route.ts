@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { apiError } from '@/lib/apiError';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateQrPngDataUrl } from '@/lib/qr';
 import { composeTemplateWithQr } from '@/lib/print/compose';

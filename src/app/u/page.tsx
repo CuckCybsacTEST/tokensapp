@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '@/lib/attendanceDay';
 import { mapAreaToStaffRole } from '@/lib/staff-roles';

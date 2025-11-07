@@ -46,7 +46,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initial?: AppT
   const syncServer = useCallback((t: AppTheme) => {
     // Heurística simple: si existe algún cookie de sesión, intentamos persistir en servidor.
     try {
-      if (typeof document !== 'undefined' && /(?:admin_session|user_session|session)=/.test(document.cookie)) {
+      if (typeof document !== 'undefined' && /(?:user_session|session)=/.test(document.cookie)) {
         fetch('/api/theme', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ theme: t }) }).catch(()=>{});
       }
     } catch {}

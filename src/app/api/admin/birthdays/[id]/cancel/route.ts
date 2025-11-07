@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiError, apiOk } from '@/lib/apiError';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { cancelReservation } from '@/lib/birthdays/service';
 
 const BodySchema = z.object({ reason: z.string().max(500).optional() });

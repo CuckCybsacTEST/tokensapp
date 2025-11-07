@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { TokensToggle } from '@/app/admin/TokensToggle';
 import TokensClientWrapper from './tokensClientWrapper';

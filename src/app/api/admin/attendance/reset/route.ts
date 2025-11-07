@@ -4,7 +4,7 @@ import { apiError } from '@/lib/apiError';
 import { PrismaClient } from '@prisma/client';
 import { getConfiguredCutoffHour, computeBusinessDayFromUtc } from '@/lib/attendanceDay';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 

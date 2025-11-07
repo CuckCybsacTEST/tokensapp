@@ -111,11 +111,11 @@ export function PrintControlClient() {
         if (!batchesRes.ok) throw new Error("Error al cargar los lotes");
         const batchesData = await batchesRes.json();
         if (!mounted) return;
-        setBatches(batchesData);
+        setBatches(batchesData.data);
 
         // Calcular tokens imprimibles para cada batch
         const tokenInfo: Record<string, { total: number; printable: number }> = {};
-        for (const batch of batchesData) {
+        for (const batch of batchesData.data) {
           const totalTokens = batch?.tokens?.length || 0;
           try {
             const reservedRes = await fetch('/api/admin/batches/reserved-tokens', {
@@ -141,7 +141,7 @@ export function PrintControlClient() {
         if (mounted) setBatchTokenInfo(tokenInfo);
         
         // Si hay un lote preseleccionado, establecerlo
-        if (preselectedBatchId && batchesData.some((b: any) => b.id === preselectedBatchId)) {
+        if (preselectedBatchId && batchesData.data.some((b: any) => b.id === preselectedBatchId)) {
           setSelectedBatchId(preselectedBatchId);
         }
 
@@ -157,7 +157,7 @@ export function PrintControlClient() {
         if (!templatesRes.ok) throw new Error("Error al cargar las plantillas");
         const templatesData = await templatesRes.json();
         if (!mounted) return;
-        setTemplates(templatesData);
+        setTemplates(templatesData.data);
         // Nota: No autoseleccionamos una plantilla por defecto para evitar spinners no deseados.
         // El usuario puede previsualizar sin guardar o subir y luego ver la vista previa.
         // Limpiamos cualquier preview residual.
@@ -362,7 +362,7 @@ export function PrintControlClient() {
         
         if (templatesRes.ok) {
           const templatesData = await templatesRes.json();
-          setTemplates(templatesData);
+          setTemplates(templatesData.data);
         }
       } catch (refreshErr) {
         console.error('Error al refrescar la lista de plantillas:', refreshErr);
@@ -597,7 +597,7 @@ export function PrintControlClient() {
                     
                     if (templatesRes.ok) {
                       const templatesData = await templatesRes.json();
-                      setTemplates(templatesData);
+                      setTemplates(templatesData.data);
                     }
                     
                     setTemplatePreview(null);

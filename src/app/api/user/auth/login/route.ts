@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { logEvent } from "@/lib/log";
-import { createUserSessionCookie, buildSetUserCookie } from "@/lib/auth-user";
+import { createUserSessionCookie, buildSetUserCookie } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { apiError, apiOk } from '@/lib/apiError';
 
@@ -59,15 +59,16 @@ export async function POST(req: Request) {
 
   // Optional check persona inactiva podría devolver apiError('PERSON_INACTIVE', ...) si se habilita en el futuro.
 
-    const role = (user.role === "STAFF" ? "STAFF" : "COLLAB") as "STAFF" | "COLLAB";
+    // Propagar rol real: ADMIN, STAFF o COLLAB
+    const role = (user.role === "ADMIN" ? "ADMIN" : (user.role === "STAFF" ? "STAFF" : "COLLAB")) as "ADMIN" | "STAFF" | "COLLAB";
     const token = await createUserSessionCookie(user.id, role);
 
     await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", { username, role });
 
-    return apiOk({ 
-      ok: true, 
-      role, 
-      userId: user.id, 
+    return apiOk({
+      ok: true,
+      role,
+      userId: user.id,
       personId: user.personId,
       forcePasswordChange: user.forcePasswordChange || false
     }, 200, { 'Set-Cookie': buildSetUserCookie(token) });

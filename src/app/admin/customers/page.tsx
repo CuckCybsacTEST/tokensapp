@@ -1,4 +1,4 @@
-﻿import { AdminLayout } from "@/components/AdminLayout";
+import { AdminLayout } from "@/components/AdminLayout";
 import { CustomerAdmin } from "./AdminCustomersClient";
 
 export default function CustomersAdminPage() {

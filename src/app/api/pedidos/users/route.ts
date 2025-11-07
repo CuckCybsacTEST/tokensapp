@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { formatBirthdayLabel, parseBirthdayInput } from '@/lib/birthday';
 import { isValidArea } from '@/lib/areas';
 import bcrypt from 'bcryptjs';

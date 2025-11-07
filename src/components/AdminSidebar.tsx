@@ -308,24 +308,21 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      const logoutEndpoint = basePath === 'admin' ? '/api/auth/logout' : '/api/user/auth/logout';
-      const loginPath = basePath === 'admin' ? '/admin/login' : '/u/login';
-
-      const res = await fetch(logoutEndpoint, { method: "POST" });
+      const res = await fetch('/api/auth/logout', { method: "POST" });
       if (res.ok) {
         // Clear user info immediately after successful logout
         setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
         // Use window.location for full page reload to re-evaluate server-side layout
-        window.location.href = loginPath;
+        window.location.href = '/u/login';
       } else {
         // Clear user info even on logout failure to be safe
         setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-        window.location.href = loginPath;
+        window.location.href = '/u/login';
       }
     } catch {
       // Clear user info on error as well
-      setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-      window.location.href = basePath === 'admin' ? '/admin/login' : '/u/login';
+  setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+  window.location.href = '/u/login';
     } finally {
       setIsLoggingOut(false);
     }

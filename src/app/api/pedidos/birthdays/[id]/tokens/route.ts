@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiError, apiOk } from '@/lib/apiError';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { generateInviteTokens, listTokens } from '@/lib/birthdays/service';
 import { z } from 'zod';
 

@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie, requireRole } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { ALLOWED_AREAS as AREAS_ALLOWED, isValidArea } from '@/lib/areas';
@@ -14,10 +14,9 @@ const normalizeDni = (s: string) => String(s || '').replace(/\D+/g, '');
 
 export async function GET(req: Request) {
   try {
-    const raw = getSessionCookieFromRequest(req);
-    const session = await verifySessionCookie(raw);
-  const ok = requireRole(session, ['ADMIN', 'STAFF']);
-    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
+    const raw = getUserSessionCookieFromRequest(req);
+    const session = await verifyUserSessionCookie(raw);
+    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const users = await prisma.user.findMany({
       orderBy: { person: { code: 'asc' } },
@@ -140,10 +139,9 @@ async function generateAutoCodeFromDniOrFallback(dni: string): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    const raw = getSessionCookieFromRequest(req);
-    const session = await verifySessionCookie(raw);
-  const ok = requireRole(session, ['ADMIN']); // Creación sólo para ADMIN
-    if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
+    const raw = getUserSessionCookieFromRequest(req);
+    const session = await verifyUserSessionCookie(raw);
+    if (!session || (session.role !== 'ADMIN' as any)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await req.json().catch(() => null);
     if (!body || !body.username || !body.password) {

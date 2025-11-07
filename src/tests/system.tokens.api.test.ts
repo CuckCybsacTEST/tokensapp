@@ -98,7 +98,7 @@ describe('System tokens API: status/toggle auth matrix', () => {
        VALUES ('${userId}', 'colab', 'x', 'COLLAB', '${personId}', '${nowIso}', '${nowIso}')`
     );
 
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const userCookie = await createUserSessionCookie(userId, 'COLLAB');
 
     const { GET: status } = await import('@/app/api/system/tokens/status/route');

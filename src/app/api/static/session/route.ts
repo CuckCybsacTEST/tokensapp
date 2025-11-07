@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiOk, apiError } from '@/lib/apiError';
 import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {

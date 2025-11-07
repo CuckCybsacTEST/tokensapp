@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { logEvent } from "@/lib/log";
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { apiError, apiOk } from '@/lib/apiError';
 

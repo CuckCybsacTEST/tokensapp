@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth-user";
-import { getSessionCookieFromRequest, verifySessionCookie } from "@/lib/auth";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 import { mapAreaToStaffRole, getStaffPermissions } from "@/lib/staff-roles";
 import { isValidArea } from "@/lib/areas";
 import { StaffRole } from "@prisma/client";
@@ -12,14 +11,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticación con user_session o admin_session
+    // Verificar autenticación con user_session (sistema unificado)
     const userCookie = getUserSessionCookieFromRequest(request);
     const userSession = await verifyUserSessionCookie(userCookie);
     
-    const adminCookie = getSessionCookieFromRequest(request);
-    const adminSession = await verifySessionCookie(adminCookie);
-
-    if (!userSession && !adminSession) {
+    if (!userSession) {
       return NextResponse.json(
         { error: "No autenticado" },
         { status: 401 }
@@ -29,55 +25,45 @@ export async function GET(request: NextRequest) {
     let user = null;
     let restaurantRole: StaffRole | null = null;
     let validArea: string | null = null;
-    let isStaffUser = false;
     let effectiveRole: StaffRole | null = null;
-    let isAdminUser = false;
 
-    if (adminSession && !userSession) {
-      // Si hay SOLO sesión de admin (sin sesión de usuario), darle acceso completo como ADMIN
-      effectiveRole = 'ADMIN';
-      isAdminUser = true;
-    } else if (userSession) {
-      // Si hay sesión de usuario (incluso si también hay sesión admin), usar permisos basados en área
-      user = await prisma.user.findUnique({
-        where: { id: userSession.userId },
-        include: {
-          person: true
-        }
-      });
-
-      if (!user) {
-        return NextResponse.json(
-          { error: "Usuario no encontrado" },
-          { status: 404 }
-        );
+    // Obtener información del usuario colaborador
+    user = await prisma.user.findUnique({
+      where: { id: userSession.userId },
+      include: {
+        person: true
       }
+    });
 
-      // Validar y mapear área a rol de restaurante
-      const userArea = user.person?.area;
-      validArea = userArea && isValidArea(userArea) ? userArea : null;
-      restaurantRole = mapAreaToStaffRole(validArea as any);
-
-      // Si es STAFF, usar el rol derivado del área (no forzar ADMIN)
-      isStaffUser = userSession.role === 'STAFF';
-      effectiveRole = restaurantRole; // Usar rol del área, no ADMIN
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
+      );
     }
 
-        const permissions = getStaffPermissions(effectiveRole);
+    // Validar y mapear área a rol de restaurante
+    const userArea = user.person?.area;
+    validArea = userArea && isValidArea(userArea) ? userArea : null;
+    restaurantRole = mapAreaToStaffRole(validArea as any);
+
+    // Si es STAFF, darle acceso completo como ADMIN de restaurante
+    const isStaffUser = userSession.role === 'STAFF';
+    effectiveRole = isStaffUser ? 'ADMIN' : restaurantRole;
+
+    const permissions = getStaffPermissions(effectiveRole);
 
     console.log('🔐 Permisos calculados para usuario:', {
-      userId: user?.id || 'admin',
+      userId: user?.id,
       userSessionRole: userSession?.role,
-      adminSession: !!adminSession,
       isStaffUser,
-      isAdminUser,
       effectiveRole,
       area: validArea,
       permissions
     });
 
     // Si no tiene rol de restaurante y no es STAFF, devolver acceso limitado
-    if (!restaurantRole && !isStaffUser && !isAdminUser) {
+    if (!restaurantRole && !isStaffUser) {
       return NextResponse.json({
         hasRestaurantAccess: false,
         area: validArea,
@@ -92,19 +78,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Para usuarios admin (sin sesión de usuario), no necesitamos registro en tabla Staff
-    if (isAdminUser) {
-      return NextResponse.json({
-        hasRestaurantAccess: true,
-        userId: 'admin',
-        name: 'Administrator',
-        role: effectiveRole,
-        area: null,
-        permissions
-      });
-    }
-
-    // Para usuarios colaboradores (con sesión de usuario), buscar o crear registro en tabla Staff
+    // Para usuarios colaboradores, buscar o crear registro en tabla Staff
     if (user) {
       let staffRecord = await prisma.staff.findUnique({
         where: { userId: user.id }

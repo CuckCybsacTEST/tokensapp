@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { invalidateSystemConfigCache } from '@/lib/config';
 import { computeTokensEnabled } from '@/lib/tokensMode';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth';
 import { apiError } from '@/lib/apiError';
 // Prefer Lima timezone by default; allow override via env
 const TOKENS_TZ = process.env.TOKENS_TIMEZONE || 'America/Lima';

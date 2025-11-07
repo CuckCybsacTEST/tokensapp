@@ -32,7 +32,6 @@ const MATCHERS: TitleMatcher[] = [
   { test: p => p.startsWith('/admin/printstatics'), build: () => 'Impresión de Tokens Estáticos' },
   { test: p => p.startsWith('/admin/shows'), build: () => 'Shows' },
   { test: p => p.startsWith('/admin/restore'), build: () => 'Restaurar' },
-  { test: p => p.startsWith('/admin/login'), build: () => 'Login Admin' },
   { test: p => p.startsWith('/admin/day-brief'), build: () => 'Brief del Día' },
   { test: p => p.startsWith('/admin/birthdays/'), build: p => 'Cumpleaños ' + p.split('/').pop() },
   { test: p => p.startsWith('/admin/birthdays'), build: () => 'Cumpleaños' },

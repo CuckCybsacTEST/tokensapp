@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import culqi from '../../../../../../lib/culqi';
 import { isCulqiRealMode } from '@/lib/featureFlags';
 import { emitOfferPurchased } from '@/lib/socket/offers';

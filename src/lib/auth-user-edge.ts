@@ -1,6 +1,6 @@
 /* Edge-safe user auth helpers using Web Crypto only for Next.js middleware */
 
-export type UserSessionRole = 'COLLAB' | 'STAFF';
+export type UserSessionRole = 'COLLAB' | 'STAFF' | 'ADMIN';
 
 export interface UserSessionData {
   iat: number;

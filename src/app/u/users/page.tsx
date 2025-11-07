@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import UsersRegisterClient from '@/app/u/users/UsersRegisterClient';
 
 export const dynamic = 'force-dynamic';

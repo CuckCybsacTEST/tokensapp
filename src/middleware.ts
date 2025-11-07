@@ -1,219 +1,135 @@
 import { NextRequest, NextResponse } from "next/server";
-import { edgeApiError } from '@/lib/edgeApiError';
-
-import { getSessionCookieFromRequest, verifySessionCookieEdge as verifySessionCookie, requireRoleEdge } from "@/lib/auth-edge";
-import { getUserSessionCookieFromRequest as getUserCookieEdge, verifyUserSessionCookieEdge as verifyUserCookieEdge } from "@/lib/auth-user-edge";
-
-// Protect admin API + admin panel routes except auth login/logout.
-const PROTECTED_API_PREFIXES = [
-  "/api/prizes",
-  "/api/batch",
-  "/api/system",
-  "/api/batches",
-  "/api/scanner/metrics",
-  "/api/scanner/recent",
-  "/api/scanner/events",
-];
-const ADMIN_PANEL_PREFIX = "/admin";
-const ADMIN_API_PREFIX = "/api/admin";
-const SCANNER_PAGE_PREFIX = "/scanner";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  
-  // Redirección de la raíz a marketing
+
+  // Redirect root to marketing
   if (pathname === "/") {
     return NextResponse.redirect(new URL("/marketing", req.url));
   }
-  
-  // Redirección específica para evitar problemas de layout
-  if (pathname === "/admin") {
-    const hasValidSession = await (async () => {
-      const raw = getSessionCookieFromRequest(req as unknown as Request);
-      return await verifySessionCookie(raw);
-    })();
-    
-    if (!hasValidSession) {
-      const loginUrl = new URL("/admin/login", req.nextUrl.origin);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
-  
-  // Public auth endpoints & login page itself must bypass protection
-  if (pathname.startsWith("/api/auth/")) return NextResponse.next();
-  if (pathname.startsWith("/api/user/auth/")) return NextResponse.next();
-  if (pathname === "/admin/login") return NextResponse.next();
-  if (pathname === "/u/login") return NextResponse.next();
-  if (pathname === "/u/register") {
-    // Si ya existe una sesión (admin o colaborador) no permitir registrar otro usuario sin cerrar sesión
-    try {
-      const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
-      const adminSession = await verifySessionCookie(adminRaw);
-      const uRaw = getUserCookieEdge(req as unknown as Request);
-      const uSession = await verifyUserCookieEdge(uRaw);
-      if (adminSession || uSession) {
-        return NextResponse.redirect(new URL('/u', req.url));
-      }
-    } catch {}
+
+  // Public routes - no authentication required
+  const publicRoutes = [
+    "/marketing",
+    "/u/login",
+    "/u/reset-password",
+    "/u/register",
+    "/api/user/auth/login",
+    "/api/user/auth/reset-password"
+  ];
+
+  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
     return NextResponse.next();
   }
-  if (pathname === "/u/reset-password") return NextResponse.next();
 
-  // BYOD area (/u/**): require collaborator session (COLLAB/STAFF) or admin (ADMIN/STAFF)
-  if ((pathname === "/u" || pathname.startsWith("/u/")) && pathname !== '/u/register') {
-    // Allow unauthenticated access for the public reset page
-    if (pathname === '/u/reset-password') {
+  // Get user session (unified authentication system)
+  const userCookie = getUserSessionCookieFromRequest(req);
+  const userSession = userCookie ? await verifyUserSessionCookie(userCookie) : null;
+
+  // Collaborator area (/u/*) - requires any valid user session
+  if (pathname.startsWith("/u/") || pathname === "/u") {
+    if (!userSession) {
+      const loginUrl = new URL('/u/login', req.nextUrl.origin);
+      loginUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // Admin panel (/admin/*) - requires ADMIN or STAFF (limited routes)
+  if (pathname.startsWith("/admin/")) {
+    if (!userSession) {
+      const loginUrl = new URL('/u/login', req.nextUrl.origin);
+      loginUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // STAFF can access limited admin routes
+    const staffAllowedRoutes = [
+      '/admin/attendance',
+      '/admin/tokens',
+      '/admin/day-brief',
+      '/admin/users'
+    ];
+
+    const isStaffAllowedRoute = staffAllowedRoutes.some(route => pathname.startsWith(route));
+
+    if (userSession.role === 'ADMIN' || (userSession.role === 'STAFF' && isStaffAllowedRoute)) {
       return NextResponse.next();
     }
-    const adminRaw = getSessionCookieFromRequest(req as unknown as Request);
-    const adminSession = await verifySessionCookie(adminRaw);
-    const uRaw = getUserCookieEdge(req as unknown as Request);
-    const uSession = await verifyUserCookieEdge(uRaw);
-    const allowedByAdmin = !!adminSession && requireRoleEdge(adminSession, ['ADMIN', 'STAFF']).ok;
-    const allowedByUser = !!uSession; // any valid collaborator
-    if (!allowedByAdmin && !allowedByUser) {
-      const isApi = pathname.startsWith('/api');
-      if (!isApi) {
-        const loginUrl = new URL('/u/login', req.nextUrl.origin);
-        loginUrl.searchParams.set('next', pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-      return edgeApiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
-    }
+
+    // Access denied
+    const loginUrl = new URL('/u/login', req.nextUrl.origin);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
   }
-  const needsAuth =
-    PROTECTED_API_PREFIXES.some((p) => pathname.startsWith(p)) ||
-    (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") ||
-    pathname.startsWith(SCANNER_PAGE_PREFIX);
-  if (needsAuth) {
-    // Early bypass for cron: allow calling the scheduled-enable endpoint with x-cron-secret without any session
+
+  // Admin APIs (/api/admin/*) - requires ADMIN or STAFF (limited APIs)
+  if (pathname.startsWith("/api/admin/")) {
+    if (!userSession) {
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    // STAFF can access limited admin APIs
+    const staffAllowedAPIs = [
+      '/api/admin/attendance',
+      '/api/admin/tokens',
+      '/api/admin/day-brief',
+      '/api/admin/users'
+    ];
+
+    const isStaffAllowedAPI = staffAllowedAPIs.some(api => pathname.startsWith(api));
+
+    if (userSession.role === 'ADMIN' || (userSession.role === 'STAFF' && isStaffAllowedAPI)) {
+      return NextResponse.next();
+    }
+
+    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  }
+
+  // System APIs (/api/system/*) - requires ADMIN or STAFF
+  if (pathname.startsWith("/api/system/")) {
+    // Cron bypass for scheduled operations
     if (pathname === '/api/system/tokens/enable-scheduled') {
       const cronSecret = req.headers.get('x-cron-secret') || '';
       if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
         return NextResponse.next();
       }
     }
-    const raw = getSessionCookieFromRequest(req as unknown as Request);
-    const session = await verifySessionCookie(raw);
-    // User session (collaborator) for scanner access
-    const uRaw = getUserCookieEdge(req as unknown as Request);
-    const uSession = await verifyUserCookieEdge(uRaw);
-    const hasAnySession = !!session || !!uSession;
-    if (!hasAnySession) {
-      const isApi = pathname.startsWith('/api');
-      const isProtectedPage = pathname.startsWith('/admin') || pathname.startsWith(SCANNER_PAGE_PREFIX);
-      if (isProtectedPage && !isApi) {
-        // For scanner page, redirect to collaborator login by default
-        const loginUrl = new URL(pathname.startsWith(SCANNER_PAGE_PREFIX) ? '/u/login' : '/admin/login', req.nextUrl.origin);
-        loginUrl.searchParams.set('next', pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-      return edgeApiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
+
+    if (!userSession || !['ADMIN', 'STAFF'].includes(userSession.role)) {
+      return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
     }
 
-    // Role-based authorization
-    // 1) Admin panel: default only ADMIN; allow STAFF for specific pages
-    if (pathname.startsWith(ADMIN_PANEL_PREFIX) && pathname !== "/admin/login") {
-      const isStaffAllowedPath = pathname === '/admin/attendance' || pathname === '/admin/tokens' || pathname === '/admin/day-brief' || pathname === '/admin/users';
-      if (isStaffAllowedPath && !session) {
-        // Permitir user_session STAFF sin admin_session solo para /admin/attendance (y paths staffAllowed)
-        const uRaw2 = getUserCookieEdge(req as unknown as Request);
-        const uSession2 = await verifyUserCookieEdge(uRaw2);
-        if (uSession2 && uSession2.role === 'STAFF') {
-          // continuar sin redirigir
-        } else {
-          const loginUrl = new URL('/admin/login', req.nextUrl.origin);
-          loginUrl.searchParams.set('next', pathname);
-          return NextResponse.redirect(loginUrl);
-        }
-      } else {
-        const roles = isStaffAllowedPath ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
-        const r = requireRoleEdge(session, roles as any);
-        if (!r.ok) {
-          const loginUrl = new URL('/admin/login', req.nextUrl.origin);
-          loginUrl.searchParams.set('next', pathname);
-          return NextResponse.redirect(loginUrl);
-        }
-      }
-    }
-  // 1a) System admin APIs: allow ADMIN/STAFF via admin_session OR STAFF via user_session
-    if (pathname.startsWith('/api/system')) {
-      // Cron bypass: permitir acceso con header secreto únicamente para el endpoint de habilitación programada
-      if (pathname === '/api/system/tokens/enable-scheduled') {
-        const cronSecret = req.headers.get('x-cron-secret') || '';
-        if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
-          return NextResponse.next();
-        }
-      }
-      // Para delete-scheduled exigir ADMIN explícito (sin bypass por cron)
-      if (pathname === '/api/system/tokens/delete-scheduled') {
-        const r = requireRoleEdge(session, ['ADMIN']);
-        if (!r.ok) {
-          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-        }
-        return NextResponse.next();
-      }
-      // Purgar batches manual: sólo ADMIN
-      if (pathname === '/api/system/tokens/purge-batches') {
-        const r = requireRoleEdge(session, ['ADMIN']);
-        if (!r.ok) {
-          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-        }
-        return NextResponse.next();
-      }
-      const adminOk = requireRoleEdge(session, ['ADMIN', 'STAFF'] as any).ok;
-      const userOk = !!uSession && (uSession.role === 'STAFF');
-      if (!adminOk && !userOk) {
-        return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-      }
-    }
-    // 1b) Admin API: require ADMIN or STAFF depending on endpoint; default ADMIN-only for safety, but allow STAFF for subtrees we know safe.
-    if (pathname.startsWith(ADMIN_API_PREFIX)) {
-      // By default require ADMIN; allow STAFF for specific endpoints (including via user_session for attendance only)
-      const staffAllowed = (
-        (pathname.startsWith('/api/admin/users/') && pathname.endsWith('/password-otp')) ||
-        pathname.startsWith('/api/admin/day-brief') ||
-        pathname.startsWith('/api/admin/attendance') ||
-        pathname === '/api/admin/users'
-      );
-      if (pathname.startsWith('/api/admin/attendance') && !session) {
-        // Allow user_session STAFF for attendance endpoints even without admin_session
-  const uRaw2 = getUserCookieEdge(req as unknown as Request);
-  const uSession2 = await verifyUserCookieEdge(uRaw2);
-        if (uSession2 && uSession2.role === 'STAFF') {
-          // allow
-        } else {
-          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-        }
-      } else {
-        const roles = staffAllowed ? ['ADMIN', 'STAFF'] as const : ['ADMIN'] as const;
-        const r = requireRoleEdge(session, roles as any);
-        if (!r.ok) {
-          return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-        }
-      }
-    }
-    // 2) Scanner page: allow ADMIN/STAFF via admin_session OR any user_session (COLLAB/STAFF)
-    if (pathname.startsWith(SCANNER_PAGE_PREFIX) && !pathname.startsWith('/api')) {
-      // Admin/staff via admin_session already validated above if present. If only user_session present, allow.
-      const hasAdmin = !!session && requireRoleEdge(session, ['ADMIN', 'STAFF']).ok;
-      if (!hasAdmin && !uSession) {
-        const loginUrl = new URL('/u/login', req.nextUrl.origin);
-        loginUrl.searchParams.set('next', pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-    }
-    // 3) Admin scanner APIs: only ADMIN
-    if (pathname.startsWith('/api/scanner/metrics') || pathname.startsWith('/api/scanner/recent') || pathname.startsWith('/api/scanner/events')) {
-      const r = requireRoleEdge(session, ['ADMIN']);
-      if (!r.ok) {
-        return edgeApiError('FORBIDDEN','FORBIDDEN',undefined,403);
-      }
-    }
+    return NextResponse.next();
   }
+
+  // Scanner routes - requires any valid user session
+  if (pathname.startsWith("/scanner")) {
+    if (!userSession) {
+      const loginUrl = new URL('/u/login', req.nextUrl.origin);
+      loginUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // Protected APIs - require any valid user session
+  const protectedAPIs = [
+    "/api/prizes",
+    "/api/batch",
+    "/api/batches",
+    "/api/scanner",
+    "/api/tickets",
+    "/api/birthdays"
+  ];
+
+  const isProtectedAPI = protectedAPIs.some(api => pathname.startsWith(api));
+
+  if (isProtectedAPI && !userSession) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
+
   return NextResponse.next();
 }
-
-export const config = {
-  matcher: ["/", "/api/:path*", "/admin/:path*", "/scanner", "/scanner/:path*", "/u/:path*"],
-};

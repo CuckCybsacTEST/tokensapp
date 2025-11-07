@@ -80,7 +80,7 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
       `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
        VALUES ('${userId}', 'staffer', 'x', 'STAFF', '${personId}', '${nowIso}', '${nowIso}')`
     );
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const userCookie = await createUserSessionCookie(userId, 'STAFF');
     const { GET: caps } = await import('@/app/api/system/tokens/capabilities/route');
     const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { userCookie }) as any);
@@ -104,7 +104,7 @@ describe('System tokens capabilities: canView/canToggle matrix', () => {
       `INSERT INTO User (id, username, passwordHash, role, personId, createdAt, updatedAt)
        VALUES ('${userId}', 'colab', 'x', 'COLLAB', '${personId}', '${nowIso}', '${nowIso}')`
     );
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const userCookie = await createUserSessionCookie(userId, 'COLLAB');
     const { GET: caps } = await import('@/app/api/system/tokens/capabilities/route');
     const r = await caps(makeReq('http://test/api/system/tokens/capabilities', { userCookie }) as any);

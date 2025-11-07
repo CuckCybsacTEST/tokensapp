@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { verifySessionCookie } from '@/lib/auth';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import { UsersClient } from './UsersClient';
 import ReactAdminUsers from './ReactAdminUsers';
 import { AdminLayout } from "@/components/AdminLayout";
@@ -9,9 +9,9 @@ export default async function AdminUsersPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const raw = cookies().get('admin_session')?.value;
-  const session = await verifySessionCookie(raw);
-  const role = session?.role || 'ADMIN';
+  const raw = cookies().get('user_session')?.value;
+  const session = await verifyUserSessionCookie(raw);
+  const role = session?.role || 'GUEST';
 
   // STAFF users get limited interface
   if (role === 'STAFF') {

@@ -423,7 +423,7 @@ export default function AdminTicketsPage() {
               Necesitas iniciar sesión como administrador o staff para acceder a esta página.
             </p>
             <a
-              href="/admin/login"
+              href="/u/login"
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#FF4D2E] hover:bg-[#FF4D2E]/90"
             >
               Ir al Login

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import JSZip from 'jszip';
 import { generateQrPngDataUrl } from '@/lib/qr';

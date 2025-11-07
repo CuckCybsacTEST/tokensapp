@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUserSessionCookie } from "@/lib/auth-user";
+import { verifyUserSessionCookie } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 

@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import { rangeBusinessDays, type Period } from '@/lib/date';
 
 // Esta ruta usa encabezados/cookies para auth dual -> forzar dinámica para evitar intento de prerender

@@ -111,7 +111,7 @@ export function PrintControlClient() {
         if (!batchesRes.ok) throw new Error("Error al cargar los lotes");
         const allBatchesData = await batchesRes.json();
         // Filtrar solo batches de ruleta (staticTargetUrl es null)
-        const batchesData = allBatchesData.filter((batch: any) => batch.staticTargetUrl === null || batch.staticTargetUrl === undefined);
+        const batchesData = allBatchesData.data.filter((batch: any) => batch.staticTargetUrl === null || batch.staticTargetUrl === undefined);
         if (!mounted) return;
         setBatches(batchesData);
 
@@ -159,7 +159,7 @@ export function PrintControlClient() {
         if (!templatesRes.ok) throw new Error("Error al cargar las plantillas");
         const templatesData = await templatesRes.json();
         if (!mounted) return;
-        setTemplates(templatesData);
+        setTemplates(templatesData.data);
         // Nota: No autoseleccionamos una plantilla por defecto para evitar spinners no deseados.
         // El usuario puede previsualizar sin guardar o subir y luego ver la vista previa.
         // Limpiamos cualquier preview residual.
@@ -364,7 +364,7 @@ export function PrintControlClient() {
         
         if (templatesRes.ok) {
           const templatesData = await templatesRes.json();
-          setTemplates(templatesData);
+          setTemplates(templatesData.data);
         }
       } catch (refreshErr) {
         console.error('Error al refrescar la lista de plantillas:', refreshErr);
@@ -599,7 +599,7 @@ export function PrintControlClient() {
                     
                     if (templatesRes.ok) {
                       const templatesData = await templatesRes.json();
-                      setTemplates(templatesData);
+                      setTemplates(templatesData.data);
                     }
                     
                     setTemplatePreview(null);

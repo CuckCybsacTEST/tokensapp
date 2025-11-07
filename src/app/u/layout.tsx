@@ -3,7 +3,7 @@ import UserLogoutButton from "./components/LogoutButton";
 import BackLink from "./components/BackLink";
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { cookies } from "next/headers";
-import { verifyUserSessionCookie } from "@/lib/auth-user";
+import { verifyUserSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const metadata = {

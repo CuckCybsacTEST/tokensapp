@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiError, apiOk } from '@/lib/apiError';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { getReservation } from '@/lib/birthdays/service';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {

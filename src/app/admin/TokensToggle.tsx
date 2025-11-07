@@ -11,7 +11,7 @@ interface Props {
   loginPath?: string;
 }
 
-export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/admin/login' }: Props) {
+export function TokensToggle({ initialEnabled, canToggle = true, loginPath = '/u/login' }: Props) {
   // Importante: arrancamos en null (loading) para evitar rebote visual por SSR
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);

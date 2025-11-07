@@ -111,7 +111,7 @@ describe('API /api/tasks (list & save)', () => {
 
   it('happy path: list returns active tasks; save upserts statuses', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tasks';
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const cookie = await createUserSessionCookie('u1', 'COLLAB');
 
     const { GET: listHandler } = await import('@/app/api/tasks/list/route');
@@ -164,7 +164,7 @@ describe('API /api/tasks (list & save)', () => {
 
   it('edge: invalid day -> 400 (list and save)', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tasks';
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const cookie = await createUserSessionCookie('u1', 'COLLAB');
 
     const { GET: listHandler } = await import('@/app/api/tasks/list/route');
@@ -190,7 +190,7 @@ describe('API /api/tasks (list & save)', () => {
 
   it('edge: empty items -> 200 with saved: 0', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tasks';
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const cookie = await createUserSessionCookie('u1', 'COLLAB');
     const { POST: saveHandler } = await import('@/app/api/tasks/save/route');
 
@@ -203,7 +203,7 @@ describe('API /api/tasks (list & save)', () => {
 
   it('lista por área: muestra globales + del área del colaborador', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tasks';
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const { GET: listHandler } = await import('@/app/api/tasks/list/route');
 
     // Ana es de Barra
@@ -230,7 +230,7 @@ describe('API /api/tasks (list & save)', () => {
   it('measurable task: metadata present and save derives done by target', async () => {
     process.env.TOKEN_SECRET = 'test_secret_tasks';
     const { prisma } = await import('@/lib/prisma');
-    const { createUserSessionCookie } = await import('@/lib/auth-user');
+    const { createUserSessionCookie } = await import('@/lib/auth');
     const cookie = await createUserSessionCookie('u1', 'COLLAB');
 
     // Insert measurable task (global)

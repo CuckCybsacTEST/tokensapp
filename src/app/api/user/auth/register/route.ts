@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { isValidArea } from '@/lib/areas';
-import { createUserSessionCookie, buildSetUserCookie } from '@/lib/auth-user';
+import { createUserSessionCookie, buildSetUserCookie } from '@/lib/auth';
 import { parseBirthdayInput } from '@/lib/birthday';
 
 const esc = (s: string) => s.replace(/'/g, "''");

@@ -2,8 +2,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { logEvent } from '@/lib/log';
 import { checkRateLimitCustom } from '@/lib/rateLimit';
-import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
-import { getUserSessionCookieFromRequest as getUserCookie, verifyUserSessionCookie } from '@/lib/auth-user';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { apiError, apiOk } from '@/lib/apiError';
 
 export const dynamic = 'force-dynamic';
@@ -14,12 +13,10 @@ function normDni(s: unknown): string {
 
 export async function POST(req: Request) {
   try {
-    // Debe ser público: no permitir si hay una sesión activa (admin o colaborador)
-    const adminRaw = getSessionCookieFromRequest(req);
-    const adminSession = await verifySessionCookie(adminRaw);
-    const userRaw = getUserCookie(req);
+    // Debe ser público: no permitir si hay una sesión activa de usuario
+    const userRaw = getUserSessionCookieFromRequest(req);
     const userSession = await verifyUserSessionCookie(userRaw);
-    if (adminSession || userSession) {
+    if (userSession) {
       return apiError('MUST_LOGOUT', 'Debe cerrar sesión antes de continuar', undefined, 400);
     }
 

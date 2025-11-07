@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { verifyUserSessionCookie } from '@/lib/auth-user';
+import { verifyUserSessionCookie } from '@/lib/auth';
 import ProfileClient from '@/app/u/profile/ProfileClient';
 
 export const dynamic = 'force-dynamic';

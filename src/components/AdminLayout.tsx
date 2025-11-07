@@ -12,7 +12,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', hasSession = true }: AdminLayoutProps) {
-  // Function to check if we're on mobile
+  // Function to check if we're on mobile - only call after hydration
   const isMobile = () => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 768; // md breakpoint in Tailwind
@@ -20,10 +20,15 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
     return false;
   };
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobile());
+  // Start with sidebar collapsed on mobile by default, but use useState with proper hydration
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Update sidebar state when window resizes
+  // Update sidebar state when window resizes and after hydration
   useEffect(() => {
+    setIsHydrated(true);
+    setSidebarCollapsed(isMobile());
+
     const handleResize = () => {
       setSidebarCollapsed(isMobile());
     };
@@ -31,6 +36,9 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Use default collapsed state during SSR to prevent hydration mismatch
+  const currentSidebarCollapsed = isHydrated ? sidebarCollapsed : false;
 
   // If no session, show content without sidebar
   if (!hasSession) {
@@ -103,14 +111,14 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
       {/* Sidebar - Fixed position */}
       <div className="fixed inset-y-0 left-0 z-50">
         <AdminSidebar
-          isCollapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          isCollapsed={currentSidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!currentSidebarCollapsed)}
           basePath={basePath}
         />
       </div>
 
       {/* Main Content - Offset by sidebar width */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'} flex flex-col min-h-screen`}>
+      <div className={`transition-all duration-300 ${currentSidebarCollapsed ? 'ml-16' : 'ml-64'} flex flex-col min-h-screen`}>
         {/* Header - Only show if title or breadcrumbs exist */}
         {(title || (breadcrumbs && breadcrumbs.length > 0)) && (
           <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">

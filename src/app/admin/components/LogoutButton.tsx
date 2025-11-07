@@ -20,7 +20,7 @@ export default function LogoutButton() {
       });
       
       if (response.ok) {
-        router.push("/admin/login");
+        router.push("/u/login");
       } else {
         console.error("Error al cerrar sesión");
         setIsLoggingOut(false);
