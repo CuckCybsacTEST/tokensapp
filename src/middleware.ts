@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
+import { isBirthdaysEnabledPublic } from "@/lib/featureFlags";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -121,11 +122,32 @@ export async function middleware(req: NextRequest) {
     "/api/batch",
     "/api/batches",
     "/api/scanner",
-    "/api/tickets",
-    "/api/birthdays"
+    "/api/tickets"
+  ];
+
+  // Public birthday APIs when feature flag is enabled
+  const publicBirthdayAPIs = [
+    "/api/birthdays/packs",
+    "/api/birthdays/slots",
+    "/api/birthdays/reservations",
+    "/api/birthdays/referrers/",
+    "/api/birthdays/search",
+    "/api/birthdays/invite/",
+    "/api/birthdays/public/"
   ];
 
   const isProtectedAPI = protectedAPIs.some(api => pathname.startsWith(api));
+  const isPublicBirthdayAPI = publicBirthdayAPIs.some(api => pathname.startsWith(api));
+
+  // Allow public access to birthday APIs when feature flag is enabled
+  if (isPublicBirthdayAPI && isBirthdaysEnabledPublic()) {
+    return NextResponse.next();
+  }
+
+  // Block other birthday APIs if not authenticated
+  if (pathname.startsWith("/api/birthdays") && !userSession) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
 
   if (isProtectedAPI && !userSession) {
     return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
