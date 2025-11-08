@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 
 function ColorPalette({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   const COLORS = [
@@ -62,9 +62,13 @@ export default function PrizeManager({
     try {
       const res = await fetch('/api/prizes');
       if (res.ok) {
-        const list = await res.json();
-        setPrizes(list);
-        onPrizesUpdated?.(list);
+        const responseData = await res.json();
+        // Handle both direct array response and { data: [...] } format
+        const list = Array.isArray(responseData) ? responseData : responseData?.data;
+        if (Array.isArray(list)) {
+          setPrizes(list);
+          onPrizesUpdated?.(list);
+        }
       }
     } catch {}
   }
@@ -196,6 +200,11 @@ export default function PrizeManager({
       setDeletingId(null);
     }
   }
+
+  // Update internal state when initialPrizes changes (e.g., from PrizeQuickStock updates)
+  useEffect(() => {
+    setPrizes(initialPrizes);
+  }, [initialPrizes]);
 
   return (
     <div className="space-y-8">
