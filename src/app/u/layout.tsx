@@ -1,6 +1,6 @@
 import React from "react";
 import UserLogoutButton from "./components/LogoutButton";
-import BackLink from "./components/BackLink";
+import SmartBackLink from "./components/SmartBackLink";
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth";
@@ -72,11 +72,11 @@ export default async function ULayout({ children }: { children: React.ReactNode 
             )}
           </div>
             <div className="flex items-center gap-2">
-              <BackLink />
+              <SmartBackLink />
               {me ? (
                 <>
-                  <ThemeToggle compact />
                   <UserLogoutButton />
+                  <ThemeToggle compact />
                 </>
               ) : (
                 <ThemeToggle compact />

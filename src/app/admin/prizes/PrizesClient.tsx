@@ -12,8 +12,14 @@ export default function PrizesClient({
   lastBatch: Record<string, { id: string; name: string; createdAt: Date }>;
   batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; label?: string; color?: string|null; count: number; expired: number; valid: number }> }>;
 }) {
-  const [prizes, setPrizes] = useState(initialPrizes);
-  const hasPrizes = prizes && prizes.length > 0;
+  const [prizes, setPrizes] = useState(Array.isArray(initialPrizes) ? initialPrizes : []);
+  const hasPrizes = Array.isArray(prizes) && prizes.length > 0;
+
+  // Wrapper para setPrizes
+  const setPrizesWithLog = React.useCallback((newPrizes: any[]) => {
+    setPrizes(newPrizes);
+  }, []);
+
   function SystemPrizesControls() {
     const [pending, startTransition] = useTransition();
     const [msg, setMsg] = useState<string | null>(null);
@@ -23,8 +29,15 @@ export default function PrizesClient({
     async function refreshPrizes() {
       const res = await fetch('/api/prizes');
       if (res.ok) {
-        const list = await res.json();
-        setPrizes(list);
+        const responseData = await res.json();
+        // Handle both direct array response and { data: [...] } format
+        const list = Array.isArray(responseData) ? responseData : responseData?.data;
+        if (Array.isArray(list)) {
+          setPrizesWithLog(list);
+        } else {
+          console.error('API returned invalid prizes data:', responseData);
+          setPrizesWithLog([]);
+        }
       }
     }
 
@@ -159,7 +172,7 @@ export default function PrizesClient({
   <SystemPrizesControls />
 
   {/* Primero: gestión/creación de premios */}
-  <PrizeManager key={JSON.stringify(prizes.map(p=>p.id+':'+p.stock))} initialPrizes={prizes} onPrizesUpdated={setPrizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
+  <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizesWithLog} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
 
   {/* Luego: generación de tokens (si hay premios) */}
   {hasPrizes && (
