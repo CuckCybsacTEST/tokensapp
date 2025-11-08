@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isValidArea, ALLOWED_AREAS } from '@/lib/areas';
+import { mapAreaToStaffRole } from '@/lib/staff-roles';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import bcrypt from 'bcryptjs';
@@ -134,6 +135,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
       if (user.person?.area !== areaRaw) {
         await prisma.person.update({ where: { id: user.personId }, data: { area: areaRaw } });
+
+        // Update staff record role if it exists
+        const newStaffRole = mapAreaToStaffRole(areaRaw as any);
+        if (newStaffRole) {
+          const existingStaff = await prisma.staff.findUnique({ where: { userId: id } });
+          if (existingStaff) {
+            await prisma.staff.update({
+              where: { userId: id },
+              data: { role: newStaffRole }
+            });
+            console.log(`Updated staff role from ${existingStaff.role} to ${newStaffRole} for user ${id} (area changed to ${areaRaw})`);
+          }
+        }
+
         updates.areaChanged = true;
       }
     }

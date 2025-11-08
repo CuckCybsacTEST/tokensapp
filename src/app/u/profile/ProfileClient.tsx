@@ -169,7 +169,7 @@ export default function ProfileClient() {
                     Rol
                   </div>
                   <div className="text-gray-900 dark:text-slate-100 font-medium text-xs sm:text-base">
-                    {profile.role}
+                    {profile.role === 'STAFF' ? (profile.area ? profile.area.charAt(0).toUpperCase() + profile.area.slice(1).toLowerCase() : 'Staff') : profile.role}
                   </div>
                 </div>
 

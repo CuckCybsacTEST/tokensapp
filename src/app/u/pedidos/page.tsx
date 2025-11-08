@@ -396,22 +396,22 @@ export default function CartaDashboard() {
 
   if (staffLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Cargando perfil...</div>
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-900 dark:text-white text-xl">Cargando perfil...</div>
       </div>
     );
   }
 
   if (!staffProfile?.hasRestaurantAccess) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Acceso Restringido</h1>
-          <p className="text-gray-400 mb-4">
-            Tu �rea actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Acceso Restringido</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Tu Área actual ({staffProfile?.area || 'Sin asignar'}) no tiene acceso al sistema de restaurante.
           </p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-500 text-sm">
             Solo usuarios de Caja, Barra o Mozos pueden acceder al dashboard de restaurante.
           </p>
         </div>
@@ -421,30 +421,25 @@ export default function CartaDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-xl">Cargando pedidos...</div>
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-900 dark:text-white text-xl">Cargando pedidos...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-md border-b border-white/10">
+      <div className="sticky top-0 z-50 bg-white dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               {/* Indicador de conexi�n en tiempo real */}
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${socketConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
                   {socketConnected ? '?? Tiempo Real' : '?? Polling'}
                 </span>
-              </div>
-
-              {/* �ltima actualizaci�n */}
-              <div className="text-sm text-gray-500">
-                �ltima actualizaci�n: {lastUpdate.toLocaleTimeString()}
               </div>
 
               {/* Notificaci�n de nuevo pedido */}
@@ -456,11 +451,11 @@ export default function CartaDashboard() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={handleManualRefresh}
                 disabled={refreshing}
-                className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {refreshing ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -488,19 +483,19 @@ export default function CartaDashboard() {
 
       {/* Stats - Solo visible para roles que no sean mozos */}
       {staffProfile?.restaurantRole !== 'WAITER' && (
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="container mx-auto px-4 py-4 sm:py-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4"
+            className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-lg p-3 sm:p-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-400 text-sm">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-400">{pendingOrders}</p>
+                <p className="text-yellow-700 dark:text-yellow-400 text-xs sm:text-sm">Pendientes</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-700 dark:text-yellow-400">{pendingOrders}</p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-400" />
+              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 dark:text-yellow-400" />
             </div>
           </motion.div>
 
@@ -508,14 +503,14 @@ export default function CartaDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4"
+            className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg p-3 sm:p-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-400 text-sm">Preparando</p>
-                <p className="text-2xl font-bold text-blue-400">{preparingOrders}</p>
+                <p className="text-blue-700 dark:text-blue-400 text-xs sm:text-sm">Preparando</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-400">{preparingOrders}</p>
               </div>
-              <ChefHat className="w-8 h-8 text-blue-400" />
+              <ChefHat className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400" />
             </div>
           </motion.div>
 
@@ -523,14 +518,14 @@ export default function CartaDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-green-500/10 border border-green-500/20 rounded-lg p-4"
+            className="bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 rounded-lg p-3 sm:p-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-400 text-sm">Listos</p>
-                <p className="text-2xl font-bold text-green-400">{readyOrders}</p>
+                <p className="text-green-700 dark:text-green-400 text-xs sm:text-sm">Listos</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-400">{readyOrders}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-400" />
+              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 dark:text-green-400" />
             </div>
           </motion.div>
 
@@ -538,14 +533,14 @@ export default function CartaDashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4"
+            className="bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg p-3 sm:p-4"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-400 text-sm">Total Hoy</p>
-                <p className="text-2xl font-bold text-purple-400">{orders.length}</p>
+                <p className="text-purple-700 dark:text-purple-400 text-xs sm:text-sm">Total Hoy</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-700 dark:text-purple-400">{orders.length}</p>
               </div>
-              <Users className="w-8 h-8 text-purple-400" />
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400" />
             </div>
           </motion.div>
           </div>
@@ -556,7 +551,7 @@ export default function CartaDashboard() {
       {/* Filtros */}
       <div className="mb-6">
         <div className="mb-6">
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
             {[
               { key: "all", label: "Todos" },
               { key: "mine", label: "Mis pedidos" },
@@ -569,12 +564,12 @@ export default function CartaDashboard() {
               <button
                 key={key}
                 onClick={() => setSelectedStatus(key === "all" ? "auto" : key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] sm:min-w-[100px] ${
                   (key === "all" && effectiveSelectedStatus === "all") || 
                   (key === "mine" && effectiveSelectedStatus === "mine") ||
                   (key !== "all" && key !== "mine" && effectiveSelectedStatus === key)
                     ? "bg-[#FF4D2E] text-white"
-                    : "bg-white/10 text-white hover:bg-white/20"
+                    : "bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20"
                 }`}
               >
                 {label}
@@ -591,7 +586,7 @@ export default function CartaDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white/5 border border-white/10 rounded-xl p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow"
+              className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 sm:p-4 md:p-6 shadow-lg hover:shadow-xl transition-shadow"
             >
               {/* Header con Estado Destacado y Zona/Mesa */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
@@ -603,13 +598,13 @@ export default function CartaDashboard() {
                   </div>
                   
                   {/* Zona/Mesa - Mayor jerarqu�a */}
-                  <div className="bg-gray-800/50 px-3 py-2 rounded-lg">
-                    <span className="text-white font-bold text-base md:text-lg">{getOrderLocationName(order)}</span>
+                  <div className="bg-gray-100 dark:bg-gray-800/50 px-3 py-2 rounded-lg">
+                    <span className="text-gray-900 dark:text-white font-bold text-base md:text-lg">{getOrderLocationName(order)}</span>
                   </div>
                 </div>
                 
                 {/* ID del pedido y timestamp */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-gray-400">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-gray-500 dark:text-gray-400">
                   <span className="font-mono">#{order.id.slice(-6)}</span>
                   <span className="hidden md:inline">{new Date(order.createdAt).toLocaleTimeString()}</span>
                 </div>
@@ -617,15 +612,15 @@ export default function CartaDashboard() {
 
               {/* Productos - Segunda jerarqu�a */}
               <div className="mb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {order.items.map((item, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <div key={idx} className="bg-gray-50 dark:bg-white/5 rounded-lg p-2 sm:p-3 border border-gray-200 dark:border-white/10">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-white truncate">{item.product.name}</h4>
-                          <p className="text-sm text-gray-300">�{item.quantity}</p>
+                          <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">{item.product.name}</h4>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">�{item.quantity}</p>
                           {item.notes && (
-                            <p className="text-xs text-yellow-400 mt-1 italic">"{item.notes}"</p>
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1 italic">"{item.notes}"</p>
                           )}
                         </div>
                       </div>
@@ -635,27 +630,27 @@ export default function CartaDashboard() {
               </div>
 
               {/* Footer con Precio, Staff y Acciones */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex flex-col gap-4">
                 {/* Precio y Staff */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center justify-between">
                   {/* Precio - Tercera jerarqu�a */}
-                  <div className="text-xl md:text-2xl font-bold text-[#FF4D2E]">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-[#FF4D2E]">
                     S/ {order.total.toFixed(2)}
                   </div>
                   
                   {/* Qui�n hizo el pedido - Cuarta jerarqu�a */}
                   {order.staff && (
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <span className="text-blue-400">??</span>
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+                      <span className="text-blue-600 dark:text-blue-400">??</span>
                       <span className="hidden sm:inline">{order.staff.name}</span>
                       <span className="sm:hidden">{order.staff.name.split(' ')[0]}</span>
-                      <span className="text-gray-500">({order.staff.role})</span>
+                      <span className="text-gray-500 dark:text-gray-500">({order.staff.role})</span>
                     </div>
                   )}
                 </div>
 
                 {/* Acciones */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
                   {staffProfile?.permissions.canUpdateOrderStatus && (
                     <>
                       {/* Bot�n CONFIRMAR - Solo para usuarios que pueden confirmar */}
@@ -663,7 +658,7 @@ export default function CartaDashboard() {
                         <button
                           onClick={() => updateOrderStatus(order.id, "CONFIRMED")}
                           disabled={isAnyActionInProgress(order.id)}
-                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
+                          className="inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[90px] sm:min-w-[80px]"
                         >
                           {isUpdatingOrder(order.id, "CONFIRMED") ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -678,7 +673,7 @@ export default function CartaDashboard() {
                         <button
                           onClick={() => updateOrderStatus(order.id, "PREPARING")}
                           disabled={isAnyActionInProgress(order.id)}
-                          className={`inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] ${
+                          className={`inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed min-w-[90px] sm:min-w-[80px] ${
                             ["PREPARING", "READY", "DELIVERED"].includes(order.status)
                               ? "bg-orange-800 text-gray-300"
                               : "bg-orange-600 hover:bg-orange-700 text-white focus:ring-orange-500"
@@ -699,7 +694,7 @@ export default function CartaDashboard() {
                         <button
                           onClick={() => updateOrderStatus(order.id, "READY")}
                           disabled={isAnyActionInProgress(order.id)}
-                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
+                          className="inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[90px] sm:min-w-[80px]"
                         >
                           {isUpdatingOrder(order.id, "READY") ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -716,7 +711,7 @@ export default function CartaDashboard() {
                         <button
                           onClick={() => updateOrderStatus(order.id, "DELIVERED")}
                           disabled={isAnyActionInProgress(order.id)}
-                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
+                          className="inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[90px] sm:min-w-[80px]"
                         >
                           {isUpdatingOrder(order.id, "DELIVERED") ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -731,7 +726,7 @@ export default function CartaDashboard() {
                         <button
                           onClick={() => updateOrderStatus(order.id, "CANCELLED")}
                           disabled={isAnyActionInProgress(order.id)}
-                          className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
+                          className="inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[90px] sm:min-w-[80px]"
                         >
                           {isUpdatingOrder(order.id, "CANCELLED") ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -748,7 +743,7 @@ export default function CartaDashboard() {
                     <button
                       onClick={() => deleteOrder(order.id)}
                       disabled={deletingOrderId === order.id}
-                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-red-800 hover:bg-red-900 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center justify-center px-4 py-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-red-800 hover:bg-red-900 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {deletingOrderId === order.id ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -765,7 +760,7 @@ export default function CartaDashboard() {
 
         {filteredOrders.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-400">No hay pedidos con el filtro seleccionado</p>
+            <p className="text-gray-500 dark:text-gray-400">No hay pedidos con el filtro seleccionado</p>
           </div>
         )}
       </div>

@@ -47,23 +47,22 @@ export async function GET(request: NextRequest) {
     validArea = userArea && isValidArea(userArea) ? userArea : null;
     restaurantRole = mapAreaToStaffRole(validArea as any);
 
-    // Si es STAFF, darle acceso completo como ADMIN de restaurante
-    const isStaffUser = userSession.role === 'STAFF';
-    effectiveRole = isStaffUser ? 'ADMIN' : restaurantRole;
+    // Usar área directamente para determinar permisos (Opción A: simplicidad)
+    // Eliminada regla especial que convertía STAFF -> ADMIN
+    effectiveRole = restaurantRole;
 
     const permissions = getStaffPermissions(effectiveRole);
 
     console.log('🔐 Permisos calculados para usuario:', {
       userId: user?.id,
       userSessionRole: userSession?.role,
-      isStaffUser,
       effectiveRole,
       area: validArea,
       permissions
     });
 
-    // Si no tiene rol de restaurante y no es STAFF, devolver acceso limitado
-    if (!restaurantRole && !isStaffUser) {
+    // Si no tiene rol de restaurante, devolver acceso limitado
+    if (!restaurantRole) {
       return NextResponse.json({
         hasRestaurantAccess: false,
         area: validArea,

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Plus, Minus } from "lucide-react";
+import { ShoppingCart, Plus, Minus, CheckCircle, AlertCircle, Loader } from "lucide-react";
 import { useMenuSocket } from "../../../hooks/useSocket";
 import Link from "next/link";
 import { Button, ActionButton, QuickActionButton } from "../../../components";
@@ -90,7 +90,16 @@ export default function StaffMenuPage() {
   const [newOrderActivity, setNewOrderActivity] = useState<boolean>(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [autoSelectingZone, setAutoSelectingZone] = useState(false);
   const { socket, isConnected } = useMenuSocket();
+
+  console.log('🔄 StaffMenuPage render:', {
+    staffProfile: !!staffProfile,
+    staffRole: staffProfile?.restaurantRole,
+    locationsCount: locations.length,
+    selectedServicePoint: !!selectedServicePoint,
+    autoSelectingZone
+  });
 
   const getRoleDisplayName = (role: string | null | undefined) => {
     switch (role) {
@@ -146,6 +155,40 @@ export default function StaffMenuPage() {
     }
   }, [socket]);
 
+  // Auto-seleccionar zona para cashier y bartender - useEffect separado para asegurar ejecución
+  useEffect(() => {
+    if (staffProfile && locations.length > 0 && !selectedServicePoint) {
+      if (staffProfile.restaurantRole === 'CASHIER' || staffProfile.restaurantRole === 'BARTENDER') {
+        console.log('🚀 Ejecutando auto-selección específica para:', staffProfile.restaurantRole);
+
+        const specificServicePointIds = {
+          'CASHIER': 'cmhql1hk300022ikabypix2e5',
+          'BARTENDER': 'cmhql214n00042ikaoaz74qra'
+        };
+
+        const targetServicePointId = specificServicePointIds[staffProfile.restaurantRole as keyof typeof specificServicePointIds];
+
+        if (targetServicePointId) {
+          // Buscar directamente el service point por ID
+          for (const location of locations) {
+            if (location.servicePoints) {
+              const found = location.servicePoints.find(sp => sp.id === targetServicePointId && sp.active);
+              if (found) {
+                console.log(`🎯 Service point encontrado y asignado: ${found.location.name} - ${found.number}`);
+                setSelectedServicePoint(found);
+                return; // Salir del useEffect
+              }
+            }
+          }
+
+          // Si no se encontró, mostrar error
+          console.error(`❌ Service point ${targetServicePointId} no encontrado para ${staffProfile.restaurantRole}`);
+          alert(`Error: No se encontró el punto de servicio asignado para ${staffProfile.restaurantRole === 'CASHIER' ? 'Caja' : 'Bartender'}. Verifica la configuración.`);
+        }
+      }
+    }
+  }, [staffProfile?.restaurantRole, locations.length, selectedServicePoint]); // Dependencias más específicas
+
   const fetchStaffProfile = async () => {
     try {
       const response = await fetch("/api/pedidos/me");
@@ -199,11 +242,39 @@ export default function StaffMenuPage() {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch("/api/admin/locations");
+      const response = await fetch("/api/menu/locations");
       if (response.ok) {
         const data = await response.json();
-        console.log("Locations loaded:", data);
+        console.log("Locations loaded:", data.length, "locations");
+        console.log("📍 Locations detail:", data.map((l: any) => ({
+          name: l.name,
+          type: l.type,
+          active: l.active,
+          servicePoints: l.servicePoints?.length || 0,
+          activeServicePoints: l.servicePoints?.filter((sp: any) => sp.active)?.length || 0
+        })));
         setLocations(data);
+
+        // Función de diagnóstico global para debugging
+        (window as any).diagnoseZones = () => {
+          console.log('🔍 DIAGNÓSTICO DE ZONAS');
+          console.log('Staff Profile:', staffProfile);
+          console.log('Locations:', data);
+          console.log('Selected Service Point:', selectedServicePoint);
+          console.log('Auto Selecting Zone:', autoSelectingZone);
+          return {
+            staffRole: staffProfile?.restaurantRole,
+            locationsCount: data.length,
+            activeLocations: data.filter((l: any) => l.active),
+            locationsWithActiveServicePoints: data.filter((l: any) =>
+              l.active && l.servicePoints?.some((sp: any) => sp.active)
+            ),
+            barLocations: data.filter((l: any) => l.type === 'BAR'),
+            selectedServicePoint
+          };
+        };
+      } else {
+        console.error("Error fetching locations:", response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error fetching locations:", error);
@@ -245,8 +316,48 @@ export default function StaffMenuPage() {
   };
 
   const createOrder = async () => {
-    if (!selectedServicePoint || cart.length === 0) {
-      alert("Selecciona una zona/punto de servicio y agrega productos al carrito");
+    // Para cashier y bartender, la zona ya está auto-seleccionada
+    const requiresZoneSelection = staffProfile?.restaurantRole === 'WAITER';
+
+    if (requiresZoneSelection && !selectedServicePoint) {
+      alert("Selecciona una zona/punto de servicio");
+      return;
+    }
+
+    // Validar que hay productos en el carrito
+    if (cart.length === 0) {
+      alert("Agrega al menos un producto al carrito");
+      return;
+    }
+
+    // Validar que hay zona seleccionada (manual o automática)
+    if (!selectedServicePoint) {
+      if (staffProfile?.restaurantRole === 'CASHIER' || staffProfile?.restaurantRole === 'BARTENDER') {
+        // Diagnóstico detallado
+        const diagnostic = {
+          staffRole: staffProfile?.restaurantRole,
+          locationsCount: locations.length,
+          locationsDetail: locations.map(l => ({
+            name: l.name,
+            type: l.type,
+            active: l.active,
+            servicePointsCount: l.servicePoints.length,
+            activeServicePoints: l.servicePoints.filter(sp => sp.active).length
+          })),
+          autoSelectingZone
+        };
+        console.error('🔍 Diagnóstico de zona no seleccionada:', diagnostic);
+
+        alert(`Error: No se pudo seleccionar automáticamente el punto de servicio asignado para ${staffProfile?.restaurantRole === 'CASHIER' ? 'Caja' : 'Bartender'}.
+
+Diagnóstico:
+- Rol: ${staffProfile?.restaurantRole}
+- Ubicaciones disponibles: ${locations.length}
+
+El punto de servicio específico asignado no fue encontrado. Contacta al administrador para verificar la configuración.`);
+      } else {
+        alert("Selecciona una zona/punto de servicio");
+      }
       return;
     }
 
@@ -312,8 +423,6 @@ export default function StaffMenuPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">Carta Digital</h1>
-
               {/* Indicadores de actividad */}
               <div className="flex items-center gap-4">
                 {/* Indicador de conexión */}
@@ -336,14 +445,8 @@ export default function StaffMenuPage() {
 
             <div className="flex items-center gap-3">
               <Link
-                href="/u/mesas"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium"
-              >
-                Mesas
-              </Link>
-              <Link
                 href="/u/pedidos"
-                className="px-4 py-2 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium"
+                className="px-6 py-3 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 rounded-lg transition-colors text-white font-medium text-lg"
               >
                 Control de Pedidos
               </Link>
@@ -413,50 +516,96 @@ export default function StaffMenuPage() {
 
           {/* Cart and Table Selection */}
           <div className="space-y-6">
-            {/* Service Point Selection */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <h3 className="text-lg font-semibold mb-4">Seleccionar Zona/Punto de Servicio</h3>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {locations.map(location => (
-                  <div key={location.id} className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-300 flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        location.type === 'DINING' ? 'bg-blue-500' :
-                        location.type === 'VIP' ? 'bg-purple-500' :
-                        'bg-green-500'
-                      }`}></div>
-                      {location.name}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2 ml-4">
-                      {location.servicePoints.filter(sp => sp.active).map(servicePoint => (
-                        <button
-                          key={servicePoint.id}
-                          onClick={() => setSelectedServicePoint(servicePoint)}
-                          className={`p-3 rounded-lg text-center transition-colors ${
-                            selectedServicePoint?.id === servicePoint.id
-                              ? 'bg-[#FF4D2E] text-white'
-                              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                          }`}
-                        >
-                          <div className="font-semibold">{servicePoint.number}</div>
-                        </button>
-                      ))}
+            {/* Service Point Selection - Solo mostrar para waiters */}
+            {staffProfile?.restaurantRole === 'WAITER' && (
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <h3 className="text-lg font-semibold mb-4">Seleccionar Zona/Punto de Servicio</h3>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {locations.map(location => (
+                    <div key={location.id} className="space-y-2">
+                      <h4 className="font-medium text-sm text-gray-300 flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          location.type === 'DINING' ? 'bg-blue-500' :
+                          location.type === 'VIP' ? 'bg-purple-500' :
+                          'bg-green-500'
+                        }`}></div>
+                        {location.name}
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2 ml-4">
+                        {location.servicePoints.filter(sp => sp.active).map(servicePoint => (
+                          <button
+                            key={servicePoint.id}
+                            onClick={() => setSelectedServicePoint(servicePoint)}
+                            className={`p-3 rounded-lg text-center transition-colors ${
+                              selectedServicePoint?.id === servicePoint.id
+                                ? 'bg-[#FF4D2E] text-white'
+                                : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                            }`}
+                          >
+                            <div className="font-semibold">{servicePoint.number}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedServicePoint && (
+                  <div className="mt-4 p-3 bg-[#FF4D2E]/20 rounded-lg">
+                    <p className="text-sm font-medium">
+                      Seleccionado: {selectedServicePoint.number}
+                      {selectedServicePoint.name && ` (${selectedServicePoint.name})`}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {selectedServicePoint.location.name} - {selectedServicePoint.type.toLowerCase()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Auto-selected zone indicator for cashier/bartender */}
+            {(staffProfile?.restaurantRole === 'CASHIER' || staffProfile?.restaurantRole === 'BARTENDER') && (
+              <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
+                {autoSelectingZone ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <div>
+                      <p className="text-sm font-medium text-yellow-400">
+                        Seleccionando zona automáticamente...
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Centro de despacho
+                      </p>
                     </div>
                   </div>
-                ))}
+                ) : selectedServicePoint ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                      <p className="text-sm font-medium text-green-400">
+                        Zona auto-seleccionada: {selectedServicePoint.number}
+                        {selectedServicePoint.name && ` (${selectedServicePoint.name})`}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {selectedServicePoint.location.name} - Centro de despacho
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium text-red-400">
+                        Error: No se pudo seleccionar zona
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Contacta al administrador
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-              {selectedServicePoint && (
-                <div className="mt-4 p-3 bg-[#FF4D2E]/20 rounded-lg">
-                  <p className="text-sm font-medium">
-                    Seleccionado: {selectedServicePoint.number}
-                    {selectedServicePoint.name && ` (${selectedServicePoint.name})`}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {selectedServicePoint.location.name} - {selectedServicePoint.type.toLowerCase()}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Cart */}
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
@@ -500,6 +649,28 @@ export default function StaffMenuPage() {
                     <span className="text-lg font-semibold">Total:</span>
                     <span className="text-xl font-bold text-[#FF4D2E]">s/ {getTotal().toFixed(2)}</span>
                   </div>
+
+                  {/* Zone Status Indicator for Cashier/Bartender */}
+                  {(staffProfile?.restaurantRole === 'CASHIER' || staffProfile?.restaurantRole === 'BARTENDER') && (
+                    <div className="mb-3 flex items-center gap-2 text-sm">
+                      {selectedServicePoint ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          <span className="text-green-400">
+                            Punto asignado: {selectedServicePoint.location.name} - {selectedServicePoint.number}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-4 h-4 text-red-400" />
+                          <span className="text-red-400">
+                            Buscando punto de servicio asignado para {staffProfile.restaurantRole === 'CASHIER' ? 'Caja' : 'Bartender'}...
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <ActionButton
                     onClick={createOrder}
                     loading={creatingOrder}
@@ -508,7 +679,7 @@ export default function StaffMenuPage() {
                     successMessage="¡Pedido creado!"
                     className="w-full py-3"
                   >
-                    {selectedServicePoint ? 'Crear Pedido' : 'Selecciona una Zona'}
+                    {selectedServicePoint ? 'Crear Pedido' : 'Esperando asignación de zona...'}
                   </ActionButton>
                 </div>
               )}
