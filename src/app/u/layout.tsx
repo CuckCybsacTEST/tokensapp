@@ -73,8 +73,14 @@ export default async function ULayout({ children }: { children: React.ReactNode 
           </div>
             <div className="flex items-center gap-2">
               <BackLink />
-              <ThemeToggle compact />
-              {me ? <UserLogoutButton /> : <div />}
+              {me ? (
+                <>
+                  <ThemeToggle compact />
+                  <UserLogoutButton />
+                </>
+              ) : (
+                <ThemeToggle compact />
+              )}
             </div>
         </div>
       </header>
