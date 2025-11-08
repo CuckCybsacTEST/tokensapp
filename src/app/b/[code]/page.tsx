@@ -148,21 +148,10 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         >← Volver</a>
         
         <h1 className="mt-2 text-4xl md:text-5xl font-extrabold tracking-tight drop-shadow-lg text-center text-[#FF4D2E]">{token.isHost ? 'Acceso Cumpleañero' : 'Acceso Invitado'}</h1>
-        
-        {/* Información de reserva y expiración solo para sesión pública, no staff/admin */}
+
+        {/* Información adicional de expiración solo para sesión pública */}
         {isPublic && (
-          <div className="text-sm opacity-70 mt-2 mb-2 text-center space-y-1">
-            <div>
-              📅 Reserva: {(() => {
-                const reservationDate = data.reservation?.date
-                  ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
-                  : null;
-                if (reservationDate) {
-                  return reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' });
-                }
-                return 'Fecha no disponible';
-              })()}
-            </div>
+          <div className="text-sm opacity-70 mt-2 mb-2 text-center">
             <div>
               ⏰ Expira: {(() => {
                 const expiresAtLima = DateTime.fromJSDate(new Date(token.expiresAt)).setZone('America/Lima');
@@ -175,7 +164,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>
         )}
         {!token.isHost && (
-          <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Este es un pase para la fiesta de {token.celebrantName}</p>
+          <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">este es un pase para la fiesta de</p>
         )}
         
         {isPublic && token.isHost && (
@@ -245,6 +234,64 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
               <div className="text-xl font-bold text-[#FF4D2E]">{token.celebrantName}</div>
               <div className="text-sm opacity-75">Cumpleañero</div>
             </div>
+
+            {/* Información destacada de fecha y hora - Dentro del contenedor del cumpleañero */}
+            <div className="text-center">
+              <div className="inline-flex flex-row items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl">📅</span>
+                  <div className="text-left">
+                    <div className="text-xs font-medium text-white/70 uppercase tracking-wide">Fecha</div>
+                    <div className="text-base sm:text-lg font-bold text-white">
+                      {(() => {
+                        const reservationDate = data.reservation?.date
+                          ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
+                          : null;
+                        if (reservationDate) {
+                          return reservationDate.toLocaleString({ day: '2-digit', month: 'short' }, { locale: 'es-ES' }).toUpperCase().replace('.', '');
+                        }
+                        return 'Fecha no disponible';
+                      })()}
+                    </div>
+                  </div>
+                </div>
+                <div className="block w-px h-8 bg-white/20"></div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl">⏰</span>
+                  <div className="text-left">
+                    <div className="text-xs font-medium text-white/70 uppercase tracking-wide">Hora</div>
+                    <div className="text-base sm:text-lg font-bold text-white">
+                      {data.reservation?.timeSlot || 'Hora no disponible'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Información del pack y botella - Destacado visualmente */}
+            <div className="text-center">
+              <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 bg-gradient-to-r from-[#FF4D2E]/20 to-[#FF8A65]/20 backdrop-blur-sm rounded-xl border border-[#FF4D2E]/30 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl">🎁</span>
+                  <div className="text-left">
+                    <div className="text-xs font-medium text-[#FF4D2E]/80 uppercase tracking-wide">Pack</div>
+                    <div className="text-base sm:text-lg font-bold text-[#FF4D2E]">
+                      {data.token?.packName || 'Pack no disponible'}
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-[#FF4D2E]/30"></div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl">🍾</span>
+                  <div className="text-left">
+                    <div className="text-xs font-medium text-[#FF4D2E]/80 uppercase tracking-wide">Botella</div>
+                    <div className="text-base sm:text-lg font-bold text-[#FF4D2E]">
+                      {data.token?.packBottle || 'Botella no disponible'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             {/* Datos de identificación - Solo mostrar para host */}
             {token.isHost && (
@@ -280,18 +327,6 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
                 )}
               </div>
             )}
-            
-            {/* Detalles operativos - Mostrar para todos */}
-            <div className={`grid grid-cols-2 gap-2 ${token.isHost ? 'pt-2 border-t border-white/10' : 'pt-2'}`}>
-              <div>
-                <span className="font-medium text-white/80">Fecha:</span>
-                <div className="text-sm">{data.reservation.date}</div>
-              </div>
-              <div>
-                <span className="font-medium text-white/80">Hora:</span>
-                <div className="text-sm">{data.reservation.timeSlot}</div>
-              </div>
-            </div>
             
             {/* Estado e ID de reserva - Solo mostrar para host */}
             {token.isHost && (
