@@ -431,44 +431,92 @@ function ChecklistPageInner() {
       <div className="mx-auto max-w-3xl px-4 py-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Checklist</h1>
-            <p className="text-sm text-gray-600">Día: <span className="font-mono">{day}</span></p>
-            <p className="text-sm text-gray-600">Próxima acción: <span className="font-medium">{nextActionLabel}</span></p>
-            {data && (
-              <p className="text-xs text-gray-500">Completadas {Array.from(checked.values()).filter(Boolean).length} / {data.tasks.length}</p>
-            )}
-            {user && (user as any).ok && (
-              <p className="text-sm text-gray-600">Usuario: {(user as any).user.personName} ({(user as any).user.personCode})</p>
-            )}
+          <div className="flex-1">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Checklist</h1>
+
+            {/* Brief primero */}
             {brief && (
-              <div className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                {brief.title && <div className="font-semibold mb-1">{brief.title}</div>}
-                <div className="grid grid-cols-1 gap-1 text-[13px]">
+              <div className="mt-4 rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900 dark:text-slate-100">
+                {brief.title && (
+                  <div className="mb-3 border-b border-slate-200 pb-2 dark:border-slate-600">
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{brief.title}</h2>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {brief.show && (
-                    <div>
-                      <div className="opacity-70">Eventos:</div>
-                      <ul className="list-disc ml-5">
+                    <div className="rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                        <span className="font-semibold text-blue-900 dark:text-blue-200">Eventos</span>
+                      </div>
+                      <ul className="space-y-1 text-sm text-blue-800 dark:text-blue-100">
                         {String(brief.show).split(/\r?\n|;|•/).map((s, i) => s.trim()).filter(Boolean).map((s, i)=> (
-                          <li key={i}>{s}</li>
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-blue-400 dark:bg-blue-300"></span>
+                            <span>{s}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
+
                   {brief.promos && (
-                    <div>
-                      <div className="opacity-70">Promos:</div>
-                      <ul className="list-disc ml-5">
+                    <div className="rounded-md bg-green-50 p-3 dark:bg-green-900/20">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                        <span className="font-semibold text-green-900 dark:text-green-200">Promos</span>
+                      </div>
+                      <ul className="space-y-1 text-sm text-green-800 dark:text-green-100">
                         {String(brief.promos).split(/\r?\n|;|•/).map((s, i) => s.trim()).filter(Boolean).map((s, i)=> (
-                          <li key={i}>{s}</li>
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-green-400 dark:bg-green-300"></span>
+                            <span>{s}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
-                  {brief.notes && <div><span className="opacity-70">Apuntes:</span> {brief.notes}</div>}
+
+                  {brief.notes && (
+                    <div className="rounded-md bg-amber-50 p-3 dark:bg-amber-900/20 md:col-span-2 lg:col-span-1">
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                        <span className="font-semibold text-amber-900 dark:text-amber-200">Apuntes</span>
+                      </div>
+                      <div className="text-sm text-amber-800 dark:text-amber-100 leading-relaxed">
+                        {brief.notes}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {brief.updatedAt && <div className="mt-2 text-[11px] opacity-60">Actualizado: {new Date(brief.updatedAt).toLocaleString()}</div>}
+
+                {brief.updatedAt && (
+                  <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                    <span>Actualizado:</span>
+                    <span className="font-mono">{new Date(brief.updatedAt).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* Fecha destacada */}
+            <div className="mt-4 mb-3">
+              <div className="inline-flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 shadow-sm border border-blue-200 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-blue-700">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                  <span className="text-sm font-medium text-blue-900 dark:text-blue-200">Día</span>
+                </div>
+                <span className="text-lg font-bold font-mono text-blue-950 dark:text-blue-100 tracking-wide">
+                  {day}
+                </span>
+              </div>
+            </div>
+
+            {data && (
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                <span className="font-medium">Completadas:</span> {Array.from(checked.values()).filter(Boolean).length} / {data.tasks.length}
+              </p>
             )}
             {/* Comentario global eliminado: se implementará por tarea */}
           </div>
