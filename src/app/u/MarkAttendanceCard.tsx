@@ -13,11 +13,13 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
   const [msg] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const longPressRef = useRef(false);
+  const intentionalInteractionRef = useRef(false);
 
   const goToScanner = () => { window.location.href = nextAction === 'OUT' ? '/u/assistance?expected=OUT' : '/u/assistance'; };
 
   function onPointerDown(e: React.PointerEvent) {
     if (loading) return;
+    intentionalInteractionRef.current = true; // Marcar como interacción intencional
     longPressRef.current = false;
     if (nextAction === 'OUT') {
       setHoldMs(0);
@@ -36,17 +38,26 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
       timerRef.current = id as unknown as number;
     }
   }
-  function endPress() {
+  
+  function endPress(e: React.PointerEvent) {
     if (timerRef.current) window.clearInterval(timerRef.current);
     timerRef.current = null;
     const wasLong = longPressRef.current;
     longPressRef.current = false;
     const ms = holdMs; // snapshot
     setHoldMs(0);
-    if (nextAction === 'IN') {
-      goToScanner();
+    
+    // Solo redirigir si fue una interacción intencional del usuario
+    if (intentionalInteractionRef.current) {
+      if (nextAction === 'IN' && e.type === 'pointerup') {
+        // Para entradas, solo redirigir en pointerup (no en pointerleave o pointercancel)
+        goToScanner();
+      }
+      // Para salidas, la lógica de long-press ya maneja la redirección
     }
-    // OUT: si no llegó a long-press no hace nada
+    
+    // Resetear el flag de interacción intencional
+    intentionalInteractionRef.current = false;
   }
 
   return (
