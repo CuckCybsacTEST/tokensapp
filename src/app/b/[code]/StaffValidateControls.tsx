@@ -2,7 +2,19 @@
 import React, { useEffect, useState, useTransition } from 'react';
 import { DateTime } from 'luxon';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt, reservationDate, reservationStatus }: { code:string; isHost:boolean; multiUse: any; initialStatus: string; expiresAt: string | null; initialGuestArrivals?: number; lastGuestArrivalAt?: string | null; reservationDate?: string; reservationStatus?: string }) {
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt, reservationDate, reservationStatus, onValidate, buttonState }: { 
+  code:string; 
+  isHost:boolean; 
+  multiUse: any; 
+  initialStatus: string; 
+  expiresAt: string | null; 
+  initialGuestArrivals?: number; 
+  lastGuestArrivalAt?: string | null; 
+  reservationDate?: string; 
+  reservationStatus?: string;
+  onValidate?: () => void;
+  buttonState?: { pending: boolean; disabled: boolean; text: string; };
+}) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
   const [max, setMax] = useState(multiUse?.max ?? (multiUse ? 0 : 1));
@@ -34,6 +46,10 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
   }, [code]);
 
   function validate() {
+    if (onValidate) {
+      onValidate();
+      return;
+    }
     console.log('[STAFF] Attempting validation for code:', code, 'consumedOnce:', consumedOnce);
     setErr(null);
     start(async () => {
@@ -77,10 +93,10 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
 
   const exhausted = status === 'exhausted' || (max > 0 && used >= max);
   const already = status === 'redeemed' && !multiUse;
-  const disableButton = pending || exhausted || already || consumedOnce || !tokenAvailable;
+  const disableButton = buttonState?.disabled ?? (pending || exhausted || already || consumedOnce || !tokenAvailable);
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg">
-      <div className="text-sm font-semibold text-[#FF4D2E] mb-3 text-center">Validación de Ingreso</div>
+
       
       {/* Mostrar mensaje si la reserva está cancelada */}
       {reservationStatus === 'canceled' || reservationStatus === 'cancelled' ? (
@@ -106,22 +122,6 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
             </div>
           )}
           
-          {/* Botón principal prominente - solo mostrar si el token está disponible */}
-          {tokenAvailable && (
-            <div className="flex justify-center mb-4">
-              <button 
-                onClick={validate} 
-                disabled={disableButton} 
-                className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 ${
-                  disableButton 
-                    ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-                    : 'bg-[#FF4D2E] hover:bg-[#FF7A3C] active:scale-95 shadow-lg hover:shadow-xl'
-                } text-white`}
-              >
-                {pending ? 'Validando…' : isHost ? (hostArrivedAt ? '✅ Llegada Registrada' : '🚪 Marcar Llegada') : exhausted ? '❌ Agotado' : consumedOnce ? '✅ Registrado' : '✅ Registrar Ingreso'}
-              </button>
-            </div>
-          )}
         </>
       )}
 
