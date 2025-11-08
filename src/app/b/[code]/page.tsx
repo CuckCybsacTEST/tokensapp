@@ -98,7 +98,7 @@ function StaffControlsWrapper({
 
   return (
     <>
-      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg">
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 pt-2 pb-4 px-4 shadow-lg">
         {/* Mostrar mensaje si la reserva está cancelada */}
         {reservationStatus === 'canceled' || reservationStatus === 'cancelled' ? (
           <div className="mb-4 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-100 text-center">
@@ -438,8 +438,18 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
             {/* Información de identificación - Lo más importante para el personal */}
             <div className="text-center pb-2 border-b border-white/10">
               <div className="text-xl font-bold text-[#FF4D2E]">{token.celebrantName}</div>
-              <div className="text-sm opacity-75">Cumpleañero</div>
             </div>
+
+            {/* Información de identificación prioritaria - DNI destacado */}
+            {token.isHost && (
+              <div className="text-center">
+                <div className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-[#2196F3]/20 to-[#42A5F5]/20 backdrop-blur-sm rounded-xl border border-[#2196F3]/30 shadow-lg">
+                  <div className="text-lg sm:text-xl font-mono font-black text-[#2196F3] tracking-wider">
+                    {data.reservation.documento}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Información destacada de fecha y hora - Dentro del contenedor del cumpleañero */}
             <div className="text-center">
@@ -501,34 +511,18 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
             
             {/* Información de invitados - Cantidad planificada */}
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-[#4CAF50]/20 to-[#66BB6A]/20 backdrop-blur-sm rounded-xl border border-[#4CAF50]/30 shadow-lg">
-                <span className="text-lg">👥</span>
-                <div className="text-left">
-                  <div className="text-xs font-medium text-[#4CAF50]/80 uppercase tracking-wide">Invitados</div>
-                  <div className="text-sm font-bold text-[#4CAF50]">
-                    {data.token?.guestsPlanned ? `${data.token.guestsPlanned} planificados` : 'No especificado'}
-                  </div>
+              <div className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-[#4CAF50]/20 to-[#66BB6A]/20 backdrop-blur-sm rounded-xl border border-[#4CAF50]/30 shadow-lg">
+                <div className="text-base font-bold text-[#4CAF50]">
+                  {data.token?.guestsPlanned ? `${data.token.guestsPlanned} invitados` : 'No especificado'}
                 </div>
               </div>
             </div>
             
-            {/* Datos de identificación - Solo mostrar para host */}
-            {token.isHost && (
-              <div className="grid grid-cols-1 gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-white/80">DNI:</span>
-                  <span className="font-mono text-lg">{data.reservation.documento}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-white/80">Teléfono:</span>
-                  <span className="font-mono">{data.reservation.phone}</span>
-                </div>
-              </div>
-            )}
+
             
             {/* Estado de llegada del anfitrión - Mostrar solo para invitados, no para el host */}
             {!token.isHost && (
-              <div className={`mt-3 p-3 rounded-lg border text-center font-medium ${
+              <div className={`p-3 rounded-lg border text-center font-medium ${
                 hostArrivedAt 
                   ? 'border-green-500/30 bg-green-500/10 text-green-100' 
                   : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-100'
@@ -547,13 +541,6 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
               </div>
             )}
             
-            {/* Estado e ID de reserva - Solo mostrar para host */}
-            {token.isHost && (
-              <div className="text-xs opacity-70 pt-1 border-t border-white/10">
-                <div>Reserva: <span className="font-mono">{data.reservation.reservationId}</span></div>
-                <div>Estado: <span className={`font-medium ${data.reservation.statusReservation === 'confirmed' ? 'text-green-400' : data.reservation.statusReservation === 'canceled' ? 'text-red-400' : 'text-yellow-400'}`}>{data.reservation.statusReservation}</span></div>
-              </div>
-            )}
           </div>
         )}
         
