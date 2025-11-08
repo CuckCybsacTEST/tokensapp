@@ -152,8 +152,11 @@ export function AdminBirthdaysPage() {
   const [cEmail, setCEmail] = useState("");
   const [cDate, setCDate] = useState("");
   const [cSlot, setCSlot] = useState("20:00");
-  const [cGuests, setCGuests] = useState(5);
+  const [cPackId, setCPackId] = useState("");
+  const [cGuestsPlanned, setCGuestsPlanned] = useState("");
   const [creating, setCreating] = useState(false);
+  // packs
+  const [packs, setPacks] = useState<Array<{id: string, name: string, qrCount: number, bottle: string | null}>>([]);
 
   async function load() {
     setLoading(true); setErr(null);
@@ -189,6 +192,22 @@ export function AdminBirthdaysPage() {
     return () => clearTimeout(h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, status, dateFilter]);
+
+  // Load packs
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/birthdays/packs');
+        const j = await res.json();
+        if (res.ok && j?.packs) {
+          const uniquePacks = Array.from(new Map(j.packs.map((p: any) => [p.id, p as any])).values()) as typeof packs;
+          setPacks(uniquePacks);
+        }
+      } catch (e) {
+        console.error('Failed to load packs:', e);
+      }
+    })();
+  }, []);
 
   async function approve(id: string) {
     setBusyApprove(prev => ({ ...prev, [id]: true })); setErr(null);
@@ -308,14 +327,21 @@ export function AdminBirthdaysPage() {
             <option value="23:00">23:00</option>
             <option value="00:00">00:00</option>
           </select>
-          <input
-            type="number"
-            className="input-sm"
-            value={cGuests}
-            onChange={(e)=>setCGuests(parseInt(e.target.value)||5)}
-            placeholder="Invitados"
-            min="1"
-            max="50"
+          <select className="input-sm" value={cPackId} onChange={(e)=>setCPackId(e.target.value)}>
+            <option value="">Seleccionar pack…</option>
+            {packs.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.qrCount} QR{p.bottle ? ` + ${p.bottle}` : ''})
+              </option>
+            ))}
+          </select>
+          <input 
+            type="number" 
+            className="input-sm" 
+            placeholder="Invitados" 
+            value={cGuestsPlanned} 
+            onChange={(e)=>setCGuestsPlanned(e.target.value)} 
+            min="1" 
           />
           <button className="btn" disabled={creating} onClick={async ()=>{
             setCreating(true); setErr(null);
@@ -324,15 +350,26 @@ export function AdminBirthdaysPage() {
               if (!cName.trim()) throw new Error('Nombre requerido');
               if (!cPhone.trim()) throw new Error('WhatsApp requerido');
               if (!cDoc.trim()) throw new Error('Documento requerido');
+              if (!cPackId) throw new Error('Pack requerido');
+              if (!cGuestsPlanned || isNaN(Number(cGuestsPlanned)) || Number(cGuestsPlanned) < 1) throw new Error('Número de invitados requerido (mínimo 1)');
               let finalDate = cDate;
               if (!finalDate) {
                 const d = new Date();
                 finalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 setCDate(finalDate);
               }
-              const guests = cGuests;
-              const phoneFinal = cPhone.trim(); // WhatsApp como teléfono principal
-              const payload = { celebrantName: cName.trim(), phone: phoneFinal, documento: cDoc.trim(), email: (cEmail || undefined), date: finalDate, timeSlot: cSlot, guestsPlanned: guests } as any;
+              const selectedPack = packs.find(p => p.id === cPackId);
+              if (!selectedPack) throw new Error('Pack no encontrado');
+              const payload = { 
+                celebrantName: cName.trim(), 
+                phone: cPhone.trim(), 
+                documento: cDoc.trim(), 
+                email: cEmail.trim() || null, 
+                date: finalDate, 
+                timeSlot: cSlot, 
+                packId: cPackId,
+                guestsPlanned: Number(cGuestsPlanned)
+              } as any;
               const res = await fetch('/api/admin/birthdays', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
               const j = await res.json();
               if (!res.ok || !j?.ok) {
@@ -343,7 +380,7 @@ export function AdminBirthdaysPage() {
                 }
                 throw new Error(j?.code || j?.message || res.status);
               }
-              setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCGuests(5);
+              setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPackId(''); setCGuestsPlanned('');
               await load();
             } catch(e:any) { setErr(String(e?.message || e)); } finally { setCreating(false); }
           }}>Guardar</button>
