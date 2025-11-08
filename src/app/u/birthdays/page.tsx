@@ -18,29 +18,40 @@ type Reservation = {
 
 function ReservationSkeleton() {
 	return (
-		<div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm">
-			<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-				<div className="flex-1 min-w-0">
-					<div className="flex items-center gap-2 mb-2">
+		<div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm w-full">
+			<div className="flex flex-col gap-3">
+				{/* Header con nombre y estado */}
+				<div className="flex items-start justify-between gap-3">
+					<div className="flex items-center gap-2 min-w-0 flex-1">
 						<div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-32 animate-pulse"></div>
 						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
 					</div>
-					<div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
-						<div className="flex items-center gap-2">
-							<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
-						</div>
-						<div className="flex items-center gap-2">
-							<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
-						</div>
-						<div className="flex items-center gap-2">
-							<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-28 animate-pulse"></div>
-						</div>
-						<div className="flex items-center gap-2">
-							<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-22 animate-pulse"></div>
-						</div>
+				</div>
+
+				{/* Información principal en grid responsivo */}
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+					<div className="flex items-center gap-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-28 animate-pulse"></div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-22 animate-pulse"></div>
+					</div>
+					<div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-36 animate-pulse"></div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse"></div>
 					</div>
 				</div>
-				<div className="flex gap-2">
+
+				{/* Botones de acción */}
+				<div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
 					<div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-20 animate-pulse"></div>
 					<div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-24 animate-pulse"></div>
 				</div>
@@ -146,69 +157,74 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 	const guest = tokens.find((t) => t.kind === "guest") || null;
 
 		return (
-			<div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow">
-				<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-					<div className="flex-1 min-w-0">
-						<div className="flex items-center gap-2 mb-2">
-							<a href={`/u/birthdays/${encodeURIComponent(r.id)}`} className="font-semibold text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.celebrantName}</a>
-							<span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeCls}`}>{statusLabel}</span>
-						</div>
-						<div className="text-sm text-slate-600 dark:text-slate-300 space-y-1">
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">📅</span>
-								<span>Fecha: <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded">{celebrationDate}</span></span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">⏰</span>
-								<span>Hora: {r.timeSlot}</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">👥</span>
-								<span>Invitados: {r.guestsPlanned || r.pack?.qrCount || '-'}</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">🎁</span>
-								<span>Pack: {r.pack?.name || '-'}</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">🚪</span>
-								<span className="flex items-center gap-3">
-									<span className={r.hostArrivedAt ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-400'}>
-										{r.hostArrivedAt ? '✅ Host llegó' : '⏳ Esperando host'}
-									</span>
-									<span className="text-blue-600 dark:text-blue-400">
-										{(r.guestArrivals ?? 0)}/{r.guestsPlanned || r.pack?.qrCount || 0} invitados
-									</span>
-								</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className="text-slate-400">🆔</span>
-								<span className="font-mono text-xs">DNI: {r.documento}</span>
-							</div>
+			<div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow w-full">
+				<div className="flex flex-col gap-3">
+					{/* Header con nombre y estado */}
+					<div className="flex items-start justify-between gap-3">
+						<div className="flex items-center gap-2 min-w-0 flex-1">
+							<a href={`/u/birthdays/${encodeURIComponent(r.id)}`} className="font-semibold text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 break-words sm:truncate">{r.celebrantName}</a>
+							<span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${badgeCls}`}>{statusLabel}</span>
 						</div>
 					</div>
-					<div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
+
+					{/* Información principal en grid responsivo */}
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-600 dark:text-slate-300">
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">📅</span>
+							<span>Fecha: <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded">{celebrationDate}</span></span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">⏰</span>
+							<span>Hora: {r.timeSlot}</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">👥</span>
+							<span>Invitados: {r.guestsPlanned || r.pack?.qrCount || '-'}</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">🎁</span>
+							<span>Pack: {r.pack?.name || '-'}</span>
+						</div>
+						<div className="flex items-center gap-2 col-span-1 sm:col-span-2">
+							<span className="text-slate-400">🚪</span>
+							<span className="flex items-center gap-3">
+								<span className={r.hostArrivedAt ? 'text-emerald-600 dark:text-emerald-400' : 'text-yellow-600 dark:text-yellow-400'}>
+									{r.hostArrivedAt ? '✅ Host llegó' : '⏳ Esperando host'}
+								</span>
+								<span className="text-blue-600 dark:text-blue-400">
+									{(r.guestArrivals ?? 0)}/{r.guestsPlanned || r.pack?.qrCount || 0} invitados
+								</span>
+							</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">🆔</span>
+							<span className="font-mono text-xs">DNI: {r.documento}</span>
+						</div>
+					</div>
+
+					{/* Botones de acción */}
+					<div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
 						{r.status==='pending_review' && (
-							<button className="btn h-8 px-3 text-xs" disabled={busyApprove} onClick={()=>onApprove(r.id)}>
+							<button className="btn h-8 px-3 text-xs min-w-[80px] touch-manipulation" disabled={busyApprove} onClick={()=>onApprove(r.id)}>
 								{busyApprove? '⏳ Aprobando…':'✅ Aprobar'}
 							</button>
 						)}
 						{!r.tokensGeneratedAt && (
-							<button className="btn h-8 px-3 text-xs" disabled={busyGenerate} onClick={()=>onGenerateCards(r.id)}>
+							<button className="btn h-8 px-3 text-xs min-w-[80px] touch-manipulation" disabled={busyGenerate} onClick={()=>onGenerateCards(r.id)}>
 								{busyGenerate? '⏳ Generando…':'🎫 Generar QR'}
 							</button>
 						)}
 						{r.tokensGeneratedAt && (
-							<button className="btn-outline h-8 px-3 text-xs" onClick={()=>onViewCards(r.id)}>
+							<button className="btn-outline h-8 px-3 text-xs min-w-[80px] touch-manipulation" onClick={()=>onViewCards(r.id)}>
 								👀 Descargar Qr
 							</button>
 						)}
 						{r.cardsReady && (
-							<button className="btn-outline h-8 px-3 text-xs" onClick={()=>setShowCards(!showCards)}>
+							<button className="btn-outline h-8 px-3 text-xs min-w-[80px] touch-manipulation" onClick={()=>setShowCards(!showCards)}>
 								{showCards ? '🔽 Ocultar tarjetas' : '🔼 Ver tarjetas'}
 							</button>
 						)}
-						<a className="btn-outline h-8 px-3 text-xs" href={`/u/birthdays/${encodeURIComponent(r.id)}`}>
+						<a className="btn-outline h-8 px-3 text-xs min-w-[80px] touch-manipulation inline-flex items-center justify-center" href={`/u/birthdays/${encodeURIComponent(r.id)}`}>
 							📋 Detalle
 						</a>
 					</div>
@@ -559,7 +575,7 @@ export default function StaffBirthdaysPage() {
 								</div>
 								{/* Listado */}
 								{loading && (
-									<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+									<div className="grid gap-4">
 										{Array.from({ length: 6 }).map((_, i) => (
 											<ReservationSkeleton key={i} />
 										))}
@@ -567,7 +583,7 @@ export default function StaffBirthdaysPage() {
 								)}
 								{!loading && empty && <div className="text-sm text-slate-500 dark:text-slate-400">No hay reservas que coincidan con los filtros</div>}
 								{!loading && !empty && (
-									<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+									<div className="grid gap-4">
 										{items.map(r=> (
 											<ReservationCard
 												key={r.id}

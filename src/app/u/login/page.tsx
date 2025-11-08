@@ -7,7 +7,8 @@ export const fetchCache = 'force-no-store';
 
 function LoginClient() {
   const params = useSearchParams();
-  const next = params ? params.get("next") || "/u" : "/u";
+  const requestedNext = params ? params.get("next") || "" : "";
+  const from = params ? params.get("from") || "" : "";
   const [dniOrUser, setDniOrUser] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,10 @@ function LoginClient() {
         throw new Error(data.error || "LOGIN_FAIL");
       }
 
-      const data = await res.json().catch(() => ({}));
+  const data = await res.json().catch(() => ({}));
+  const role: string | undefined = data.role;
+  const defaultByRole = role === 'ADMIN' ? '/admin' : role === 'STAFF' ? '/u' : '/u';
+  const next = requestedNext && requestedNext.trim() !== '' ? requestedNext : defaultByRole;
       
       if (data.forcePasswordChange) {
         // Redirect to password change page

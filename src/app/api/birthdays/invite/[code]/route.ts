@@ -26,9 +26,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   // Also check for collaborator sessions with restaurant area
   let isCollaboratorStaff = false;
   if (!isStaff) {
-    const { getUserSessionCookieFromRequest, verifyUserSessionCookie } = await import('@/lib/auth');
-    const userRaw = getUserSessionCookieFromRequest(req as unknown as Request);
-    const userSession = await verifyUserSessionCookie(userRaw);
+    const userRaw = getSessionCookieFromRequest(req as unknown as Request);
+    const userSession = await verifySessionCookie(userRaw);
 
     if (userSession) {
       // Check if user has restaurant area

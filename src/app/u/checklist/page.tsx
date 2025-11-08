@@ -106,6 +106,7 @@ function ChecklistPageInner() {
   const [adminSums, setAdminSums] = useState<Map<string, number>>(new Map());
   const [metaSavingIds, setMetaSavingIds] = useState<Set<string>>(new Set());
   const [brief, setBrief] = useState<{ day: string; title?: string | null; show?: string | null; promos?: string | null; notes?: string | null; updatedAt?: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'brief' | 'tasks'>('brief');
 
   // Local state of check statuses
   const initialMap = useMemo(() => {
@@ -428,22 +429,66 @@ function ChecklistPageInner() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Checklist</h1>
+      <div className="mx-auto max-w-4xl px-3 py-4 sm:px-6 sm:py-6">
+        {/* Header omnipresente */}
+        <div className="mb-3 sm:mb-4">
+          <div className="flex justify-center">
+            {/* Fecha omnipresente centrada */}
+            <div className="inline-flex items-center gap-2 sm:gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-2 sm:px-4 shadow-sm border border-blue-200 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-blue-700">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-blue-500"></div>
+                <span className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-200">Día</span>
+              </div>
+              <span className="text-base sm:text-lg font-bold font-mono text-blue-950 dark:text-blue-100 tracking-wide">
+                {day}
+              </span>
+            </div>
+          </div>
 
-            {/* Brief primero */}
-            {brief && (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900 dark:text-slate-100">
+          {/* Pestañas */}
+          <div className="flex border-b border-slate-200 dark:border-slate-700 mt-4">
+            <button
+              onClick={() => setActiveTab('brief')}
+              className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors flex-1 sm:flex-none ${
+                activeTab === 'brief'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+              }`}
+            >
+              <span className="hidden sm:inline">Brief del Día</span>
+              <span className="sm:hidden">Brief</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors flex-1 sm:flex-none ${
+                activeTab === 'tasks'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+              }`}
+            >
+              <span className="hidden sm:inline">Tareas</span>
+              <span className="sm:hidden">Tasks</span>
+              {data && (
+                <span className="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-xs font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                  {Array.from(checked.values()).filter(Boolean).length}/{data.tasks.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Contenido de las pestañas */}
+        {activeTab === 'brief' && (
+          <div className="space-y-4">
+            {brief ? (
+              <div className="rounded-lg border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900 dark:text-slate-100">
                 {brief.title && (
                   <div className="mb-3 border-b border-slate-200 pb-2 dark:border-slate-600">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{brief.title}</h2>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {brief.show && (
                     <div className="rounded-md bg-blue-50 p-3 dark:bg-blue-900/20">
                       <div className="mb-2 flex items-center gap-2">
@@ -498,69 +543,57 @@ function ChecklistPageInner() {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Fecha destacada */}
-            <div className="mt-4 mb-3">
-              <div className="inline-flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 shadow-sm border border-blue-200 dark:from-blue-900/30 dark:to-indigo-900/30 dark:border-blue-700">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                  <span className="text-sm font-medium text-blue-900 dark:text-blue-200">Día</span>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-white p-6 sm:p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div className="text-slate-500 dark:text-slate-400">
+                  <div className="text-base sm:text-lg font-medium mb-2">Sin brief disponible</div>
+                  <div className="text-sm">No hay información del día disponible para mostrar.</div>
                 </div>
-                <span className="text-lg font-bold font-mono text-blue-950 dark:text-blue-100 tracking-wide">
-                  {day}
-                </span>
               </div>
-            </div>
-
-            {data && (
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                <span className="font-medium">Completadas:</span> {Array.from(checked.values()).filter(Boolean).length} / {data.tasks.length}
-              </p>
             )}
-            {/* Comentario global eliminado: se implementará por tarea */}
-          </div>
-          <div />
-        </div>
-
-        {/* Notices */}
-        {/* Editable durante todo el día */}
-        {error && (
-          <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <span>{error}</span>
-            <button onClick={() => fetchAll()} disabled={loading} className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50">Reintentar</button>
-          </div>
-        )}
-        {/* Ya no es obligatorio completar todas las tareas para registrar salida */}
-        {savedMsg && (
-          <div className="mb-4 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">{savedMsg}</div>
-        )}
-        {lockedAfterOut && (
-          <div className="mb-4 rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-xs text-slate-700">Checklist bloqueada tras registrar salida. No se puede editar.</div>
-        )}
-        {!lockedAfterOut && !canEdit && (
-          <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-            Para editar la checklist debes registrar tu entrada primero. Usa el botón "Registrar entrada".
           </div>
         )}
 
-        {/* Content */}
-        {loading && (
-          <ul className="animate-pulse space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="h-12 rounded-md bg-gray-200" />
-            ))}
-          </ul>
-        )}
-        {!loading && data && data.tasks.length === 0 && (
-          <div className="mb-4 rounded-md border border-slate-200 bg-white p-4 text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
-            <div className="text-base font-medium mb-1">No tienes tareas hoy</div>
-            <div className="text-sm opacity-80">No hay tareas activas para tu área en este día. Si crees que falta algo, avisa a tu coordinador.</div>
-          </div>
-        )}
-        {!loading && data && data.tasks.length > 0 && (
-          <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {activeTab === 'tasks' && (
+          <div className="space-y-4">
+            {/* Notices */}
+            {error && (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-red-300 bg-red-50 px-3 sm:px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+                <span>{error}</span>
+                <button onClick={() => fetchAll()} disabled={loading} className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 flex-shrink-0 dark:border-red-600 dark:bg-slate-800 dark:text-red-400 dark:hover:bg-slate-700">Reintentar</button>
+              </div>
+            )}
+            {savedMsg && (
+              <div className="rounded-md border border-green-300 bg-green-50 px-3 sm:px-4 py-3 text-sm text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300">{savedMsg}</div>
+            )}
+            {lockedAfterOut && (
+              <div className="rounded-md border border-slate-300 bg-slate-50 px-3 sm:px-4 py-3 text-xs sm:text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800/40 dark:text-slate-300">Checklist bloqueada tras registrar salida. No se puede editar.</div>
+            )}
+            {!lockedAfterOut && !canEdit && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 sm:px-4 py-3 text-xs sm:text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                Para editar la checklist debes registrar tu entrada primero. Usa el botón "Registrar entrada".
+              </div>
+            )}
+
+            {/* Content */}
+            {loading && (
+              <ul className="animate-pulse space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <li key={i} className="h-12 rounded-md bg-gray-200" />
+                ))}
+              </ul>
+            )}
+            {!loading && data && data.tasks.length === 0 && (
+              <div className="rounded-md border border-slate-200 bg-white p-6 sm:p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div className="text-slate-500 dark:text-slate-400">
+                  <div className="text-base sm:text-lg font-medium mb-2">No tienes tareas hoy</div>
+                  <div className="text-sm">No hay tareas activas para tu área en este día. Si crees que falta algo, avisa a tu coordinador.</div>
+                </div>
+              </div>
+            )}
+            {!loading && data && data.tasks.length > 0 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {data.tasks.map((t) => {
                 const done = !!checked.get(t.id);
                 const st = data.statuses.find(s => s.taskId === t.id);
@@ -571,28 +604,28 @@ function ChecklistPageInner() {
                 const isAdmin = (user as any)?.ok && (user as any).user?.role === 'ADMIN';
                 const adminSum = adminSums.get(t.id) ?? 0;
                 return (
-                  <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className={"inline-block h-2 w-2 rounded-full " + prioColor} />
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{t.label}</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-tight">{t.label}</div>
                       </div>
                       {!measurable ? (
-                        <div className="text-xs">
-                          <label className="inline-flex items-center gap-1 mr-2">
-                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} />
-                            <span>Pendiente</span>
+                        <div className="text-xs sm:text-sm space-y-1">
+                          <label className="inline-flex items-center gap-1 sm:gap-2 mr-2 sm:mr-3 cursor-pointer">
+                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="text-xs sm:text-sm">Pendiente</span>
                           </label>
-                          <label className="inline-flex items-center gap-1">
-                            <input type="radio" name={`st-${t.id}`} checked={done} onChange={() => setCheckedValue(t.id, true)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} />
-                            <span>Completada</span>
+                          <label className="inline-flex items-center gap-1 sm:gap-2 cursor-pointer">
+                            <input type="radio" name={`st-${t.id}`} checked={done} onChange={() => setCheckedValue(t.id, true)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="text-xs sm:text-sm">Completada</span>
                           </label>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                           <button
                             type="button"
-                            className="rounded border border-slate-300 px-2 py-1 text-sm disabled:opacity-50"
+                            className="rounded border border-slate-300 px-2 sm:px-3 py-1 sm:py-1.5 text-sm sm:text-base disabled:opacity-50 touch-manipulation dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                             onClick={() => setValueForTask(t.id, currentVal - 1)}
                             disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id) || currentVal <= 0}
                             aria-label="Decrementar"
@@ -605,11 +638,11 @@ function ChecklistPageInner() {
                             value={Number.isFinite(currentVal) ? currentVal : 0}
                             onChange={(e) => setValueForTask(t.id, Number(e.target.value))}
                             disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)}
-                            className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-50 text-slate-900 placeholder-slate-400 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder-slate-400"
+                            className="w-12 sm:w-16 rounded border border-slate-300 bg-white px-1 sm:px-2 py-1 sm:py-1 text-center text-sm sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-50 text-slate-900 placeholder-slate-400 dark:border-slate-600 dark:bg-slate-800/70 dark:text-slate-100 dark:placeholder-slate-400"
                           />
                           <button
                             type="button"
-                            className="rounded border border-slate-300 px-2 py-1 text-sm disabled:opacity-50"
+                            className="rounded border border-slate-300 px-2 sm:px-3 py-1 sm:py-1.5 text-sm sm:text-base disabled:opacity-50 touch-manipulation dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                             onClick={() => setValueForTask(t.id, currentVal + 1)}
                             disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)}
                             aria-label="Incrementar"
@@ -654,7 +687,7 @@ function ChecklistPageInner() {
                             const val = raw === '' ? null : Math.max(0, Math.floor(Number(raw)) || 0);
                             saveTaskMeta(t.id, { targetValue: val });
                           }}
-                          className="w-24 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder-slate-400 disabled:opacity-50"
+                          className="w-24 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder-slate-400 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
                           disabled={metaSavingIds.has(t.id)}
                         />
                         <input
@@ -669,7 +702,7 @@ function ChecklistPageInner() {
                             const s = e.target.value;
                             saveTaskMeta(t.id, { unitLabel: s });
                           }}
-                          className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder-slate-400 disabled:opacity-50"
+                          className="w-28 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder-slate-400 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-400"
                           maxLength={30}
                           disabled={metaSavingIds.has(t.id)}
                         />
@@ -692,7 +725,13 @@ function ChecklistPageInner() {
                       </div>
                     )}
                     {t.endDay && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Vence: <span className="font-mono">{t.endDay}</span></div>
+                      <div className="mt-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-amber-500 flex-shrink-0"></div>
+                          <span className="text-xs sm:text-sm font-semibold text-amber-800 dark:text-amber-200">Vence</span>
+                          <span className="text-xs sm:text-sm font-mono font-bold text-amber-900 dark:text-amber-100">{t.endDay}</span>
+                        </div>
+                      </div>
                     )}
                     {st?.updatedByUsername && (
                       <div className="text-xs text-slate-500 dark:text-slate-400">Últ. act: {st.updatedByUsername}</div>
@@ -702,7 +741,9 @@ function ChecklistPageInner() {
               })}
             </div>
             {/* Eliminado el botón de acción: esta vista ahora solo muestra la lista de tareas */}
-          </>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

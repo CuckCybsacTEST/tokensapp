@@ -1,4 +1,5 @@
-﻿import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from 'next/server';
 import { logEvent } from "@/lib/log";
 import { createUserSessionCookie, buildSetUserCookie } from "@/lib/auth";
 import bcrypt from "bcryptjs";
@@ -48,32 +49,44 @@ export async function POST(req: Request) {
 
     let ok = false;
     try {
-      ok = await bcrypt.compare(password, user.passwordHash || "");
-    } catch (_err) {
-      ok = false; // hash inválido o corrupto => credenciales inválidas
+      ok = await bcrypt.compare(password, user.passwordHash);
+    } catch (e) {
+      await logEvent("USER_AUTH_FAIL", "Login colaborador: error bcrypt", { error: String(e), userId: user.id });
+      return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500);
     }
+
     if (!ok) {
-      await logEvent("USER_AUTH_FAIL", "Login colaborador: contraseña inválida", { username });
+      await logEvent("USER_AUTH_FAIL", "Login colaborador: contraseña incorrecta", { userId: user.id });
       return apiError('INVALID_CREDENTIALS', 'Credenciales inválidas', undefined, 401);
     }
 
-  // Optional check persona inactiva podría devolver apiError('PERSON_INACTIVE', ...) si se habilita en el futuro.
+    // Validar rol - ahora incluye ADMIN
+    if (!['ADMIN', 'STAFF', 'COLLAB'].includes(user.role)) {
+      await logEvent("USER_AUTH_FAIL", "Login colaborador: rol inválido", { userId: user.id, role: user.role });
+      return apiError('INVALID_CREDENTIALS', 'Rol de usuario inválido', undefined, 401);
+    }
 
-    // Propagar rol real: ADMIN, STAFF o COLLAB
-    const role = (user.role === "ADMIN" ? "ADMIN" : (user.role === "STAFF" ? "STAFF" : "COLLAB")) as "ADMIN" | "STAFF" | "COLLAB";
-    const token = await createUserSessionCookie(user.id, role);
+    // Crear sesión
+    const sessionCookie = await createUserSessionCookie(user.id, user.role as 'ADMIN' | 'STAFF' | 'COLLAB');
 
-    await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", { username, role });
+    await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", {
+      userId: user.id,
+      role: user.role,
+      username: user.username
+    });
 
     return apiOk({
-      ok: true,
-      role,
-      userId: user.id,
-      personId: user.personId,
-      forcePasswordChange: user.forcePasswordChange || false
-    }, 200, { 'Set-Cookie': buildSetUserCookie(token) });
-  } catch (e: any) {
-    await logEvent("USER_AUTH_ERROR", "Login colaborador error", { message: String(e?.message || e) });
-    return apiError('INTERNAL_ERROR', 'Error interno', undefined, 500);
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        personId: user.personId,
+        forcePasswordChange: user.forcePasswordChange || false,
+      },
+      message: 'Login exitoso'
+    }, 200, { 'Set-Cookie': buildSetUserCookie(sessionCookie) });  } catch (error) {
+    console.error('Error en login:', error);
+    await logEvent("USER_AUTH_ERROR", "Error interno en login", { error: String(error) });
+    return apiError('INTERNAL_ERROR', 'Error interno del servidor', undefined, 500);
   }
 }
