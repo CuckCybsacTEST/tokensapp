@@ -1,8 +1,9 @@
 import React from "react";
-import { verifySessionCookie } from "@/lib/auth";
+import { verifyUserSessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
 // Garantizar arranque del scheduler también al renderizar el layout de admin
 import "@/server/start";
+import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = {
   title: {
@@ -12,14 +13,14 @@ export const metadata = {
   description: "Panel administración Go Lounge!",
 };
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
   // Obtener sesión del request para mostrar info del usuario (rol)
-  const cookie = cookies().get("admin_session")?.value;
-  const session = await verifySessionCookie(cookie);
+  const raw = cookies().get("user_session")?.value;
+  const session = await verifyUserSessionCookie(raw);
   const role = session?.role || null;
   return (
-  <>
-      <div className="pt-4">{children}</div>
-  </>
+    <AdminLayout basePath="admin" hasSession={!!session}>
+      {children}
+    </AdminLayout>
   );
 }
