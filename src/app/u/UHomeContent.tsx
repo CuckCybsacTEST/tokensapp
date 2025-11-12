@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import AutoAttendanceCard from './AutoAttendanceCard';
 import CommitmentModal from './CommitmentModal';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -108,6 +108,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Gestiona los tokens y premios de la ruleta.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm ml-8 sm:ml-9">Administrar ruleta →</div>
+                </Link>
+              )}
+              {session.role === 'STAFF' && (
+                <Link href="/u/statics-batches" className="block rounded-lg border border-violet-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-violet-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconPackage className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Lotes Estáticos</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Gestiona lotes de tokens estáticos y sus códigos.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-violet-600 dark:text-violet-400 text-sm ml-8 sm:ml-9">Gestionar lotes →</div>
                 </Link>
               )}
               {session.role === 'STAFF' && (
