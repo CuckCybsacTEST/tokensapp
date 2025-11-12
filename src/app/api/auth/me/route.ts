@@ -16,7 +16,13 @@ export async function GET(request: NextRequest) {
             username: true,
             role: true,
             person: {
-              select: { name: true }
+              select: { 
+                name: true,
+                dni: true,
+                area: true,
+                jobTitle: true,
+                code: true
+              }
             }
           }
         });
@@ -26,7 +32,11 @@ export async function GET(request: NextRequest) {
 
           return NextResponse.json({
             role: user.role,
-            displayName: displayName
+            displayName: displayName,
+            dni: user.person?.dni || null,
+            area: user.person?.area || null,
+            jobTitle: user.person?.jobTitle || null,
+            code: user.person?.code || null
           });
         }
       }

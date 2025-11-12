@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import PrizesClient from "./PrizesClient";
-import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = { title: 'Premios' };
 export const dynamic = "force-dynamic"; // evitar cache SSR para panel admin
@@ -116,12 +115,10 @@ async function getPrizesWithLastBatch(): Promise<{
 export default async function PrizesPage() {
   const { prizes, lastBatch, batchPrizeStats } = await getPrizesWithLastBatch();
   return (
-    <AdminLayout>
-      <PrizesClient
-        initialPrizes={prizes}
-        lastBatch={lastBatch}
-        batchPrizeStats={batchPrizeStats}
-      />
-    </AdminLayout>
+    <PrizesClient
+      initialPrizes={prizes}
+      lastBatch={lastBatch}
+      batchPrizeStats={batchPrizeStats}
+    />
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { AdminLayout } from "@/components/AdminLayout";
 
 export interface StaticBatchItem {
   id: string;
@@ -21,7 +20,7 @@ export interface StaticBatchItem {
 
 export default function StaticBatchesClient({ batches }: { batches: StaticBatchItem[] }) {
   return (
-    <AdminLayout>
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-lg font-semibold">Lotes Estáticos</h1>
@@ -186,6 +185,6 @@ export default function StaticBatchesClient({ batches }: { batches: StaticBatchI
           </Link>
         </div>
       )}
-    </AdminLayout>
+    </div>
   );
 }

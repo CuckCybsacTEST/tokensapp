@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import PrizestaticsClient from "./PrizestaticsClient";
-import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = { title: 'Lotes Estáticos' };
 export const dynamic = "force-dynamic";
@@ -80,8 +79,6 @@ async function getPrizesWithStats() {
 export default async function PrizestaticsPage() {
   const { prizes, lastBatch, batchPrizeStats } = await getPrizesWithStats();
   return (
-    <AdminLayout>
-      <PrizestaticsClient prizes={prizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
-    </AdminLayout>
+    <PrizestaticsClient prizes={prizes} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
   );
 }

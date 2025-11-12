@@ -5,6 +5,40 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import dynamic from 'next/dynamic';
+import { AdminMobileHeader } from "@/components/AdminMobileHeader";
+
+// Admin logout button component
+function AdminLogoutButton() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      const res = await fetch("/api/user/auth/logout", { method: "POST" });
+      if (res.ok) {
+        window.location.href = "/admin/login";
+      } else {
+        window.location.href = "/admin/login";
+      }
+    } catch {
+      window.location.href = "/admin/login";
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleLogout}
+      disabled={isLoggingOut}
+      className="text-sm bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-1 rounded-md text-slate-800 dark:text-slate-200 transition-colors"
+      aria-label="Cerrar sesión"
+    >
+      {isLoggingOut ? "Saliendo..." : "Cerrar sesión"}
+    </button>
+  );
+}
 
 // Dynamic import to avoid SSR issues
 const AutoAttendanceCard = dynamic(() => import('@/app/admin/AutoAttendanceCard'), { ssr: false });
@@ -116,6 +150,37 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
     dayClosed: false
   });
 
+  const [userInfo, setUserInfo] = useState<{
+    role: string;
+    displayName: string;
+    dni?: string | null;
+    area?: string | null;
+    jobTitle?: string | null;
+    code?: string | null;
+  } | null>(null);
+
+  // Función para obtener información del usuario
+  const getUserInfo = async () => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserInfo(data);
+      } else {
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+      }
+    } catch (error) {
+      console.error('Error obteniendo información del usuario:', error);
+      setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+    }
+  };
+
   // Función para actualizar el estado de asistencia
   const updateAttendanceState = async () => {
     try {
@@ -141,6 +206,11 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
   // Actualizar estado de asistencia al montar
   useEffect(() => {
     updateAttendanceState();
+  }, []);
+
+  // Obtener información del usuario al montar
+  useEffect(() => {
+    getUserInfo();
   }, []);
 
   const toggleGroup = (title: string) => {
@@ -289,7 +359,10 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
   };
 
   return (
-    <div className="block md:hidden min-h-screen bg-slate-50 dark:bg-slate-900 p-3 sm:p-4 lg:p-6">
+    <div className="block md:hidden min-h-screen bg-slate-50 dark:bg-slate-900 p-2 sm:p-3 lg:p-6">
+      {/* Header similar to /u layout */}
+      <AdminMobileHeader userInfo={userInfo} />
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6 lg:mb-8">

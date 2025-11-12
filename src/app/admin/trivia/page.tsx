@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import TriviaClient from "./TriviaClient";
-import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = { title: 'Trivia' };
 export const dynamic = "force-dynamic";
@@ -219,20 +218,18 @@ export default async function TriviaPage() {
   const { questionSets, prizes, questions, stats } = await getTriviaData();
 
   return (
-    <AdminLayout>
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Administración de Trivia</h1>
-          <p className="text-gray-600">Gestiona sets de preguntas, premios y preguntas de la trivia pública</p>
-        </div>
-
-        <TriviaClient
-          initialQuestionSets={questionSets}
-          initialPrizes={prizes}
-          initialQuestions={questions}
-          initialStats={stats}
-        />
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Administración de Trivia</h1>
+        <p className="text-gray-600">Gestiona sets de preguntas, premios y preguntas de la trivia pública</p>
       </div>
-    </AdminLayout>
+
+      <TriviaClient
+        initialQuestionSets={questionSets}
+        initialPrizes={prizes}
+        initialQuestions={questions}
+        initialStats={stats}
+      />
+    </div>
   );
 }

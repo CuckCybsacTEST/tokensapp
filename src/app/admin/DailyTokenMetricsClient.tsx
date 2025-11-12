@@ -40,25 +40,25 @@ export default function DailyTokenMetricsClient() {
   return (
     <>
     {/* Métricas del Día */}
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 mb-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
+    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 mb-4 sm:mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-4">
         <div>
-          <h2 className="text-lg font-bold flex items-center">
-            <span className="mr-2 p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2v-9a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2z"/></svg>
+          <h2 className="text-base sm:text-lg font-bold flex items-center">
+            <span className="mr-2 p-1.5 sm:p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2v-9a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2z"/></svg>
             </span>
             Métricas del Día (functionalDate)
           </h2>
           {data && <div className="text-xs opacity-70 mt-1">Día: {day} | base: {data.basis}</div>}
         </div>
         <div className="flex items-center gap-2">
-          <input type="date" value={day} onChange={e=>{ setDay(e.target.value); load(e.target.value); }} className="input !h-9" />
-          <button onClick={()=>load(day)} disabled={loading} className="btn-outline !px-3 !py-1 text-sm">{loading? '...' : 'Refrescar'}</button>
+          <input type="date" value={day} onChange={e=>{ setDay(e.target.value); load(e.target.value); }} className="input !h-8 sm:!h-9 text-sm" />
+          <button onClick={()=>load(day)} disabled={loading} className="btn-outline !px-2 sm:!px-3 !py-1 text-xs sm:text-sm">{loading? '...' : 'Refrescar'}</button>
         </div>
       </div>
       {error && <div className="text-sm text-red-600 mb-3">{error}</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard label="Tokens Creados" value={metrics.created} description="Total emitidos para el día" compact icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-slate-400' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v12m6-6H6'/></svg>} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+        <StatCard label="Tokens Creados" value={metrics.created} description="Total emitidos para el día" compact icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-4 w-4 sm:h-5 sm:w-5 text-slate-400' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v12m6-6H6'/></svg>} />
         <StatCard label="Tokens Impresos" value={metrics.printedTokens} description="Tokens físicos impresos (excluyendo bitokens)" compact color="text-purple-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-purple-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z'/></svg>} />
         <StatCard label="Premios Distintos" value={metrics.distinctPrizesTotal} description="Total de premios únicos en batches del día" compact color="text-green-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-green-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' /></svg>} />
         <StatCard label="Tokens Revelados" value={metrics.breakdown.revealedPending} description="Tokens revelados sin entregar" compact color="text-orange-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-orange-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' /></svg>} />
@@ -67,13 +67,28 @@ export default function DailyTokenMetricsClient() {
         <StatCard label="Tokens Expirados" value={metrics.expired} description="Expirados antes de entregar" compact color="text-amber-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-amber-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>} />
         <StatCard label="Giros Ruleta" value={metrics.rouletteSpins} description="Giros con premio (excluyendo Nuevo Intento y Sin Premio)" compact color="text-fuchsia-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-fuchsia-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v2m6 6h2M4 12H2m15.07 4.93l1.42 1.42M6.51 6.51L5.09 5.09m12.02 0l1.42 1.42M6.51 17.49l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z' /></svg>} />
         <StatCard label="Giros Totales" value={metrics.totalSpins} description="Total de giros (incluyendo Nuevo Intento y Sin Premio)" compact color="text-cyan-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-cyan-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v2m6 6h2M4 12H2m15.07 4.93l1.42 1.42M6.51 6.51L5.09 5.09m12.02 0l1.42 1.42M6.51 17.49l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z' /></svg>} />
-        <StatCard label="Nuevo Intento" value={metrics.retryRevealed} description="Giros revelados para Nuevo Intento" compact color="text-blue-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-blue-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' /></svg>} />
-        <StatCard label="Sin Premio" value={metrics.loseRevealed} description="Giros revelados para Sin Premio" compact color="text-yellow-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-5 w-5 text-yellow-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>} />
+        <StatCard label="Nuevo Intento" value={metrics.retryRevealed} description="Giros revelados para Nuevo Intento" compact color="text-blue-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-4 w-4 sm:h-5 sm:w-5 text-blue-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' /></svg>} />
+        <StatCard label="Sin Premio" value={metrics.loseRevealed} description="Giros revelados para Sin Premio" compact color="text-yellow-600" icon={<svg xmlns='http://www.w3.org/2000/svg' className='h-4 w-4 sm:h-5 sm:w-5 text-yellow-500' viewBox='0 0 24 24' fill='none' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>} />
       </div>
       {data?.batches?.length ? (
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold mb-2">Lotes del día</h3>
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
+        <div className="mt-4 sm:mt-6">
+          <h3 className="text-sm font-semibold mb-3">Lotes del día</h3>
+          {/* Mobile: Cards */}
+          <div className="block sm:hidden space-y-3">
+            {data.batches.map((b:any)=>(
+              <div key={b.batchId} className="bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-mono text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded">{b.batchId.slice(0,8)}</span>
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{b.totalTokens} tokens</span>
+                </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 truncate" title={b.description||''}>
+                  {b.description||'Sin descripción'}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop: Table */}
+          <div className="hidden sm:block overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 dark:bg-slate-700/40">
                 <tr>
@@ -95,22 +110,22 @@ export default function DailyTokenMetricsClient() {
           </div>
         </div>
       ) : (
-        <div className="text-xs text-slate-500 mt-6">No hay lotes para este día.</div>
+        <div className="text-xs text-slate-500 mt-4 sm:mt-6">No hay lotes para este día.</div>
       )}
     </div>
 
     {/* Históricos */}
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 mb-6">
+    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 mb-4 sm:mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <span className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18"/></svg>
+        <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+          <span className="p-1.5 sm:p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3v18h18"/></svg>
           </span>
           Históricos (Acumulados)
         </h2>
         <div className="text-xs text-slate-500">Fecha base seleccionada: {day}</div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-8 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
         <div className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-700/30">
           <div className="text-[11px] font-medium text-slate-500 mb-0.5">Creados (Histórico)</div>
           <div className="text-base font-bold">{gh.createdAll}</div>
@@ -138,14 +153,17 @@ export default function DailyTokenMetricsClient() {
       </div>
     </div>
     {/* Evolución Horaria */}
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700">
-      <h3 className="text-sm font-semibold mb-4 flex flex-wrap items-center gap-3">Evolución Horaria (Lima)
-        {metrics.timeline?.peakRevealHour && <span className="text-xs font-normal text-slate-500">Pico revelados: {metrics.timeline.peakRevealHour}h</span>}
-        {metrics.timeline?.peakDeliveredHour && <span className="text-xs font-normal text-slate-500">| Pico entregados: {metrics.timeline.peakDeliveredHour}h</span>}
+    <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700">
+      <h3 className="text-sm font-semibold mb-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+        <span>Evolución Horaria (Lima)</span>
+        <div className="flex flex-wrap gap-3">
+          {metrics.timeline?.peakRevealHour && <span className="text-xs font-normal text-slate-500">Pico revelados: {metrics.timeline.peakRevealHour}h</span>}
+          {metrics.timeline?.peakDeliveredHour && <span className="text-xs font-normal text-slate-500">Pico entregados: {metrics.timeline.peakDeliveredHour}h</span>}
+        </div>
       </h3>
       {timeline.length ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-64 bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="h-48 sm:h-64 bg-slate-50 dark:bg-slate-700/30 rounded-lg p-2 sm:p-3">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} />
@@ -158,7 +176,7 @@ export default function DailyTokenMetricsClient() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="h-64 bg-slate-50 dark:bg-slate-700/30 rounded-lg p-3">
+          <div className="h-48 sm:h-64 bg-slate-50 dark:bg-slate-700/30 rounded-lg p-2 sm:p-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} />

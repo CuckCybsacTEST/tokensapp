@@ -132,7 +132,14 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
   const router = useRouter();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["TOKENS RULETA"]));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [userInfo, setUserInfo] = useState<{ role: string; displayName: string } | null>(null);
+  const [userInfo, setUserInfo] = useState<{ 
+    role: string; 
+    displayName: string;
+    dni: string | null;
+    area: string | null;
+    jobTitle: string | null;
+    code: string | null;
+  } | null>(null);
 
   // Función para obtener información del usuario desde las cookies
   const getUserInfo = async () => {
@@ -149,11 +156,11 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         setUserInfo(data);
       } else {
         // Si no hay sesión, mostrar como invitado
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
       }
     } catch (error) {
       console.error('Error obteniendo información del usuario:', error);
-      setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+      setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
     }
   };
 
@@ -311,17 +318,17 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
       const res = await fetch('/api/auth/logout', { method: "POST" });
       if (res.ok) {
         // Clear user info immediately after successful logout
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
         // Use window.location for full page reload to re-evaluate server-side layout
         window.location.href = '/u/login';
       } else {
         // Clear user info even on logout failure to be safe
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
         window.location.href = '/u/login';
       }
     } catch {
       // Clear user info on error as well
-  setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+  setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
   window.location.href = '/u/login';
     } finally {
       setIsLoggingOut(false);
@@ -357,11 +364,33 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
                 {userInfo ? userInfo.displayName.charAt(0).toUpperCase() : 'U'}
               </span>
             </div>
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm">
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="font-semibold text-sm truncate">
                 {userInfo ? userInfo.displayName : 'Cargando...'}
               </span>
-              {userInfo && (
+              {userInfo && userInfo.role !== 'GUEST' && (
+                <div className="space-y-0.5 mt-1">
+                  {userInfo.dni && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      DNI: {userInfo.dni}
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    Rol: {userInfo.role}
+                  </span>
+                  {userInfo.area && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      Área: {userInfo.area}
+                    </span>
+                  )}
+                  {userInfo.jobTitle && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      Cargo: {userInfo.jobTitle}
+                    </span>
+                  )}
+                </div>
+              )}
+              {userInfo && userInfo.role === 'GUEST' && (
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {userInfo.role}
                 </span>

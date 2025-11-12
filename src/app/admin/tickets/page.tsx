@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Plus, Edit, Trash2, Ticket, Eye, Download, RefreshCw, X } from 'lucide-react';
 import { useStaffSocket } from '@/hooks/useSocket';
-import { AdminLayout } from "@/components/AdminLayout";
 
 interface TicketType {
   id: string;
@@ -446,7 +445,6 @@ export default function AdminTicketsPage() {
   }
 
   return (
-    <AdminLayout>
       <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -863,6 +861,5 @@ export default function AdminTicketsPage() {
         </div>
       )}
     </div>
-    </AdminLayout>
   );
 }
