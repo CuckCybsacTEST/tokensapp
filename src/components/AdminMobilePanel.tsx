@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import dynamic from 'next/dynamic';
+
+// Dynamic import to avoid SSR issues
+const AutoAttendanceCard = dynamic(() => import('@/app/admin/AutoAttendanceCard'), { ssr: false });
 
 // Icon constants to reduce duplication
 const ICONS = {
@@ -101,6 +105,55 @@ interface AdminMobilePanelProps {
 
 export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) {
   const pathname = usePathname();
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [attendanceState, setAttendanceState] = useState<{
+    lastType: 'IN' | 'OUT' | null;
+    nextAction: 'IN' | 'OUT';
+    dayClosed: boolean;
+  }>({
+    lastType: null,
+    nextAction: 'IN',
+    dayClosed: false
+  });
+
+  // Función para actualizar el estado de asistencia
+  const updateAttendanceState = async () => {
+    try {
+      const r = await fetch('/api/attendance/me/recent', { cache: 'no-store' });
+      if (r.status === 401) return;
+      const j = await r.json().catch(() => null);
+      const last = j?.recent;
+      const completed = !!j?.completed;
+      const lastType = last && (last.type === 'IN' || last.type === 'OUT') ? last.type : null;
+      const dayClosed = completed || lastType === 'OUT';
+      const nextAction: 'IN' | 'OUT' = lastType === 'IN' ? 'OUT' : 'IN';
+
+      setAttendanceState({
+        lastType,
+        nextAction,
+        dayClosed
+      });
+    } catch (e) {
+      // Error silencioso
+    }
+  };
+
+  // Actualizar estado de asistencia al montar
+  useEffect(() => {
+    updateAttendanceState();
+  }, []);
+
+  const toggleGroup = (title: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(title)) {
+        newSet.delete(title);
+      } else {
+        newSet.add(title);
+      }
+      return newSet;
+    });
+  };
 
   // Configuración dinámica basada en basePath
   const getSidebarGroups = (basePath: 'admin' | 'u'): SidebarGroup[] => {
@@ -108,17 +161,17 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
 
     const groups = [
       ...(basePath === 'admin' ? [{
-        title: "ESCÁNER INTEGRADO",
-        icon: ICONS.qr,
-        items: [
-          { href: `${pathPrefix}/scanner`, label: "Escáner", icon: ICONS.qr }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
         title: "MARCAR ENTRADA/SALIDA",
         icon: ICONS.clock,
         items: [
           { href: "/admin/assistance", label: "Marcar Entrada/Salida", icon: ICONS.check }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "ESCÁNER MULTI-USO",
+        icon: ICONS.qr,
+        items: [
+          { href: `${pathPrefix}/scanner`, label: "Escáner", icon: ICONS.qr }
         ]
       }] : []),
       {
@@ -236,98 +289,152 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
   };
 
   return (
-    <div className="block md:hidden min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="block md:hidden min-h-screen bg-slate-50 dark:bg-slate-900 p-3 sm:p-4 lg:p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
             Panel de Administración
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
             Selecciona una categoría para acceder a sus funciones
           </p>
         </div>
 
         {/* Grid de categorías */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {sidebarGroups.map((group, groupIndex) => (
             <div
               key={group.title}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+              className={cn(
+                "bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-md sm:shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden",
+                group.title === "ESCÁNER INTEGRADO" ? "col-span-full sm:col-span-2 lg:col-span-3 xl:col-span-4" : ""
+              )}
             >
               {/* Header de la categoría */}
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-                    {group.icon}
+              {group.title === "ESCÁNER INTEGRADO" ? (
+                <Link
+                  href={`${basePath === 'admin' ? '/admin' : '/u'}/scanner`}
+                  className="block p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                      {group.icon}
+                    </div>
+                    <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {group.title}
+                    </h2>
                   </div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {group.title}
-                  </h2>
+                </Link>
+              ) : group.title === "MARCAR ENTRADA/SALIDA" ? (
+                <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                      {group.icon}
+                    </div>
+                    <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      {attendanceState.dayClosed
+                        ? "JORNADA COMPLETADA"
+                        : attendanceState.nextAction === 'IN' ? "MARCAR ENTRADA" : "MARCAR SALIDA"}
+                    </h2>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <button
+                  onClick={() => toggleGroup(group.title)}
+                  className="w-full p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                        {group.icon}
+                      </div>
+                      <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        {group.title}
+                      </h2>
+                    </div>
+                    <svg
+                      className={cn(
+                        "h-5 w-5 text-slate-500 dark:text-slate-400 transition-transform",
+                        expandedGroups.has(group.title) ? "rotate-180" : ""
+                      )}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+              )}
 
               {/* Items de la categoría */}
-              <div className="p-4">
-                <div className="space-y-2">
-                  {group.items.map((item, itemIndex) => (
-                    <Link
-                      key={`${group.title}-${itemIndex}`}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200",
-                        isItemActive(item.href)
-                          ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent"
-                      )}
-                    >
-                      <div className={cn(
-                        "p-1.5 rounded-md",
-                        isItemActive(item.href)
-                          ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-                      )}>
-                        {item.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className={cn(
-                          "text-sm font-medium block truncate",
-                          isItemActive(item.href)
-                            ? "text-blue-900 dark:text-blue-100"
-                            : "text-slate-900 dark:text-slate-100"
-                        )}>
-                          {item.label}
-                        </span>
-                        {item.badge && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 mt-1">
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                      <svg
-                        className={cn(
-                          "h-4 w-4 flex-shrink-0",
-                          isItemActive(item.href)
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-slate-400 dark:text-slate-500"
-                        )}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </Link>
-                  ))}
+              {(group.title === "MARCAR ENTRADA/SALIDA" || expandedGroups.has(group.title)) && (
+                <div className="p-3 sm:p-4">
+                  {group.title === "MARCAR ENTRADA/SALIDA" ? (
+                    <AutoAttendanceCard showDynamicTitle={false} />
+                  ) : (
+                    <div className="space-y-2">
+                      {group.items.map((item, itemIndex) => (
+                        <Link
+                          key={`${group.title}-${itemIndex}`}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center space-x-3 p-2 sm:p-3 rounded-lg transition-all duration-200",
+                            isItemActive(item.href)
+                              ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                              : "hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent"
+                          )}
+                        >
+                          <div className={cn(
+                            "p-1 sm:p-1.5 rounded-md",
+                            isItemActive(item.href)
+                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                          )}>
+                            {item.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className={cn(
+                              "text-sm font-medium block truncate",
+                              isItemActive(item.href)
+                                ? "text-blue-900 dark:text-blue-100"
+                                : "text-slate-900 dark:text-slate-100"
+                            )}>
+                              {item.label}
+                            </span>
+                            {item.badge && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 mt-1">
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          <svg
+                            className={cn(
+                              "h-4 w-4 flex-shrink-0",
+                              isItemActive(item.href)
+                                ? "text-blue-600 dark:text-blue-400"
+                                : "text-slate-400 dark:text-slate-500"
+                            )}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-6 sm:mt-8 lg:mt-12 text-center">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             Panel de administración móvil · Go Lounge
           </p>
         </div>
