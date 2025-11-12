@@ -29,7 +29,7 @@ const ICONS = {
   ),
   box: (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 01-2-2v2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
     </svg>
   ),
   film: (
@@ -107,6 +107,20 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
     const pathPrefix = basePath === 'admin' ? '/admin' : '/u';
 
     const groups = [
+      ...(basePath === 'admin' ? [{
+        title: "ESCÁNER INTEGRADO",
+        icon: ICONS.qr,
+        items: [
+          { href: `${pathPrefix}/scanner`, label: "Escáner", icon: ICONS.qr }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "MARCAR ENTRADA/SALIDA",
+        icon: ICONS.clock,
+        items: [
+          { href: "/admin/assistance", label: "Marcar Entrada/Salida", icon: ICONS.check }
+        ]
+      }] : []),
       {
         title: "TOKENS RULETA",
         icon: ICONS.roulette,
