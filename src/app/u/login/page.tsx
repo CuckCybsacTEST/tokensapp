@@ -35,7 +35,7 @@ function LoginClient() {
       }
 
   const data = await res.json().catch(() => ({}));
-  const role: string | undefined = data.role;
+  const role: string | undefined = data.user?.role;
   const defaultByRole = role === 'ADMIN' ? '/admin' : role === 'STAFF' ? '/u' : '/u';
   const next = requestedNext && requestedNext.trim() !== '' ? requestedNext : defaultByRole;
       
