@@ -229,10 +229,6 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
 
   const sidebarGroups = getSidebarGroups(basePath);
 
-  console.log('AdminMobilePanel - basePath:', basePath);
-  console.log('AdminMobilePanel - sidebarGroups count:', sidebarGroups.length);
-  console.log('AdminMobilePanel - sidebarGroups:', sidebarGroups.map(g => g.title));
-
   const isItemActive = (href: string) => {
     if (href === "#") return false;
     if (!pathname) return false;

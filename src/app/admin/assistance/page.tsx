@@ -279,9 +279,8 @@ export default function AssistanceScannerPage(){
               <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Fecha:</span> {entryRegistered?.at?.toLocaleDateString()}</div>
               {entryRegistered?.businessDay && <div><span className="text-emerald-600/90 dark:text-emerald-400/90">Business Day:</span> {entryRegistered?.businessDay}</div>}
             </div>
-            <div className="pt-2 flex gap-2">
-              <a href={`/u/checklist?day=${encodeURIComponent(entryRegistered.businessDay || new Date().toISOString().slice(0,10))}&mode=IN`} className="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 shadow-sm">Ver lista de tareas</a>
-              <a href="/admin" className="inline-flex items-center justify-center rounded-md border border-emerald-300 dark:border-emerald-600 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 text-sm font-medium px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/30">Panel</a>
+            <div className="pt-2">
+              <a href="/admin" className="block w-full text-center px-4 py-2 rounded-md border border-emerald-300 dark:border-emerald-600 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 text-sm font-medium hover:bg-emerald-50 dark:hover:bg-emerald-900/30">Panel</a>
             </div>
           </div>
         )}
