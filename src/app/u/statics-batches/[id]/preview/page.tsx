@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import QrGrid from "./QrGrid";
 
 interface PageProps {
   params: { id: string };
@@ -48,55 +49,55 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
 
   return (
     <div className="app-container">
-      <div className="space-y-8">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-lg font-semibold">Vista Previa: {batch.description || `Batch ${batch.id}`}</h1>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg font-semibold break-words">Vista Previa: {batch.description || `Batch ${batch.id}`}</h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
               Lote estático creado el {new Date(batch.createdAt).toLocaleString()}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Link href={`/u/statics-batches/${batch.id}`} className="btn-outline !px-3 !py-1.5 text-sm">
+          <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+            <Link href={`/u/statics-batches/${batch.id}`} className="btn-outline !px-2 sm:!px-3 !py-1.5 text-xs sm:text-sm whitespace-nowrap">
               ← Detalles
             </Link>
-            <Link href="/u/statics-batches" className="btn-outline !px-3 !py-1.5 text-sm">
+            <Link href="/u/statics-batches" className="btn-outline !px-2 sm:!px-3 !py-1.5 text-xs sm:text-sm whitespace-nowrap">
               ← Todos los lotes
             </Link>
           </div>
         </div>
 
         {/* Información del lote */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="card">
             <div className="card-body">
-              <h3 className="font-semibold text-indigo-600 dark:text-indigo-400 mb-3">
+              <h3 className="font-semibold text-indigo-600 dark:text-indigo-400 mb-3 text-sm sm:text-base">
                 Configuración del Lote
               </h3>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-slate-600 dark:text-slate-400">ID:</span>
-                  <span className="ml-2 font-mono text-[11px]">{batch.id}</span>
+              <div className="space-y-2 text-xs sm:text-sm">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">ID:</span>
+                  <span className="font-mono text-[10px] sm:text-[11px] break-all">{batch.id}</span>
                 </div>
-                <div>
-                  <span className="text-slate-600 dark:text-slate-400">Tipo:</span>
-                  <span className="ml-2 px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded text-[10px] font-medium">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">Tipo:</span>
+                  <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded text-[9px] sm:text-[10px] font-medium self-start">
                     ESTÁTICO
                   </span>
                 </div>
-                <div>
-                  <span className="text-slate-600 dark:text-slate-400">URL destino:</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">URL destino:</span>
                   {batch.staticTargetUrl && batch.staticTargetUrl.trim() !== '' ? (
                     <a
                       href={batch.staticTargetUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-blue-600 dark:text-blue-400 underline text-[11px] break-all"
+                      className="text-blue-600 dark:text-blue-400 underline text-[10px] sm:text-[11px] break-all hover:text-blue-800 dark:hover:text-blue-300"
                     >
                       {batch.staticTargetUrl}
                     </a>
                   ) : (
-                    <span className="ml-2 text-slate-500 dark:text-slate-400 text-[11px]">
+                    <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px]">
                       (interfaz interna)
                     </span>
                   )}
@@ -107,27 +108,27 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
 
           <div className="card">
             <div className="card-body">
-              <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-3">
+              <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-3 text-sm sm:text-base">
                 Estadísticas
               </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <div className="space-y-2 text-xs sm:text-sm">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Total tokens:</span>
-                  <span className="font-medium">{batch.tokens.length}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{batch.tokens.length}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Activos:</span>
                   <span className="font-medium text-green-600 dark:text-green-400">{active}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Canjeados:</span>
                   <span className="font-medium text-blue-600 dark:text-blue-400">{redeemed}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Expirados:</span>
                   <span className="font-medium text-red-600 dark:text-red-400">{expired}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Deshabilitados:</span>
                   <span className="font-medium text-orange-600 dark:text-orange-400">{disabled}</span>
                 </div>
@@ -137,7 +138,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
 
           <div className="card">
             <div className="card-body">
-              <h3 className="font-semibold text-purple-600 dark:text-purple-400 mb-3">
+              <h3 className="font-semibold text-purple-600 dark:text-purple-400 mb-3 text-sm sm:text-base">
                 Premios
               </h3>
               <div className="space-y-2">
@@ -145,15 +146,15 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   const prize = batch.tokens.find((t: any) => t.prizeId === prizeId)?.prize;
                   const count = batch.tokens.filter((t: any) => t.prizeId === prizeId).length;
                   return (
-                    <div key={String(prizeId)} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
+                    <div key={String(prizeId)} className="flex items-center justify-between text-xs sm:text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="w-3 h-3 rounded-full flex-shrink-0"
                           style={{ backgroundColor: prize?.color || '#666' }}
                         ></div>
-                        <span className="text-slate-700 dark:text-slate-300">{prize?.label}</span>
+                        <span className="text-slate-700 dark:text-slate-300 truncate">{prize?.label}</span>
                       </div>
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">{count}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium ml-2 flex-shrink-0">{count}</span>
                     </div>
                   );
                 })}
@@ -162,17 +163,101 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Grid de códigos QR */}
+        <QrGrid tokens={batch.tokens} />
+
         {/* Lista de tokens */}
         <div className="card">
           <div className="card-body">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Tokens del Lote</h3>
-              <span className="text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+              <h3 className="font-semibold text-base sm:text-lg">Tokens del Lote</h3>
+              <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                 {batch.tokens.length} tokens
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Vista móvil: tarjetas */}
+            <div className="block sm:hidden space-y-3">
+              {batch.tokens.map((token: any) => {
+                const now = new Date();
+                const isRedeemed = !!token.redeemedAt;
+                const isDisabled = token.disabled;
+                const isUpcoming = token.validFrom && new Date(token.validFrom) > now;
+                const isExpired = !isUpcoming && token.expiresAt && new Date(token.expiresAt) < now;
+
+                let statusText = 'Activo';
+                let statusColor = 'text-green-600 dark:text-green-400';
+
+                if (isRedeemed) {
+                  statusText = 'Canjeado';
+                  statusColor = 'text-blue-600 dark:text-blue-400';
+                } else if (isDisabled) {
+                  statusText = 'Deshabilitado';
+                  statusColor = 'text-orange-600 dark:text-orange-400';
+                } else if (isUpcoming) {
+                  statusText = 'Próximamente';
+                  statusColor = 'text-purple-600 dark:text-purple-400';
+                } else if (isExpired) {
+                  statusText = 'Expirado';
+                  statusColor = 'text-red-600 dark:text-red-400';
+                }
+
+                return (
+                  <div key={token.id} className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {token.id}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: token.prize?.color || '#666' }}
+                          ></div>
+                          <span className="text-sm text-slate-700 dark:text-slate-300 truncate">
+                            {token.prize?.label}
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={`/static/${token.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-outline !px-2 !py-1 text-[10px] ml-2 flex-shrink-0"
+                        title="Ver token"
+                      >
+                        👁️ Ver
+                      </a>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">Estado:</span>
+                        <span className={`font-medium ${statusColor}`}>{statusText}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">Expira:</span>
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {token.validFrom && new Date(token.validFrom) > new Date() ? (
+                            <span className="text-xs">Activa el {new Date(token.validFrom).toLocaleDateString()}</span>
+                          ) : (
+                            token.expiresAt ? new Date(token.expiresAt).toLocaleDateString() : '-'
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">Canjeado:</span>
+                        <span className="text-slate-700 dark:text-slate-300">
+                          {token.redeemedAt ? new Date(token.redeemedAt).toLocaleDateString() : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Vista desktop: tabla */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
