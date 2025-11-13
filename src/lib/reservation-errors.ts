@@ -89,6 +89,17 @@ export function getValidationErrorDetails(errorMessage: string): ValidationError
         "Solo números, sin letras ni símbolos"
       ]
     },
+    "Documento debe tener 8 dígitos (DNI)": {
+      field: "documento",
+      type: "error",
+      title: "DNI inválido",
+      message: "El DNI debe tener exactamente 8 dígitos numéricos.",
+      suggestions: [
+        "Ejemplo: 12345678",
+        "Solo números, sin puntos ni espacios",
+        "Si tienes CE/Pasaporte, avísanos en el chat para asistencia"
+      ]
+    },
     "Email no es válido": {
       field: "general",
       type: "warning",
@@ -107,8 +118,8 @@ export function getValidationErrorDetails(errorMessage: string): ValidationError
       message: "Necesitamos saber cuándo será tu celebración para poder organizarla.",
       suggestions: [
         "Selecciona una fecha en el calendario",
-        "Puedes elegir hasta 10 días en el futuro",
-        "La fecha debe ser posterior a hoy"
+        "Puedes elegir una fecha hasta el fin del mes en curso",
+        "La fecha puede ser hoy o posterior"
       ]
     },
     "Selecciona un horario": {
@@ -161,6 +172,31 @@ export function getValidationErrorDetails(errorMessage: string): ValidationError
 }
 
 export function getServerErrorDetails(errorCode?: string, fallbackMessage?: string): ValidationError {
+  const specificFromFallback: Record<string, ValidationError> = {
+    "INVALID_DNI": {
+      field: "documento",
+      type: "error",
+      title: "DNI inválido",
+      message: "El DNI debe tener exactamente 8 dígitos numéricos.",
+      suggestions: [
+        "Ejemplo: 12345678",
+        "Solo números, sin puntos ni espacios",
+        "Si tienes CE/Pasaporte, avísanos en el chat para asistencia"
+      ]
+    },
+    "INVALID_WHATSAPP": {
+      field: "whatsapp",
+      type: "error",
+      title: "WhatsApp inválido",
+      message: "El número de WhatsApp debe tener exactamente 9 dígitos sin +51.",
+      suggestions: [
+        "Ejemplo correcto: 912345678",
+        "No incluyas el prefijo +51",
+        "Solo números, sin espacios ni guiones"
+      ]
+    }
+  };
+
   const serverErrors: Record<string, ValidationError> = {
     "RATE_LIMITED": {
       field: "general",
@@ -242,6 +278,11 @@ export function getServerErrorDetails(errorCode?: string, fallbackMessage?: stri
       ]
     }
   };
+
+  // Si el backend envía un mensaje específico junto con CREATE_RESERVATION_ERROR, intentamos mapearlo
+  if (errorCode === 'CREATE_RESERVATION_ERROR' && fallbackMessage && specificFromFallback[fallbackMessage]) {
+    return specificFromFallback[fallbackMessage];
+  }
 
   return serverErrors[errorCode || ''] || {
     field: "general",

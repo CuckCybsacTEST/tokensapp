@@ -171,9 +171,9 @@ export async function createReservation(input: CreateReservationInput): Promise<
     reservaDateObj = new Date(input.date);
   }
 
-  // Validar que no sea más de 30 días en el futuro (en zona Lima)
+  // Validar que no sea más allá del fin de mes actual (en zona Lima)
   const nowLima = getLimaDate(new Date()) as DateTime;
-  const maxFuture = nowLima.plus({ days: 30 });
+  const maxFuture = nowLima.endOf('month');
   const reservationLima = DateTime.fromJSDate(reservaDateObj).setZone('America/Lima');
 
   if (reservationLima > maxFuture) {

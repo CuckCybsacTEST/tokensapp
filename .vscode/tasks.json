@@ -496,6 +496,34 @@
 			"label": "Test order status update",
 			"type": "shell",
 			"command": "powershell"
+		},
+		{
+			"label": "Run birthdays smoke",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:PORT='3003'; Start-Job -ScriptBlock { npm run dev }; Start-Sleep -Seconds 5; npm run -s smoke:birthdays"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "dev-server-3003",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:PORT='3003'; $env:BIRTHDAYS_PUBLIC='1'; $env:NEXT_PUBLIC_BIRTHDAYS_ENABLED='1'; npm run dev"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
 		}
 	]
 }

@@ -130,7 +130,8 @@ function ReservarCumplePageInner() {
     if (!whatsapp.trim()) return "WhatsApp es obligatorio";
     if (!/^\d{9}$/.test(whatsapp.trim())) return "WhatsApp debe tener exactamente 9 dígitos (ej: 912345678)";
     if (!documento.trim()) return "Documento es obligatorio";
-    if (!/^\d{8,12}$/.test(documento.trim())) return "Documento debe tener entre 8-12 dígitos";
+    // Alinear con backend: DNI exacto 8 dígitos
+    if (!/^\d{8}$/.test(documento.trim())) return "Documento debe tener 8 dígitos (DNI)";
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Email no es válido";
     if (!date || !isValidDateYYYYMMDD(date)) return "Selecciona una fecha válida";
     if (!timeSlot) return "Selecciona un horario";
@@ -317,7 +318,8 @@ function ReservarCumplePageInner() {
                 return luxonDateToYMD(now);
               })()}
               max={(() => {
-                const maxDate: any = (DateTime as any).now().setZone("America/Lima").plus({ days: 10 });
+                // Limitar hasta el último día del mes actual en zona Lima
+                const maxDate: any = (DateTime as any).now().setZone("America/Lima").endOf('month');
                 return luxonDateToYMD(maxDate);
               })()}
               onChange={(e) => setDate(e.target.value)}

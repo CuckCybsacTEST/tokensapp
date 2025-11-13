@@ -20,6 +20,7 @@
     "db:push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
     "smoke:scanner": "tsx scripts/smoke-scanner.ts",
+    "smoke:birthdays": "tsx scripts/smoke-birthdays.ts",
     "smoke:scanner:code": "tsx scripts/smoke-scanner-code.ts",
     "smoke:attendance": "tsx scripts/smoke-attendance.ts",
     "posters:global": "tsx scripts/generate-global-posters.ts",

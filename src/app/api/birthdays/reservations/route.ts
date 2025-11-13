@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
   if (!isBirthdaysEnabledPublic()) {
     return apiError('NOT_FOUND', 'Not found', undefined, 404, cors);
   }
+  try { console.log('[API] /api/birthdays/reservations POST incoming'); } catch {}
   const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown';
   // Rate limiting por IP TEMPORALMENTE DESACTIVADO
   /*
