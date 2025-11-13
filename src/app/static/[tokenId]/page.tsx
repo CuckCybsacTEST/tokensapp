@@ -116,10 +116,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
     setMarkingDelivery(true);
     setDeliveryError(null);
     try {
-      const res = await fetch('/api/static/mark-delivered', {
+      const res = await fetch(`/api/token/${tokenId}/deliver`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tokenId }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al marcar entrega');
