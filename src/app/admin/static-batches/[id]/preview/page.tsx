@@ -41,11 +41,10 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
   const now = new Date();
   const disabled = batch.tokens.filter((t: any) => t.disabled).length;
   const expired = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length;
-  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length;
-  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length;
-  const delivered = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && !t.revealedAt && t.deliveredAt).length;
+  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.deliveredAt).length;
+  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.deliveredAt && t.revealedAt).length;
   const upcoming = batch.tokens.filter((t: any) => t.validFrom && new Date(t.validFrom) > now).length;
-  const active = batch.tokens.length - disabled - expired - redeemed - revealed - delivered - upcoming;
+  const active = batch.tokens.length - disabled - expired - redeemed - revealed - upcoming;
 
   return (
     <div className="space-y-8">
@@ -120,20 +119,16 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                 <span className="font-medium text-green-600 dark:text-green-400">{active}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Entregados:</span>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">{delivered}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Revelados:</span>
+                <span className="text-slate-600 dark:text-slate-400">En circulación:</span>
                 <span className="font-medium text-yellow-600 dark:text-yellow-400">{revealed}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Canjeados:</span>
-                <span className="font-medium text-blue-600 dark:text-blue-400">{redeemed}</span>
+                <span className="font-medium text-red-600 dark:text-red-400">{redeemed}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Expirados:</span>
-                <span className="font-medium text-red-600 dark:text-red-400">{expired}</span>
+                <span className="font-medium text-slate-500 dark:text-slate-400">{expired}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Deshabilitados:</span>
@@ -206,14 +201,11 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   let statusText = 'Activo';
                   let statusColor = 'text-green-600 dark:text-green-400';
 
-                  if (isRedeemed) {
+                  if (isDelivered) {
                     statusText = 'Canjeado';
-                    statusColor = 'text-blue-600 dark:text-blue-400';
-                  } else if (isDelivered) {
-                    statusText = 'Entregado';
-                    statusColor = 'text-emerald-600 dark:text-emerald-400';
+                    statusColor = 'text-red-600 dark:text-red-400';
                   } else if (isRevealed) {
-                    statusText = 'Revelado';
+                    statusText = 'En circulación';
                     statusColor = 'text-yellow-600 dark:text-yellow-400';
                   } else if (isDisabled) {
                     statusText = 'Deshabilitado';
@@ -223,7 +215,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                     statusColor = 'text-purple-600 dark:text-purple-400';
                   } else if (isExpired) {
                     statusText = 'Expirado';
-                    statusColor = 'text-red-600 dark:text-red-400';
+                    statusColor = 'text-slate-500 dark:text-slate-400';
                   }
 
                   return (

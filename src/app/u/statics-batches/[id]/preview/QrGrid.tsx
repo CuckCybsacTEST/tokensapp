@@ -128,8 +128,8 @@ export default function QrGrid({ tokens }: QRGridProps) {
             let borderColor = 'border-green-200 dark:border-green-800';
             let bgColor = 'bg-green-100/60 dark:bg-green-900/30';
             if (isDelivered) {
-              borderColor = 'border-blue-200 dark:border-blue-800';
-              bgColor = 'bg-blue-100/60 dark:bg-blue-900/30';
+              borderColor = 'border-red-200 dark:border-red-800';
+              bgColor = 'bg-red-100/60 dark:bg-red-900/30';
             } else if (isRevealed) {
               borderColor = 'border-yellow-200 dark:border-yellow-800';
               bgColor = 'bg-yellow-100/60 dark:bg-yellow-900/30';

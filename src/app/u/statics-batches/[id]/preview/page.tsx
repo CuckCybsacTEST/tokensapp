@@ -90,7 +90,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Canjeados:</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">{redeemed}</span>
+                  <span className="font-medium text-red-600 dark:text-red-400">{redeemed}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Expirados:</span>
