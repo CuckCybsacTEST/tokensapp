@@ -217,7 +217,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: basePath === 'admin' ? [
           // Reordered: Colaboradores first, then Control de Asistencia
           { href: `${pathPrefix}/users`, label: "Colaboradores", icon: ICONS.usersSmall },
-          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart }
+          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart },
+          { href: `${pathPrefix}/tasks/status`, label: "Estado por usuario", icon: ICONS.usersSmall }
         ] : [
           { href: `${pathPrefix}/attendance`, label: "Mi Asistencia", icon: ICONS.chart }
         ]
@@ -229,7 +230,6 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           // Put Brief del día first
           { href: `${pathPrefix}/day-brief`, label: "Brief del día", icon: ICONS.checkSmall },
           { href: `${pathPrefix}/tasks`, label: "Gestión de tareas", icon: ICONS.checkSmall },
-          { href: `${pathPrefix}/tasks/status`, label: "Estado por usuario", icon: ICONS.usersSmall },
           { href: `${pathPrefix}/tasks/metrics`, label: "Métricas de Tareas", icon: ICONS.chart }
         ]
       }] : []),
