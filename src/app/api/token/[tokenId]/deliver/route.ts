@@ -45,26 +45,54 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       }
     } catch { /* no body */ }
     const result = await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Leer estado actual
-      const token = await tx.token.findUnique({ where: { id: tokenId }, select: { id: true, prizeId: true, revealedAt: true, deliveredAt: true, assignedPrizeId: true } });
+      // 1. Leer estado actual incluyendo información del batch
+      const token = await tx.token.findUnique({
+        where: { id: tokenId },
+        select: {
+          id: true,
+          prizeId: true,
+          revealedAt: true,
+          deliveredAt: true,
+          assignedPrizeId: true,
+          batch: {
+            select: {
+              staticTargetUrl: true
+            }
+          }
+        }
+      });
   if (!token) return { status: 404, body: { code: 'TOKEN_NOT_FOUND', message: 'Token no encontrado' } } as const;
   if (!token.revealedAt) return { status: 409, body: { code: 'NOT_REVEALED', message: 'Token no revelado' } } as const;
   if (token.deliveredAt) return { status: 409, body: { code: 'ALREADY_DELIVERED', message: 'Ya entregado' } } as const;
 
-      // 2. Intento de actualización atómica condicionada deliveredAt IS NULL para evitar race
+      // 2. Determinar si es un lote estático
+      const isStaticBatch = !!(token.batch?.staticTargetUrl && token.batch.staticTargetUrl.trim() !== '');
+
+      // 3. Intento de actualización atómica condicionada deliveredAt IS NULL para evitar race
       const deliveredAt = new Date();
       const revealToDeliverMs = deliveredAt.getTime() - token.revealedAt.getTime();
   const deliveredByUserId = allowClient ? 'client_device' : (session?.role === 'STAFF' ? 'staff_user' : 'admin_user');
 
+      // Para tokens estáticos: entregado = canjeado automáticamente
+      // Para tokens normales: solo entregado (canjeado se hace por separado)
+      const updateData = isStaticBatch
+        ? {
+            deliveredAt,
+            redeemedAt: deliveredAt, // Auto-canje para estáticos
+            deliveredByUserId,
+            deliveryNote,
+            assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
+          }
+        : {
+            deliveredAt,
+            deliveredByUserId,
+            deliveryNote,
+            assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
+          };
+
       const updateRes = await tx.token.updateMany({
         where: { id: tokenId, deliveredAt: null },
-        data: {
-          deliveredAt,
-          redeemedAt: deliveredAt, // mirror legacy
-          deliveredByUserId,
-          deliveryNote,
-          assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
-        }
+        data: updateData
       });
 
       if (updateRes.count !== 1) {
@@ -83,7 +111,9 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
         timings: { revealToDeliverMs },
         timestamps: { revealedAt: updated.revealedAt, deliveredAt: updated.deliveredAt },
         deliveryNote: updated.deliveryNote || deliveryNote || null,
-      }, log: { type: 'TOKEN_DELIVERED', message: 'Token delivered (two-phase)', metadata: { tokenId: updated.id, prizeId: updated.prizeId, assignedPrizeId: updated.assignedPrizeId, revealToDeliverMs, deliveryNote } } } as const;
+        isStaticBatch,
+        autoRedeemed: isStaticBatch,
+      }, log: { type: 'TOKEN_DELIVERED', message: isStaticBatch ? 'Token estático entregado y auto-canjeado' : 'Token delivered (two-phase)', metadata: { tokenId: updated.id, prizeId: updated.prizeId, assignedPrizeId: updated.assignedPrizeId, revealToDeliverMs, deliveryNote, isStaticBatch, autoRedeemed: isStaticBatch } } } as const;
     });
 
     if (result.status === 200 && (result as any).log) {

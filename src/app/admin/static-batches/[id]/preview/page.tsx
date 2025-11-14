@@ -17,6 +17,7 @@ async function getBatchWithTokens(batchId: string) {
           prize: { select: { key: true, label: true, color: true } },
           validFrom: true,
           redeemedAt: true,
+          revealedAt: true,
           deliveredAt: true,
           expiresAt: true,
           disabled: true,
@@ -38,15 +39,13 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
   const batch = await getBatchWithTokens(params.id);
 
   const now = new Date();
-  const redeemed = batch.tokens.filter((t: any) => t.redeemedAt).length;
-  const delivered = batch.tokens.filter((t: any) => t.deliveredAt && !t.redeemedAt).length;
   const disabled = batch.tokens.filter((t: any) => t.disabled).length;
+  const expired = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length;
+  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length;
+  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length;
+  const delivered = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && !t.revealedAt && t.deliveredAt).length;
   const upcoming = batch.tokens.filter((t: any) => t.validFrom && new Date(t.validFrom) > now).length;
-  const expired = batch.tokens.filter((t: any) => {
-    if (t.validFrom && new Date(t.validFrom) > now) return false; // future = not expired
-    return t.expiresAt && new Date(t.expiresAt) < now;
-  }).length;
-  const active = batch.tokens.length - redeemed - delivered - expired - disabled - upcoming;
+  const active = batch.tokens.length - disabled - expired - redeemed - revealed - delivered - upcoming;
 
   return (
     <div className="space-y-8">
@@ -125,6 +124,10 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">{delivered}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Revelados:</span>
+                <span className="font-medium text-yellow-600 dark:text-yellow-400">{revealed}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Canjeados:</span>
                 <span className="font-medium text-blue-600 dark:text-blue-400">{redeemed}</span>
               </div>
@@ -184,6 +187,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Token ID</th>
                   <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Premio</th>
                   <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Estado</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Revelado</th>
                   <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Expira</th>
                   <th className="text-left py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Entregado</th>
                   <th className="text-center py-2 px-3 font-medium text-slate-700 dark:text-slate-300">Acciones</th>
@@ -194,6 +198,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   const now = new Date();
                   const isRedeemed = !!token.redeemedAt;
                   const isDelivered = !!token.deliveredAt;
+                  const isRevealed = !!token.revealedAt;
                   const isDisabled = token.disabled;
                   const isUpcoming = token.validFrom && new Date(token.validFrom) > now;
                   const isExpired = !isUpcoming && token.expiresAt && new Date(token.expiresAt) < now;
@@ -207,6 +212,9 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   } else if (isDelivered) {
                     statusText = 'Entregado';
                     statusColor = 'text-emerald-600 dark:text-emerald-400';
+                  } else if (isRevealed) {
+                    statusText = 'Revelado';
+                    statusColor = 'text-yellow-600 dark:text-yellow-400';
                   } else if (isDisabled) {
                     statusText = 'Deshabilitado';
                     statusColor = 'text-orange-600 dark:text-orange-400';
@@ -238,6 +246,9 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                         <span className={`text-sm font-medium ${statusColor}`}>
                           {statusText}
                         </span>
+                      </td>
+                      <td className="py-2 px-3 text-sm text-slate-600 dark:text-slate-400 text-center">
+                        {token.revealedAt ? '1' : '0'}
                       </td>
                       <td className="py-2 px-3 text-sm text-slate-600 dark:text-slate-400">
                         {token.validFrom && new Date(token.validFrom) > new Date() ? (

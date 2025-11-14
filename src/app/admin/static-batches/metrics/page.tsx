@@ -15,6 +15,7 @@ async function getStaticBatchesMetrics() {
         select: {
           id: true,
           redeemedAt: true,
+          revealedAt: true,
           expiresAt: true,
           disabled: true,
           createdAt: true
@@ -23,19 +24,22 @@ async function getStaticBatchesMetrics() {
     }
   });
 
-  // Calcular métricas globales
+  // Calcular métricas globales con lógica jerárquica
   const totalBatches = batches.length;
   const totalTokens = batches.reduce((sum: number, b: any) => sum + b.tokens.length, 0);
-  const totalRedeemed = batches.reduce((sum: number, b: any) =>
-    sum + b.tokens.filter((t: any) => t.redeemedAt).length, 0
-  );
-  const totalExpired = batches.reduce((sum: number, b: any) =>
-    sum + b.tokens.filter((t: any) => t.expiresAt < new Date()).length, 0
-  );
   const totalDisabled = batches.reduce((sum: number, b: any) =>
     sum + b.tokens.filter((t: any) => t.disabled).length, 0
   );
-  const totalActive = totalTokens - totalRedeemed - totalExpired - totalDisabled;
+  const totalExpired = batches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length, 0
+  );
+  const totalRedeemed = batches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length, 0
+  );
+  const totalRevealed = batches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length, 0
+  );
+  const totalActive = totalTokens - totalDisabled - totalExpired - totalRedeemed - totalRevealed;
 
   // Métricas por período
   const now = new Date();
@@ -45,8 +49,17 @@ async function getStaticBatchesMetrics() {
 
   const recentBatches = batches.filter((b: any) => b.createdAt >= weekAgo);
   const recentTokens = recentBatches.reduce((sum: number, b: any) => sum + b.tokens.length, 0);
+  const recentDisabled = recentBatches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => t.disabled).length, 0
+  );
+  const recentExpired = recentBatches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length, 0
+  );
   const recentRedeemed = recentBatches.reduce((sum: number, b: any) =>
-    sum + b.tokens.filter((t: any) => t.redeemedAt).length, 0
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length, 0
+  );
+  const recentRevealed = recentBatches.reduce((sum: number, b: any) =>
+    sum + b.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length, 0
   );
 
   // Tasa de canje promedio
@@ -59,17 +72,19 @@ async function getStaticBatchesMetrics() {
   );
 
   return {
-    totalBatches,
-    totalTokens,
-    totalRedeemed,
-    totalExpired,
-    totalDisabled,
-    totalActive,
-    avgRedemptionRate,
+    totalBatches: totalBatches,
+    totalTokens: totalTokens,
+    totalRedeemed: totalRedeemed,
+    totalExpired: totalExpired,
+    totalDisabled: totalDisabled,
+    totalActive: totalActive,
+    totalRevealed: totalRevealed,
+    avgRedemptionRate: avgRedemptionRate,
     recentBatches: recentBatches.length,
-    recentTokens,
-    recentRedeemed,
-    expiringSoon
+    recentTokens: recentTokens,
+    recentRedeemed: recentRedeemed,
+    recentRevealed: recentRevealed,
+    expiringSoon: expiringSoon
   };
 }
 
@@ -140,7 +155,7 @@ export default async function StaticBatchesMetricsPage() {
       </div>
 
       {/* Estado actual */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card">
           <div className="card-body">
             <h3 className="font-semibold text-green-600 dark:text-green-400 mb-3">
@@ -151,6 +166,20 @@ export default async function StaticBatchesMetricsPage() {
             </div>
             <div className="text-sm text-slate-600 dark:text-slate-400">
               Tokens disponibles para canje
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-body">
+            <h3 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-3">
+              Revelados
+            </h3>
+            <div className="text-2xl font-bold">
+              {metrics.totalRevealed.toLocaleString()}
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Tokens vistos por usuarios
             </div>
           </div>
         </div>
@@ -202,6 +231,12 @@ export default async function StaticBatchesMetricsPage() {
                 <span className="text-sm text-slate-600 dark:text-slate-400">Tokens canjeados:</span>
                 <span className="font-medium text-green-600 dark:text-green-400">
                   {metrics.recentRedeemed.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-600 dark:text-slate-400">Tokens revelados:</span>
+                <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                  {metrics.recentRevealed.toLocaleString()}
                 </span>
               </div>
             </div>

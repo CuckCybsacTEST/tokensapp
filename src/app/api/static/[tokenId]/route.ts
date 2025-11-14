@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { apiError, apiOk } from '@/lib/apiError';
+import { logEvent } from '@/lib/log';
 
 export async function GET(_: Request, { params }: { params: { tokenId: string } }) {
   const { tokenId } = params;
@@ -8,7 +9,7 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
   // Raw query to avoid potential stale generated types
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT
-      t.id, t.disabled, t."expiresAt", t."validFrom", t."batchId", t."deliveredAt",
+      t.id, t.disabled, t."expiresAt", t."validFrom", t."batchId", t."deliveredAt", t."revealedAt",
       b."staticTargetUrl", b.description, b."createdAt",
       p.key, p.label, p.color
     FROM "Token" t
@@ -26,6 +27,32 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
   if (rec.disabled) return apiError('DISABLED', 'Token deshabilitado', undefined, 403);
   if (new Date(rec.expiresAt).getTime() < Date.now()) return apiError('EXPIRED', 'Expirado', undefined, 410);
 
+  // Two-phase redemption: Auto-reveal for static tokens
+  let wasJustRevealed = false;
+  if (!rec.revealedAt) {
+    try {
+      await prisma.token.update({
+        where: { id: tokenId },
+        data: {
+          revealedAt: new Date(),
+          assignedPrizeId: rec.prizeId // For static batches, assigned prize is the token's prize
+        }
+      });
+      wasJustRevealed = true;
+      rec.revealedAt = new Date().toISOString(); // Update local copy
+
+      await logEvent("TOKEN_REVEALED", "Token estático revelado automáticamente", {
+        tokenId,
+        batchId: rec.batchId,
+        prizeId: rec.prizeId,
+        autoReveal: true
+      });
+    } catch (error) {
+      console.error('Error auto-revealing static token:', error);
+      // Continue anyway - don't block the user experience
+    }
+  }
+
   const tokenData = {
     id: rec.id,
     prize: {
@@ -42,7 +69,9 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
     expiresAt: rec.expiresAt,
     validFrom: rec.validFrom,
     disabled: rec.disabled,
-    deliveredAt: rec.deliveredAt
+    deliveredAt: rec.deliveredAt,
+    revealedAt: rec.revealedAt,
+    wasJustRevealed
   };
 
   return apiOk({ token: tokenData });

@@ -10,11 +10,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Falta tokenId' });
   }
   try {
+    // Primero verificar si el token pertenece a un lote estático
+    const tokenWithBatch = await prisma.token.findUnique({
+      where: { id: tokenId },
+      include: {
+        batch: {
+          select: {
+            staticTargetUrl: true
+          }
+        }
+      }
+    });
+
+    if (!tokenWithBatch) {
+      return res.status(404).json({ error: 'Token no encontrado' });
+    }
+
+    const isStaticBatch = !!(tokenWithBatch.batch?.staticTargetUrl && tokenWithBatch.batch.staticTargetUrl.trim() !== '');
+
+    // Para tokens estáticos, marcar como entregado Y canjeado
+    const updateData = isStaticBatch
+      ? { deliveredAt: new Date(), redeemedAt: new Date() }
+      : { deliveredAt: new Date() };
+
     const token = await prisma.token.update({
       where: { id: tokenId },
-      data: { deliveredAt: new Date() },
+      data: updateData,
     });
-    return res.status(200).json({ success: true, token });
+
+    return res.status(200).json({
+      success: true,
+      token,
+      isStaticBatch,
+      autoRedeemed: isStaticBatch
+    });
   } catch (err) {
     return res.status(500).json({ error: 'No se pudo marcar entrega' });
   }

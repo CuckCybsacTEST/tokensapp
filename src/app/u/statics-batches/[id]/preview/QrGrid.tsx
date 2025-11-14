@@ -10,6 +10,7 @@ interface Token {
   prize: { key: string; label: string; color: string };
   validFrom: Date | null;
   redeemedAt: Date | null;
+  revealedAt: Date | null;
   expiresAt: Date | null;
   disabled: boolean;
   createdAt: Date;
@@ -118,24 +119,28 @@ export default function QrGrid({ tokens }: QRGridProps) {
             const qrDataUrl = qrCodes[token.id];
             const now = new Date();
             const isRedeemed = !!token.redeemedAt;
+            const isRevealed = !!token.revealedAt;
             const isDisabled = token.disabled;
             const isUpcoming = token.validFrom && new Date(token.validFrom) > now;
             const isExpired = !isUpcoming && token.expiresAt && new Date(token.expiresAt) < now;
 
             let borderColor = 'border-green-200 dark:border-green-800';
-            let bgColor = 'bg-green-50/50 dark:bg-green-900/20';
+            let bgColor = 'bg-green-100/60 dark:bg-green-900/30';
             if (isRedeemed) {
-              borderColor = 'border-red-200 dark:border-red-800';
-              bgColor = 'bg-red-50/50 dark:bg-red-900/20';
+              borderColor = 'border-blue-200 dark:border-blue-800';
+              bgColor = 'bg-blue-100/60 dark:bg-blue-900/30';
+            } else if (isRevealed) {
+              borderColor = 'border-yellow-200 dark:border-yellow-800';
+              bgColor = 'bg-yellow-100/60 dark:bg-yellow-900/30';
             } else if (isDisabled) {
               borderColor = 'border-orange-200 dark:border-orange-800';
-              bgColor = 'bg-orange-50/50 dark:bg-orange-900/20';
+              bgColor = 'bg-orange-100/60 dark:bg-orange-900/30';
             } else if (isUpcoming) {
               borderColor = 'border-purple-200 dark:border-purple-800';
-              bgColor = 'bg-purple-50/50 dark:bg-purple-900/20';
+              bgColor = 'bg-purple-100/60 dark:bg-purple-900/30';
             } else if (isExpired) {
-              borderColor = 'border-red-300 dark:border-red-700';
-              bgColor = 'bg-red-100/50 dark:bg-red-900/30';
+              borderColor = 'border-slate-300 dark:border-slate-600';
+              bgColor = 'bg-slate-100/60 dark:bg-slate-900/30';
             }
 
             return (

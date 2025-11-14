@@ -18,6 +18,8 @@ async function getBatchWithTokens(batchId: string) {
           prize: { select: { key: true, label: true, color: true } },
           validFrom: true,
           redeemedAt: true,
+          revealedAt: true,
+          deliveredAt: true,
           expiresAt: true,
           disabled: true,
           createdAt: true
@@ -38,14 +40,12 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
   const batch = await getBatchWithTokens(params.id);
 
   const now = new Date();
-  const redeemed = batch.tokens.filter((t: any) => t.redeemedAt).length;
   const disabled = batch.tokens.filter((t: any) => t.disabled).length;
+  const expired = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length;
+  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length;
+  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length;
   const upcoming = batch.tokens.filter((t: any) => t.validFrom && new Date(t.validFrom) > now).length;
-  const expired = batch.tokens.filter((t: any) => {
-    if (t.validFrom && new Date(t.validFrom) > now) return false; // future = not expired
-    return t.expiresAt && new Date(t.expiresAt) < now;
-  }).length;
-  const active = batch.tokens.length - redeemed - expired - disabled - upcoming;
+  const active = batch.tokens.length - disabled - expired - redeemed - revealed - upcoming;
 
   return (
     <div className="app-container">
@@ -81,8 +81,12 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                   <span className="font-medium text-slate-900 dark:text-slate-100">{batch.tokens.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-600 dark:text-slate-400">Activos:</span>
+                  <span className="text-slate-600 dark:text-slate-400">Sin utilizar:</span>
                   <span className="font-medium text-green-600 dark:text-green-400">{active}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600 dark:text-slate-400">En circulación:</span>
+                  <span className="font-medium text-yellow-600 dark:text-yellow-400">{revealed}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Canjeados:</span>
@@ -90,7 +94,7 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Expirados:</span>
-                  <span className="font-medium text-red-600 dark:text-red-400">{expired}</span>
+                  <span className="font-medium text-slate-500 dark:text-slate-400">{expired}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600 dark:text-slate-400">Deshabilitados:</span>

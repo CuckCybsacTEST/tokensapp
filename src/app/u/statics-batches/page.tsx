@@ -31,10 +31,15 @@ async function getStaticBatches() {
 export default async function StaticBatchesListPage() {
   const raw = await getStaticBatches();
   const batches: StaticBatchItem[] = raw.map((b: any) => {
-    const redeemed = b.tokens.filter((t: any) => t.redeemedAt).length;
-    const expired = b.tokens.filter((t: any) => t.expiresAt < new Date()).length;
+    // Lógica jerárquica para evitar superposiciones:
+    // 1. Deshabilitados (prioridad máxima)
+    // 2. Expirados (que no estén deshabilitados)
+    // 3. Canjeados (que no estén deshabilitados ni expirados)
+    // 4. Activos (el resto)
     const disabled = b.tokens.filter((t: any) => t.disabled).length;
-    const active = Math.max(0, b.tokens.length - redeemed - expired - disabled);
+    const expired = b.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length;
+    const redeemed = b.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length;
+    const active = b.tokens.length - disabled - expired - redeemed;
     const distinctPrizeIds = new Set(b.tokens.map((t: any) => t.prizeId)).size;
     return {
       id: b.id,

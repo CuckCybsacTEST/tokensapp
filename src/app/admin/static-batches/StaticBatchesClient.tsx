@@ -14,6 +14,7 @@ export interface StaticBatchItem {
     expired: number;
     disabled: number;
     active: number;
+    revealed: number;
     distinctPrizeIds: number;
   };
 }
@@ -40,7 +41,7 @@ export default function StaticBatchesClient({ batches }: { batches: StaticBatchI
 
       <div className="grid gap-4">
         {batches.map((b) => {
-          const { total, redeemed, expired, disabled, active, distinctPrizeIds } = b.totals;
+          const { total, redeemed, expired, disabled, active, revealed, distinctPrizeIds } = b.totals;
           const totalViews = total;
           const redemptionRate = total > 0 ? ((redeemed / total) * 100).toFixed(1) : "0.0";
           return (
@@ -102,6 +103,9 @@ export default function StaticBatchesClient({ batches }: { batches: StaticBatchI
                     <div>Total: {total}</div>
                     <div>
                       Activos: <span className="text-green-600 dark:text-green-400 font-medium">{active}</span>
+                    </div>
+                    <div>
+                      Revelados: <span className="text-yellow-600 dark:text-yellow-400 font-medium">{revealed}</span>
                     </div>
                     <div>
                       Canjeados: <span className="text-blue-600 dark:text-blue-400 font-medium">{redeemed}</span>
