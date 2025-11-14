@@ -76,18 +76,27 @@ export default function ScannerClient() {
   // Function to navigate to birthday pages
   const maybeNavigate = useCallback((raw: string) => {
     if (redirectedRef.current) return;
+    console.log('maybeNavigate called with:', raw);
+    
+    // More flexible detection for static tokens
+    const staticTokenRegex = /(?:^|\/)static\/([^\/\s]{4,})/i;
+    const staticMatch = raw.match(staticTokenRegex);
+    if (staticMatch) {
+      const tokenId = staticMatch[1];
+      console.log('Detected static token, ID:', tokenId, 'from text:', raw);
+      redirectedRef.current = true;
+      setActive(false); // detener cámara antes de salir
+      // pequeña pausa para permitir sonido/flash visual
+      setTimeout(()=>{ window.location.href = `/static/${tokenId}`; }, 120);
+      return;
+    }
+    
     try {
       const url = new URL(raw);
+      console.log('Parsed URL:', url.href, 'pathname:', url.pathname);
       // Patrón principal: /b/<code> (tanto relativo como absoluto)
       if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
-        redirectedRef.current = true;
-        setActive(false); // detener cámara antes de salir
-        // pequeña pausa para permitir sonido/flash visual
-        setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
-        return;
-      }
-      // QR estáticos: /static/<tokenId>
-      if (/^\/static\/[^/]{4,}$/.test(url.pathname)) {
+        console.log('Detected birthday URL:', url.pathname);
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
@@ -96,16 +105,29 @@ export default function ScannerClient() {
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
+        console.log('Detected marketing birthday URL:', url.pathname);
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
       }
-    } catch {
+    } catch (e) {
+      console.log('URL parsing failed:', (e as Error).message, 'for text:', raw);
+      // no es URL absoluta; verificar si es ruta relativa
+      if (/^\/b\/[^/]{4,}$/.test(raw)) {
+        console.log('Detected relative birthday path:', raw);
+        // Es una ruta relativa de cumpleaños
+        redirectedRef.current = true;
+        setActive(false); // detener cámara antes de salir
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = raw; }, 120);
+        return;
+      }
       // no es URL absoluta; podría venir un code simple futuro: birthday:<code>
       if (/^https?:\/\//i.test(raw) === false && /^bday:/i.test(raw)) {
         // Formato hipotético bday:<code>
         const code = raw.split(':')[1];
         if (code && code.length >= 4 && !redirectedRef.current) {
+          console.log('Detected bday code:', code);
           redirectedRef.current = true;
           setActive(false);
           setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
@@ -117,11 +139,16 @@ export default function ScannerClient() {
   // Function to process QR text (extracted for reuse)
   const processQrText = useCallback(async (raw: string) => {
     if (!raw) return;
+    console.log('processQrText called with:', raw);
+
+    // First, check if it's a URL that should trigger navigation (static tokens, birthday codes, etc.)
+    maybeNavigate(raw);
 
     // Check if it's an offer QR
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && parsed.type === 'offer_purchase') {
+        console.log('Detected offer QR');
         // It's an offer QR - redirect to validation page
         if (!redirectedRef.current) {
           redirectedRef.current = true;
@@ -141,6 +168,7 @@ export default function ScannerClient() {
     // Check if it's a birthday QR token
     const birthdayClaim = decodeBirthdayQrFromText(raw);
     if (birthdayClaim) {
+      console.log('Detected birthday QR token');
       // It's a birthday QR - redirect to appropriate interface
       if (!redirectedRef.current) {
         redirectedRef.current = true;
@@ -170,13 +198,12 @@ export default function ScannerClient() {
     }
 
     // Normal QR processing
+    console.log('Normal QR processing for:', raw);
     if (!resultsRef.current.some(r=>r.text===raw)) {
       setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
       try { audioOkRef.current?.play().catch(()=>{}); } catch {}
       flashRef.current = { ts: Date.now() }; force(v=>v+1);
     }
-    // Intentar navegación automática si es un QR de cumpleaños (/b/<code>)
-    maybeNavigate(raw);
   }, [maybeNavigate, decodeBirthdayQrFromText]);
 
   // Function to handle file upload for QR image processing

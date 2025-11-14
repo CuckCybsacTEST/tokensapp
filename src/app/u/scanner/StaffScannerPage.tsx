@@ -281,6 +281,23 @@ export default function StaffScannerPage() {
       // Not a URL, continue with normal processing
     }
 
+    // 3.6) Detect STATIC TOKEN URL: redirect to static token page
+    // More flexible detection for static tokens
+    const staticTokenRegex = /(?:^|\/)static\/([^\/\s]{4,})/i;
+    const staticMatch = text.match(staticTokenRegex);
+    if (staticMatch) {
+      const tokenId = staticMatch[1];
+      console.log('Staff scanner detected static token, ID:', tokenId, 'from text:', text);
+      setBanner({ variant: "success", message: `🎫 Token estático detectado - Redirigiendo...` });
+      beep(880, 120, "sine");
+      vibrate(60);
+      setCooldownUntil(Date.now() + 2000);
+      // Redirect to static token page
+      window.location.href = `/static/${tokenId}`;
+      processingRef.current = false;
+      return;
+    }
+
     const payload = decodePersonPayloadFromQr(text);
     if (!payload) {
       setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });
@@ -474,26 +491,26 @@ export default function StaffScannerPage() {
   }, [processDecodedText]);
 
   return (
-    <div className="w-full bg-[var(--color-bg)] px-2 py-4 sm:py-8">
-      <div className="w-full max-w-lg mx-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-3 sm:p-4 flex flex-col justify-start">
-        <h1 className="mb-2 text-3xl font-extrabold text-gray-900 dark:text-slate-100 tracking-tight text-center drop-shadow">Escáner de Códigos</h1>
-        <p className="mb-5 text-base text-gray-700 dark:text-slate-300 text-center font-medium">Escanea códigos QR de invitaciones, tokens y ofertas especiales.</p>
+    <div className="min-h-screen w-full bg-[var(--color-bg)] px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
+      <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4 sm:p-5 md:p-6 flex flex-col justify-start min-h-[85vh] sm:min-h-[75vh] md:min-h-[70vh]">
+        <h1 className="mb-2 text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-slate-100 tracking-tight text-center drop-shadow">Escáner de Códigos</h1>
+        <p className="mb-4 sm:mb-5 text-sm sm:text-base text-gray-700 dark:text-slate-300 text-center font-medium px-2">Escanea códigos QR de invitaciones, tokens y ofertas especiales.</p>
 
         {banner && (
-          <div className={`mb-2 w-full text-center text-base font-semibold rounded-lg px-4 py-2 ${banner.variant === 'success' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>{banner.message}</div>
+          <div className={`mb-3 sm:mb-4 w-full text-center text-sm sm:text-base font-semibold rounded-lg px-3 sm:px-4 py-2 sm:py-3 ${banner.variant === 'success' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>{banner.message}</div>
         )}
 
         {awaitingCode && (
-          <div className="mb-2 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow flex flex-col items-center">
-            <div className="mb-2 text-base text-gray-700 dark:text-slate-300 font-semibold">
+          <div className="mb-3 sm:mb-4 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 sm:p-4 shadow flex flex-col items-center">
+            <div className="mb-3 sm:mb-4 text-sm sm:text-base text-gray-700 dark:text-slate-300 font-semibold text-center">
               Modo: <span className={mode === "IN" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
             </div>
-            <div className="flex items-center gap-2 w-full justify-center">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="Código de persona"
-                className="input max-w-xs text-lg font-bold text-center border-gray-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-400 dark:bg-slate-700 dark:text-slate-100"
+                className="input w-full sm:max-w-xs text-base sm:text-lg font-bold text-center border-gray-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-400 dark:bg-slate-700 dark:text-slate-100 px-3 py-2"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -502,47 +519,49 @@ export default function StaffScannerPage() {
                   }
                 }}
               />
-              <button
-                className="btn bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-blue-700"
-                disabled={code.trim().toUpperCase().length < 4}
-                onClick={submitCode}
-              >
-                Registrar
-              </button>
-              <button
-                className="btn-outline border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
-                onClick={() => {
-                  setAwaitingCode(false);
-                  setCode("");
-                }}
-              >
-                Cancelar
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto justify-center">
+                <button
+                  className="btn bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex-1 sm:flex-none"
+                  disabled={code.trim().toUpperCase().length < 4}
+                  onClick={submitCode}
+                >
+                  Registrar
+                </button>
+                <button
+                  className="btn-outline border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 flex-1 sm:flex-none"
+                  onClick={() => {
+                    setAwaitingCode(false);
+                    setCode("");
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        <div className="relative w-full max-w-xs sm:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-gray-300 dark:border-slate-600 bg-black shadow-lg">
+        <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-gray-300 dark:border-slate-600 bg-black shadow-lg mx-auto">
           <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
 
           {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
           {!overlay && !cameraError && (
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-4 top-4 h-8 w-8 border-l-4 border-t-4 border-blue-400 rounded-tl-xl"></div>
-              <div className="absolute right-4 top-4 h-8 w-8 border-r-4 border-t-4 border-blue-400 rounded-tr-xl"></div>
-              <div className="absolute left-4 bottom-4 h-8 w-8 border-l-4 border-b-4 border-blue-400 rounded-bl-xl"></div>
-              <div className="absolute right-4 bottom-4 h-8 w-8 border-r-4 border-b-4 border-blue-400 rounded-br-xl"></div>
+              <div className="absolute left-3 sm:left-4 top-3 sm:top-4 h-6 w-6 sm:h-8 sm:w-8 border-l-3 sm:border-l-4 border-t-3 sm:border-t-4 border-blue-400 rounded-tl-xl"></div>
+              <div className="absolute right-3 sm:right-4 top-3 sm:top-4 h-6 w-6 sm:h-8 sm:w-8 border-r-3 sm:border-r-4 border-t-3 sm:border-t-4 border-blue-400 rounded-tr-xl"></div>
+              <div className="absolute left-3 sm:left-4 bottom-3 sm:bottom-4 h-6 w-6 sm:h-8 sm:w-8 border-l-3 sm:border-l-4 border-b-3 sm:border-b-4 border-blue-400 rounded-bl-xl"></div>
+              <div className="absolute right-3 sm:right-4 bottom-3 sm:bottom-4 h-6 w-6 sm:h-8 sm:w-8 border-r-3 sm:border-r-4 border-b-3 sm:border-b-4 border-blue-400 rounded-br-xl"></div>
             </div>
           )}
 
           {overlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-2 px-4 pt-4 text-white rounded-2xl">
-              <div>
-                <div className="text-xl font-bold leading-tight drop-shadow-lg">{overlay.person.name}</div>
-                <div className="text-base opacity-90 font-mono">{overlay.person.code}</div>
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-3 sm:pb-4 px-3 sm:px-4 pt-3 sm:pt-4 text-white rounded-2xl">
+              <div className="min-w-0 flex-1">
+                <div className="text-lg sm:text-xl font-bold leading-tight drop-shadow-lg truncate">{overlay.person.name}</div>
+                <div className="text-sm sm:text-base opacity-90 font-mono truncate">{overlay.person.code}</div>
               </div>
               {overlay.lastScanAt && (
-                <div className="text-right text-sm opacity-90">
+                <div className="text-right text-xs sm:text-sm opacity-90 ml-2 flex-shrink-0">
                   Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
                 </div>
               )}
@@ -550,15 +569,15 @@ export default function StaffScannerPage() {
           )}
 
           {offerOverlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent pb-2 px-4 pt-4 text-white rounded-2xl">
-              <div className="text-center">
-                <div className="text-lg font-bold leading-tight drop-shadow-lg mb-1">
+            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent pb-3 sm:pb-4 px-3 sm:px-4 pt-3 sm:pt-4 text-white rounded-2xl">
+              <div className="text-center max-w-full">
+                <div className="text-base sm:text-lg font-bold leading-tight drop-shadow-lg mb-1 sm:mb-2">
                   🎁 {offerOverlay.offer.title}
                 </div>
-                <div className="text-base opacity-90">
+                <div className="text-sm sm:text-base opacity-90 truncate">
                   {offerOverlay.purchase.customerName}
                 </div>
-                <div className="text-sm opacity-80">
+                <div className="text-xs sm:text-sm opacity-80">
                   S/ {offerOverlay.purchase.amount.toFixed(2)}
                 </div>
                 <div className="text-xs opacity-70 mt-1">
@@ -566,7 +585,7 @@ export default function StaffScannerPage() {
                 </div>
                 {offerOverlay.canComplete && (
                   <button
-                    className="pointer-events-auto mt-3 px-4 py-2 bg-white text-green-800 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors"
+                    className="pointer-events-auto mt-3 px-3 sm:px-4 py-2 bg-white text-green-800 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors text-sm sm:text-base"
                     onClick={async () => {
                       if (!offerOverlay.purchaseId) return;
 
@@ -603,10 +622,10 @@ export default function StaffScannerPage() {
             </div>
           )}
           {cameraError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 text-center text-white rounded-2xl">
-              <div>
-                <p className="mb-2 font-bold text-lg">No se pudo acceder a la cámara</p>
-                <p className="text-base opacity-90">
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-3 sm:p-4 text-center text-white rounded-2xl">
+              <div className="max-w-full">
+                <p className="mb-2 font-bold text-base sm:text-lg">No se pudo acceder a la cámara</p>
+                <p className="text-sm sm:text-base opacity-90 px-2">
                   Concede permiso de cámara al navegador o sube una imagen del QR.
                 </p>
               </div>
@@ -614,9 +633,9 @@ export default function StaffScannerPage() {
           )}
         </div>
 
-        <div className="mt-3 flex flex-col gap-4 w-full items-center">
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 active:shadow">
-            Subir imagen
+        <div className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 w-full items-center">
+          <label className="inline-flex w-full sm:w-fit cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 active:shadow transition-colors">
+            📷 Subir imagen
             <input
               type="file"
               accept="image/*"
@@ -626,7 +645,7 @@ export default function StaffScannerPage() {
           </label>
           {cameraError && (
             <button
-              className="w-fit rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600"
+              className="w-full sm:w-fit rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
               onClick={() => {
                 setCameraError(null);
                 readerRef.current?.reset();
@@ -640,7 +659,7 @@ export default function StaffScannerPage() {
                 setCooldownUntil((c) => c);
               }}
             >
-              Reintentar cámara
+              🔄 Reintentar cámara
             </button>
           )}
         </div>

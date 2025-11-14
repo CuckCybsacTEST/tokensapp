@@ -158,6 +158,7 @@ export default function ScannerPage() {
     // If we're awaiting code entry from a GLOBAL QR selection, ignore further scans temporarily
     if (awaitingCode) return;
     processingRef.current = true;
+    console.log('Admin scanner processDecodedText called with:', text);
 
     // 1) Detect GLOBAL QR (posters): just set mode and ask for code entry
     const globalMode = decodeGlobalModeFromQr(text);
@@ -258,6 +259,32 @@ export default function ScannerPage() {
       }
       processingRef.current = false;
       return;
+    }
+
+    // 3.5) Detect STATIC TOKEN URL: redirect to static token page
+    // More flexible detection for static tokens
+    const staticTokenRegex = /(?:^|\/)static\/([^\/\s]{4,})/i;
+    const staticMatch = text.match(staticTokenRegex);
+    if (staticMatch) {
+      const tokenId = staticMatch[1];
+      console.log('Admin scanner detected static token, ID:', tokenId, 'from text:', text);
+      setBanner({ variant: "success", message: `🎫 Token estático detectado - Redirigiendo...` });
+      beep(880, 120, "sine");
+      vibrate(60);
+      setCooldownUntil(Date.now() + 2000);
+      // Redirect to static token page
+      window.location.href = `/static/${tokenId}`;
+      processingRef.current = false;
+      return;
+    }
+    
+    try {
+      const url = new URL(text);
+      // Check for other URL patterns if needed
+      console.log('Admin scanner parsed URL:', url.href, 'pathname:', url.pathname);
+    } catch {
+      // Not an absolute URL
+      console.log('Admin scanner URL parsing failed for:', text);
     }
 
     const payload = decodePersonPayloadFromQr(text);

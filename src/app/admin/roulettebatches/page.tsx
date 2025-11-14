@@ -13,7 +13,7 @@ async function getBatches() {
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      tokens: { select: { id: true, prizeId: true, redeemedAt: true, expiresAt: true, disabled: true } },
+      tokens: { select: { id: true, prizeId: true, redeemedAt: true, revealedAt: true, expiresAt: true, disabled: true } },
       rouletteSessions: { where: { status: 'ACTIVE' }, select: { id: true, mode: true } },
     },
     take: 50,
@@ -85,6 +85,7 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
       <div className="grid gap-4">
         {batches.map((b) => {
           const redeemed = b.tokens.filter((t: any) => t.redeemedAt).length;
+          const revealed = b.tokens.filter((t: any) => t.revealedAt).length;
           const expired = b.tokens.filter((t: any) => t.expiresAt < new Date()).length;
           const disabled = b.tokens.filter((t: any) => t.disabled).length;
           const active = b.tokens.length - redeemed - expired - disabled;
@@ -215,11 +216,25 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                   </div>
                 </div>
 
-                {/* Barra de progreso visual */}
+                {/* Barra de progreso de escaneadas */}
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
-                    <span>Progreso del lote</span>
-                    <span>{redeemed}/{b.tokens.length} canjeados</span>
+                    <span>Pulseras escaneadas</span>
+                    <span>{revealed}/{b.tokens.length} escaneadas</span>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-yellow-500 to-orange-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${b.tokens.length > 0 ? (revealed / b.tokens.length) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Barra de progreso de canjeadas */}
+                <div className="pt-2">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+                    <span>Pulseras canjeadas</span>
+                    <span>{redeemed}/{b.tokens.length} canjeadas</span>
                   </div>
                   <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                     <div
