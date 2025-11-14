@@ -42,8 +42,8 @@ export default async function StaticBatchPreviewPage({ params }: PageProps) {
   const now = new Date();
   const disabled = batch.tokens.filter((t: any) => t.disabled).length;
   const expired = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt < new Date()).length;
-  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.redeemedAt).length;
-  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.redeemedAt && t.revealedAt).length;
+  const redeemed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && t.deliveredAt).length;
+  const revealed = batch.tokens.filter((t: any) => !t.disabled && t.expiresAt >= new Date() && !t.deliveredAt && t.revealedAt).length;
   const upcoming = batch.tokens.filter((t: any) => t.validFrom && new Date(t.validFrom) > now).length;
   const active = batch.tokens.length - disabled - expired - redeemed - revealed - upcoming;
 

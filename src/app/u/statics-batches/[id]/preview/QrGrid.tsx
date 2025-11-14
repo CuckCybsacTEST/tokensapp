@@ -11,6 +11,7 @@ interface Token {
   validFrom: Date | null;
   redeemedAt: Date | null;
   revealedAt: Date | null;
+  deliveredAt: Date | null;
   expiresAt: Date | null;
   disabled: boolean;
   createdAt: Date;
@@ -118,7 +119,7 @@ export default function QrGrid({ tokens }: QRGridProps) {
           {tokens.map((token) => {
             const qrDataUrl = qrCodes[token.id];
             const now = new Date();
-            const isRedeemed = !!token.redeemedAt;
+            const isDelivered = !!token.deliveredAt;
             const isRevealed = !!token.revealedAt;
             const isDisabled = token.disabled;
             const isUpcoming = token.validFrom && new Date(token.validFrom) > now;
@@ -126,7 +127,7 @@ export default function QrGrid({ tokens }: QRGridProps) {
 
             let borderColor = 'border-green-200 dark:border-green-800';
             let bgColor = 'bg-green-100/60 dark:bg-green-900/30';
-            if (isRedeemed) {
+            if (isDelivered) {
               borderColor = 'border-blue-200 dark:border-blue-800';
               bgColor = 'bg-blue-100/60 dark:bg-blue-900/30';
             } else if (isRevealed) {
