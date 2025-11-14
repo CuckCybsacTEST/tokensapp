@@ -28,10 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const isStaticBatch = !!(tokenWithBatch.batch?.staticTargetUrl && tokenWithBatch.batch.staticTargetUrl.trim() !== '');
 
-    // Para tokens estáticos, marcar como entregado Y canjeado
-    const updateData = isStaticBatch
-      ? { deliveredAt: new Date(), redeemedAt: new Date() }
-      : { deliveredAt: new Date() };
+    // Para tokens estáticos O cualquier token entregado, marcar como canjeado automáticamente
+    const updateData = { deliveredAt: new Date(), redeemedAt: new Date() };
 
     const token = await prisma.token.update({
       where: { id: tokenId },
@@ -42,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       token,
       isStaticBatch,
-      autoRedeemed: isStaticBatch
+      autoRedeemed: true // Siempre se marca como canjeado
     });
   } catch (err) {
     return res.status(500).json({ error: 'No se pudo marcar entrega' });

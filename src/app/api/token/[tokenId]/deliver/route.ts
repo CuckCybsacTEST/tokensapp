@@ -73,22 +73,14 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       const revealToDeliverMs = deliveredAt.getTime() - token.revealedAt.getTime();
   const deliveredByUserId = allowClient ? 'client_device' : (session?.role === 'STAFF' ? 'staff_user' : 'admin_user');
 
-      // Para tokens estáticos: entregado = canjeado automáticamente
-      // Para tokens normales: solo entregado (canjeado se hace por separado)
-      const updateData = isStaticBatch
-        ? {
-            deliveredAt,
-            redeemedAt: deliveredAt, // Auto-canje para estáticos
-            deliveredByUserId,
-            deliveryNote,
-            assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
-          }
-        : {
-            deliveredAt,
-            deliveredByUserId,
-            deliveryNote,
-            assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
-          };
+      // Para cualquier token entregado: marcar como canjeado automáticamente
+      const updateData = {
+        deliveredAt,
+        redeemedAt: deliveredAt, // Auto-canje para todos los tokens entregados
+        deliveredByUserId,
+        deliveryNote,
+        assignedPrizeId: token.assignedPrizeId ?? token.prizeId,
+      };
 
       const updateRes = await tx.token.updateMany({
         where: { id: tokenId, deliveredAt: null },
