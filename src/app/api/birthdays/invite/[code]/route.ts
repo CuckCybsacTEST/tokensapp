@@ -147,7 +147,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       return apiOk({
         public: true,
         message: publicMessage,
-        token: { ...base, celebrantName: r.celebrantName }, // Mostrar nombre completo en vista pública
+        token: { ...base, celebrantName: firstName }, // Solo primer nombre en vista pública
         hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
         reservation: {
           date: r.date && r.date instanceof Date ? r.date.toISOString() : null,
