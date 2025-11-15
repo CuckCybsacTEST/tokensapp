@@ -378,17 +378,20 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         )}
         
         {isPublic && !token.isHost && (
-          <div className="mt-4 rounded-xl border border-white/20 bg-white/5 p-4 text-base leading-relaxed text-white/90 shadow-lg">
-            {typeof data.message === 'string' 
-              ? data.message
-                  .replace(/^Esta es la fiesta de [^.]+\. /, '')
-                  .replace(/Estás invitad@ a la fiesta de [^.]+\.?/i, '')
-                  .trim()
-              : data.message}
-          </div>
-        )}
-        
-        {/* Mostrar mensaje si el token no está disponible por fecha - Vista pública */}
+          <>
+            <div className="mt-4 rounded-xl border border-white/20 bg-white/5 p-4 text-center shadow-lg">
+              <div className="text-xl font-bold text-[#FF4D2E] uppercase tracking-wider">{token.celebrantName}</div>
+            </div>
+            <div className="mt-4 p-4 text-base leading-relaxed text-white/90">
+              {typeof data.message === 'string'
+                ? data.message
+                    .replace(/^Esta es la fiesta de [^.]+\. /, '')
+                    .replace(/Estás invitad@ a la fiesta de [^.]+\.?/i, '')
+                    .trim()
+                : data.message}
+            </div>
+          </>
+        )}        {/* Mostrar mensaje si el token no está disponible por fecha - Vista pública */}
         {isPublic && !tokenAvailable && (
           <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center text-yellow-100 shadow-lg">
             <div className="text-lg mb-2">📅 Token no disponible aún</div>
