@@ -81,20 +81,6 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   const [deliverySuccess, setDeliverySuccess] = useState(false);
   const [qrSrc, setQrSrc] = useState('');
 
-  // Estados para el temporizador de seguridad del botón
-  const [isHolding, setIsHolding] = useState(false);
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [holdTimeout, setHoldTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  // Limpiar timeout al desmontar el componente
-  useEffect(() => {
-    return () => {
-      if (holdTimeout) {
-        clearTimeout(holdTimeout);
-      }
-    };
-  }, [holdTimeout]);
-
   useEffect(() => {
     async function loadTokenData() {
       try {
@@ -150,41 +136,6 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
       setMarkingDelivery(false);
     }
   }
-
-  // Funciones para el temporizador de seguridad del botón
-  const startHoldTimer = () => {
-    setIsHolding(true);
-    setHoldProgress(0);
-    
-    const startTime = Date.now();
-    const duration = 2000; // 2 segundos
-    
-    const updateProgress = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min((elapsed / duration) * 100, 100);
-      setHoldProgress(progress);
-      
-      if (progress < 100) {
-        setHoldTimeout(setTimeout(updateProgress, 50));
-      } else {
-        // Temporizador completado, ejecutar la acción
-        handleMarkDelivered();
-        setIsHolding(false);
-        setHoldProgress(0);
-      }
-    };
-    
-    setHoldTimeout(setTimeout(updateProgress, 50));
-  };
-
-  const cancelHoldTimer = () => {
-    if (holdTimeout) {
-      clearTimeout(holdTimeout);
-      setHoldTimeout(null);
-    }
-    setIsHolding(false);
-    setHoldProgress(0);
-  };
 
   if (loading) {
     return (
@@ -459,37 +410,15 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
         {isStaff && !tokenData.deliveredAt && !tokenData.disabled && !isExpired && !isValidFromFuture && (
           <div className="flex justify-center mt-4">
             <button
-              onMouseDown={startHoldTimer}
-              onMouseUp={cancelHoldTimer}
-              onMouseLeave={cancelHoldTimer}
-              onTouchStart={startHoldTimer}
-              onTouchEnd={cancelHoldTimer}
-              disabled={markingDelivery || isHolding}
-              className={`relative px-6 sm:px-8 md:px-10 lg:px-12 py-3 sm:py-4 md:py-5 lg:py-6 rounded-lg font-bold text-base sm:text-lg md:text-xl lg:text-2xl transition-all duration-200 whitespace-nowrap overflow-hidden ${
+              onClick={handleMarkDelivered}
+              disabled={markingDelivery}
+              className={`px-6 sm:px-8 md:px-10 lg:px-12 py-3 sm:py-4 md:py-5 lg:py-6 rounded-lg font-bold text-base sm:text-lg md:text-xl lg:text-2xl transition-all duration-200 whitespace-nowrap ${
                 markingDelivery 
                   ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-                  : isHolding
-                  ? 'bg-[#FF7A3C] shadow-lg text-white'
                   : 'bg-[#FF4D2E] hover:bg-[#FF7A3C] active:scale-95 shadow-lg hover:shadow-xl text-white'
               }`}
             >
-              {/* Barra de progreso */}
-              {isHolding && (
-                <div 
-                  className="absolute inset-0 bg-[#FF7A3C] transition-all duration-50"
-                  style={{ width: `${holdProgress}%` }}
-                />
-              )}
-              
-              {/* Texto del botón */}
-              <span className="relative z-10">
-                {markingDelivery 
-                  ? 'Marcando entrega…' 
-                  : isHolding 
-                  ? `Mantén presionado... ${Math.round(holdProgress)}%` 
-                  : 'Marcar entrega'
-                }
-              </span>
+              {markingDelivery ? 'Marcando entrega…' : 'Marcar entrega'}
             </button>
             {deliveryError && <div className="text-xs sm:text-sm text-red-300 bg-red-900/20 border border-red-800/40 rounded px-3 py-2 sm:px-4 sm:py-3 mt-3">{deliveryError}</div>}
             {deliverySuccess && <div className="text-xs sm:text-sm text-green-300 bg-green-900/20 border border-green-800/40 rounded px-3 py-2 sm:px-4 sm:py-3 mt-3">¡Entrega marcada correctamente!</div>}
