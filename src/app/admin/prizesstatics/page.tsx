@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import PrizestaticsClient from "./PrizestaticsClient";
 
-export const metadata = { title: 'Lotes Estáticos' };
+export const metadata = { title: 'Premios' };
 export const dynamic = "force-dynamic";
 
 async function getPrizesWithStats() {

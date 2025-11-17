@@ -58,14 +58,9 @@ export function AdminMobileHeader({ userInfo, basePath = 'admin' }: AdminMobileH
   if (pathname && pathname.startsWith('/admin')) {
     const segments = pathname.split('/').filter(Boolean); // e.g. ['', 'admin', 'users', '123'] -> ['admin','users','123']
     if (segments.length > 1) {
-      // Remove last segment to go up one level
-      const parentSegments = segments.slice(0, segments.length - 1);
-      backHref = '/' + parentSegments.join('/');
-      // Special case: if parent is just 'admin', keep '/admin'
-      if (backHref === '/admin') {
-        // On the root admin page we hide the back button
-        if (segments.length === 1) backHref = null;
-      }
+      // Para rutas profundas como /admin/inventory/suppliers, ir directamente a /admin
+      // Para rutas simples como /admin/users, ir a /admin
+      backHref = '/admin';
     }
   }
 
@@ -81,7 +76,9 @@ export function AdminMobileHeader({ userInfo, basePath = 'admin' }: AdminMobileH
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200/50 dark:border-slate-700/50 app-container py-2 sm:py-3 mb-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col">
-          <a href="/admin" className="text-sm text-slate-600 dark:text-slate-300 hover:underline">Administración</a>
+          {pathname !== '/admin/prizesstatics' && (
+            <a href="/admin" className="text-sm text-slate-600 dark:text-slate-300 hover:underline">Administración</a>
+          )}
           {userInfo && (
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               <div className="font-medium text-slate-700 dark:text-slate-200">{userInfo.displayName || 'Usuario'}</div>

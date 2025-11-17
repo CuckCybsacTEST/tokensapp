@@ -14,6 +14,7 @@ export default function ScannerClient() {
   const [active, setActive] = useState(false);
   const [err, setErr] = useState<string|null>(null);
   const [results, setResults] = useState<ScanResult[]>([]);
+  const [history, setHistory] = useState<ScanResult[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const lastNoticeTsRef = useRef<number>(0);
   const detectorRef = useRef<any>(null); // Native BarcodeDetector instance
@@ -29,6 +30,30 @@ export default function ScannerClient() {
   useEffect(() => {
     resultsRef.current = results;
   }, [results]);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('scanHistory');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setHistory(parsed.slice(0, 100)); // Limit to 100
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load scan history:', e);
+    }
+  }, []);
+
+  // Function to save history to localStorage
+  const saveHistory = useCallback((newHistory: ScanResult[]) => {
+    try {
+      localStorage.setItem('scanHistory', JSON.stringify(newHistory.slice(0, 100)));
+    } catch (e) {
+      console.warn('Failed to save scan history:', e);
+    }
+  }, []);
 
   // Function to check if it's a global in/out code
   const isGlobalInOutCode = useCallback((raw: string): boolean => {
@@ -200,7 +225,13 @@ export default function ScannerClient() {
     // Normal QR processing
     console.log('Normal QR processing for:', raw);
     if (!resultsRef.current.some(r=>r.text===raw)) {
-      setResults(prev => [{ text: raw, ts: Date.now() }, ...prev].slice(0,25));
+      const newResult: ScanResult = { text: raw, ts: Date.now() };
+      setResults(prev => [newResult, ...prev].slice(0,25));
+      setHistory(prev => {
+        const updated = [newResult, ...prev.filter(r => r.text !== raw)].slice(0, 100);
+        saveHistory(updated);
+        return updated;
+      });
       try { audioOkRef.current?.play().catch(()=>{}); } catch {}
       flashRef.current = { ts: Date.now() }; force(v=>v+1);
     }
@@ -427,91 +458,99 @@ export default function ScannerClient() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
-      <div className="max-w-md mx-auto space-y-5">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Escáner de Códigos</h1>
+      <div className="max-w-7xl mx-auto space-y-5">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Escaner Multiusos</h1>
         <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
-        <p className="text-xs leading-relaxed text-gray-600 dark:text-slate-400">Escanea códigos QR de invitaciones, tokens y ofertas especiales. <strong className="text-blue-600 dark:text-blue-400 font-semibold">No registra</strong> asistencia; usa la sección de asistencia para entradas y salidas.</p>
         {notice && <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 text-[11px] px-3 py-2 flex items-start gap-2"><span className="mt-0.5">⚠</span><span>{notice}</span></div>}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
-          <div className="relative">
-            <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
-            {active && (
-              <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="w-[82%] aspect-square relative">
-                  <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                  <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scanline" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
+            <div className="relative">
+              <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
+              {active && (
+                <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="w-[82%] aspect-square relative">
+                    <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                    <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scanline" />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3 items-center">
+              <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Pausar':'Iniciar Escaneo'}</button>
+              {active && <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />Escaneando…</div>}
+              {!active && <div className="text-[11px] text-gray-500 dark:text-slate-400">Escáner pausado</div>}
+              <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-[11px] font-medium text-gray-700 dark:text-slate-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600">
+                Subir imagen
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
+            </div>
+            {err && <div className="mt-2 text-xs text-rose-600 dark:text-rose-400 font-medium">{err}</div>}
           </div>
-          <div className="mt-3 flex flex-wrap gap-3 items-center">
-            <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Pausar':'Iniciar Escaneo'}</button>
-            {active && <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />Escaneando…</div>}
-            {!active && <div className="text-[11px] text-gray-500 dark:text-slate-400">Escáner pausado</div>}
-            <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-[11px] font-medium text-gray-700 dark:text-slate-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600">
-              Subir imagen
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-            </label>
-          </div>
-          {err && <div className="mt-2 text-xs text-rose-600 dark:text-rose-400 font-medium">{err}</div>}
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Códigos Escaneados</h2>
-            {results.length>0 && <span className="text-[11px] text-gray-400 dark:text-slate-500">{results.length}</span>}
-          </div>
-          {results.length===0 && <div className="text-xs text-gray-500 dark:text-slate-400">No se han escaneado códigos aún.</div>}
-          {results.length>0 && (
-            <ul className="space-y-1 max-h-64 overflow-auto text-[13px] pr-1">
-              {results.map(r => (
-                <li key={r.ts} className="group flex flex-col gap-2 rounded border border-slate-200 dark:border-slate-600 px-3 py-2 bg-slate-50 dark:bg-slate-700/40">
-                  {r.type === 'offer' && r.data ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">Oferta QR</span>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                          <button 
-                            onClick={() => {
-                              const isAdminContext = window.location.pathname.startsWith('/admin');
-                              const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
-                              sessionStorage.setItem('scannedQRData', r.text);
-                              window.location.href = validationUrl;
-                            }} 
-                            className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            Validar
-                          </button>
-                          <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Códigos Escaneados</h2>
+              {(() => {
+                const combined = [...results, ...history.filter(h => !results.some(r => r.text === h.text))];
+                return combined.length > 0 && <span className="text-[11px] text-gray-400 dark:text-slate-500">{combined.length}</span>;
+              })()}
+            </div>
+            {(() => {
+              const combined = [...results, ...history.filter(h => !results.some(r => r.text === h.text))];
+              return combined.length === 0 ? (
+                <div className="text-xs text-gray-500 dark:text-slate-400">No se han escaneado códigos aún.</div>
+              ) : (
+                <ul className="space-y-1 max-h-96 overflow-auto text-[13px] pr-1">
+                  {combined.map(r => (
+                    <li key={`${r.text}-${r.ts}`} className="group flex flex-col gap-2 rounded border border-slate-200 dark:border-slate-600 px-3 py-2 bg-slate-50 dark:bg-slate-700/40">
+                      {r.type === 'offer' && r.data ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">Oferta QR</span>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                              <button 
+                                onClick={() => {
+                                  const isAdminContext = window.location.pathname.startsWith('/admin');
+                                  const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
+                                  sessionStorage.setItem('scannedQRData', r.text);
+                                  window.location.href = validationUrl;
+                                }} 
+                                className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                Validar
+                              </button>
+                              <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
+                            </div>
+                          </div>
+                          <div className="space-y-1 text-xs">
+                            <div><strong>Cliente:</strong> {r.data.customerName}</div>
+                            <div><strong>Oferta:</strong> {r.data.offer?.title || 'N/A'}</div>
+                            <div><strong>Monto:</strong> S/ {r.data.amount?.toFixed(2) || 'N/A'}</div>
+                            <div><strong>Fecha:</strong> {r.data.createdAt ? new Date(r.data.createdAt).toLocaleString('es-PE') : 'N/A'}</div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-1 text-xs">
-                        <div><strong>Cliente:</strong> {r.data.customerName}</div>
-                        <div><strong>Oferta:</strong> {r.data.offer?.title || 'N/A'}</div>
-                        <div><strong>Monto:</strong> S/ {r.data.amount?.toFixed(2) || 'N/A'}</div>
-                        <div><strong>Fecha:</strong> {r.data.createdAt ? new Date(r.data.createdAt).toLocaleString('es-PE') : 'N/A'}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate" title={r.text}>{r.text}</span>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                        <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                      ) : (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate" title={r.text}>{r.text}</span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
+          </div>
         </div>
         <div>
           <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver al panel</a>

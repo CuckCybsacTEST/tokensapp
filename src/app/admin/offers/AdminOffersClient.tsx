@@ -328,22 +328,23 @@ export function OffersAdminPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Administración de Ofertas</h1>
-        <div className="flex gap-4">
+      <div className="flex justify-end mb-6">
+        <div className="flex flex-row gap-2">
           <button
             onClick={fetchOffers}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-xs sm:text-sm"
           >
-            <RefreshCw className="w-4 h-4" />
-            Actualizar
+            <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Actualizar</span>
+            <span className="sm:hidden">Refresh</span>
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs sm:text-sm"
           >
-            <Plus className="w-4 h-4" />
-            Nueva Oferta
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Nueva Oferta</span>
+            <span className="sm:hidden">Nueva</span>
           </button>
         </div>
       </div>
@@ -357,11 +358,11 @@ export function OffersAdminPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
         {offers.map((offer) => (
           <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border dark:border-gray-700">
             {/* Imagen */}
-            <div className="relative h-48 bg-gradient-to-br from-purple-100 to-pink-100">
+            <div className="relative h-32 sm:h-48 bg-gradient-to-br from-purple-100 to-pink-100">
               {offer.imageUrl ? (
                 <img
                   src={offer.imageUrl}
@@ -370,20 +371,20 @@ export function OffersAdminPage() {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <Package className="w-16 h-16 text-gray-400" />
+                  <Package className="w-10 h-10 sm:w-16 sm:h-16 text-gray-400" />
                 </div>
               )}
 
               {/* Badges */}
-              <div className="absolute top-2 left-2 flex gap-2">
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
+              <div className="absolute top-1 left-1 sm:top-2 sm:left-2 flex flex-col gap-1">
+                <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${
                   offer.isActive
                     ? 'bg-green-500 text-white'
                     : 'bg-red-500 text-white'
                 }`}>
                   {offer.isActive ? 'Activa' : 'Inactiva'}
                 </span>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs font-medium ${
                   offer.isAvailable
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-500 text-white'
@@ -394,60 +395,65 @@ export function OffersAdminPage() {
             </div>
 
             {/* Contenido */}
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{offer.title}</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-2">{offer.description}</p>
+            <div className="p-3 sm:p-4">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1 sm:mb-2 line-clamp-2 break-words leading-tight">{offer.title}</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3 break-words leading-tight">{offer.description}</p>
 
               {/* Precios */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl font-bold text-green-600">
+              <div className="flex items-center gap-1 sm:gap-2 mb-2 sm:mb-3">
+                <span className="text-lg sm:text-2xl font-bold text-green-600">
                   S/ {offer.price.toFixed(2)}
                 </span>
                 {offer.originalPrice && offer.originalPrice > offer.price && (
-                  <span className="text-lg text-gray-500 line-through">
+                  <span className="text-sm sm:text-lg text-gray-500 line-through">
                     S/ {offer.originalPrice.toFixed(2)}
                   </span>
                 )}
               </div>
 
               {/* Estadísticas */}
-              <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
                 <div className="text-center">
-                  <div className="font-semibold text-gray-900 dark:text-white">{offer.totalPurchases}</div>
-                  <div className="text-gray-500 dark:text-gray-400">Compras</div>
+                  <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{offer.totalPurchases}</div>
+                  <div className="text-gray-500 dark:text-gray-400 text-xs">Compras</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-semibold text-gray-900 dark:text-white">S/ {offer.totalRevenue.toFixed(2)}</div>
-                  <div className="text-gray-500 dark:text-gray-400">Ingresos</div>
+                  <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">S/ {offer.totalRevenue.toFixed(2)}</div>
+                  <div className="text-gray-500 dark:text-gray-400 text-xs">Ingresos</div>
                 </div>
               </div>
 
               {/* Disponibilidad */}
-              <div className="mb-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400">{offer.availabilityText}</p>
+              <div className="mb-3 sm:mb-4">
+                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{offer.availabilityText}</p>
               </div>
 
               {/* Acciones */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openEditModal(offer)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors text-sm"
-                >
-                  <Edit className="w-4 h-4" />
-                  Editar
-                </button>
-                <button
-                  onClick={() => fetchPurchases(offer.id)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm"
-                >
-                  <Eye className="w-4 h-4" />
-                  Compras
-                </button>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => fetchPurchases(offer.id)}
+                    className="flex items-center justify-center gap-1 px-2 sm:px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors text-xs sm:text-sm font-medium shadow-sm"
+                  >
+                    <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Compras</span>
+                    <span className="sm:hidden">Ver</span>
+                  </button>
+                  <button
+                    onClick={() => openEditModal(offer)}
+                    className="flex items-center justify-center gap-1 px-2 sm:px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors text-xs sm:text-sm font-medium shadow-sm"
+                  >
+                    <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Editar</span>
+                    <span className="sm:hidden">Edit</span>
+                  </button>
+                </div>
                 <button
                   onClick={() => handleDelete(offer.id)}
-                  className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 px-2 sm:px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors text-xs sm:text-sm font-medium shadow-sm border border-red-600"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Eliminar
                 </button>
               </div>
             </div>

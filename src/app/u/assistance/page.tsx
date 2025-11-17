@@ -9,12 +9,14 @@ import PendingRegistrationCard from '../../../components/attendance/PendingRegis
 interface Detection { raw: string; ts: number; mode: 'IN'|'OUT'; }
 
 export default function AssistanceScannerPage(){
-  const backHref = '/u';
   // Comienza activo para que el escaneo arranque automáticamente sin requerir clic del usuario
   const [active] = useState(true); // mantenemos bandera original pero ya no la apagamos; usamos scanningRef
   const [error, setError] = useState<string|null>(null);
   // Información de usuario para saludo personalizado
   const [me, setMe] = useState<{ personName?: string; dni?: string } | null>(null);
+
+  // Determinar dinámicamente el href de vuelta basado en el rol del usuario
+  const backHref = '/u';
   // Usar refs para evitar re-render y reinicios del loop por dependencias
   const lastRef = useRef<Detection|null>(null);
   const detectorRef = useRef<any>(null);

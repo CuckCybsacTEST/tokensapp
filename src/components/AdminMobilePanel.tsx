@@ -140,6 +140,7 @@ interface AdminMobilePanelProps {
 export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) {
   const pathname = usePathname();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'herramientas' | 'upgrade'>('herramientas');
   const [attendanceState, setAttendanceState] = useState<{
     lastType: 'IN' | 'OUT' | null;
     nextAction: 'IN' | 'OUT';
@@ -266,18 +267,10 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "GESTION DE TRIVIAS 🔒 UPGRADE!",
-        icon: ICONS.check,
-        items: [
-          { href: "#", label: "Preguntas", icon: ICONS.check }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
         title: "GESTION DE OFERTAS",
         icon: ICONS.tag,
         items: [
           { href: `${pathPrefix}/offers`, label: "Panel de Ofertas", icon: ICONS.tag },
-          { href: `${pathPrefix}/offers`, label: "Crear Oferta", icon: ICONS.star },
           { href: "/marketing#ofertas", label: "Ver en marketing", icon: ICONS.star }
         ]
       }] : []),
@@ -344,13 +337,54 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
           { href: `${pathPrefix}/pedidos`, label: "Panel de Pedidos", icon: ICONS.chart },
           { href: "/menu", label: "Menú Público", icon: ICONS.star }
         ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "PERSONALIZACIÓN APP UPGRADE",
+        icon: ICONS.star,
+        items: [
+          { href: "#", label: "Tema y Branding", icon: ICONS.star }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "DISPONIBLE CON UN UPGRADE",
+        icon: ICONS.star,
+        items: [
+          { href: "#", label: "Gestión de Trivias", icon: ICONS.check }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "PEDIDOS MUSICALES UPGRADE",
+        icon: ICONS.music,
+        items: [
+          { href: "#", label: "Sistema de Música", icon: ICONS.music }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "GESTIÓN DE FIDELIDAD UPGRADE",
+        icon: ICONS.star,
+        items: [
+          { href: "#", label: "Programa de Lealtad", icon: ICONS.star }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "GESTIÓN WIFI UPGRADE",
+        icon: ICONS.qr,
+        items: [
+          { href: "#", label: "Control de Red", icon: ICONS.qr }
+        ]
       }] : [])
     ];
 
     return groups;
   };
 
-  const sidebarGroups = getSidebarGroups(basePath);
+  const allGroups = getSidebarGroups(basePath);
+  const sidebarGroups = allGroups.filter(group => {
+    if (activeTab === 'upgrade') {
+      return group.title.includes('PERSONALIZACIÓN APP UPGRADE') || group.title.includes('DISPONIBLE CON UN UPGRADE') || group.title.includes('PEDIDOS MUSICALES UPGRADE') || group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') || group.title.includes('GESTIÓN WIFI UPGRADE');
+    }
+    return !group.title.includes('PERSONALIZACIÓN APP UPGRADE') && !group.title.includes('DISPONIBLE CON UN UPGRADE') && !group.title.includes('PEDIDOS MUSICALES UPGRADE') && !group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') && !group.title.includes('GESTIÓN WIFI UPGRADE');
+  });
 
   const isItemActive = (href: string) => {
     if (href === "#") return false;
@@ -364,15 +398,50 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
       <AdminMobileHeader userInfo={userInfo} />
 
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-            Panel de Administración
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400">
-            Selecciona una categoría para acceder a sus funciones
-          </p>
+        {/* Tabs */}
+        <div className="mb-4 sm:mb-6">
+          <div className="flex space-x-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('herramientas')}
+              className={cn(
+                "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors",
+                activeTab === 'herramientas'
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              Herramientas
+            </button>
+            <button
+              onClick={() => setActiveTab('upgrade')}
+              className={cn(
+                "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors relative",
+                activeTab === 'upgrade'
+                  ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <span className="flex items-center justify-center">
+                Upgrade!
+                {activeTab === 'herramientas' && (
+                  <span className="ml-2 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                )}
+              </span>
+            </button>
+          </div>
         </div>
+
+        {/* Subtítulo para Upgrade */}
+        {activeTab === 'upgrade' && (
+          <div className="mb-4 sm:mb-6 text-center">
+            <p className="text-sm sm:text-base text-amber-700 dark:text-amber-300 font-medium">
+              🚀 Estas son herramientas premium que puedes desbloquear contactando con nuestro equipo de desarrollo
+            </p>
+            <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 mt-1">
+              Mejora tu experiencia con funciones avanzadas de gestión
+            </p>
+          </div>
+        )}
 
         {/* Grid de categorías */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
@@ -399,14 +468,14 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
                     </h2>
                   </div>
                 </Link>
-              ) : group.title.includes("GESTION DE TRIVIAS") ? (
+              ) : group.title.includes("PERSONALIZACIÓN APP UPGRADE") || group.title.includes("DISPONIBLE CON UN UPGRADE") || group.title.includes("PEDIDOS MUSICALES UPGRADE") || group.title.includes("GESTIÓN DE FIDELIDAD UPGRADE") || group.title.includes("GESTIÓN WIFI UPGRADE") ? (
                 <div className="p-3 sm:p-4 border-b border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
                   <div className="flex items-center space-x-3">
                     <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
                       {group.icon}
                     </div>
                     <h2 className="text-base sm:text-lg font-semibold text-amber-800 dark:text-amber-200">
-                      {group.title}
+                      {group.title === "PERSONALIZACIÓN APP UPGRADE" ? "Personalización de la App" : group.title === "PEDIDOS MUSICALES UPGRADE" ? "Pedidos Musicales" : group.title === "GESTIÓN DE FIDELIDAD UPGRADE" ? "Gestión de Fidelidad" : group.title === "GESTIÓN WIFI UPGRADE" ? "Gestión Wifi" : "Gestión de Trivias"}
                     </h2>
                   </div>
                 </div>
@@ -440,7 +509,7 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
               )}
 
               {/* Items de la categoría */}
-              {(group.title === "MARCAR ENTRADA/SALIDA" || (expandedGroups.has(group.title) && !group.title.includes("GESTION DE TRIVIAS"))) && (
+              {(group.title === "MARCAR ENTRADA/SALIDA" || (expandedGroups.has(group.title) && !group.title.includes("PERSONALIZACIÓN APP UPGRADE") && !group.title.includes("DISPONIBLE CON UN UPGRADE") && !group.title.includes("PEDIDOS MUSICALES UPGRADE") && !group.title.includes("GESTIÓN DE FIDELIDAD UPGRADE") && !group.title.includes("GESTIÓN WIFI UPGRADE"))) && (
                 <div className="p-3 sm:p-4">
                   {group.title === "MARCAR ENTRADA/SALIDA" ? (
                     <AutoAttendanceCard showDynamicTitle={false} />

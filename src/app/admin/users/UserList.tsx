@@ -176,94 +176,148 @@ const UserListActions = () => {
   };
 
   return (
-    <TopToolbar>
-      <CreateButton />
-      <div className="flex items-center gap-2 ml-4">
-        <input
-          id="backup-file"
-          type="file"
-          accept=".json"
-          onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
-          className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-        />
-        <button
-          onClick={uploadUsersBackup}
-          disabled={restoreLoading || !restoreFile}
-          className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded transition-colors flex items-center gap-1"
-        >
-          {restoreLoading ? (
-            <>
-              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-              Restaurando...
-            </>
-          ) : (
-            <>
-              📤 Restaurar
-            </>
-          )}
-        </button>
+    <div className="space-y-4">
+      {/* Botón Crear Usuario */}
+      <div className="flex justify-start">
+        <CreateButton />
       </div>
-      <button
-        onClick={downloadUsersBackup}
-        disabled={backupLoading}
-        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm rounded transition-colors flex items-center gap-1 ml-2"
-      >
-        {backupLoading ? (
-          <>
-            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-            Generando...
-          </>
-        ) : (
-          <>
-            📥 Backup
-          </>
-        )}
-      </button>
-      <button
-        onClick={resetAllPasswords}
-        disabled={resetLoading}
-        className="px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm rounded transition-colors flex items-center gap-1 ml-2"
-      >
-        {resetLoading ? (
-          <>
-            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-            Reseteando...
-          </>
-        ) : (
-          <>
-            🔑 Reset Passwords
-          </>
-        )}
-      </button>
-    </TopToolbar>
+
+      {/* Sección de Backup y Restauración */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">📥 Descargar Backup</h4>
+          <button
+            onClick={downloadUsersBackup}
+            disabled={backupLoading}
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md transition-colors flex items-center justify-center gap-2 font-medium"
+          >
+            {backupLoading ? (
+              <>
+                <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
+                Generando Backup...
+              </>
+            ) : (
+              <>
+                📥 Descargar Backup
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">📤 Restaurar desde Backup</h4>
+          <input
+            id="backup-file"
+            type="file"
+            accept=".json"
+            onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+            className="w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-green-50 file:text-green-700 hover:file:bg-green-100 dark:file:bg-green-900 dark:file:text-green-300 dark:hover:file:bg-green-800"
+          />
+          <button
+            onClick={uploadUsersBackup}
+            disabled={restoreLoading || !restoreFile}
+            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md transition-colors flex items-center justify-center gap-2 font-medium"
+          >
+            {restoreLoading ? (
+              <>
+                <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
+                Restaurando...
+              </>
+            ) : (
+              <>
+                📤 Restaurar Backup
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Sección de Reset de Contraseñas */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">🔑 Reset de Contraseñas</h4>
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+            ⚠️ Esta acción reseteará todas las contraseñas de usuario a "123456789".
+            Asegúrate de informar a los usuarios sobre este cambio.
+          </p>
+          <button
+            onClick={resetAllPasswords}
+            disabled={resetLoading}
+            className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-md transition-colors flex items-center justify-center gap-2 font-medium"
+          >
+            {resetLoading ? (
+              <>
+                <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
+                Reseteando Contraseñas...
+              </>
+            ) : (
+              <>
+                🔑 Reset All Passwords
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
 export const UserList = (props: any) => (
-  <List {...props} filters={<UserFilter />} sort={{ field: 'createdAt', order: 'DESC' }} actions={<UserListActions />}>
-    <Datagrid
-      bulkActionButtons={false}
-      sx={{
-        '& .RaDatagrid-headerCell': {
-          fontWeight: 'bold',
-          backgroundColor: '#f8fafc',
-        },
-        '& .RaDatagrid-row': {
-          '&:hover': {
-            backgroundColor: '#f1f5f9',
+  <div>
+    <List {...props} filters={<UserFilter />} sort={{ field: 'createdAt', order: 'DESC' }}>
+      <Datagrid
+        bulkActionButtons={false}
+        sx={{
+          '& .RaDatagrid-headerCell': {
+            fontWeight: 'bold',
+            backgroundColor: 'var(--color-bg-soft)',
+            color: 'var(--color-text-primary)',
           },
-        },
-      }}
-    >
-      <TextField source="username" />
-      <TextField source="personName" label="Name" />
-      <TextField source="role" />
-      <TextField source="area" />
-      <TextField source="dni" />
-      <TextField source="whatsapp" />
-      <DateField source="createdAt" />
-      <EditButton />
-      <DeleteButton />
-    </Datagrid>
-  </List>
+          '& .RaDatagrid-row': {
+            '&:hover': {
+              backgroundColor: 'var(--color-bg)',
+            },
+          },
+          '& .RaDatagrid-rowCell': {
+            color: 'var(--color-text-primary)',
+          },
+          // Responsive table styles
+          '@media (max-width: 768px)': {
+            '& .RaDatagrid-headerCell': {
+              padding: '8px 4px',
+              fontSize: '0.75rem',
+            },
+            '& .RaDatagrid-rowCell': {
+              padding: '8px 4px',
+              fontSize: '0.75rem',
+            },
+          },
+          '@media (max-width: 640px)': {
+            '& .RaDatagrid-headerCell:nth-of-type(n+6)': {
+              display: 'none',
+            },
+            '& .RaDatagrid-rowCell:nth-of-type(n+6)': {
+              display: 'none',
+            },
+          },
+        }}
+      >
+        <TextField source="username" />
+        <TextField source="personName" label="Name" />
+        <TextField source="role" />
+        <TextField source="area" />
+        <TextField source="dni" />
+        <TextField source="whatsapp" />
+        <DateField source="createdAt" />
+        <EditButton />
+        <DeleteButton />
+      </Datagrid>
+    </List>
+
+    {/* Botones de acciones al final de la tabla */}
+    <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Acciones de Usuario</h3>
+      <UserListActions />
+    </div>
+  </div>
 );

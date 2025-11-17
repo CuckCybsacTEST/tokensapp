@@ -224,14 +224,14 @@ export function AdminAttendancePage() {
   // ================== /Métricas derivadas ==================
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-  <h1 className="text-2xl font-semibold">Control de Asistencia — Tabla</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600 dark:text-slate-300">Período:</label>
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <h1 className="text-xl sm:text-2xl font-semibold">Control de Asistencia — Tabla</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">Período:</label>
             <select
-              className="input px-3 py-1 text-sm"
+              className="input px-3 py-2 text-sm w-full sm:w-auto"
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
             >
@@ -245,19 +245,23 @@ export function AdminAttendancePage() {
             </select>
           </div>
           {period === 'custom' && (
-            <div className="flex items-center gap-2 text-sm">
-              <label>Desde</label>
-              <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="input-sm" />
-              <label>Hasta</label>
-              <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="input-sm" />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <label className="whitespace-nowrap">Desde</label>
+                <input type="date" value={startDate} onChange={(e)=>setStartDate(e.target.value)} className="input-sm w-full sm:w-auto" />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="whitespace-nowrap">Hasta</label>
+                <input type="date" value={endDate} onChange={(e)=>setEndDate(e.target.value)} className="input-sm w-full sm:w-auto" />
+              </div>
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600 dark:text-slate-300">Área:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">Área:</label>
             <select
               value={area}
               onChange={(e)=> setArea(e.target.value)}
-              className="input px-3 py-1 text-sm"
+              className="input px-3 py-2 text-sm w-full sm:w-auto"
             >
               <option value="">Todas</option>
               {ALLOWED_AREAS.map(a => (
@@ -265,13 +269,13 @@ export function AdminAttendancePage() {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600 dark:text-slate-300">Persona:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className="text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">Persona:</label>
             <input
               value={person}
               onChange={(e)=> setPerson(e.target.value)}
               placeholder="Código o id:..."
-              className="input w-56 px-3 py-1 text-sm"
+              className="input px-3 py-2 text-sm w-full sm:w-48 lg:w-56"
             />
           </div>
         </div>
@@ -291,7 +295,7 @@ export function AdminAttendancePage() {
             <h2 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">Métricas (medianas para robustez)</h2>
             <div className="text-[11px] text-slate-500 dark:text-slate-400">{metrics.totalRows} fila{metrics.totalRows===1?'':'s'} · {metrics.incompleteCount} incompletas</div>
           </div>
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-3 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             <SimpleCard label="Entradas" value={metrics.totalEntradas} />
             <SimpleCard label="Salidas" value={metrics.totalSalidas} />
             <SimpleCard label="Med. Llegada" value={metrics.medianFirstIn} />
@@ -392,29 +396,31 @@ export function AdminAttendancePage() {
         </div>
         {/* Mobile card list mirroring /u/attendance */}
         <div className="md:hidden space-y-3">
-          <div className="text-xs font-medium text-soft">Resumen por persona / día</div>
+          <div className="text-sm font-medium text-soft">Resumen por persona / día</div>
     {(table?.rows || []).map((r,i)=>(
-            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-warning' : ''}`}> 
+            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm flex flex-col gap-3 ${r.incomplete ? 'ring-1 ring-warning' : ''}`}>
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">{r.personName}</div>
-                  <div className="text-[11px] text-soft truncate">{r.personCode} · {r.day}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold truncate">{r.personName}</div>
+                  <div className="text-sm text-soft truncate">{r.personCode} · {r.day}</div>
                 </div>
                 <div>
                   {r.incomplete ? (
-                    <span className="badge-warning text-[10px]">Falta salida</span>
+                    <span className="badge-warning text-xs px-2 py-1">Falta salida</span>
                   ) : (
-                    <span className="badge-success text-[10px]">OK</span>
+                    <span className="badge-success text-xs px-2 py-1">OK</span>
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-soft">
-                <div><span className="text-soft">Área:</span> {r.area || '-'}</div>
-                <div><span className="text-soft">Duración:</span> {formatMinutes(r.durationMin)}</div>
-                <div><span className="text-soft">ENTRADA:</span> {fmtHHmmLima(r.firstIn)}</div>
-                <div><span className="text-soft">SALIDA:</span> {fmtHHmmLima(r.lastOut)}</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div><span className="text-soft">Área:</span> <span className="font-medium">{r.area || '-'}</span></div>
+                <div><span className="text-soft">Duración:</span> <span className="font-medium">{formatMinutes(r.durationMin)}</span></div>
+                <div className="col-span-2 grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div><span className="text-soft">ENTRADA:</span> <span className="font-medium">{fmtHHmmLima(r.firstIn)}</span></div>
+                  <div><span className="text-soft">SALIDA:</span> <span className="font-medium">{fmtHHmmLima(r.lastOut)}</span></div>
+                </div>
               </div>
-              <div>
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
                 <button
                   onClick={async () => {
                     const allow = window.confirm(`¿Reiniciar jornada de ${r.personName} (${r.personCode}) del día ${r.day}? Esta acción elimina las marcas IN/OUT de ese businessDay.`);
@@ -426,8 +432,8 @@ export function AdminAttendancePage() {
                       setTick(v => v + 1);
                     } catch { alert('Error de red al reiniciar'); }
                   }}
-                  className="mt-2 text-[11px] px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
-                >Reiniciar</button>
+                  className="w-full text-sm px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium"
+                >Reiniciar Jornada</button>
               </div>
             </div>
           ))}
@@ -436,11 +442,11 @@ export function AdminAttendancePage() {
           )}
           <div className="flex items-center justify-between pt-2 text-[11px] text-soft">
             <div>Pág. {table?.page || page}/{table?.totalPages || 1}</div>
-            <div className="flex items-center gap-1">
-              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Anterior">
+            <div className="flex items-center gap-2">
+              <button disabled={(table?.page||page) <= 1} onClick={()=> setPage(p=> Math.max(1,p-1))} className="h-8 w-8 sm:h-7 sm:w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700" aria-label="Anterior">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
-              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40" aria-label="Siguiente">
+              <button disabled={(table?.page||page) >= (table?.totalPages||1)} onClick={()=> setPage(p=> (table?.totalPages? Math.min(table.totalPages,p+1):p+1))} className="h-8 w-8 sm:h-7 sm:w-7 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-700" aria-label="Siguiente">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>

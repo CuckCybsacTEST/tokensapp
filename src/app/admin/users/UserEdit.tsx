@@ -33,7 +33,19 @@ const areaChoices = [
 
 export const UserEdit = (props: any) => (
   <Edit {...props}>
-    <SimpleForm sx={{ maxWidth: 600, mx: 'auto' }}>
+    <SimpleForm
+      sx={{
+        maxWidth: 600,
+        mx: 'auto',
+        px: { xs: 2, sm: 3 },
+        '& .MuiTextField-root': {
+          mb: { xs: 2, sm: 1 },
+        },
+        '& .MuiFormControl-root': {
+          mb: { xs: 2, sm: 1 },
+        },
+      }}
+    >
       <TextInput source="username" validate={required()} fullWidth />
       <PasswordInput source="password" label="New Password (leave empty to keep current)" fullWidth />
       <TextInput source="personName" label="Name" validate={required()} fullWidth />

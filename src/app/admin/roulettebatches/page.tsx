@@ -63,25 +63,6 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
   const batches = await getBatches();
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-lg font-semibold">Todos los Lotes</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Gestión completa de lotes de tokens y ruleta
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Link href="/admin/static-batches" className="btn-outline !px-3 !py-1.5 text-sm">
-            📊 Lotes Estáticos
-          </Link>
-          <Link href="/admin/roulettebatches/purge" className="btn-outline !px-3 !py-1.5 text-sm" title="Eliminar batches">
-            🗑️ Purgar
-          </Link>
-          <Link href="/admin/printroulette" className="btn-outline !px-3 !py-1.5 text-sm">
-            🖨️ Impresión
-          </Link>
-        </div>
-      </div>
       <div className="grid gap-4">
         {batches.map((b) => {
           const redeemed = b.tokens.filter((t: any) => t.redeemedAt).length;
@@ -111,7 +92,7 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                       <>
                         <Link
                           href={`/admin/roulettebatches/${b.id}`}
-                          className="text-base font-semibold hover:underline max-w-xl truncate"
+                          className="text-base font-semibold hover:underline break-words"
                           title={b.description}
                         >
                           {b.description}
@@ -188,31 +169,6 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                         🖨️ Imprimir
                       </Link>
                     </div>
-                    {/* Acciones de ruleta en fila separada */}
-                    {!isStatic && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {!session && eligibleByPrize && (
-                          <Link href={`/admin/roulettebatches?createRoulette=1&batch=${b.id}`} className="btn-outline !px-2 !py-1 text-[10px]" title="Crear ruleta por premios">
-                            🎡 Ruleta
-                          </Link>
-                        )}
-                        {!session && !eligibleByPrize && eligibleByToken && (
-                          <Link href={`/admin/roulettebatches?createRoulette=1&batch=${b.id}&mode=token`} className="btn-outline !px-2 !py-1 text-[10px]" title="Crear ruleta por tokens">
-                            🎯 Tokens
-                          </Link>
-                        )}
-                        {session && (
-                          <Link href={`/admin/roulette/session/${session.id}`} className="btn !px-2 !py-1 text-[10px]" title="Ir a sesión activa">
-                            🎪 Activa ({session.mode})
-                          </Link>
-                        )}
-                        {!session && (
-                          <span className="text-[9px] text-slate-500" title="Premios:Tokens">
-                            {distinctPrizeIds}:{b.tokens.length}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
 

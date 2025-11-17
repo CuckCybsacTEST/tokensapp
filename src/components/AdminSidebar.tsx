@@ -196,18 +196,10 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "GESTION DE TRIVIAS 🔒 UPGRADE!",
-        icon: ICONS.check,
-        items: [
-          { href: "#", label: "Preguntas", icon: ICONS.checkSmall }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
         title: "GESTION DE OFERTAS",
         icon: ICONS.tag,
         items: [
           { href: `${pathPrefix}/offers`, label: "Panel de Ofertas", icon: ICONS.tag },
-          { href: `${pathPrefix}/offers`, label: "Crear Oferta", icon: ICONS.starSmall },
           { href: "/marketing#ofertas", label: "Ver en marketing", icon: ICONS.starSmall }
         ]
       }] : []),
@@ -276,6 +268,17 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/menu`, label: "Gestión de Menú", icon: ICONS.book },
           { href: `${pathPrefix}/pedidos`, label: "Panel de Pedidos", icon: ICONS.chart },
           { href: "/menu", label: "Menú Público", icon: ICONS.starSmall }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "UPGRADE",
+        icon: ICONS.star,
+        items: [
+          { href: "#", label: "Personalización de la App", icon: ICONS.star },
+          { href: "#", label: "Gestión de Trivias", icon: ICONS.checkSmall },
+          { href: "#", label: "Pedidos Musicales", icon: ICONS.music },
+          { href: "#", label: "Gestión de Fidelidad", icon: ICONS.star },
+          { href: "#", label: "Gestión Wifi", icon: ICONS.qr }
         ]
       }] : [])
     ];
@@ -427,18 +430,33 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           {sidebarGroups.map((group) => (
             <div key={group.title} className="space-y-1">
               {/* Group Header */}
-              {group.title.includes("GESTION DE TRIVIAS") ? (
-                <div
+              {group.title === "UPGRADE" ? (
+                <button
+                  onClick={() => handleGroupClick(group.title)}
                   className={cn(
-                    "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-md cursor-not-allowed opacity-75",
-                    isCollapsed && "justify-center"
+                    "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-md transition-colors hover:opacity-80",
+                    isCollapsed && "justify-center",
+                    isGroupActive(group) && "text-amber-700 dark:text-amber-300"
                   )}
                 >
                   <span className="flex-shrink-0">{group.icon}</span>
                   {!isCollapsed && (
-                    <span className="flex-1 text-left">{group.title}</span>
+                    <>
+                      <span className="flex-1 text-left">{group.title}</span>
+                      <svg
+                        className={cn(
+                          "w-4 h-4 transition-transform",
+                          expandedGroups.has(group.title) ? "rotate-90" : ""
+                        )}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
                   )}
-                </div>
+                </button>
               ) : (
                 <button
                   onClick={() => handleGroupClick(group.title)}

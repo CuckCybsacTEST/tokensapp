@@ -46,8 +46,8 @@ function ColorPalette({ value, onChange }: { value: string; onChange: (c: string
     "#18181b",
   ];
   return (
-    <div className="flex flex-wrap gap-2">
-      <div className="flex items-center gap-1">
+    <div className="grid grid-cols-5 sm:grid-cols-10 gap-1">
+      <div className="col-span-5 sm:col-span-10 flex items-center gap-1">
         {COLORS.map((c) => {
           const active = value === c;
           return (
@@ -69,7 +69,7 @@ function ColorPalette({ value, onChange }: { value: string; onChange: (c: string
       <button
         type="button"
         onClick={() => onChange("")}
-        className="text-[10px] uppercase tracking-wide text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        className="col-span-5 sm:col-span-10 text-[10px] uppercase tracking-wide text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
       >
         Limpiar
       </button>
@@ -264,18 +264,18 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
             <p className="text-xs text-slate-500">{emptyMsg}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="table min-w-[900px]">
+              <table className="table min-w-[600px] sm:min-w-[900px]">
                 <thead>
                   <tr>
                     <th>Key</th>
                     <th>Label</th>
-                    <th>Color</th>
+                    <th className="hidden sm:table-cell">Color</th>
                     <th>Stock</th>
-                    <th>Último lote</th>
+                    <th className="hidden md:table-cell">Último lote</th>
                     <th>Emitidos</th>
-                    <th>Revelados</th>
-                    <th>Consumidos</th>
-                    <th>Expirado</th>
+                    <th className="hidden lg:table-cell">Revelados</th>
+                    <th className="hidden lg:table-cell">Consumidos</th>
+                    <th className="hidden xl:table-cell">Expirado</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -288,7 +288,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
                           {p.label}
                         </span>
                       </td>
-                      <td>
+                      <td className="hidden sm:table-cell">
                         <div className="flex items-center gap-3">
                           {p.color && (
                             <span className="inline-flex items-center gap-2">
@@ -312,7 +312,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
                           <span className="badge border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200" title="Stock disponible">{p.stock}</span>
                         )}
                       </td>
-                      <td className="text-xs">
+                      <td className="text-xs hidden md:table-cell">
                         <span className="text-slate-400">—</span>
                       </td>
                       <td className="text-xs">
@@ -323,7 +323,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
                           {p.emittedTotal ?? 0}
                         </span>
                       </td>
-                      <td className="text-xs">
+                      <td className="text-xs hidden lg:table-cell">
                         <span
                           className="badge border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-800 dark:text-amber-200"
                           title="Tokens revelados aún no entregados (pending delivery)"
@@ -331,7 +331,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
                           {p.revealedCount ?? 0}
                         </span>
                       </td>
-                      <td className="text-xs">
+                      <td className="text-xs hidden lg:table-cell">
                         <span
                           className="badge border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-800 dark:text-emerald-200"
                           title="Tokens ya entregados / canje confirmados"
@@ -339,7 +339,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
                           {p.deliveredCount ?? 0}
                         </span>
                       </td>
-                      <td>
+                      <td className="hidden xl:table-cell">
                         <span className="badge-danger" title={p.active ? "Se marcaba como activo anteriormente" : "Premio inactivo"}>Sí</span>
                       </td>
                       <td className="text-right space-x-2">
@@ -409,7 +409,7 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
           <div className="form-row">
             <label className="text-xs font-medium">Label *</label>
             <input
-              className="input"
+              className="input w-full"
               value={form.label}
               onChange={(e) => setForm((f: any) => ({ ...f, label: e.target.value }))}
               required
@@ -419,13 +419,15 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
           </div>
           <div className="form-row">
             <label className="text-xs font-medium">Color (paleta)</label>
-            <ColorPalette value={form.color} onChange={(c) => setForm((f: any) => ({ ...f, color: c }))} />
+            <div className="w-full">
+              <ColorPalette value={form.color} onChange={(c) => setForm((f: any) => ({ ...f, color: c }))} />
+            </div>
             {errors.color && <p className="text-xs text-danger">{errors.color}</p>}
           </div>
           <div className="form-row">
             <label className="text-xs font-medium">Stock (vacío = ilimitado)</label>
             <input
-              className="input"
+              className="input w-full"
               value={form.stock}
               onChange={(e) => setForm((f: any) => ({ ...f, stock: e.target.value }))}
               type="number"
@@ -620,18 +622,6 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Lotes Estáticos</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Genera lotes de tokens estáticos con interfaz interna para premios personalizados
-          </p>
-        </div>
-        <a href="/admin" className="btn-outline">
-          ← Volver al panel
-        </a>
-      </div>
-
       {/* Gestión de Premios */}
       <PrizeManager prizes={prizes} onPrizesUpdated={setPrizes} />
 
@@ -641,7 +631,7 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
           <span className="text-sm font-medium">Generar Lote Estático</span>
           <button type="button" className="text-[10px] underline" onClick={fillMax}>Rellenar máximos</button>
         </div>
-        <div className="card-body grid gap-4 md:grid-cols-4">
+        <div className="card-body grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {postGen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
               <div className="card w-[92%] max-w-md">
@@ -660,15 +650,11 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
             <label className="text-xs font-medium">Nombre</label>
             <input className="input" value={name} maxLength={120} placeholder="Ej: Campaña Octubre" onChange={e=>setName(e.target.value)} />
           </div>
-          <div className="form-row md:col-span-2">
-            <label className="text-xs font-medium">URL del Premio <span className="text-slate-500">(opcional)</span></label>
-            <input className="input" value={targetUrl} placeholder="https://..." onChange={e=>setTargetUrl(e.target.value)} />
-          </div>
           <div className="form-row">
             <label className="text-xs font-medium">Incluye QR</label>
             <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={includeQr} onChange={e=>setIncludeQr(e.target.checked)} /><span>Sí</span></label>
           </div>
-          <div className="form-row md:col-span-4">
+          <div className="form-row col-span-full">
             <label className="text-xs font-medium">Modo de validez</label>
             <div className="flex flex-wrap items-center gap-4 text-[11px]">
               <label className="inline-flex items-center gap-1"><input type="radio" name="static-validity" value="byDays" checked={mode==='byDays'} onChange={()=>setMode('byDays')} /><span>Por días</span></label>
@@ -692,8 +678,8 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
               <div className="form-row"><label className="text-xs font-medium">Hora inicio</label><input type="time" className="input" value={hourTime} onChange={e=>setHourTime(e.target.value)} /></div>
               <div className="form-row"><label className="text-xs font-medium">Duración</label><select className="input" value={durationMinutes} onChange={e=>setDurationMinutes(Number(e.target.value))}>{[15,30,45,60,90,120,180,240,360].map(m=> <option key={m} value={m}>{m} min</option>)}</select></div>
             </>) }
-          <div className="md:col-span-4">
-            <table className="w-full text-[11px] border-collapse">
+          <div className="col-span-full overflow-x-auto">
+            <table className="w-full text-[11px] border-collapse min-w-[300px]">
               <thead><tr className="text-left"><th className="py-1 pr-2">Premio</th><th className="py-1 pr-2 w-20">Stock</th><th className="py-1 pr-2 w-28">Cantidad</th></tr></thead>
               <tbody>
                 {activePrizeList.map(p => (
@@ -773,18 +759,18 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="table min-w-[900px]">
+                <table className="table min-w-[600px] sm:min-w-[900px]">
                   <thead>
                     <tr>
                       <th>Key</th>
                       <th>Label</th>
-                      <th>Color</th>
+                      <th className="hidden sm:table-cell">Color</th>
                       <th>Stock</th>
-                      <th>Lote</th>
+                      <th className="hidden md:table-cell">Lote</th>
                       <th>Emitidos</th>
-                      <th>Revelados</th>
-                      <th>Consumidos</th>
-                      <th>Expirado</th>
+                      <th className="hidden lg:table-cell">Revelados</th>
+                      <th className="hidden lg:table-cell">Consumidos</th>
+                      <th className="hidden xl:table-cell">Expirado</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -796,7 +782,7 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
                             {p.label}
                           </span>
                         </td>
-                        <td>
+                        <td className="hidden sm:table-cell">
                           <div className="flex items-center gap-3">
                             {p.color && (
                               <span className="inline-flex items-center gap-2">
@@ -812,7 +798,7 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
                         <td className="tabular-nums text-xs">
                           {p.stock === 0 ? 'Agotado' : p.stock === null ? '∞' : p.stock}
                         </td>
-                        <td className="text-xs">
+                        <td className="text-xs hidden md:table-cell">
                           {lastBatch[p.id] ? (
                             <span title={lastBatch[p.id].name}>
                               {lastBatch[p.id].name.length > 15
@@ -824,9 +810,9 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
                           )}
                         </td>
                         <td className="tabular-nums text-xs">{p.emittedTotal || 0}</td>
-                        <td className="tabular-nums text-xs">—</td>
-                        <td className="tabular-nums text-xs">—</td>
-                        <td className="tabular-nums text-xs">—</td>
+                        <td className="tabular-nums text-xs hidden lg:table-cell">—</td>
+                        <td className="tabular-nums text-xs hidden lg:table-cell">—</td>
+                        <td className="tabular-nums text-xs hidden xl:table-cell">—</td>
                       </tr>
                     ))}
                   </tbody>

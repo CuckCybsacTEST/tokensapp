@@ -15,7 +15,7 @@ export default function MarkAttendanceCard({ nextAction }: Props) {
   const longPressRef = useRef(false);
   const intentionalInteractionRef = useRef(false);
 
-  const goToScanner = () => { window.location.href = nextAction === 'OUT' ? '/u/assistance?expected=OUT' : '/u/assistance'; };
+  const goToScanner = () => { window.location.href = nextAction === 'OUT' ? '/admin/assistance?expected=OUT' : '/admin/assistance'; };
 
   function onPointerDown(e: React.PointerEvent) {
     if (loading) return;
