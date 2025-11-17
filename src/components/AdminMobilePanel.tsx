@@ -266,10 +266,10 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "GESTION DE TRIVIAS",
+        title: "GESTION DE TRIVIAS 🔒 UPGRADE!",
         icon: ICONS.check,
         items: [
-          { href: `${pathPrefix}/trivia`, label: "Preguntas", icon: ICONS.check }
+          { href: "#", label: "Preguntas", icon: ICONS.check }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -296,9 +296,9 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
         icon: ICONS.check,
         items: [
           { href: `${pathPrefix}/day-brief`, label: "Brief del día", icon: ICONS.check },
-          { href: `${pathPrefix}/tasks`, label: "Gestión de tareas", icon: ICONS.check },
-          { href: `${pathPrefix}/tasks/metrics`, label: "Métricas de Tareas", icon: ICONS.chart }
-        ]
+          { href: `${pathPrefix}/tasks`, label: "Tareas", icon: ICONS.check },
+          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.users },
+                  ]
       }] : []),
       ...(basePath === 'admin' ? [{
         title: "GESTIÓN DE INVENTARIO",
@@ -399,16 +399,14 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
                     </h2>
                   </div>
                 </Link>
-              ) : group.title === "MARCAR ENTRADA/SALIDA" ? (
-                <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700">
+              ) : group.title.includes("GESTION DE TRIVIAS") ? (
+                <div className="p-3 sm:p-4 border-b border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
                   <div className="flex items-center space-x-3">
-                    <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                    <div className="p-1.5 sm:p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg text-amber-600 dark:text-amber-400">
                       {group.icon}
                     </div>
-                    <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      {attendanceState.dayClosed
-                        ? "JORNADA COMPLETADA"
-                        : attendanceState.nextAction === 'IN' ? "MARCAR ENTRADA" : "MARCAR SALIDA"}
+                    <h2 className="text-base sm:text-lg font-semibold text-amber-800 dark:text-amber-200">
+                      {group.title}
                     </h2>
                   </div>
                 </div>
@@ -442,7 +440,7 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
               )}
 
               {/* Items de la categoría */}
-              {(group.title === "MARCAR ENTRADA/SALIDA" || expandedGroups.has(group.title)) && (
+              {(group.title === "MARCAR ENTRADA/SALIDA" || (expandedGroups.has(group.title) && !group.title.includes("GESTION DE TRIVIAS"))) && (
                 <div className="p-3 sm:p-4">
                   {group.title === "MARCAR ENTRADA/SALIDA" ? (
                     <AutoAttendanceCard showDynamicTitle={false} />
@@ -477,7 +475,7 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
                               {item.label}
                             </span>
                             {item.badge && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 mt-1">
                                 {item.badge}
                               </span>
                             )}

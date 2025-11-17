@@ -196,10 +196,10 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "GESTION DE TRIVIAS",
+        title: "GESTION DE TRIVIAS 🔒 UPGRADE!",
         icon: ICONS.check,
         items: [
-          { href: `${pathPrefix}/trivia`, label: "Preguntas", icon: ICONS.checkSmall }
+          { href: "#", label: "Preguntas", icon: ICONS.checkSmall }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -217,8 +217,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: basePath === 'admin' ? [
           // Reordered: Colaboradores first, then Control de Asistencia
           { href: `${pathPrefix}/users`, label: "Colaboradores", icon: ICONS.usersSmall },
-          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart },
-          { href: `${pathPrefix}/tasks/status`, label: "Estado por usuario", icon: ICONS.usersSmall }
+          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart }
         ] : [
           { href: `${pathPrefix}/attendance`, label: "Mi Asistencia", icon: ICONS.chart }
         ]
@@ -229,7 +228,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: [
           // Put Brief del día first
           { href: `${pathPrefix}/day-brief`, label: "Brief del día", icon: ICONS.checkSmall },
-          { href: `${pathPrefix}/tasks`, label: "Gestión de tareas", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/tasks`, label: "Tareas", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.usersSmall },
           { href: `${pathPrefix}/tasks/metrics`, label: "Métricas de Tareas", icon: ICONS.chart }
         ]
       }] : []),
@@ -427,32 +427,46 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           {sidebarGroups.map((group) => (
             <div key={group.title} className="space-y-1">
               {/* Group Header */}
-              <button
-                onClick={() => handleGroupClick(group.title)}
-                className={cn(
-                  "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors",
-                  isCollapsed && "justify-center",
-                  isGroupActive(group) && "text-blue-600 dark:text-blue-400 bg-slate-100 dark:bg-slate-800"
-                )}
-              >
-                <span className="flex-shrink-0">{group.icon}</span>
-                {!isCollapsed && (
-                  <>
+              {group.title.includes("GESTION DE TRIVIAS") ? (
+                <div
+                  className={cn(
+                    "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-md cursor-not-allowed opacity-75",
+                    isCollapsed && "justify-center"
+                  )}
+                >
+                  <span className="flex-shrink-0">{group.icon}</span>
+                  {!isCollapsed && (
                     <span className="flex-1 text-left">{group.title}</span>
-                    <svg
-                      className={cn(
-                        "w-4 h-4 transition-transform",
-                        expandedGroups.has(group.title) ? "rotate-90" : ""
-                      )}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleGroupClick(group.title)}
+                  className={cn(
+                    "w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors",
+                    isCollapsed && "justify-center",
+                    isGroupActive(group) && "text-blue-600 dark:text-blue-400 bg-slate-100 dark:bg-slate-800"
+                  )}
+                >
+                  <span className="flex-shrink-0">{group.icon}</span>
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 text-left">{group.title}</span>
+                      <svg
+                        className={cn(
+                          "w-4 h-4 transition-transform",
+                          expandedGroups.has(group.title) ? "rotate-90" : ""
+                        )}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              )}
 
               {/* Group Items */}
               {!isCollapsed && expandedGroups.has(group.title) && (
@@ -495,14 +509,14 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
                           className={cn(
                             "flex items-center space-x-2 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors",
                             isItemActive(item.href) && "bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400",
-                            item.href === "#" && "opacity-60 cursor-not-allowed"
+                            item.href === "#" && "opacity-75 cursor-not-allowed bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800"
                           )}
                           aria-current={isItemActive(item.href) ? "page" : undefined}
                         >
                           <span className="flex-shrink-0">{item.icon}</span>
                           <span className="flex-1">{item.label}</span>
                           {item.badge && (
-                            <span className="px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded">
+                            <span className="px-2 py-0.5 text-xs bg-gradient-to-r from-amber-100 to-yellow-100 dark:from-amber-900/40 dark:to-yellow-900/40 text-amber-800 dark:text-amber-200 rounded border border-amber-300 dark:border-amber-700">
                               {item.badge}
                             </span>
                           )}
