@@ -144,7 +144,7 @@ export default function AdminReferrersPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       {/* Modal QR */}
       <QRModal
         open={!!qrModal?.open}
@@ -152,8 +152,8 @@ export default function AdminReferrersPage() {
         name={qrModal?.name || ""}
         onClose={() => setQrModal(null)}
       />
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Gestión de Referrers
         </h1>
         <button
@@ -162,84 +162,84 @@ export default function AdminReferrersPage() {
             setEditingId(null);
             setFormData({ name: '', slug: '', email: '', phone: '', commissionAmount: 10.00 });
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
         >
           Nuevo Referrer
         </button>
       </div>
       {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg dark:bg-red-900 dark:border-red-700 dark:text-red-300">
           {error}
         </div>
       )}
       {/* Create/Edit Form */}
       {showCreateForm && (
-        <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border">
-          <h2 className="text-xl font-semibold mb-4">
+        <div className="mb-6 p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             {editingId ? 'Editar Referrer' : 'Crear Nuevo Referrer'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Slug *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Slug *</label>
                 <input
                   type="text"
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="ana-garcia"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Solo letras minúsculas, números y guiones
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Teléfono</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Teléfono</label>
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Monto de Comisión (S/)</label>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Monto de Comisión (S/)</label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.commissionAmount}
                   onChange={(e) => setFormData({ ...formData, commissionAmount: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                  className="w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
               <button
                 type="submit"
                 disabled={submitting}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 {submitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear')}
               </button>
@@ -249,7 +249,7 @@ export default function AdminReferrersPage() {
                   setShowCreateForm(false);
                   setEditingId(null);
                 }}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
+                className="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 Cancelar
               </button>
@@ -257,8 +257,8 @@ export default function AdminReferrersPage() {
           </form>
         </div>
       )}
-      {/* Referrers List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+      {/* Referrers List - Desktop Table */}
+      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
@@ -320,14 +320,14 @@ export default function AdminReferrersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => navigator.clipboard.writeText(generateLink(referrer.slug))}
-                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-2 transition-colors"
                       title="Copiar link"
                     >
                       📋 Copiar
                     </button>
                     <button
                       onClick={() => setQrModal({ open: true, slug: referrer.slug, name: referrer.name })}
-                      className="ml-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
+                      className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"
                       title="Ver QR"
                     >
                       🧾 QR
@@ -336,13 +336,13 @@ export default function AdminReferrersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     <button
                       onClick={() => handleEdit(referrer)}
-                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
                     >
                       Editar
                     </button>
                     <button
                       onClick={() => handleToggleActive(referrer.id, referrer.active)}
-                      className={`${
+                      className={`transition-colors ${
                         referrer.active
                           ? 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300'
                           : 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300'
@@ -352,7 +352,7 @@ export default function AdminReferrersPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(referrer.id)}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                       disabled={referrer._count.reservations > 0}
                     >
                       Eliminar
@@ -365,6 +365,101 @@ export default function AdminReferrersPage() {
         </div>
         {referrers.length === 0 && (
           <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400">
+              No hay referrers registrados aún.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Referrers List - Mobile Cards */}
+      <div className="md:hidden space-y-4">
+        {referrers.map((referrer) => (
+          <div key={referrer.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {referrer.name}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  @{referrer.slug}
+                </p>
+                {referrer.email && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {referrer.email}
+                  </p>
+                )}
+              </div>
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                referrer.active
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+              }`}>
+                {referrer.active ? 'Activo' : 'Inactivo'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Reservas:</span>
+                <span className="ml-2 font-medium text-gray-900 dark:text-white">
+                  {referrer._count.reservations}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Comisión:</span>
+                <span className="ml-2 font-medium text-gray-900 dark:text-white">
+                  S/ {referrer.commissionAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => navigator.clipboard.writeText(generateLink(referrer.slug))}
+                className="flex-1 min-w-0 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                title="Copiar link"
+              >
+                📋 Copiar Link
+              </button>
+              <button
+                onClick={() => setQrModal({ open: true, slug: referrer.slug, name: referrer.name })}
+                className="flex-1 min-w-0 bg-green-50 hover:bg-green-100 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                title="Ver QR"
+              >
+                🧾 Ver QR
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleEdit(referrer)}
+                className="flex-1 min-w-0 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleToggleActive(referrer.id, referrer.active)}
+                className={`flex-1 min-w-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  referrer.active
+                    ? 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-700 dark:text-orange-300'
+                    : 'bg-green-50 hover:bg-green-100 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300'
+                }`}
+              >
+                {referrer.active ? 'Desactivar' : 'Activar'}
+              </button>
+              <button
+                onClick={() => handleDelete(referrer.id)}
+                className="flex-1 min-w-0 bg-red-50 hover:bg-red-100 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={referrer._count.reservations > 0}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ))}
+        {referrers.length === 0 && (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md">
             <p className="text-gray-500 dark:text-gray-400">
               No hay referrers registrados aún.
             </p>
@@ -408,24 +503,33 @@ function QRModal({ open, slug, name, onClose }: { open: boolean; slug: string; n
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-xs flex flex-col items-center">
-        <div className="mb-2 text-lg font-bold text-gray-900 dark:text-white">QR de {name}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-sm flex flex-col items-center">
+        <div className="mb-3 text-lg sm:text-xl font-bold text-gray-900 dark:text-white text-center">
+          QR de {name}
+        </div>
         {qrDataUrl ? (
-          <img src={qrDataUrl} alt={`QR para ${slug}`} className="mb-2 w-48 h-48 border rounded" />
+          <img src={qrDataUrl} alt={`QR para ${slug}`} className="mb-3 w-48 h-48 sm:w-56 sm:h-56 border rounded-lg" />
         ) : (
-          <div className="w-48 h-48 bg-gray-200 animate-pulse rounded mb-2"></div>
+          <div className="w-48 h-48 sm:w-56 sm:h-56 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg mb-3"></div>
         )}
-        <div className="text-xs text-gray-500 break-all mb-4">{url}</div>
-        <div className="flex gap-2 w-full">
+        <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 break-all mb-4 text-center px-2">
+          {url}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
           <button
             onClick={downloadQR}
             disabled={!qrDataUrl}
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors text-sm sm:text-base"
           >
             📥 Descargar QR
           </button>
-          <button onClick={onClose} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Cerrar</button>
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm sm:text-base"
+          >
+            Cerrar
+          </button>
         </div>
       </div>
     </div>

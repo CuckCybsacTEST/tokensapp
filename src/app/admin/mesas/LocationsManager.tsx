@@ -276,20 +276,22 @@ export default function LocationsManager() {
   }
 
   return (
-    <div className="space-y-4 text-gray-900 dark:text-gray-100">
+    <div className="space-y-4 text-gray-900 dark:text-white">
       {loading ? (
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2">Cargando ubicaciones...</span>
+          <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando ubicaciones...</span>
         </div>
       ) : (
         <>
           {/* Header con botón para agregar ubicación */}
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Ubicaciones</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Ubicaciones
+            </h2>
             <button
               onClick={() => setLocationModal({ isOpen: true, location: null, title: "Agregar Ubicación" })}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
               + Agregar Ubicación
             </button>
@@ -298,63 +300,67 @@ export default function LocationsManager() {
           {locations.map((location) => (
         <div key={location.id} className="border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800">
           <div
-            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             onClick={() => toggleLocation(location.id)}
           >
-            <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full ${
+            <div className="flex items-center space-x-3 mb-3 sm:mb-0">
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
                 location.type === LocationType.DINING ? "bg-blue-500" :
                 location.type === LocationType.VIP ? "bg-purple-500" :
                 location.type === LocationType.BAR ? "bg-green-500" :
                 "bg-gray-500"
               }`}></div>
               <div>
-                <h3 className="font-semibold">{location.name}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  {location.name}
+                </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {getLocationTypeLabel(location.type)} • {location.servicePoints.length} puntos de servicio
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-2">
-                <QRDisplay 
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-2">
+              <div className="flex items-center space-x-2 order-2 sm:order-1">
+                <QRDisplay
                   url={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?location=${location.id}`}
                   size={40}
                 />
-                <QrDownloadButton 
+                <QrDownloadButton
                   data={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?location=${location.id}`}
                   fileName={`qr-location-${location.name}.png`}
                 />
               </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditLocation(location);
-                }}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
-              >
-                Editar
-              </button>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddServicePoint(location);
-                }}
-                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
-              >
-                + Agregar Punto
-              </button>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteLocation(location);
-                }}
-                className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
-              >
-                Eliminar
-              </button>
+              <div className="flex flex-wrap gap-2 order-1 sm:order-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditLocation(location);
+                  }}
+                  className="px-3 py-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm font-medium transition-colors"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddServicePoint(location);
+                  }}
+                  className="px-3 py-1 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm font-medium transition-colors"
+                >
+                  + Agregar Punto
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteLocation(location);
+                  }}
+                  className="px-3 py-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 text-sm font-medium transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
               <svg
-                className={`w-5 h-5 transition-transform ${
+                className={`w-5 h-5 transition-transform flex-shrink-0 order-3 ${
                   expandedLocations.has(location.id) ? "rotate-180" : ""
                 }`}
                 fill="none"
@@ -374,19 +380,21 @@ export default function LocationsManager() {
                     No hay puntos de servicio en esta ubicación
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {location.servicePoints.map((servicePoint: ServicePoint) => (
                       <div
                         key={servicePoint.id}
                         className="bg-white dark:bg-gray-800 rounded-lg p-4 border shadow-sm"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">{servicePoint.name}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getServicePointTypeColor(servicePoint.type)}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                            {servicePoint.name}
+                          </h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getServicePointTypeColor(servicePoint.type)}`}>
                             {getServicePointTypeLabel(servicePoint.type)}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 mb-4">
                           <p>Capacidad: {servicePoint.capacity || "N/A"}</p>
                           {servicePoint.positionX !== null && servicePoint.positionY !== null && (
                             <p>Posición: ({servicePoint.positionX}, {servicePoint.positionY})</p>
@@ -395,16 +403,16 @@ export default function LocationsManager() {
                             Estado: {servicePoint.active ? "Activo" : "Inactivo"}
                           </p>
                         </div>
-                        <div className="flex space-x-2 mt-3">
-                          <button 
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <button
                             onClick={() => handleEditServicePoint(servicePoint)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm"
+                            className="flex-1 min-w-0 px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium transition-colors"
                           >
                             Editar
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDeleteServicePoint(servicePoint)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 text-sm"
+                            className="flex-1 min-w-0 px-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium transition-colors"
                           >
                             Eliminar
                           </button>
@@ -412,18 +420,20 @@ export default function LocationsManager() {
                         {servicePoint.active && (
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                             <div className="space-y-2">
-                              <span className="text-xs text-gray-500 dark:text-gray-400 block">QR del menú</span>
-                              <div className="flex items-center space-x-3">
-                                <QRDisplay 
+                              <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                                QR del menú
+                              </span>
+                              <div className="flex flex-col sm:flex-row items-center gap-3">
+                                <QRDisplay
                                   url={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?table=${servicePoint.id}`}
                                   size={80}
                                 />
-                                <div className="flex flex-col space-y-1">
-                                  <QrDownloadButton 
+                                <div className="flex flex-col items-center sm:items-start gap-1">
+                                  <QrDownloadButton
                                     data={`${process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/menu?table=${servicePoint.id}`}
                                     fileName={`qr-${servicePoint.name || servicePoint.number}.png`}
                                   />
-                                  <span className="text-xs text-gray-400">
+                                  <span className="text-xs text-gray-400 text-center sm:text-left">
                                     {servicePoint.name || `${servicePoint.type} ${servicePoint.number}`}
                                   </span>
                                 </div>
@@ -442,8 +452,18 @@ export default function LocationsManager() {
       ))}
 
       {locations.length === 0 && (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No hay ubicaciones configuradas
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 100 4 2 2 0 000-4zm0 0a2 2 0 110-4 2 2 0 010 4zm0 0V7m6 0v10m0-10a2 2 0 10-4 0 2 2 0 004 0z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+            No hay ubicaciones configuradas
+          </h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Comienza creando tu primera ubicación para organizar mesas y puntos de servicio.
+          </p>
         </div>
       )}
 

@@ -156,6 +156,8 @@ export function AdminBirthdaysPage() {
   const [creating, setCreating] = useState(false);
   // packs
   const [packs, setPacks] = useState<Array<{id: string, name: string, qrCount: number, bottle: string | null}>>([]);
+  // tabs
+  const [activeTab, setActiveTab] = useState<'create' | 'list'>('list');
 
   async function load() {
     setLoading(true); setErr(null);
@@ -302,84 +304,194 @@ export function AdminBirthdaysPage() {
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
       <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Gestión de Cumpleaños</h1>
-        <a href="/admin/birthdays/debug-token/test" className="btn-sm bg-blue-600 hover:bg-blue-700 text-white">
-          🔍 Debug Token
-        </a>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Gestión de Cumpleaños</h1>
       </div>
       {err && <div className="border border-red-700 bg-red-950/30 text-red-200 rounded p-3 text-sm">{err}</div>}
 
-      {/* Crear reserva rápida */}
-  <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm transition-colors">
-        <div className="font-medium mb-2">Crear reserva</div>
-  <div className="grid md:grid-cols-3 gap-2">
-          <input className="input-sm" placeholder="Nombre" value={cName} onChange={(e)=>setCName(e.target.value)} />
-          <input className="input-sm" placeholder="WhatsApp" value={cPhone} onChange={(e)=>setCPhone(e.target.value)} />
-          <input className="input-sm" placeholder="Documento" value={cDoc} onChange={(e)=>setCDoc(e.target.value)} />
-          <input className="input-sm" placeholder="Email (opcional)" value={cEmail} onChange={(e)=>setCEmail(e.target.value)} />
-          <input type="date" className="input-sm" value={cDate} onChange={(e)=>setCDate(e.target.value)} />
-          <select className="input-sm" value={cSlot} onChange={(e)=>setCSlot(e.target.value)}>
-            <option value="20:00">20:00</option>
-            <option value="21:00">21:00</option>
-            <option value="22:00">22:00</option>
-            <option value="23:00">23:00</option>
-            <option value="00:00">00:00</option>
-          </select>
-          <select className="input-sm" value={cPackId} onChange={(e)=>setCPackId(e.target.value)}>
-            <option value="">Seleccionar pack…</option>
-            {packs.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.qrCount} QR{p.bottle ? ` + ${p.bottle}` : ''})
-              </option>
-            ))}
-          </select>
-          <button className="btn" disabled={creating} onClick={async ()=>{
-            setCreating(true); setErr(null);
-            try {
-              // Validaciones básicas
-              if (!cName.trim()) throw new Error('Nombre requerido');
-              if (!cPhone.trim()) throw new Error('WhatsApp requerido');
-              if (!cDoc.trim()) throw new Error('Documento requerido');
-              if (!cPackId) throw new Error('Pack requerido');
-              let finalDate = cDate;
-              if (!finalDate) {
-                const d = new Date();
-                finalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                setCDate(finalDate);
-              }
-              const selectedPack = packs.find(p => p.id === cPackId);
-              if (!selectedPack) throw new Error('Pack no encontrado');
-              const payload = { 
-                celebrantName: cName.trim(), 
-                phone: cPhone.trim(), 
-                documento: cDoc.trim(), 
-                email: cEmail.trim() || null, 
-                date: finalDate, 
-                timeSlot: cSlot, 
-                packId: cPackId,
-                guestsPlanned: selectedPack.qrCount 
-              } as any;
-              const res = await fetch('/api/admin/birthdays', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-              const j = await res.json();
-              if (!res.ok || !j?.ok) {
-                // Mostrar detalles de validación si existen
-                if (j?.errors) {
-                  const firstErr = Object.values(j.errors).flat()?.[0];
-                  throw new Error(firstErr || (j?.code || j?.message || res.status));
-                }
-                throw new Error(j?.code || j?.message || res.status);
-              }
-              setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPackId('');
-              await load();
-            } catch(e:any) { setErr(String(e?.message || e)); } finally { setCreating(false); }
-          }}>Guardar</button>
-        </div>
+      {/* Pestañas - Horizontales */}
+      <div className="border-b border-slate-200 dark:border-slate-700">
+        <nav className="flex justify-center space-x-8">
+          <button
+            onClick={() => setActiveTab('create')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
+              activeTab === 'create'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            Crear Reserva
+          </button>
+          <button
+            onClick={() => setActiveTab('list')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap ${
+              activeTab === 'list'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            Ver Reservas
+          </button>
+        </nav>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
+      {/* Contenido de las pestañas */}
+      {activeTab === 'create' && (
+        <div className="space-y-6">
+          {/* Crear reserva */}
+          <div className="rounded border border-slate-200 dark:border-slate-700 p-4 sm:p-6 bg-white dark:bg-slate-800 shadow-sm transition-colors">
+            <h2 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">Crear Nueva Reserva</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="sm:col-span-2 lg:col-span-1">
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Nombre del Cumpleañero *
+                </label>
+                <input
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  placeholder="Nombre completo"
+                  value={cName}
+                  onChange={(e)=>setCName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  WhatsApp *
+                </label>
+                <input
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  placeholder="Número de WhatsApp"
+                  value={cPhone}
+                  onChange={(e)=>setCPhone(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Documento (DNI) *
+                </label>
+                <input
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  placeholder="Número de documento"
+                  value={cDoc}
+                  onChange={(e)=>setCDoc(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Email (Opcional)
+                </label>
+                <input
+                  type="email"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  placeholder="correo@ejemplo.com"
+                  value={cEmail}
+                  onChange={(e)=>setCEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Fecha de Celebración *
+                </label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  value={cDate}
+                  onChange={(e)=>setCDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Hora de Llegada *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  value={cSlot}
+                  onChange={(e)=>setCSlot(e.target.value)}
+                >
+                  <option value="20:00">20:00</option>
+                  <option value="21:00">21:00</option>
+                  <option value="22:00">22:00</option>
+                  <option value="23:00">23:00</option>
+                  <option value="00:00">00:00</option>
+                </select>
+              </div>
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Pack de Cumpleaños *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  value={cPackId}
+                  onChange={(e)=>setCPackId(e.target.value)}
+                >
+                  <option value="">Seleccionar pack…</option>
+                  {packs.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.qrCount} QR{p.bottle ? ` + ${p.bottle}` : ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
+              <button
+                className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed px-6 py-2 text-sm font-medium rounded-md bg-blue-600 hover:bg-blue-700 text-white border border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 w-full sm:w-auto"
+                disabled={creating}
+                onClick={async ()=>{
+                  setCreating(true); setErr(null);
+                  try {
+                    // Validaciones básicas
+                    if (!cName.trim()) throw new Error('Nombre requerido');
+                    if (!cPhone.trim()) throw new Error('WhatsApp requerido');
+                    if (!cDoc.trim()) throw new Error('Documento requerido');
+                    if (!cPackId) throw new Error('Pack requerido');
+                    let finalDate = cDate;
+                    if (!finalDate) {
+                      const d = new Date();
+                      finalDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                      setCDate(finalDate);
+                    }
+                    const selectedPack = packs.find(p => p.id === cPackId);
+                    if (!selectedPack) throw new Error('Pack no encontrado');
+                    const payload = {
+                      celebrantName: cName.trim(),
+                      phone: cPhone.trim(),
+                      documento: cDoc.trim(),
+                      email: cEmail.trim() || null,
+                      date: finalDate,
+                      timeSlot: cSlot,
+                      packId: cPackId,
+                      guestsPlanned: selectedPack.qrCount
+                    } as any;
+                    const res = await fetch('/api/admin/birthdays', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    const j = await res.json();
+                    if (!res.ok || !j?.ok) {
+                      // Mostrar detalles de validación si existen
+                      if (j?.errors) {
+                        const firstErr = Object.values(j.errors).flat()?.[0];
+                        throw new Error(firstErr || (j?.code || j?.message || res.status));
+                      }
+                      throw new Error(j?.code || j?.message || res.status);
+                    }
+                    setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPackId('');
+                    await load();
+                    // Cambiar a la pestaña de lista después de crear
+                    setActiveTab('list');
+                  } catch(e:any) { setErr(String(e?.message || e)); } finally { setCreating(false); }
+                }}
+              >
+                {creating ? 'Creando Reserva...' : 'Crear Reserva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'list' && (
+        <div className="space-y-6">
+
+      <div className="flex flex-col lg:flex-row lg:items-end gap-4">
         {/* Pestañas de estado */}
-        <div className="grid gap-1">
+        <div className="grid gap-1 flex-1">
           <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Estado</label>
           <div className="flex flex-wrap gap-1">
             {statusTabs.map(tab => (
@@ -405,11 +517,11 @@ export function AdminBirthdaysPage() {
         </div>
 
         {/* Selector de fechas */}
-        <div className="grid gap-1">
+        <div className="grid gap-1 min-w-[140px]">
           <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Fechas</label>
-          <select 
-            className="input-sm min-w-[140px]" 
-            value={dateFilter} 
+          <select
+            className="input-sm"
+            value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
           >
             {dateFilterOptions.map(option => (
@@ -421,13 +533,13 @@ export function AdminBirthdaysPage() {
         </div>
 
         {/* Búsqueda */}
-        <div className="grid gap-1">
+        <div className="grid gap-1 flex-1 min-w-[200px]">
           <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Buscar</label>
-          <input 
-            className="input-sm min-w-[200px]" 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            placeholder="cumpleañero, WhatsApp, documento" 
+          <input
+            className="input-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="cumpleañero, WhatsApp, documento"
           />
         </div>
       </div>
@@ -453,48 +565,50 @@ export function AdminBirthdaysPage() {
         ))}
       </div>
 
-      {/* Paginación mejorada */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          {/* Botón anterior */}
-          <button
-            className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={page <= 1}
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-          >
-            ← Anterior
-          </button>
+          {/* Paginación mejorada - Responsive */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-4">
+              {/* Botón anterior */}
+              <button
+                className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                ← Anterior
+              </button>
 
-          {/* Números de página */}
-          {getVisiblePages().map(pageNum => (
-            <button
-              key={pageNum}
-              className={`btn h-8 px-3 min-w-[40px] ${
-                pageNum === page
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-              onClick={() => setPage(pageNum)}
-            >
-              {pageNum}
-            </button>
-          ))}
+              {/* Números de página */}
+              <div className="flex gap-1 order-first sm:order-none">
+                {getVisiblePages().map(pageNum => (
+                  <button
+                    key={pageNum}
+                    className={`btn h-8 px-3 min-w-[40px] ${
+                      pageNum === page
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                    onClick={() => setPage(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
 
-          {/* Botón siguiente */}
-          <button
-            className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          >
-            Siguiente →
-          </button>
-        </div>
-      )}
-
-      {/* Información de paginación */}
+              {/* Botón siguiente */}
+              <button
+                className="btn h-8 px-3 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}      {/* Información de paginación */}
       <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-2">
         Página {page} de {totalPages} • Total: {total} reservas
       </div>
+        </div>
+      )}
       </div>
     </div>
   );

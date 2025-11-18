@@ -445,16 +445,20 @@ export default function AdminTicketsPage() {
   }
 
   return (
-      <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Tickets</h1>
-          <p className="text-gray-600 dark:text-gray-400">Administra los tipos de entradas y tickets vendidos</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            Gestión de Tickets
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Administra los tipos de entradas y tickets vendidos
+          </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={fetchData}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             title="Actualizar datos"
           >
             <RefreshCw size={20} />
@@ -462,7 +466,7 @@ export default function AdminTicketsPage() {
           {activeTab === 'types' && (
             <button
               onClick={openCreateModal}
-              className="bg-[#FF4D2E] text-white px-4 py-2 rounded-lg hover:bg-[#e6442a] flex items-center gap-2"
+              className="w-full sm:w-auto bg-[#FF4D2E] text-white px-4 py-2 rounded-lg hover:bg-[#e6442a] flex items-center justify-center gap-2 transition-colors"
             >
               <Plus size={20} />
               Nuevo Tipo de Ticket
@@ -474,23 +478,23 @@ export default function AdminTicketsPage() {
       {/* Pestañas */}
       <div className="mb-6">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveTab('types')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'types'
                   ? 'border-[#FF4D2E] text-[#FF4D2E]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               Tipos de Tickets
             </button>
             <button
               onClick={() => setActiveTab('tickets')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'tickets'
                   ? 'border-[#FF4D2E] text-[#FF4D2E]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
               Paquetes de Tickets ({ticketPackages.length})
@@ -503,28 +507,33 @@ export default function AdminTicketsPage() {
         <div>
           {/* Filtros para tipos de tickets */}
           <div className="mb-6">
-            <select
-              value={selectedShow}
-              onChange={(e) => setSelectedShow(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value="all">Todos los shows</option>
-              {shows.map(show => (
-                <option key={show.id} value={show.id}>
-                  {show.title} ({show.status})
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Filtrar por show:
+              </label>
+              <select
+                value={selectedShow}
+                onChange={(e) => setSelectedShow(e.target.value)}
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
+              >
+                <option value="all">Todos los shows</option>
+                {shows.map(show => (
+                  <option key={show.id} value={show.id}>
+                    {show.title} ({show.status})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Mensajes */}
           {error && (
-            <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded">
+            <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded">
+            <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 rounded-lg">
               {success}
             </div>
           )}
@@ -533,45 +542,61 @@ export default function AdminTicketsPage() {
           <div className="space-y-6">
             {Object.entries(groupedTickets).map(([showTitle, tickets]) => (
               <div key={showTitle} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{showTitle}</h2>
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {showTitle}
+                  </h2>
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {tickets.map(ticket => (
-                    <div key={ticket.id} className="px-6 py-4 flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <Ticket className="text-[#FF4D2E]" size={20} />
-                          <div>
-                            <h3 className="font-medium text-gray-900 dark:text-gray-100">{ticket.name}</h3>
-                            {ticket.description && (
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{ticket.description}</p>
-                            )}
+                    <div key={ticket.id} className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Ticket className="text-[#FF4D2E] flex-shrink-0" size={20} />
+                            <div>
+                              <h3 className="font-medium text-gray-900 dark:text-white">
+                                {ticket.name}
+                              </h3>
+                              {ticket.description && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {ticket.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-[#FF4D2E]">
-                            S/ {ticket.price.toFixed(2)}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-sm text-gray-500 dark:text-gray-400 sm:hidden">
                             {ticket.soldCount}/{ticket.capacity} vendidos
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openEditModal(ticket)}
-                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(ticket.id)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                          <div className="text-right hidden sm:block">
+                            <div className="text-lg font-bold text-[#FF4D2E]">
+                              S/ {ticket.price.toFixed(2)}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {ticket.soldCount}/{ticket.capacity} vendidos
+                            </div>
+                          </div>
+                          <div className="text-lg font-bold text-[#FF4D2E] sm:hidden">
+                            S/ {ticket.price.toFixed(2)}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEditModal(ticket)}
+                              className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(ticket.id)}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -581,9 +606,11 @@ export default function AdminTicketsPage() {
             ))}
 
             {Object.keys(groupedTickets).length === 0 && (
-              <div className="text-center py-12">
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                 <Ticket className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay tickets</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  No hay tickets
+                </h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Comienza creando tu primer tipo de ticket.
                 </p>
@@ -594,16 +621,19 @@ export default function AdminTicketsPage() {
       ) : (
         /* Vista de Tickets Individuales */
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
                 Paquetes de Tickets Vendidos
               </h3>
 
               {ticketPackages.length === 0 ? (
                 <div className="text-center py-12">
                   <Ticket className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay paquetes de tickets</h3>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                    No hay paquetes de tickets
+                  </h3>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     Los paquetes de tickets aparecerán aquí cuando se realicen compras.
                   </p>
@@ -640,7 +670,7 @@ export default function AdminTicketsPage() {
                       {ticketPackages.map((ticketPackage) => (
                         <tr key={ticketPackage.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
                               {ticketPackage.customerName}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -648,7 +678,7 @@ export default function AdminTicketsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                            <div className="text-sm text-gray-900 dark:text-white">
                               {ticketPackage.showTitle}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -656,7 +686,7 @@ export default function AdminTicketsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                            <div className="text-sm text-gray-900 dark:text-white">
                               {ticketPackage.ticketTypeName}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -664,7 +694,7 @@ export default function AdminTicketsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                            <div className="text-sm text-gray-900 dark:text-white">
                               {ticketPackage.usedTickets}/{ticketPackage.totalTickets}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -750,16 +780,164 @@ export default function AdminTicketsPage() {
               )}
             </div>
           </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
+              Paquetes de Tickets Vendidos
+            </h3>
+
+            {ticketPackages.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <Ticket className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  No hay paquetes de tickets
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Los paquetes de tickets aparecerán aquí cuando se realicen compras.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {ticketPackages.map((ticketPackage) => (
+                  <div key={ticketPackage.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white truncate" title={ticketPackage.customerName}>
+                          {ticketPackage.customerName}
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          DNI: {ticketPackage.customerDni}
+                        </p>
+                      </div>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        ticketPackage.status === 'CONFIRMED'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : ticketPackage.status === 'CANCELLED'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {ticketPackage.status === 'CONFIRMED' ? 'Confirmado' :
+                         ticketPackage.status === 'CANCELLED' ? 'Cancelado' : 'Otro'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Show:</span>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {ticketPackage.showTitle}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {new Date(ticketPackage.showDate).toLocaleDateString('es-ES')}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Tipo de Ticket:</span>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {ticketPackage.ticketTypeName}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          S/ {ticketPackage.totalAmount.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Entradas:</span>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {ticketPackage.usedTickets}/{ticketPackage.totalTickets}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {ticketPackage.remainingTickets} restantes
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Comprado:</span>
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {new Date(ticketPackage.purchasedAt).toLocaleDateString('es-ES')}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {new Date(ticketPackage.purchasedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => {
+                          // Mostrar QR del paquete
+                          const qrWindow = window.open('', '_blank', 'width=400,height=600');
+                          if (qrWindow) {
+                            qrWindow.document.write(`
+                              <html>
+                                <head>
+                                  <title>Código QR - ${ticketPackage.qrCode}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                                    .qr-code { margin: 20px 0; }
+                                    .info { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <h2>Código QR de Entrada</h2>
+                                  <div class="qr-code">
+                                    <img src="${ticketPackage.qrDataUrl || ''}" alt="QR Code" style="max-width: 100%; height: auto;" />
+                                  </div>
+                                  <div class="info">
+                                    <p><strong>Código:</strong> ${ticketPackage.qrCode}</p>
+                                    <p><strong>Cliente:</strong> ${ticketPackage.customerName}</p>
+                                    <p><strong>Show:</strong> ${ticketPackage.showTitle}</p>
+                                    <p><strong>Entradas:</strong> ${ticketPackage.totalTickets}</p>
+                                    <p><strong>Usadas:</strong> ${ticketPackage.usedTickets}</p>
+                                  </div>
+                                </body>
+                              </html>
+                            `);
+                          }
+                        }}
+                        className="flex-1 min-w-0 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                        title="Ver QR"
+                      >
+                        👁️ Ver QR
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Descargar QR
+                          if (ticketPackage.qrDataUrl) {
+                            const link = document.createElement('a');
+                            link.href = ticketPackage.qrDataUrl;
+                            link.download = `qr-${ticketPackage.qrCode}.png`;
+                            link.click();
+                          }
+                        }}
+                        className="flex-1 min-w-0 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-800 text-green-700 dark:text-green-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                        title="Descargar QR"
+                      >
+                        📥 Descargar QR
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Modal Crear/Editar */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              {editingTicket ? 'Editar Ticket' : 'Nuevo Tipo de Ticket'}
-            </h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                {editingTicket ? 'Editar Ticket' : 'Nuevo Tipo de Ticket'}
+              </h2>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -769,7 +947,7 @@ export default function AdminTicketsPage() {
                 <select
                   value={formData.showId}
                   onChange={(e) => setFormData({...formData, showId: e.target.value})}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                   required
                 >
                   <option value="">Seleccionar show</option>
@@ -789,7 +967,7 @@ export default function AdminTicketsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                   placeholder="Ej: Entrada General"
                   required
                 />
@@ -802,13 +980,13 @@ export default function AdminTicketsPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                   placeholder="Descripción opcional"
                   rows={3}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Precio (S/)
@@ -819,7 +997,7 @@ export default function AdminTicketsPage() {
                     min="0"
                     value={formData.price}
                     onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                     placeholder="25.00"
                     required
                   />
@@ -834,24 +1012,24 @@ export default function AdminTicketsPage() {
                     min="1"
                     value={formData.capacity}
                     onChange={(e) => setFormData({...formData, capacity: e.target.value})}
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
                     placeholder="100"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="w-full sm:w-auto px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#e6442a]"
+                  className="w-full sm:w-auto px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#e6442a] transition-colors"
                 >
                   {editingTicket ? 'Actualizar' : 'Crear'}
                 </button>

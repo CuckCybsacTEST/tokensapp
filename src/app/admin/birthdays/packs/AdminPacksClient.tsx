@@ -48,87 +48,209 @@ export function AdminPacksPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Gestión de Packs de Cumpleaños</h1>
-      </div>
-
-      {err && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-800">
-          Error: {err}
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Gestión de Packs de Cumpleaños</h1>
         </div>
-      )}
 
-      {/* Packs Management */}
-      <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="font-medium">Packs de cumpleaños</div>
-          <button onClick={async()=>{
-            // refrescar packs explicitamente
-            const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
-            if (list?.packs) setPacks(list.packs);
-          }} className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Refrescar</button>
-        </div>
-        {packs.length===0 && (
-          <div className="text-xs text-amber-300">No hay packs. Usa "Recrear packs por defecto" abajo.</div>
+        {err && (
+          <div className="rounded-md border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-4 text-red-800 dark:text-red-200">
+            Error: {err}
+          </div>
         )}
-        <div className="grid md:grid-cols-3 gap-4">
-          {packs.map(p => {
-            const isEditing = editingPack === p.id;
-            const edit = packEdits[p.id];
-            return (
-              <div key={p.id} className={`rounded border ${p.isCustom ? 'border-fuchsia-400 dark:border-fuchsia-600' : 'border-slate-300 dark:border-slate-600'} p-3 bg-slate-50 dark:bg-slate-800/60 flex flex-col gap-2 transition-colors`}>
-                {!isEditing && (
-                  <>
-                    <div className="font-semibold text-sm flex items-center gap-2">
-                      {p.name}
-                      {p.isCustom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300">Custom</span>}
-                    </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 transition-colors">Invitados (QRs): {p.qrCount}</div>
-                    <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Precio: {p.priceSoles ? `S/ ${p.priceSoles}` : 'Gratis'}</div>
-                    {p.bottle && <div className="text-xs text-slate-700 dark:text-slate-300 transition-colors">Botella: {p.bottle}</div>}
-                    <ul className="text-[11px] list-disc ml-4 space-y-0.5 text-slate-700 dark:text-slate-300 transition-colors">
-                      {(p.perks||[]).map(per=> <li key={per}>{per}</li>)}
-                    </ul>
-                    <button onClick={()=>startEdit(p.id)} className="mt-1 text-xs px-2 py-1 rounded bg-blue-500/10 dark:bg-blue-600/20 border border-blue-400/40 dark:border-blue-500/40 hover:bg-blue-500/20 dark:hover:bg-blue-600/30 transition-colors">Editar</button>
-                  </>
-                )}
-                {isEditing && edit && (
-                  <div className="space-y-2">
-                    <input className="input text-sm px-2 py-1" value={edit.name} onChange={e=>{ if(p.isCustom) return; setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}})); }} placeholder="Nombre" disabled={p.isCustom} title={p.isCustom ? 'Nombre bloqueado para el placeholder Custom' : 'Nombre del pack'} />
-                    <input type="number" className="input text-sm px-2 py-1" value={edit.qrCount} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))} placeholder="Invitados" />
-                    <input className="input text-sm px-2 py-1" value={edit.bottle} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))} placeholder="Botella cortesía" />
-                    <textarea className="input h-28 text-xs px-2 py-1" value={edit.perksText} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))} placeholder={"Beneficios, uno por línea"} />
-                    <label className="flex items-center gap-2 text-xs">
-                      <input type="checkbox" checked={edit.hasPrice} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], hasPrice:e.target.checked, priceSoles: e.target.checked ? prev[p.id].priceSoles : 0}}))} />
-                      Habilitar precio
-                    </label>
-                    <input type="number" className="input text-sm px-2 py-1" value={edit.priceSoles} onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], priceSoles: Math.max(0, parseInt(e.target.value)||0)}}))} placeholder="Precio (S/)" disabled={!edit.hasPrice} />
-                    <div className="flex gap-2 text-xs">
-                      <button onClick={()=>savePack(p.id)} className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30">Guardar</button>
-                      <button onClick={cancelEdit} className="px-2 py-1 rounded bg-slate-700 border border-slate-500 hover:bg-slate-600">Cancelar</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Restore packs section */}
-      <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-3 shadow-sm">
-        <div className="font-medium">Restaurar packs por defecto</div>
-        <div className="text-xs text-slate-600 dark:text-slate-400">
-          Si has eliminado packs importantes o quieres resetear a la configuración original, usa este botón.
+        {/* Packs Management - Responsive */}
+        <div className="rounded border border-slate-200 dark:border-slate-700 p-4 sm:p-6 bg-white dark:bg-slate-800 space-y-4 shadow-sm transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="font-semibold text-lg text-slate-900 dark:text-white">Packs de cumpleaños</div>
+            <button
+              onClick={async()=>{
+                // refrescar packs explicitamente
+                const list = await fetch('/api/admin/birthdays/packs').then(r=>r.json()).catch(()=>null);
+                if (list?.packs) setPacks(list.packs);
+              }}
+              className="btn btn-secondary w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 transition-colors duration-200"
+            >
+              Refrescar
+            </button>
+          </div>
+
+          {packs.length===0 && (
+            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4 rounded-md border border-amber-200 dark:border-amber-700">
+              No hay packs. Usa "Recrear packs por defecto" abajo.
+            </div>
+          )}
+
+          {/* Grid responsive para packs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {packs.map(p => {
+              const isEditing = editingPack === p.id;
+              const edit = packEdits[p.id];
+              return (
+                <div key={p.id} className={`rounded-lg border-2 ${p.isCustom ? 'border-fuchsia-400 dark:border-fuchsia-600' : 'border-slate-300 dark:border-slate-600'} p-4 bg-slate-50 dark:bg-slate-800/60 flex flex-col gap-3 transition-all duration-200 hover:shadow-md`}>
+                  {!isEditing && (
+                    <>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold text-base text-slate-900 dark:text-white flex-1 min-w-0">
+                          {p.name}
+                        </div>
+                        {p.isCustom && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-medium flex-shrink-0">
+                            Custom
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                          <span className="text-blue-600 dark:text-blue-400">👥</span>
+                          <span>Invitados (QRs): <span className="font-medium text-slate-900 dark:text-white">{p.qrCount}</span></span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                          <span className="text-green-600 dark:text-green-400">💰</span>
+                          <span>Precio: <span className="font-medium text-slate-900 dark:text-white">{p.priceSoles ? `S/ ${p.priceSoles}` : 'Gratis'}</span></span>
+                        </div>
+
+                        {p.bottle && (
+                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                            <span className="text-purple-600 dark:text-purple-400">🍾</span>
+                            <span>Botella: <span className="font-medium text-slate-900 dark:text-white">{p.bottle}</span></span>
+                          </div>
+                        )}
+                      </div>
+
+                      {p.perks && p.perks.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wide">Beneficios</div>
+                          <ul className="text-xs list-disc ml-4 space-y-0.5 text-slate-600 dark:text-slate-400">
+                            {p.perks.map(per => <li key={per} className="leading-relaxed">{per}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={()=>startEdit(p.id)}
+                        className="w-full mt-2 btn btn-primary px-4 py-2 text-sm font-medium rounded-md bg-blue-600 hover:bg-blue-700 text-white border border-transparent focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                      >
+                        Editar Pack
+                      </button>
+                    </>
+                  )}
+
+                  {isEditing && edit && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">
+                          Nombre del Pack
+                        </label>
+                        <input
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-sm"
+                          value={edit.name}
+                          onChange={e=>{ if(p.isCustom) return; setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], name:e.target.value}})); }}
+                          placeholder="Nombre"
+                          disabled={p.isCustom}
+                          title={p.isCustom ? 'Nombre bloqueado para el placeholder Custom' : 'Nombre del pack'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">
+                          Número de Invitados
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-sm"
+                          value={edit.qrCount}
+                          onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], qrCount: parseInt(e.target.value)||0}}))}
+                          placeholder="Invitados"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">
+                          Botella de Cortesía
+                        </label>
+                        <input
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-sm"
+                          value={edit.bottle}
+                          onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], bottle:e.target.value}}))}
+                          placeholder="Botella cortesía"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">
+                          Beneficios (uno por línea)
+                        </label>
+                        <textarea
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-sm resize-none"
+                          rows={4}
+                          value={edit.perksText}
+                          onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], perksText:e.target.value}}))}
+                          placeholder="Beneficios, uno por línea"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={edit.hasPrice}
+                            onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], hasPrice:e.target.checked, priceSoles: e.target.checked ? prev[p.id].priceSoles : 0}}))}
+                            className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">Habilitar precio</span>
+                        </label>
+
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-sm"
+                          value={edit.priceSoles}
+                          onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], priceSoles: Math.max(0, parseInt(e.target.value)||0)}}))}
+                          placeholder="Precio (S/)"
+                          disabled={!edit.hasPrice}
+                        />
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                        <button
+                          onClick={()=>savePack(p.id)}
+                          className="flex-1 btn btn-primary px-4 py-2 text-sm font-medium rounded-md bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors duration-200"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="flex-1 sm:flex-none btn btn-secondary px-4 py-2 text-sm font-medium rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 transition-colors duration-200"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <button
-          onClick={restorePacks}
-          disabled={loading}
-          className="px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Restaurando...' : 'Recrear packs por defecto'}
-        </button>
+
+        {/* Restore packs section - Responsive */}
+        <div className="rounded border border-slate-200 dark:border-slate-700 p-4 sm:p-6 bg-white dark:bg-slate-800 space-y-4 shadow-sm transition-colors">
+          <div className="font-semibold text-lg text-slate-900 dark:text-white">Restaurar packs por defecto</div>
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            Si has eliminado packs importantes o quieres resetear a la configuración original, usa este botón.
+          </div>
+          <button
+            onClick={restorePacks}
+            disabled={loading}
+            className="w-full sm:w-auto px-6 py-3 rounded-md bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm border border-transparent focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors duration-200"
+          >
+            {loading ? 'Restaurando...' : 'Recrear packs por defecto'}
+          </button>
+        </div>
       </div>
     </div>
   );
