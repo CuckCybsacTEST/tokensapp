@@ -1,1 +1,0 @@
-UPDATE "User" SET "role" = 'STAFF' WHERE username = 'ana';

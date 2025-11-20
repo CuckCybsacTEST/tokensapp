@@ -1,8 +1,8 @@
-# Sistema de Layouts y Componente de Ruleta - Documentación Técnica
+# Sistema de Layouts - Documentación Técnica
 
 ## 1. Introducción
 
-Este documento describe la arquitectura y el funcionamiento del sistema de layouts implementado en la aplicación, así como las mejoras realizadas en el componente de ruleta para mejorar su rendimiento visual y su usabilidad.
+Este documento describe la arquitectura y el funcionamiento del sistema de layouts implementado en la aplicación, mejorando la organización del código y la experiencia del usuario.
 
 ## 2. Sistema de Layouts
 
@@ -91,57 +91,9 @@ Se añadió `tests/e2e/admin-login-css.spec.ts` para verificar:
 
 Este test sirve como guardrail ante regresiones en la política de importación.
 
-## 3. Componente de Ruleta
+## 3. Flujo de Usuario
 
-### 3.1 Estructura del Componente
-
-El componente de ruleta está organizado en módulos específicos para maximizar la reutilización y facilitar el mantenimiento:
-
-```
-src/components/roulette/
-├── NewRoulette.tsx           # Componente principal de la ruleta
-├── RouletteFrame.tsx         # Marco decorativo
-├── RoulettePointer.tsx       # Indicador de selección
-├── RouletteSegments.tsx      # Generador de segmentos
-├── SpinButton.tsx            # Botón de giro
-├── RouletteTitle.tsx         # Título personalizable
-├── types.ts                  # Definiciones de tipos
-└── roulette.module.css       # Estilos CSS
-```
-
-### 3.2 Mejoras Visuales Implementadas
-
-#### 3.2.1 SpinButton Mejorado
-
-El botón de giro (`SpinButton.tsx`) ha sido rediseñado para:
-
-- Eliminar el problema de detección de eventos de ratón mediante la corrección de áreas transparentes superpuestas
-- Mejorar la accesibilidad con mensajes ARIA adecuados
-- Añadir efectos visuales de transición al hacer hover y click
-- Proporcionar retroalimentación visual clara durante el estado deshabilitado
-
-#### 3.2.2 Animaciones Optimizadas
-
-Las animaciones de la ruleta se han optimizado para:
-
-- Utilizar transformaciones CSS para mejor rendimiento
-- Implementar curvas de aceleración/desaceleración realistas
-- Sincronizar efectos visuales con eventos de la aplicación
-- Añadir efectos de confeti al ganar premios
-
-### 3.3 Integración con Layouts
-
-La ruleta se integra perfectamente con el sistema de layouts a través de:
-
-1. **Carga bajo demanda**: El componente de ruleta se carga solo cuando es necesario, reduciendo el tiempo de carga inicial.
-
-2. **Adaptación al contexto**: La presentación visual se adapta automáticamente según el contexto (marketing, admin, etc.).
-
-3. **Consistencia visual**: Se mantiene la coherencia de estilo con el resto de la aplicación.
-
-## 4. Flujo de Usuario
-
-### 4.1 Flujo Típico
+### 3.1 Flujo Típico
 
 ```mermaid
 sequenceDiagram
@@ -163,7 +115,7 @@ sequenceDiagram
     UI-->>Usuario: Presenta información del premio
 ```
 
-### 4.2 Estados de la Ruleta
+### 3.2 Estados de la Ruleta
 
 La ruleta puede presentarse en varios estados:
 - **Estado inicial**: Esperando interacción del usuario
@@ -171,26 +123,26 @@ La ruleta puede presentarse en varios estados:
 - **Resultado**: Muestra el premio ganado con animación de celebración
 - **Error**: Muestra mensaje amigable si ocurre algún problema
 
-## 5. Consideraciones Técnicas
+## 4. Consideraciones Técnicas
 
-### 5.1 Rendimiento
+### 4.1 Rendimiento
 
 - Las animaciones utilizan propiedades CSS optimizadas para rendimiento (transform, opacity)
 - Se implementa lazy loading de componentes pesados
 - Se evita la rehidratación innecesaria entre rutas
 
-### 5.2 Accesibilidad
+### 4.2 Accesibilidad
 
 - Todos los componentes incluyen atributos ARIA apropiados
 - Se soporta navegación por teclado
 - Los colores cumplen con relaciones de contraste adecuadas
 
-### 5.3 Compatibilidad entre navegadores
+### 4.3 Compatibilidad entre navegadores
 
 - Se incluyen prefijos CSS cuando es necesario
 - Se utilizan polyfills para características modernas
 - Se ha probado en Chrome, Firefox, Safari y Edge
 
-## 6. Conclusiones
+## 5. Conclusiones
 
-La implementación actual del sistema de layouts y la ruleta proporciona una base sólida y extensible para la aplicación, resolviendo problemas previos de inconsistencia visual y mejorando significativamente la experiencia del usuario. La arquitectura modular facilita el mantenimiento y las futuras ampliaciones del sistema.
+La implementación actual del sistema de layouts proporciona una base sólida y extensible para la aplicación, resolviendo problemas previos de inconsistencia visual y mejorando significativamente la experiencia del usuario. La arquitectura modular facilita el mantenimiento y las futuras ampliaciones del sistema.

@@ -1,65 +1,138 @@
 # Roles y permisos
 
-Esta guía resume cómo funcionan los roles en el sistema, diferenciando claramente los contextos de autenticación y las secciones de la aplicación que habilita cada uno.
+Esta guía resume cómo funcionan los roles en el sistema Go Lounge, diferenciando claramente los contextos de autenticación y las secciones de la aplicación que habilita cada uno.
 
-- Contextos de autenticación:
-  - `admin_session` (panel y APIs admin) → roles: `ADMIN`, `STAFF`.
-  - `user_session` (BYOD / área de colaboradores `/u/**`) → roles: `COLLAB`, `STAFF`.
+## Contextos de Autenticación
 
-Importante: el rol `STAFF` existe en ambos contextos, pero no es el mismo permiso. Un usuario `STAFF` en BYOD no obtiene acceso al panel admin; para panel admin se requiere una sesión `admin_session` con rol `ADMIN` o `STAFF` (de admin).
+- **`admin_session`** (Panel admin y APIs administrativas) → Roles: `ADMIN`, `STAFF`
+- **`user_session`** (BYOD / Área de colaboradores `/u/**`) → Roles: `COLLABORATOR`, `STAFF`
 
-## Resumen por contexto
+> **Importante**: El rol `STAFF` existe en ambos contextos pero NO es el mismo permiso. Un usuario `STAFF` en BYOD no obtiene acceso al panel admin; para panel admin se requiere una sesión `admin_session` con rol `ADMIN` o `STAFF` (de admin).
 
-- Admin (`admin_session`):
-  - `ADMIN`: acceso total al panel y a APIs admin.
-  - `STAFF` (admin): acceso limitado a vistas/APIs específicas (p. ej. asistencia). Ejemplos de reglas actuales:
-    - Acceso a `/admin/attendance` y a `/api/admin/attendance/*`.
-    - Otras secciones de `/admin/**` requieren `ADMIN`.
+## Roles del Sistema
 
-- BYOD (`user_session`):
-  - `COLLAB`: acceso a `/u/**` (scanner BYOD, checklist, asistencia personal), puede marcar IN/OUT y gestionar tareas del día.
-  - `STAFF` (usuario): mismas capacidades que `COLLAB` más permisos ampliados (p.ej. control de tokens). Puede alternar tokens desde `/u/tokens` (ya no depende de `area`). Ver [Control de Tokens](./tokens-control.md).
+### 🔑 ADMIN
+- **Contexto**: `admin_session`
+- **Acceso**: Panel administrativo completo (`/admin/**`)
+- **Permisos**: Control total del sistema, incluyendo:
+  - Gestión de usuarios y colaboradores
+  - Control de tokens (activar/desactivar)
+  - Métricas y reportes
+  - Configuración del sistema
+  - APIs administrativas completas
 
-## Matriz de acceso (extracto)
+### 👨‍💼 STAFF (Admin)
+- **Contexto**: `admin_session`
+- **Acceso**: Panel administrativo limitado
+- **Permisos actuales**:
+  - `/admin/attendance` y `/api/admin/attendance/*`
+  - Control de tokens desde panel admin
+  - Validación de cumpleaños (staff puede validar tokens de invitación)
+  - Otras secciones requieren `ADMIN`
 
-- Panel admin (`/admin/**`):
-  - `ADMIN`: Sí.
-  - `STAFF` (admin): Solo en rutas puntuales habilitadas (p. ej. `/admin/attendance`).
-  - `COLLAB` (BYOD): No.
-  - `STAFF` (BYOD): No.
+### 🧑‍🍳 COLLABORATOR (BYOD)
+- **Contexto**: `user_session`
+- **Acceso**: Área BYOD (`/u/**`)
+- **Permisos**:
+  - Scanner personal (`/u/scanner`)
+  - Checklist diario (`/u/checklist`)
+  - Registro de asistencia (IN/OUT)
+  - Gestión de tareas asignadas
+- **Áreas específicas**: Algunos colaboradores tienen áreas de restaurante asignadas que les dan permisos adicionales para cumpleaños
 
-- APIs admin sensibles (`/api/scanner/metrics|recent|events`):
-  - Solo `ADMIN` (admin_session).
+### 👨‍💼 STAFF (Usuario)
+- **Contexto**: `user_session`
+- **Acceso**: Área BYOD con permisos extendidos
+- **Permisos adicionales sobre COLLABORATOR**:
+  - Control de tokens (`/u/tokens`)
+  - Acceso a funcionalidades avanzadas
+  - Puede alternar tokens independientemente del área
 
-- BYOD (`/u/**` y APIs `/api/user/**`, `/api/tasks/**`, `/api/attendance/**`):
-  - Requiere `user_session` válida (rol `COLLAB` o `STAFF`) o `admin_session` `ADMIN`.
-  - Control de tokens: disponible para cualquier `STAFF` (ruta `/u/tokens`). `COLLAB` sin acceso.
+## Matriz de Acceso Detallada
 
-- Página de escáner `/scanner` (kiosco):
-  - Permite `admin_session` con `ADMIN` o `STAFF` de admin, o bien cualquier `user_session` válida (COLLAB/STAFF de usuario).
+### Panel Admin (`/admin/**`)
+| Rol | Acceso | Notas |
+|-----|--------|-------|
+| `ADMIN` (admin_session) | ✅ Completo | Acceso total |
+| `STAFF` (admin_session) | ⚠️ Limitado | Solo rutas específicas (asistencia, tokens) |
+| `COLLABORATOR` (user_session) | ❌ No | Requiere admin_session |
+| `STAFF` (user_session) | ❌ No | Requiere admin_session |
 
-## Dónde se define en el código
+### Área BYOD (`/u/**`)
+| Rol | Acceso | Notas |
+|-----|--------|-------|
+| `ADMIN` (admin_session) | ✅ Completo | Acceso administrativo |
+| `STAFF` (admin_session) | ✅ Completo | Acceso administrativo |
+| `COLLABORATOR` (user_session) | ✅ Básico | Scanner, checklist, asistencia |
+| `STAFF` (user_session) | ✅ Extendido | + Control de tokens |
 
-- Admin session y roles: `src/lib/auth.ts`, chequeos en `src/middleware.ts` y rutas `src/app/api/admin/**`.
-- User session (BYOD) y roles: `src/lib/auth-user.ts`, chequeos en `src/middleware.ts` y rutas `src/app/api/user/**`, `src/app/api/tasks/**`, `src/app/api/attendance/**`.
-- Ejemplo de login admin: `src/app/api/auth/login/route.ts`.
-- Ejemplo de login BYOD: `src/app/api/user/auth/login/route.ts`.
+### APIs Especiales
+| API | Roles Permitidos | Notas |
+|-----|------------------|-------|
+| `/api/system/tokens/*` | `ADMIN`, `STAFF` (admin_session) | Control de sistema de tokens |
+| `/api/birthdays/*` | Público + `ADMIN`, `STAFF` (admin_session) | Reservas públicas, validación staff |
+| `/api/trivia/*` | Público (rate limited) | Sesiones de trivia |
+| `/api/admin/health` | Basic Auth (`health` user) | Health checks |
+| `/api/staff/metrics` | `ADMIN` | Métricas de rendimiento |
 
-## Buenas prácticas
+## Colaboradores con Áreas Específicas
 
-- Crea colaboradores como `COLLAB` por defecto. Usa `STAFF` (BYOD) cuando necesiten control de tokens u otros privilegios extendidos.
-- Para acceso al panel, gestioná credenciales de `admin_session` por separado y asigná `STAFF` de admin solo a quienes necesiten ver módulos habilitados (p. ej. asistencia), reservando `ADMIN` para operación completa.
-- Evitá mezclar roles de contextos: tener `STAFF` en BYOD no otorga acceso al panel admin.
+Algunos colaboradores tienen asignadas **áreas de restaurante** que les otorgan permisos adicionales:
 
-## Ejemplos rápidos
+- **Permisos extra**: Pueden validar invitaciones de cumpleaños incluso sin ser `STAFF`
+- **Mapeo**: Área → Rol staff equivalente (definido en `lib/staff-roles.ts`)
+- **Uso**: Colaboradores de áreas específicas pueden ayudar en validaciones de eventos
 
-- Login admin (dev):
-  - `POST /api/auth/login` con `{ username: "admin", password: "admin-admin" }` → crea cookie `admin_session` con rol `ADMIN`.
-  - También existe usuario dev `staff/staff-staff` con rol `STAFF` (admin) para validar `/admin/attendance`.
+## Autenticación y Sesiones
 
-- Login BYOD (colaborador):
-  - `POST /api/user/auth/login` con credenciales creadas en `/api/admin/users` → crea `user_session` con rol `COLLAB` o `STAFF` (usuario).
-  - Acceso a `/u/scanner` y checklist `/u/checklist` restringido por middleware.
+### Cookies de Sesión
+- **`admin_session`**: Para panel administrativo y APIs admin
+- **`user_session`**: Para área BYOD y funcionalidades de colaborador
+
+### Middleware de Protección
+- Rutas `/admin/**`: Requieren `admin_session` con roles apropiados
+- Rutas `/u/**`: Requieren `user_session` válida
+- Rutas `/api/admin/**`: Requieren `admin_session`
+- Rutas `/api/user/**`: Requieren `user_session`
+
+## Dónde se Define en el Código
+
+- **Admin auth**: `src/lib/auth.ts`, middleware en `src/middleware.ts`
+- **User auth**: `src/lib/auth-user.ts`, middleware en `src/middleware.ts`
+- **Staff roles**: `src/lib/staff-roles.ts` (mapeo de áreas)
+- **Birthday auth**: `src/lib/birthdays/clientAuth.ts`
+- **Rate limiting**: `src/lib/rateLimit.ts` (por contexto)
+
+## Buenas Prácticas
+
+- **Por defecto**: Crea colaboradores como `COLLABORATOR`
+- **STAFF BYOD**: Solo cuando necesiten control de tokens u otros privilegios extendidos
+- **Separación clara**: Mantén credenciales de `admin_session` separadas de `user_session`
+- **Áreas específicas**: Asigna áreas de restaurante solo cuando sea necesario para funcionalidades adicionales
+- **Principio de menor privilegio**: Otorga el rol mínimo necesario para cada función
+
+## Ejemplos de Flujo
+
+### Login Admin (Desarrollo)
+```bash
+POST /api/auth/login
+{
+  "username": "admin",
+  "password": "admin-admin"
+}
+# → Cookie admin_session con rol ADMIN
+```
+
+### Login BYOD (Colaborador)
+```bash
+POST /api/user/auth/login
+# → Cookie user_session con rol COLLABORATOR o STAFF
+```
+
+### Validación de Cumpleaños
+- **Staff admin**: Puede validar cualquier invitación
+- **Colaborador con área**: Puede validar invitaciones según su área asignada
+- **Público**: Solo puede ver información básica de invitaciones
 
 ---
 

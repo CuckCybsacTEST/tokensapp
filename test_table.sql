@@ -1,1 +1,0 @@
-SELECT * FROM "birthday_reservation" LIMIT 1;

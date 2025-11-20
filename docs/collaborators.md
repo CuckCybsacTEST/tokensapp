@@ -1,138 +1,442 @@
-# Registro de colaboradores
+# Gestión de Colaboradores - Go Lounge
 
-Esta guía describe cómo dar de alta colaboradores (empleados) en el panel de administración, qué campos usa el sistema y cómo validar el acceso BYOD (login de usuario) con ejemplos listos para usar.
+Esta guía completa describe el proceso de registro, gestión y mantenimiento de colaboradores en el sistema Go Lounge, incluyendo roles, permisos, flujos de trabajo y mejores prácticas.
 
-## Campos
+## 👥 Tipos de Colaboradores
 
-Requeridos
-- `username` (único, mínimo 3 caracteres)
-- `password` (mínimo 8 caracteres, se almacena hasheada con bcrypt)
-- `name` (nombre y apellido a mostrar)
-- `dni` (único por persona)
-- `area` (selección de un conjunto permitido)
+### COLLABORATOR (Colaborador Básico)
+- **Acceso**: Área BYOD (`/u/*`)
+- **Permisos**:
+  - Scanner personal (`/u/scanner`)
+  - Checklist diario (`/u/checklist`)
+  - Registro de asistencia (IN/OUT)
+  - Gestión de tareas asignadas
+- **Uso**: Empleados generales que necesitan acceso básico al sistema
 
-Notas importantes
-- Ya no se ingresa `code` manualmente; el código de la persona es el DNI normalizado (solo dígitos).
-- El `dni` se normaliza a dígitos. Ejemplo: `12.345.678` → `12345678`.
-- El `area` debe ser uno de: `Barra`, `Mozos`, `Seguridad`, `Animación`, `DJs`, `Multimedia`, `Caja`, `Otros`.
-  - (Histórico) Antes `Caja` era requisito para toggle; ahora cualquier `STAFF` puede controlar tokens (ver [Control de Tokens](./tokens-control.md)).
+### STAFF (Colaborador Avanzado)
+- **Acceso**: Área BYOD con permisos extendidos
+- **Permisos adicionales**:
+  - Control de tokens (`/u/tokens`)
+  - Acceso a funcionalidades avanzadas
+  - Puede alternar tokens independientemente del área
+- **Uso**: Supervisores y empleados con responsabilidades adicionales
 
-## Seguridad
+### Colaboradores con Áreas Específicas
+- **Permisos extra**: Pueden validar invitaciones de cumpleaños
+- **Mapeo**: Área → Rol staff equivalente (definido en `lib/staff-roles.ts`)
+- **Ejemplos**:
+  - `Barra` → Puede validar cumpleaños
+  - `Mozos` → Puede validar cumpleaños
+  - `Seguridad` → Acceso básico
 
-- Hash de contraseñas: se usa `bcrypt` para almacenar `passwordHash`; la contraseña en claro nunca se guarda ni se devuelve por API.
-- Política de contraseña: longitud mínima 8 caracteres. Se recomienda combinar letras, números y símbolos.
-- Roles soportados: `ADMIN`, `STAFF`, `COLLAB`. El alta de colaboradores (POST `/api/admin/users`) está restringido a usuarios con rol `ADMIN`.
-- Importante: `STAFF` en BYOD no equivale a `STAFF` de admin. Ver [Roles y permisos](./roles.md) para la matriz completa y diferencias por contexto.
-- Datos sensibles: el API no expone `passwordHash`. Evita loguear contraseñas o hashes.
+## 📋 Campos del Colaborador
 
-## Endpoints relevantes
+### Información de Usuario
+- **`username`** (string, único, min 3 caracteres): Nombre de usuario para login
+- **`password`** (string, min 8 caracteres): Contraseña (se almacena hasheada)
+- **`role`** (enum): `COLLABORATOR` o `STAFF`
 
-- Crear colaborador (admin): `POST /api/admin/users`
-- Listar usuarios (admin): `GET /api/admin/users`
-- Login BYOD (colaborador): `POST /api/user/auth/login` (acepta `dni` o `username`)
-- Ver tareas asignadas (colaborador): `GET /api/tasks/list?day=YYYY-MM-DD`
+### Información Personal
+- **`name`** (string): Nombre completo a mostrar
+- **`dni`** (string, único): Documento de identidad (se normaliza a dígitos)
+- **`area`** (enum): Área de trabajo permitida
 
-## Ejemplos
+### Campos Calculados
+- **`code`**: DNI normalizado (solo dígitos) - usado como identificador único
+- **`personCode`**: Código de persona vinculada
 
-Asegúrate de tener la app corriendo en `http://localhost:3000` y una sesión de administrador activa (desde el panel o usando tu mecanismo de auth admin).
+### Áreas Permitidas
+```
+Barra, Mozos, Seguridad, Animación, DJs, Multimedia, Caja, Otros
+```
 
-### 1) Alta de colaborador (curl)
+## 🔐 Seguridad y Políticas
 
+### Hash de Contraseñas
+- **Algoritmo**: bcrypt con salt
+- **Almacenamiento**: Solo hash, nunca contraseña en claro
+- **Política**: Mínimo 8 caracteres, combinar letras, números y símbolos
+
+### Autenticación Dual
+- **Admin Session**: Para panel administrativo (`admin_session`)
+- **User Session**: Para área BYOD (`user_session`)
+
+### Restricciones de Acceso
+- Alta de colaboradores: Solo usuarios `ADMIN`
+- Modificación: Solo `ADMIN` o el propio usuario (datos básicos)
+- Eliminación: Solo `ADMIN` (soft delete recomendado)
+
+## 🚀 Flujo de Alta de Colaborador
+
+### Paso 1: Preparación
 ```bash
-curl -i -X POST http://localhost:3000/api/admin/users \
+# Verificar que no existe el DNI
+curl -H "Cookie: admin_session=..." \
+  "http://localhost:3000/api/admin/users?search=12345678"
+```
+
+### Paso 2: Crear Colaborador
+```bash
+curl -X POST http://localhost:3000/api/admin/users \
   -H "Content-Type: application/json" \
-  -H "Cookie: admin_session=<TU_COOKIE_DE_ADMIN>" \
+  -H "Cookie: admin_session=<ADMIN_COOKIE>" \
   -d '{
-    "username": "ana",
-    "password": "ana-ana",
-    "role": "COLLAB",
-    "person": { "name": "Ana García", "dni": "12.345.678", "area": "Barra" }
+    "username": "ana.garcia",
+    "password": "AnaSecure2025!",
+    "role": "COLLABORATOR",
+    "person": {
+      "name": "Ana García López",
+      "dni": "12.345.678",
+      "area": "Barra"
+    }
   }'
 ```
 
-Respuesta esperada (201):
+**Respuesta Exitosa (201):**
 ```json
 {
   "ok": true,
-  "user": { "id": "...", "username": "ana", "role": "COLLAB" },
-  "person": { "id": "...", "code": "12345678", "name": "Ana García", "dni": "12345678", "area": "Barra" }
+  "user": {
+    "id": "user_123",
+    "username": "ana.garcia",
+    "role": "COLLABORATOR"
+  },
+  "person": {
+    "id": "person_456",
+    "code": "12345678",
+    "name": "Ana García López",
+    "dni": "12345678",
+    "area": "Barra"
+  }
 }
 ```
 
-Errores comunes:
-- 400: `INVALID_NAME`, `INVALID_DNI`, `INVALID_AREA`, `INVALID_PASSWORD`
-- 409: `USERNAME_TAKEN`, `DNI_TAKEN`, `CODE_TAKEN`
-
-### 2) Verificar login BYOD del colaborador (curl)
-
-```bash
-# Login colaborador por DNI (recomendado)
-curl -i -X POST http://localhost:3000/api/user/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"dni":"12345678","password":"ana-ana"}'
-
-# Alternativa: login por username (compatibilidad)
-curl -i -X POST http://localhost:3000/api/user/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"ana","password":"ana-ana"}'
+### Paso 3: Verificar Creación
+```sql
+-- Verificar en base de datos
+SELECT u.username, u.role, p.name, p.dni, p.area
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE u.username = 'ana.garcia';
 ```
 
-Copia el valor de cookie `user_session` del header `Set-Cookie` y úsalo para consultar sus tareas del día:
-
+### Paso 4: Probar Login BYOD
 ```bash
-DAY=$(date +%F)
-curl -i "http://localhost:3000/api/tasks/list?day=$DAY" \
-  -H "Cookie: user_session=<COOKIE_DEL_LOGIN>"
-```
-
-### 3) Alta y verificación en PowerShell (Windows)
-
-```powershell
-# Alta (requiere cookie de admin válida)
-$adminCookie = "admin_session=<TU_COOKIE_DE_ADMIN>"
-$body = @{ 
-  username = "ana";
-  password = "ana-ana";
-  role = "COLLAB";
-  person = @{ name = "Ana García"; dni = "12.345.678"; area = "Barra" } 
-} | ConvertTo-Json -Depth 5
-
-Invoke-WebRequest -Uri "http://localhost:3000/api/admin/users" -Method Post -ContentType "application/json" -Headers @{ Cookie = $adminCookie } -Body $body | Select-Object -ExpandProperty StatusCode
-
-# Login BYOD por DNI (recomendado)
-$loginBody = @{ dni = "12345678"; password = "ana-ana" } | ConvertTo-Json
-$loginResp = Invoke-WebRequest -Uri "http://localhost:3000/api/user/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -SessionVariable sess
-# Alternativa: por username
-# $loginBody2 = @{ username = "ana"; password = "ana-ana" } | ConvertTo-Json
-# $loginResp = Invoke-WebRequest -Uri "http://localhost:3000/api/user/auth/login" -Method Post -ContentType "application/json" -Body $loginBody2 -SessionVariable sess
-
-# La cookie de usuario queda en la sesión web $sess
-$day = (Get-Date).ToString('yyyy-MM-dd')
-Invoke-WebRequest -Uri ("http://localhost:3000/api/tasks/list?day=$day") -WebSession $sess | Select-Object -ExpandProperty StatusCode
-```
-
-### 4) Vincular usuario a persona existente usando DNI como código (opcional)
-
-Si ya existe una `Person` (por ejemplo cargada por importación) con `code = '12345678'`, podés vincular un usuario sin reenviar `person` completo. El backend normaliza el `code` a dígitos si envías un DNI con puntos/guiones.
-
-```bash
-curl -i -X POST http://localhost:3000/api/admin/users \
+# Login por DNI (recomendado)
+curl -X POST http://localhost:3000/api/user/auth/login \
   -H "Content-Type: application/json" \
-  -H "Cookie: admin_session=<TU_COOKIE_DE_ADMIN>" \
+  -d '{"dni":"12345678","password":"AnaSecure2025!"}' \
+  -i
+```
+
+## 🛠️ Gestión de Colaboradores
+
+### Listar Colaboradores
+```bash
+# Todos los colaboradores
+curl -H "Cookie: admin_session=..." \
+  "http://localhost:3000/api/admin/users"
+
+# Buscar por DNI o nombre
+curl -H "Cookie: admin_session=..." \
+  "http://localhost:3000/api/admin/users?search=12345678"
+```
+
+**Respuesta:**
+```json
+{
+  "users": [
+    {
+      "id": "user_123",
+      "username": "ana.garcia",
+      "role": "COLLABORATOR",
+      "personCode": "12345678",
+      "personName": "Ana García López",
+      "dni": "12345678",
+      "area": "Barra",
+      "active": true,
+      "createdAt": "2025-10-01T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Actualizar Información
+```bash
+curl -X PATCH http://localhost:3000/api/admin/users/user_123 \
+  -H "Content-Type: application/json" \
+  -H "Cookie: admin_session=<ADMIN_COOKIE>" \
   -d '{
-    "username": "linkuser",
-    "password": "linkuser-strong-1",
-    "code": "12.345.678"
+    "person": {
+      "name": "Ana García López",
+      "area": "Mozos"
+    }
   }'
 ```
 
-Respuesta (200):
-```json
-{ "ok": true, "user": { "username": "linkuser", "role": "COLLAB", "personCode": "12345678" } }
+### Desactivar Colaborador
+```bash
+# Soft delete (recomendado)
+curl -X PATCH http://localhost:3000/api/admin/users/user_123 \
+  -H "Content-Type: application/json" \
+  -H "Cookie: admin_session=<ADMIN_COOKIE>" \
+  -d '{"active": false}'
 ```
 
-Notas
-- `code` ya no se ingresa en el alta de persona: el sistema usa el DNI normalizado como código.
-- El `dni` se normaliza a dígitos (ej.: `12.345.678` → `12345678`).
-- `area` es obligatorio y debe ser uno del conjunto permitido.
-- El listado `GET /api/admin/users` devuelve columnas `personCode`, `personName`, `dni`, `area`, `username`, `role`.
+### Resetear Contraseña
+```bash
+curl -X POST http://localhost:3000/api/admin/users/user_123/reset-password \
+  -H "Content-Type: application/json" \
+  -H "Cookie: admin_session=<ADMIN_COOKIE>" \
+  -d '{"newPassword": "NuevaPassword2025!"}'
+```
+
+## 📊 Reportes y Métricas
+
+### Actividad de Colaboradores
+```sql
+-- Último login de colaboradores
+SELECT u.username, p.name, u.last_login_at,
+       CASE WHEN u.active THEN 'Activo' ELSE 'Inactivo' END as status
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE u.role IN ('COLLABORATOR', 'STAFF')
+ORDER BY u.last_login_at DESC NULLS LAST;
+```
+
+### Asistencia por Área
+```sql
+-- Asistencia del día actual por área
+SELECT p.area, COUNT(a.id) as presentes,
+       COUNT(CASE WHEN a.check_out_at IS NULL THEN 1 END) as activos
+FROM "Person" p
+LEFT JOIN "Attendance" a ON p.id = a.person_id
+  AND DATE(a.check_in_at) = CURRENT_DATE
+WHERE p.id IN (SELECT person_id FROM "User" WHERE role IN ('COLLABORATOR', 'STAFF'))
+GROUP BY p.area
+ORDER BY presentes DESC;
+```
+
+### Tareas Completadas
+```sql
+-- Tareas completadas por colaborador (última semana)
+SELECT u.username, p.name, COUNT(t.id) as tareas_completadas
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+LEFT JOIN "Task" t ON p.id = t.assigned_to
+  AND t.completed_at >= CURRENT_DATE - INTERVAL '7 days'
+WHERE u.role IN ('COLLABORATOR', 'STAFF')
+GROUP BY u.id, u.username, p.name
+ORDER BY tareas_completadas DESC;
+```
+
+## 🎂 Colaboradores y Cumpleaños
+
+### Permisos por Área
+Algunos colaboradores tienen permisos adicionales para cumpleaños basados en su área:
+
+```sql
+-- Ver colaboradores que pueden validar cumpleaños
+SELECT u.username, p.name, p.area,
+       CASE
+         WHEN p.area IN ('Barra', 'Mozos', 'Seguridad') THEN 'Puede validar cumpleaños'
+         ELSE 'Acceso básico'
+       END as permisos_cumpleanos
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE u.role IN ('COLLABORATOR', 'STAFF');
+```
+
+### Validación de Invitaciones
+Los colaboradores con áreas específicas pueden validar tokens de cumpleaños:
+
+```bash
+# Validar invitación (solo colaboradores autorizados)
+curl -X POST http://localhost:3000/api/birthdays/invite/ABC123 \
+  -H "Cookie: user_session=<COLLABORATOR_COOKIE>" \
+  -H "Content-Type: application/json" \
+  -d '{"device": "iPad Barra"}'
+```
+
+## 🔄 Flujo de Trabajo Diario
+
+### 1. Login Matutino
+```bash
+# Colaborador hace login
+curl -X POST http://localhost:3000/api/user/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"dni":"12345678","password":"password"}'
+# → Recibe cookie user_session
+```
+
+### 2. Registro de Asistencia
+```bash
+# Marcar entrada
+curl -X POST http://localhost:3000/api/attendance/checkin \
+  -H "Cookie: user_session=<COOKIE>" \
+  -H "Content-Type: application/json" \
+  -d '{"location": "Entrada Principal"}'
+```
+
+### 3. Consultar Tareas
+```bash
+# Ver tareas del día
+DAY=$(date +%Y-%m-%d)
+curl -H "Cookie: user_session=<COOKIE>" \
+  "http://localhost:3000/api/tasks/list?day=$DAY"
+```
+
+### 4. Realizar Tareas
+```bash
+# Marcar tarea como completada
+curl -X PATCH http://localhost:3000/api/tasks/task_123 \
+  -H "Cookie: user_session=<COOKIE>" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed", "notes": "Completado exitosamente"}'
+```
+
+### 5. Control de Tokens (STAFF)
+```bash
+# Ver tokens disponibles (solo STAFF)
+curl -H "Cookie: user_session=<COOKIE>" \
+  "http://localhost:3000/api/u/tokens"
+
+# Reclamar token
+curl -X POST http://localhost:3000/api/u/tokens/token_123/claim \
+  -H "Cookie: user_session=<COOKIE>"
+```
+
+### 6. Registro de Salida
+```bash
+# Marcar salida
+curl -X POST http://localhost:3000/api/attendance/checkout \
+  -H "Cookie: user_session=<COOKIE>" \
+  -H "Content-Type: application/json" \
+  -d '{"location": "Salida Principal"}'
+```
+
+## 🪄 Scripts de Utilidad
+
+### Bulk Import de Colaboradores
+```bash
+# Archivo CSV: username,password,name,dni,area,role
+# Formato: ana.garcia,AnaSecure2025!,Ana García,12345678,Barra,COLLABORATOR
+
+npm run ts-node scripts/bulk-import-collaborators.ts colaboradores.csv
+```
+
+### Reset de Contraseñas Masivo
+```bash
+# Resetear contraseñas expiradas
+npm run ts-node scripts/reset-expired-passwords.ts
+```
+
+### Auditoría de Accesos
+```sql
+-- Accesos recientes por colaborador
+SELECT u.username, p.name,
+       COUNT(al.id) as total_accesos,
+       MAX(al.created_at) as ultimo_acceso
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+LEFT JOIN "AccessLog" al ON u.id = al.user_id
+  AND al.created_at >= CURRENT_DATE - INTERVAL '30 days'
+WHERE u.role IN ('COLLABORATOR', 'STAFF')
+GROUP BY u.id, u.username, p.name
+ORDER BY ultimo_acceso DESC NULLS LAST;
+```
+
+## ⚠️ Errores Comunes y Soluciones
+
+### Error: USERNAME_TAKEN
+**Causa**: Username ya existe
+**Solución**: Elegir username único o agregar sufijo (ana.garcia2)
+
+### Error: DNI_TAKEN
+**Causa**: DNI ya registrado
+**Solución**:
+```sql
+-- Verificar colaborador existente
+SELECT u.username, p.name FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE p.dni = '12345678';
+```
+
+### Error: INVALID_AREA
+**Causa**: Área no permitida
+**Solución**: Usar una de las áreas válidas: `Barra`, `Mozos`, `Seguridad`, `Animación`, `DJs`, `Multimedia`, `Caja`, `Otros`
+
+### Login Falla
+**Causa**: Contraseña incorrecta o usuario inactivo
+**Solución**:
+```sql
+-- Verificar estado del usuario
+SELECT username, active, role FROM "User" WHERE username = 'ana.garcia';
+
+-- Resetear contraseña si es necesario
+UPDATE "User" SET password_hash = '$2b$10$...' WHERE username = 'ana.garcia';
+```
+
+## 📋 Checklist de Onboarding
+
+### Para Nuevo Colaborador
+- [ ] Crear usuario con datos correctos
+- [ ] Asignar rol apropiado (COLLABORATOR/STAFF)
+- [ ] Configurar área correcta
+- [ ] Verificar login BYOD funciona
+- [ ] Probar acceso a funcionalidades
+- [ ] Explicar políticas de seguridad
+- [ ] Proporcionar guía de uso
+
+### Para Administrador
+- [ ] Validar datos antes de crear
+- [ ] Elegir rol mínimo necesario
+- [ ] Asignar área correcta para permisos
+- [ ] Comunicar credenciales de forma segura
+- [ ] Monitorear primeros accesos
+- [ ] Configurar notificaciones si aplica
+
+## 🔄 Mantenimiento Periódico
+
+### Auditoría Mensual
+```sql
+-- Usuarios inactivos (sin login en 30 días)
+SELECT u.username, p.name, u.last_login_at
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE u.role IN ('COLLABORATOR', 'STAFF')
+  AND (u.last_login_at IS NULL OR u.last_login_at < CURRENT_DATE - INTERVAL '30 days');
+
+-- Colaboradores sin área asignada
+SELECT u.username, p.name
+FROM "User" u
+JOIN "Person" p ON u.person_id = p.id
+WHERE u.role IN ('COLLABORATOR', 'STAFF')
+  AND (p.area IS NULL OR p.area = '');
+```
+
+### Limpieza de Datos
+```sql
+-- Desactivar usuarios antiguos (ejemplo: después de 6 meses de inactividad)
+UPDATE "User"
+SET active = false
+WHERE role IN ('COLLABORATOR', 'STAFF')
+  AND last_login_at < CURRENT_DATE - INTERVAL '6 months';
+```
+
+## 📞 Contactos y Soporte
+
+### Roles de Soporte
+- **Administradores**: Alta y gestión de colaboradores
+- **Supervisores**: Validación de permisos y áreas
+- **Soporte Técnico**: Problemas de login y acceso
+
+### Documentación Relacionada
+- `docs/roles.md` - Sistema completo de roles y permisos
+- `docs/troubleshooting.md` - Problemas comunes de colaboradores
+- `docs/terminology.md` - Términos y definiciones
+
+---
+
+*Última actualización: Noviembre 2025*
+*Documento mantenido por el equipo de administración*

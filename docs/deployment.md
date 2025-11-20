@@ -17,6 +17,51 @@
 
 ---
 
+## ☁️ Despliegue en Railway (Configuración Optimizada)
+
+### Objetivos de la Configuración
+- Builds predecibles sin timeouts
+- Imagen final pequeña y rápida
+- Compatibilidad con dependencias nativas (sharp)
+- PostgreSQL en producción confirmado
+
+### Cambios Clave Implementados
+
+#### 1. Next.js en Modo Standalone
+- `next.config.mjs` define `output: 'standalone'`
+- Dockerfile copia solo `.next/standalone` + `.next/static` + `public`
+- Arranque con `node server.js`
+
+#### 2. Sharp con Lazy Loading
+```ts
+async function getSharp() {
+  const m = await import('sharp');
+  return m.default || (m as any);
+}
+```
+
+#### 3. Dockerfile Optimizado
+- Base: `public.ecr.aws/docker/library/node:20-alpine`
+- Etapas: `deps` → `prisma` → `builder` → `runner`
+- Variables de memoria: `NODE_OPTIONS=--max_old_space_size=2048`
+
+#### 4. Variables de Entorno Requeridas
+```bash
+DATABASE_URL="postgresql://..."  # DSN PostgreSQL
+TOKEN_SECRET="clave-segura"      # Para firmar tokens
+PUBLIC_BASE_URL="https://tu-app.railway.app"
+ALLOW_MIGRATIONS=1               # Solo primera vez
+```
+
+### Flujo de Despliegue en Railway
+1. Configurar variables de entorno
+2. Para BD nueva: `ALLOW_MIGRATIONS=1`
+3. Desplegar y verificar logs
+4. Ejecutar smoke tests
+5. Desactivar `ALLOW_MIGRATIONS`
+
+---
+
 ## 🐳 Despliegue con Docker
 
 ### Dockerfile

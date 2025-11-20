@@ -1,1 +1,0 @@
-SELECT COUNT(*) as total_reservations FROM "BirthdayReservation";

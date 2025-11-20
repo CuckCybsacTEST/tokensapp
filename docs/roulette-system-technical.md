@@ -373,7 +373,45 @@ const calculatePrizeRotation = (
 };
 ```
 
-## 11. Manejo de Errores
+## 11. Mejoras en el Componente SpinButton
+
+### 11.1 Problemas Identificados
+
+El componente SpinButton original presentaba problemas de detección de eventos debido a áreas transparentes bloqueantes en el SVG, inconsistencia visual y funcional, y problemas de accesibilidad.
+
+### 11.2 Soluciones Implementadas
+
+#### Rediseño del SVG
+- Eliminación de áreas transparentes bloqueantes
+- Geometría simplificada con `pointer-events` optimizados
+- Cambio de `div` a `button` semántico
+
+#### Mejoras de Accesibilidad
+- Atributos ARIA (`aria-label`)
+- Soporte para teclado y estados de foco
+- Estados visuales claros (normal, hover, active, disabled)
+
+#### Optimización de Rendimiento
+- `React.memo` para evitar re-renderizados
+- Animaciones CSS optimizadas
+- Gestión eficiente de eventos
+
+### 11.3 Resultados
+- Experiencia de usuario consistente y predecible
+- Cumplimiento de estándares WCAG
+- Mejor rendimiento y mantenibilidad
+
+## 12. Integración con Layouts
+
+La ruleta se integra perfectamente con el sistema de layouts a través de:
+
+1. **Carga bajo demanda**: El componente de ruleta se carga solo cuando es necesario, reduciendo el tiempo de carga inicial.
+
+2. **Adaptación al contexto**: La presentación visual se adapta automáticamente según el contexto (marketing, admin, etc.).
+
+3. **Consistencia visual**: Se mantiene la coherencia de estilo con el resto de la aplicación.
+
+## 13. Manejo de Errores
 
 ### 11.1 Errores de API
 
