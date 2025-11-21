@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie, requireRole, type UserRole } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { ALLOWED_AREAS as AREAS_ALLOWED, isValidArea } from '@/lib/areas';
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || (session.role !== 'ADMIN' as any)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+    if (!session || session.role !== 'ADMIN') return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await req.json().catch(() => null);
     if (!body || !body.username || !body.password) {
@@ -150,9 +150,9 @@ export async function POST(req: Request) {
 
     const username = String(body.username).trim();
     const password = String(body.password);
-    // Valid roles including community levels
-    const validRoles = ['ADMIN', 'STAFF', 'COLLAB', 'VIP', 'MEMBER', 'GUEST'];
-    const role = validRoles.includes(body.role) ? body.role : 'COLLAB';
+    // Valid roles: only the three system roles
+    const validRoles: UserRole[] = ['ADMIN', 'STAFF', 'COLLAB'];
+    const role: UserRole = validRoles.includes(body.role as UserRole) ? (body.role as UserRole) : 'COLLAB';
 
     if (!isValidUsername(username)) {
       return NextResponse.json({ ok: false, code: 'INVALID_USERNAME' }, { status: 400 });

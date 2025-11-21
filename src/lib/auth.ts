@@ -4,14 +4,14 @@
 const COOKIE_NAME = "user_session";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
 
-// Extendemos para incluir ADMIN (legacy endpoints lo requieren)
-export type UserSessionRole = 'COLLAB' | 'STAFF' | 'ADMIN';
+// Tipo común para roles de usuario
+export type UserRole = 'COLLAB' | 'STAFF' | 'ADMIN';
 
 export interface UserSessionData {
   iat: number; // issued at (ms)
   exp: number; // expiry (ms)
   userId: string;
-  role: UserSessionRole; // default 'COLLAB'
+  role: UserRole; // default 'COLLAB'
 }
 
 // NOTA: Para evitar warnings en Edge Runtime, dividimos la obtención del secreto
@@ -75,7 +75,7 @@ function base64urlDecodeToString(b64u: string): string {
   return Buffer.from(padded, 'base64').toString('utf8');
 }
 
-export async function createUserSessionCookie(userId: string, role: UserSessionRole = 'COLLAB'): Promise<string> {
+export async function createUserSessionCookie(userId: string, role: UserRole = 'COLLAB'): Promise<string> {
   console.log('DEBUG createUserSessionCookie: received role:', role, 'type:', typeof role);
   const now = Date.now();
   const data: UserSessionData = { iat: now, exp: now + SESSION_TTL_MS, userId, role };
@@ -158,12 +158,12 @@ export function requireRole(session: UserSessionData | null | undefined, roles: 
 }
 
 // Helper para saber si un rol es administrativo
-export function isAdminLike(role: UserSessionRole | null | undefined) {
+export function isAdminLike(role: UserRole | null | undefined) {
   return role === 'ADMIN' || role === 'STAFF';
 }
 
 // Helpers simplificados para refactors en rutas
-export function hasRole(session: UserSessionData | null | undefined, roles: ReadonlyArray<UserSessionRole>): boolean {
+export function hasRole(session: UserSessionData | null | undefined, roles: ReadonlyArray<UserRole>): boolean {
   return !!session && roles.includes(session.role);
 }
 
@@ -172,7 +172,7 @@ export function isStaffOrAdmin(session: UserSessionData | null | undefined): boo
 }
 
 // Legacy helper solicitado por algunos endpoints antiguos.
-export async function verifyStaffAccess(req: Request): Promise<{ ok: boolean; hasAccess: boolean; role?: UserSessionRole; error?: string }> {
+export async function verifyStaffAccess(req: Request): Promise<{ ok: boolean; hasAccess: boolean; role?: UserRole; error?: string }> {
   const raw = getUserSessionCookieFromRequest(req);
   const session = await verifyUserSessionCookie(raw);
   if (session && (session.role === 'ADMIN' || session.role === 'STAFF')) {

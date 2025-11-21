@@ -11,13 +11,9 @@ import {
 } from 'react-admin';
 
 const roleChoices = [
-  { id: 'ADMIN', name: 'Admin' },
-  { id: 'STAFF', name: 'Staff' },
   { id: 'COLLAB', name: 'Collaborator' },
-  // Niveles de Comunidad
-  { id: 'VIP', name: 'VIP Community' },
-  { id: 'MEMBER', name: 'Community Member' },
-  { id: 'GUEST', name: 'Guest' },
+  { id: 'STAFF', name: 'Staff' },
+  { id: 'ADMIN', name: 'Admin' },
 ];
 
 const areaChoices = [

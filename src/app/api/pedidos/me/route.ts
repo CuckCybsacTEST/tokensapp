@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔐 Permisos calculados para usuario:', {
       userId: user?.id,
-      userSessionRole: userSession?.role,
+      userRole: userSession?.role,
       effectiveRole,
       area: validArea,
       permissions

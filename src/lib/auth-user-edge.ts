@@ -1,12 +1,12 @@
 /* Edge-safe user auth helpers using Web Crypto only for Next.js middleware */
 
-export type UserSessionRole = 'COLLAB' | 'STAFF' | 'ADMIN';
+import type { UserRole } from './auth';
 
 export interface UserSessionData {
   iat: number;
   exp: number;
   userId: string;
-  role: UserSessionRole;
+  role: UserRole;
 }
 
 function base64urlEncode(bytes: Uint8Array) {
