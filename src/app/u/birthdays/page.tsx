@@ -424,6 +424,67 @@ export default function StaffBirthdaysPage() {
 	const [cSlot, setCSlot] = useState('20:00');
 	const [cPack, setCPack] = useState('');
 	const [creating, setCreating] = useState(false);
+	// Validation errors
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	const [generalError, setGeneralError] = useState<string>('');
+
+	// Validation function
+	function validateForm(): boolean {
+		const errors: Record<string, string> = {};
+		setFieldErrors({});
+		setGeneralError('');
+
+		// Required fields
+		if (!cName.trim()) errors.name = 'El nombre es obligatorio';
+		if (!cPhone.trim()) errors.phone = 'El número de WhatsApp es obligatorio';
+		if (!cDoc.trim()) errors.documento = 'El DNI es obligatorio';
+		if (!cDate.trim()) errors.date = 'La fecha es obligatoria';
+		if (!cPack.trim()) errors.pack = 'Debes seleccionar un pack';
+
+		// Format validation
+		if (cDoc && !/^\d{8}$/.test(cDoc.replace(/\D/g, ''))) {
+			errors.documento = 'El DNI debe tener exactamente 8 dígitos';
+		}
+		if (cPhone && !/^\d{9}$/.test(cPhone.replace(/\D/g, ''))) {
+			errors.phone = 'El WhatsApp debe tener exactamente 9 dígitos';
+		}
+		if (cName && cName.trim().split(/\s+/).filter(word => word.length > 0).length < 2) {
+			errors.name = 'El nombre debe tener al menos 2 palabras';
+		}
+
+		// Date validation
+		if (cDate) {
+			const selectedDate = new Date(cDate + 'T00:00:00');
+			const today = new Date();
+			const limaToday = new Date(today.getTime() - 5 * 3600 * 1000); // Adjust to Lima timezone
+			const todayStr = limaToday.toISOString().slice(0, 10);
+
+			if (cDate < todayStr) {
+				errors.date = 'La fecha no puede ser en el pasado';
+			}
+
+			// Check if date is too far (end of current month)
+			const currentMonth = new Date(limaToday.getFullYear(), limaToday.getMonth() + 1, 0);
+			const maxDate = currentMonth.toISOString().slice(0, 10);
+			if (cDate > maxDate) {
+				errors.date = 'La fecha no puede ser más allá del fin del mes actual';
+			}
+		}
+
+		setFieldErrors(errors);
+		return Object.keys(errors).length === 0;
+	}
+
+	// Clear field error when user starts typing
+	function clearFieldError(field: string) {
+		if (fieldErrors[field]) {
+			setFieldErrors(prev => {
+				const newErrors = { ...prev };
+				delete newErrors[field];
+				return newErrors;
+			});
+		}
+	}
 	// UI
 	const [activeTab, setActiveTab] = useState<'packs' | 'list' | 'create'>('packs');
 
@@ -462,7 +523,87 @@ export default function StaffBirthdaysPage() {
 		})();
 	}
 
-	async function submitCreate(){ setCreating(true); setErr(null); try { const payload={ celebrantName:cName, phone:cPhone, documento:cDoc, date:cDate, timeSlot:cSlot, packId:cPack, guestsPlanned: packs.find(p=>p.id===cPack)?.qrCount || 5 }; 	const r=await fetch('/api/admin/birthdays',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); const j=await r.json(); if(!r.ok||!j?.ok) throw new Error(j?.code||j?.message||r.status); setCName(''); setCPhone(''); setCDoc(''); setCDate(''); setCSlot('20:00'); setCPack(''); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setCreating(false); } }
+	async function submitCreate(){
+		// Clear previous errors
+		setFieldErrors({});
+		setGeneralError('');
+
+		// Client-side validation
+		if (!validateForm()) {
+			return;
+		}
+
+		setCreating(true);
+		try {
+			const payload = {
+				celebrantName: cName.trim(),
+				phone: cPhone.replace(/\D/g, ''), // Clean phone number
+				documento: cDoc.replace(/\D/g, ''), // Clean DNI
+				date: cDate,
+				timeSlot: cSlot,
+				packId: cPack,
+				guestsPlanned: packs.find(p => p.id === cPack)?.qrCount || 5
+			};
+
+			const r = await fetch('/api/admin/birthdays', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			const j = await r.json();
+
+			if (!r.ok || !j?.ok) {
+				// Handle specific error codes
+				if (j?.code === 'DUPLICATE_DNI') {
+					setFieldErrors({ documento: 'Ya existe una reserva para este DNI en el mismo año' });
+					return;
+				}
+				if (j?.code === 'INVALID_DNI_FORMAT') {
+					setFieldErrors({ documento: j.message });
+					return;
+				}
+				if (j?.code === 'INVALID_PHONE_FORMAT') {
+					setFieldErrors({ phone: j.message });
+					return;
+				}
+				if (j?.code === 'INVALID_NAME') {
+					setFieldErrors({ name: j.message });
+					return;
+				}
+				if (j?.code === 'DATE_TOO_FAR') {
+					setFieldErrors({ date: j.message });
+					return;
+				}
+				if (j?.code === 'DATE_IN_PAST') {
+					setFieldErrors({ date: j.message });
+					return;
+				}
+				if (j?.code === 'INVALID_BODY') {
+					setGeneralError('Los datos enviados no son válidos. Revisa todos los campos.');
+					return;
+				}
+
+				// Generic error
+				setGeneralError(j?.message || j?.code || 'Error desconocido al crear la reserva');
+				return;
+			}
+
+			// Success - clear form
+			setCName('');
+			setCPhone('');
+			setCDoc('');
+			setCDate('');
+			setCSlot('20:00');
+			setCPack('');
+			setActiveTab('list'); // Switch to list view
+			load(); // Refresh the list
+		} catch (e: any) {
+			setGeneralError('Error de conexión. Inténtalo de nuevo.');
+		} finally {
+			setCreating(false);
+		}
+	}
 
 	const empty = !loading && items.length===0;
 
@@ -608,27 +749,142 @@ export default function StaffBirthdaysPage() {
 
 						{activeTab === 'create' && (
 							<div className="space-y-5">
+								{generalError && (
+									<div className="rounded border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-200 p-3 text-sm">
+										{generalError}
+									</div>
+								)}
+
 								<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-									<input className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" placeholder="Nombre completo" value={cName} onChange={e=>setCName(e.target.value)} />
-									<input className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" placeholder="WhatsApp" value={cPhone} onChange={e=>setCPhone(e.target.value)} />
-									<input className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" placeholder="Documento (DNI)" value={cDoc} onChange={e=>setCDoc(e.target.value)} />
-									<input type="date" className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" value={cDate} onChange={e=>setCDate(e.target.value)} />
-									<select className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" value={cSlot} onChange={e=>setCSlot(e.target.value)}>
-										<option value="20:00">20:00</option><option value="21:00">21:00</option><option value="22:00">22:00</option><option value="23:00">23:00</option><option value="00:00">00:00</option>
-									</select>
-									<select className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm" value={cPack} onChange={e=>setCPack(e.target.value)}>
-										<option value="">Seleccionar pack…</option>
-										{packs.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
-									</select>
+									<div className="space-y-1">
+										<input
+											className={`h-10 rounded border px-3 text-sm w-full ${
+												fieldErrors.name
+													? 'border-rose-300 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/30'
+													: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+											}`}
+											placeholder="Nombre completo"
+											value={cName}
+											onChange={e => {
+												setCName(e.target.value);
+												clearFieldError('name');
+											}}
+										/>
+										{fieldErrors.name && (
+											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.name}</div>
+										)}
+									</div>
+
+									<div className="space-y-1">
+										<input
+											className={`h-10 rounded border px-3 text-sm w-full ${
+												fieldErrors.phone
+													? 'border-rose-300 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/30'
+													: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+											}`}
+											placeholder="WhatsApp (9 dígitos)"
+											value={cPhone}
+											onChange={e => {
+												setCPhone(e.target.value);
+												clearFieldError('phone');
+											}}
+										/>
+										{fieldErrors.phone && (
+											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.phone}</div>
+										)}
+									</div>
+
+									<div className="space-y-1">
+										<input
+											className={`h-10 rounded border px-3 text-sm w-full ${
+												fieldErrors.documento
+													? 'border-rose-300 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/30'
+													: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+											}`}
+											placeholder="Documento (DNI - 8 dígitos)"
+											value={cDoc}
+											onChange={e => {
+												setCDoc(e.target.value);
+												clearFieldError('documento');
+											}}
+										/>
+										{fieldErrors.documento && (
+											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.documento}</div>
+										)}
+									</div>
+
+									<div className="space-y-1">
+										<input
+											type="date"
+											className={`h-10 rounded border px-3 text-sm w-full ${
+												fieldErrors.date
+													? 'border-rose-300 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/30'
+													: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+											}`}
+											value={cDate}
+											onChange={e => {
+												setCDate(e.target.value);
+												clearFieldError('date');
+											}}
+										/>
+										{fieldErrors.date && (
+											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.date}</div>
+										)}
+									</div>
+
+									<div className="space-y-1">
+										<select
+											className="h-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm w-full"
+											value={cSlot}
+											onChange={e => setCSlot(e.target.value)}
+										>
+											<option value="20:00">20:00</option>
+											<option value="21:00">21:00</option>
+											<option value="22:00">22:00</option>
+											<option value="23:00">23:00</option>
+											<option value="00:00">00:00</option>
+										</select>
+									</div>
+
+									<div className="space-y-1">
+										<select
+											className={`h-10 rounded border px-3 text-sm w-full ${
+												fieldErrors.pack
+													? 'border-rose-300 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/30'
+													: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+											}`}
+											value={cPack}
+											onChange={e => {
+												setCPack(e.target.value);
+												clearFieldError('pack');
+											}}
+										>
+											<option value="">Seleccionar pack…</option>
+											{packs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+										</select>
+										{fieldErrors.pack && (
+											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.pack}</div>
+										)}
+									</div>
 								</div>
-								{cPack && (()=>{ const sel=packs.find(p=>p.id===cPack); if(!sel) return null; const perks=(sel.perks||[]).filter(Boolean); return (
-									<div className="mt-4 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4">
-										<div className="font-semibold text-sm text-slate-800 dark:text-slate-200">Pack seleccionado: {sel.name}</div>
-										{sel.bottle && <div className="inline-flex items-center gap-2 mt-2 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"><span>🍾</span><span>Botella: {sel.bottle}</span></div>}
-										{perks.length>0 && <ul className="mt-2 space-y-1.5 text-[13px] text-slate-600 dark:text-slate-300">{perks.map((pk: string)=> <li key={pk} className="flex items-start gap-2"><span className="mt-0.5 text-[10px] text-slate-400">●</span><span>{pk}</span></li>)}</ul>}
-									</div> ); })()}
+
+								{cPack && (() => {
+									const sel = packs.find(p => p.id === cPack);
+									if (!sel) return null;
+									const perks = (sel.perks || []).filter(Boolean);
+									return (
+										<div className="mt-4 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4">
+											<div className="font-semibold text-sm text-slate-800 dark:text-slate-200">Pack seleccionado: {sel.name}</div>
+											{sel.bottle && <div className="inline-flex items-center gap-2 mt-2 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"><span>🍾</span><span>Botella: {sel.bottle}</span></div>}
+											{perks.length > 0 && <ul className="mt-2 space-y-1.5 text-[13px] text-slate-600 dark:text-slate-300">{perks.map((pk: string) => <li key={pk} className="flex items-start gap-2"><span className="mt-0.5 text-[10px] text-slate-400">●</span><span>{pk}</span></li>)}</ul>}
+										</div>
+									);
+								})()}
+
 								<div className="flex justify-end">
-									<button disabled={creating} onClick={submitCreate} className="btn h-10 px-6">{creating? 'Guardando…':'Guardar Reserva'}</button>
+									<button disabled={creating} onClick={submitCreate} className="btn h-10 px-6">
+										{creating ? 'Guardando…' : 'Guardar Reserva'}
+									</button>
 								</div>
 							</div>
 						)}

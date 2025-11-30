@@ -164,6 +164,27 @@ export async function POST(req: NextRequest) {
     };
     return apiOk({ ok: true, reservation: dto }, 201);
   } catch (e) {
-    return apiError('CREATE_RESERVATION_ERROR', 'Failed to create reservation');
+    console.error('CREATE_RESERVATION_ERROR:', e);
+    // Map specific errors to user-friendly codes
+    const errorMessage = String((e as any)?.message || e);
+    if (errorMessage.includes('DUPLICATE_DNI_YEAR')) {
+      return apiError('DUPLICATE_DNI', 'Ya existe una reserva para este DNI en el mismo año', undefined, 400);
+    }
+    if (errorMessage.includes('INVALID_DNI')) {
+      return apiError('INVALID_DNI_FORMAT', 'El DNI debe tener exactamente 8 dígitos', undefined, 400);
+    }
+    if (errorMessage.includes('INVALID_WHATSAPP')) {
+      return apiError('INVALID_PHONE_FORMAT', 'El número de WhatsApp debe tener exactamente 9 dígitos', undefined, 400);
+    }
+    if (errorMessage.includes('INVALID_NAME_MIN_WORDS')) {
+      return apiError('INVALID_NAME', 'El nombre debe tener al menos 2 palabras (nombre y apellido)', undefined, 400);
+    }
+    if (errorMessage.includes('DATE_TOO_FAR')) {
+      return apiError('DATE_TOO_FAR', 'La fecha no puede ser más allá del fin del mes actual', undefined, 400);
+    }
+    if (errorMessage.includes('RESERVATION_DATE_PAST')) {
+      return apiError('DATE_IN_PAST', 'La fecha de reserva no puede ser en el pasado', undefined, 400);
+    }
+    return apiError('CREATE_RESERVATION_ERROR', `Error al crear reserva: ${errorMessage}`, undefined, 500);
   }
 }
