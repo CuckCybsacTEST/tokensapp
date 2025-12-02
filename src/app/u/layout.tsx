@@ -1,6 +1,7 @@
 import React from "react";
 import UserLogoutButton from "./components/LogoutButton";
 import SmartBackLink from "./components/SmartBackLink";
+import ForcePasswordChangeGuard from "./components/ForcePasswordChangeGuard";
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth";
@@ -13,11 +14,14 @@ export const metadata = {
 export default async function ULayout({ children }: { children: React.ReactNode }) {
   // Cargar datos del colaborador (si hay sesión activa)
   let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; role?: string | null } | null = null;
+  let mustChangePassword = false;
   try {
     const raw = cookies().get('user_session')?.value;
     const session = await verifyUserSessionCookie(raw);
     if (session) {
       const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
+
+      mustChangePassword = !!u?.forcePasswordChange;
 
       // Try to read staff record (if the collaborator is registered as staff)
       let staffRecord = null;
@@ -85,6 +89,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
         </div>
       </header>
       <main className="app-container pt-0 pb-2">
+        <ForcePasswordChangeGuard required={mustChangePassword} />
         {children}
       </main>
     </div>

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { verifyUserSessionCookie } from '@/lib/auth';
 import { UsersClient } from './UsersClient';
-import ReactAdminUsers from './ReactAdminUsers';
+import UsersWithTabs from './UsersWithTabs';
 
 export default async function AdminUsersPage({
   searchParams,
@@ -21,6 +21,6 @@ export default async function AdminUsersPage({
     );
   }
 
-  // ADMIN users get full React Admin interface
-  return <ReactAdminUsers />;
+  // ADMIN users get tabbed interface
+  return <UsersWithTabs />;
 }

@@ -181,7 +181,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart },
           { href: `${pathPrefix}/prizes`, label: "Premios", icon: ICONS.starSmall },
           { href: `${pathPrefix}/roulettebatches`, label: "Lotes", icon: ICONS.box },
-          { href: `${pathPrefix}/printroulette`, label: "Imprimir Pulseras", icon: ICONS.checkSmall }
+          { href: `${pathPrefix}/printroulette`, label: "Imprimir Pulseras", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/roulettebatches/purge`, label: "Purge", icon: ICONS.check }
         ] : [
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart }
         ]
@@ -241,8 +242,9 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: [
           { href: `${pathPrefix}/birthdays`, label: "Reservas", icon: ICONS.cake },
           { href: `${pathPrefix}/birthdays/packs`, label: "Gestión de packs", icon: ICONS.box },
-          { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.usersSmall },
-          { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart }
+          { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.users },
+          { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart },
+          { href: `${pathPrefix}/birthdays/purge`, label: "Purge", icon: ICONS.check }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{

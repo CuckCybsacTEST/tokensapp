@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AdminSidebar } from "@/components/AdminSidebar";
-import { AdminMobilePanel } from "@/components/AdminMobilePanel";
+import AdminMobilePanel from "@/components/AdminMobilePanel";
 import { AdminMobileHeader } from "@/components/AdminMobileHeader";
 
 interface AdminLayoutProps {

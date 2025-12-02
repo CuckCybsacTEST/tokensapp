@@ -116,6 +116,11 @@ const ICONS = {
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 15h4.01M12 21h4.01M16 12v4.01M16 15v4.01M20 12v4.01M20 15v4.01M12 4h4.01M16 7h4.01M20 7h4.01M12 7h4.01M12 4v3m4-3v3m4-3v3" />
     </svg>
+  ),
+  trash: (
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
   )
 };
 
@@ -137,10 +142,9 @@ interface AdminMobilePanelProps {
   basePath?: 'admin' | 'u';
 }
 
-export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) {
+export default function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) {
   const pathname = usePathname();
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'herramientas' | 'upgrade'>('herramientas');
+
   const [attendanceState, setAttendanceState] = useState<{
     lastType: 'IN' | 'OUT' | null;
     nextAction: 'IN' | 'OUT';
@@ -159,6 +163,9 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
     jobTitle?: string | null;
     code?: string | null;
   } | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'herramientas' | 'upgrade' | 'purge'>('herramientas');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Función para obtener información del usuario
   const getUserInfo = async () => {
@@ -290,8 +297,8 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
         items: [
           { href: `${pathPrefix}/day-brief`, label: "Brief del día", icon: ICONS.check },
           { href: `${pathPrefix}/tasks`, label: "Tareas", icon: ICONS.check },
-          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.users },
-                  ]
+          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.users }
+        ]
       }] : []),
       ...(basePath === 'admin' ? [{
         title: "GESTIÓN DE INVENTARIO",
@@ -383,7 +390,20 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
     if (activeTab === 'upgrade') {
       return group.title.includes('PERSONALIZACIÓN APP UPGRADE') || group.title.includes('DISPONIBLE CON UN UPGRADE') || group.title.includes('PEDIDOS MUSICALES UPGRADE') || group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') || group.title.includes('GESTIÓN WIFI UPGRADE');
     }
+    if (activeTab === 'purge') {
+      return group.items.some(item => item.href.includes('/purge'));
+    }
     return !group.title.includes('PERSONALIZACIÓN APP UPGRADE') && !group.title.includes('DISPONIBLE CON UN UPGRADE') && !group.title.includes('PEDIDOS MUSICALES UPGRADE') && !group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') && !group.title.includes('GESTIÓN WIFI UPGRADE');
+  }).map(group => {
+    if (activeTab === 'purge') {
+      if (group.title === 'TOKENS RULETA') {
+        return { ...group, title: 'Eliminar LOTES RULETAS/ESTÁTICOS' };
+      }
+      if (group.title === 'GESTIÓN DE CUMPLEAÑOS') {
+        return { ...group, title: 'ELIMINAR RESERVAS' };
+      }
+    }
+    return group;
   });
 
   const isItemActive = (href: string) => {
@@ -413,6 +433,17 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
               Herramientas
             </button>
             <button
+              onClick={() => setActiveTab('purge')}
+              className={cn(
+                "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors",
+                activeTab === 'purge'
+                  ? "bg-red-600 text-white shadow-sm"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30"
+              )}
+            >
+              Purge
+            </button>
+            <button
               onClick={() => setActiveTab('upgrade')}
               className={cn(
                 "flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors relative",
@@ -423,7 +454,7 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
             >
               <span className="flex items-center justify-center">
                 Upgrade!
-                {activeTab === 'herramientas' && (
+                {(activeTab === 'herramientas' || activeTab === 'purge') && (
                   <span className="ml-2 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
                 )}
               </span>
@@ -439,6 +470,18 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
             </p>
             <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 mt-1">
               Mejora tu experiencia con funciones avanzadas de gestión
+            </p>
+          </div>
+        )}
+
+        {/* Subtítulo para Purge */}
+        {activeTab === 'purge' && (
+          <div className="mb-4 sm:mb-6 text-center">
+            <p className="text-sm sm:text-base text-red-700 dark:text-red-300 font-medium">
+              ⚠️ Herramientas de limpieza y mantenimiento del sistema
+            </p>
+            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 mt-1">
+              Usa con precaución - estas acciones no se pueden deshacer
             </p>
           </div>
         )}
@@ -479,6 +522,28 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
                     </h2>
                   </div>
                 </div>
+              ) : activeTab === 'purge' ? (
+                <Link
+                  href={group.items.find(item => item.href.includes('/purge'))?.href || '#'}
+                  className="block p-3 sm:p-4 border-b border-red-200 dark:border-red-800 bg-gradient-to-r from-red-50 to-red-50 dark:from-red-900/20 dark:to-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-900/40 rounded-lg text-red-600 dark:text-red-400">
+                      {ICONS.trash}
+                    </div>
+                    <h2 className="text-base sm:text-lg font-semibold text-red-800 dark:text-red-200 uppercase">
+                      {group.title}
+                    </h2>
+                    <svg
+                      className="h-5 w-5 text-red-500 dark:text-red-400 ml-auto"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
               ) : (
                 <button
                   onClick={() => toggleGroup(group.title)}
@@ -509,7 +574,7 @@ export function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) 
               )}
 
               {/* Items de la categoría */}
-              {(group.title === "MARCAR ENTRADA/SALIDA" || (expandedGroups.has(group.title) && !group.title.includes("PERSONALIZACIÓN APP UPGRADE") && !group.title.includes("DISPONIBLE CON UN UPGRADE") && !group.title.includes("PEDIDOS MUSICALES UPGRADE") && !group.title.includes("GESTIÓN DE FIDELIDAD UPGRADE") && !group.title.includes("GESTIÓN WIFI UPGRADE"))) && (
+              {(group.title === "MARCAR ENTRADA/SALIDA" || (activeTab === 'purge' ? false : expandedGroups.has(group.title) && !group.title.includes("PERSONALIZACIÓN APP UPGRADE") && !group.title.includes("DISPONIBLE CON UN UPGRADE") && !group.title.includes("PEDIDOS MUSICALES UPGRADE") && !group.title.includes("GESTIÓN DE FIDELIDAD UPGRADE") && !group.title.includes("GESTIÓN WIFI UPGRADE"))) && (
                 <div className="p-3 sm:p-4">
                   {group.title === "MARCAR ENTRADA/SALIDA" ? (
                     <AutoAttendanceCard showDynamicTitle={false} />
