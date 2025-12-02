@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useTransition, useEffect } from "react";
+import InlineAutoBatchPanel from "./InlineAutoBatchPanel";
 
 function ColorPalette({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   const COLORS = [
@@ -296,7 +297,7 @@ export default function PrizeManager({
         });
         const emitted = sorted.filter((p) => p.stock === 0 && (p.emittedTotal ?? 0) > 0);
         // Tabs por batches recientes para ver emitidos segmentados. Usamos batchPrizeStats
-        const [activeBatch, setActiveBatch] = useState<string | 'ALL'>('ALL');
+        const [activeBatch, setActiveBatch] = useState<string | 'ALL'>(() => batchPrizeStats.length > 0 ? batchPrizeStats[0].batchId : 'ALL');
         const batches = batchPrizeStats.map(b => ({ id: b.batchId, label: b.description || b.batchId }));
         const countsByPrizePerBatch: Record<string, Record<string, number>> = {};
         for (const b of batchPrizeStats) {
@@ -498,6 +499,7 @@ export default function PrizeManager({
         return (
           <div className="space-y-6">
             {renderTable(pending, "Pendientes / Disponibles", "No hay premios con stock disponible", true, true)}
+            {prizes.length > 0 && <InlineAutoBatchPanel prizes={prizes} />}
             {(() => {
               if (emitted.length === 0) return renderTable([], "Emitidos (stock consumido)", "No hay premios emitidos todavía", false, false);
               return (

@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useTransition } from "react";
 import PrizeManager from "./PrizeManager";
-import InlineAutoBatchPanel from "./InlineAutoBatchPanel";
 
 export default function PrizesClient({
   initialPrizes,
@@ -173,13 +172,6 @@ export default function PrizesClient({
 
   {/* Primero: gestión/creación de premios */}
   <PrizeManager initialPrizes={prizes} onPrizesUpdated={setPrizesWithLog} lastBatch={lastBatch} batchPrizeStats={batchPrizeStats} />
-
-  {/* Luego: generación de tokens (si hay premios) */}
-  {hasPrizes && (
-    <>
-      <InlineAutoBatchPanel prizes={prizes} />
-    </>
-  )}
 
     </div>
   );
