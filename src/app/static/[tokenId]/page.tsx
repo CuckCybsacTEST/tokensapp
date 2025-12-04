@@ -25,6 +25,71 @@ type StaticTokenPageProps = {
   params: { tokenId: string };
 };
 
+// Componente para mostrar contador de expiración cuando quedan menos de 24 horas
+function ExpirationCountdown({ expiresAt }: { expiresAt: string }) {
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0 });
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = DateTime.now().setZone('America/Lima');
+      const expiry = DateTime.fromISO(expiresAt).setZone('America/Lima');
+      // @ts-ignore - diff method exists in Luxon DateTime
+      const diff = expiry.diff(now);
+
+      if (diff.as('milliseconds') <= 0) {
+        // Token expiró, recargar página
+        window.location.reload();
+        return;
+      }
+
+      // @ts-ignore - as method exists in Luxon Duration
+      const totalHours = diff.as('hours');
+      const hours = Math.floor(totalHours);
+      // @ts-ignore - as method exists in Luxon Duration
+      const minutes = Math.floor(diff.as('minutes') % 60);
+
+      // Mostrar contador solo si quedan menos de 24 horas
+      const shouldShow = totalHours < 24;
+      setIsVisible(shouldShow);
+
+      if (shouldShow) {
+        setTimeLeft({ hours, minutes });
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Actualizar cada minuto
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="w-full bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-2xl p-4 mb-4 animate-pulse">
+      <div className="text-center mb-3">
+        <div className="text-sm font-bold text-red-400 mb-1">⏰ ¡ATENCIÓN!</div>
+        <div className="text-xs text-red-300">Este token expira pronto</div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-red-500/20 rounded-lg p-2 text-center border border-red-500/30">
+          <div className="text-lg font-bold text-red-400">{timeLeft.hours}</div>
+          <div className="text-[10px] text-red-300 uppercase">Horas</div>
+        </div>
+        <div className="bg-red-500/20 rounded-lg p-2 text-center border border-red-500/30">
+          <div className="text-lg font-bold text-red-400">{timeLeft.minutes}</div>
+          <div className="text-[10px] text-red-300 uppercase">Minutos</div>
+        </div>
+        <div className="bg-red-500/20 rounded-lg p-2 text-center border border-red-500/30 flex flex-col items-center justify-center">
+          <div className="text-lg">⚠️</div>
+          <div className="text-[10px] text-red-300 uppercase">¡Corre!</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const value = `; ${document.cookie}`;
@@ -180,8 +245,6 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
 
   // @ts-ignore - toFormat method exists in Luxon DateTime
   const formattedExpiry = expiresAt.toFormat('dd/MM/yyyy HH:mm');
-  // @ts-ignore - toFormat method exists in Luxon DateTime
-  const formattedCreated = DateTime.fromISO(tokenData.batch.createdAt).toFormat('dd/MM/yyyy HH:mm');
 
   // Si el token está expirado, mostrar UI especial
   if (isExpired && !tokenData.disabled) {
@@ -297,15 +360,19 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl text-center">
                 <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Token Programado</h1>
                 <p className="text-white/60 text-sm mb-8">
-                    Este token estará disponible próximamente.
+                    Sobrin@, este token estará disponible próximamente
                 </p>
 
                 <div className="bg-white/5 rounded-2xl p-6 mb-6 border border-white/5">
                     <div
-                        className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl shadow-lg"
+                        className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg overflow-hidden"
                         style={{ backgroundColor: tokenData.prize.color || '#e5e7eb' }}
                     >
-                        🎁
+                        <img 
+                            src="/prizes/gift.png" 
+                            alt="Premio" 
+                            className="w-8 h-8 object-contain"
+                        />
                     </div>
                     <h2 className="text-xl font-bold text-white mb-1">
                         {tokenData.prize.label}
@@ -427,7 +494,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
                 </div>
             )}
 
-            {/* Expiration */}
+            {/* Expiration countdown - shows when < 24 hours remain */}
+            <ExpirationCountdown expiresAt={tokenData.expiresAt} />
+
+            {/* Fallback expiration display */}
             <div className="flex items-center gap-2 text-xs text-yellow-400/80 bg-yellow-400/10 px-3 py-1.5 rounded-full border border-yellow-400/20">
                 <span>⏰</span>
                 <span>Expira: {(() => {
