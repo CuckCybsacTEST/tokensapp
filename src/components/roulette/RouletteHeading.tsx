@@ -42,17 +42,17 @@ const RouletteHeading: React.FC<RouletteHeadingProps> = ({ kicker, title, subtit
   return (
     <div ref={ref} className={className}>
       {kicker && (
-        <div className="text-[11px] tracking-[0.25em] font-semibold uppercase text-amber-300 mb-3 select-none">
+        <div className="text-[11px] tracking-[0.25em] font-semibold uppercase text-amber-300 mb-3 select-none text-center">
           {kicker}
         </div>
       )}
-      <h1 className="font-extrabold leading-tight text-white text-balance" style={{
+      <h1 className="font-extrabold leading-tight text-white text-balance text-center" style={{
         fontSize: 'clamp(2rem, 5vw, 2.75rem)'
       }}>
         {title}
       </h1>
       {subtitle && (
-        <p className="mt-3 text-white/80 max-w-xl leading-relaxed text-pretty" style={{
+        <p className="mt-3 text-white/80 leading-relaxed text-pretty text-center" style={{
           fontSize: 'clamp(0.85rem, 2.4vw, 1.05rem)'
         }}>
           {subtitle}

@@ -690,9 +690,9 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
       {!retryOverlayOpen && !shouldShowReservedPanel && (
         <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
           <RouletteHeading
-            kicker="Premios exclusivos"
-            title="Ruleta de Premios"
-            subtitle="Gira la ruleta y descubre qué premio te ha tocado"
+            kicker="BIENVENIDO"
+            title="Ruleta Token Show"
+            subtitle="Gira la ruleta y prueba tu suerte"
             onHeight={(h) => setRouletteHeadingHeight(h)}
           />
         </div>
