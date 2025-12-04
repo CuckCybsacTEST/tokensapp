@@ -2,7 +2,6 @@ import React from "react";
 import styles from "./rouletteLayout.module.css";
 import { Metadata } from "next";
 import RouletteClientPage from "./RouletteClientPage";
-import ShowBackground from "@/components/background/ShowBackground";
 import FooterGate from "./FooterGate";
 // import MarketingNavbar from '../components/MarketingNavbar';
 
@@ -18,15 +17,12 @@ interface RuletaSearchParams {
 
 export default function RuletaPage({ searchParams }: { searchParams: RuletaSearchParams }) {
   const tokenId = searchParams.tokenId || "";
-  const themeFromQuery = typeof searchParams.theme === "string" ? searchParams.theme : undefined;
-  const theme = themeFromQuery || process.env.NEXT_PUBLIC_ROULETTE_THEME || "";
+  // Forzar tema Navidad para todos los tokens
+  const theme = "christmas";
 
   return (
     <>
-      {/** Navbar oculto temporalmente en la experiencia de la ruleta para enfoque completo en el juego.
-       *  TODO: Re-evaluar si se reintroduce una variante mínima del navbar o breadcrumb.
-       *  Original: <MarketingNavbar />
-       */}
+      {/* Navbar oculto temporalmente en la experiencia de la ruleta para enfoque completo en el juego. TODO: Re-evaluar si se reintroduce una variante minima del navbar o breadcrumb. Original: <MarketingNavbar /> */}
       {/* <MarketingNavbar /> */}
 
       {/*
@@ -36,16 +32,15 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
         - En pantallas muy altas (>=1000px) aplicamos justify-center para centrar el bloque principal.
         Usamos clases utilitarias y una media query inline adicional para casos extremos (>1400px).
       */}
-      <div className="relative min-h-screen flex flex-col px-0 pt-6 sm:pt-10 pb-10 sm:pb-12">
+      <div className="relative h-screen flex flex-col px-0 pt-0 pb-0 roulette-theme-container roulette-theme--christmas">
         {/* Fondo compuesto reutilizable intacto: degradado base + efectos */}
-        <ShowBackground intensity="medium" theme="marketing" />
         <FooterGate />
         <div
-          className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}
+          className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport} ${styles.rouletteViewportChristmas}`}
         >
           <RouletteClientPage tokenId={tokenId} theme={theme} />
         </div>
-        <footer className="relative z-[1] pt-8 text-center text-white/50 text-xs roulette-footer">
+        <footer className="relative z-[1] pt-0 text-center text-white/50 text-xs roulette-footer">
           <p>© 2025 Go Lounge!</p>
         </footer>
       </div>

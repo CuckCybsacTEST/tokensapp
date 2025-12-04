@@ -40,3 +40,8 @@
     padding-bottom: 0.5rem;
   }
 }
+
+.rouletteViewportChristmas {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}

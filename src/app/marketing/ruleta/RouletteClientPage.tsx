@@ -533,9 +533,9 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
 
   const baseContainerClass = [
     "relative",
+    "w-full",
     retryOverlayOpen ? "pointer-events-none" : "",
-    "roulette-theme-container",
-    isChristmasTheme ? "roulette-theme--christmas" : ""
+    isChristmasTheme ? "pt-16 sm:pt-0" : "",
   ]
     .filter(Boolean)
     .join(" ");

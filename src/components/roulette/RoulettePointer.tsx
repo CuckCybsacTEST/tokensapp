@@ -14,10 +14,10 @@ const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, sca
   const baseHeight = 70;
   const w = baseWidth * scale;
   const h = baseHeight * scale;
-  const dynamicOffset = usePointerOffset(scale);
-  const topOffset = pointerOffset !== undefined ? pointerOffset : dynamicOffset;
   const normalizedTheme = theme.trim().toLowerCase();
   const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
+  const dynamicOffset = usePointerOffset(scale);
+  const topOffset = (pointerOffset !== undefined ? pointerOffset : dynamicOffset) + (isChristmasTheme ? 20 : 0);
   return (
     <svg
       width={w}
