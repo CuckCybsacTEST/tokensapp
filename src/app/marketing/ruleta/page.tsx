@@ -11,8 +11,15 @@ export const metadata: Metadata = {
   description: "Gira la ruleta y descubre tu premio en Go Lounge!",
 };
 
-export default function RuletaPage({ searchParams }: { searchParams: { tokenId?: string } }) {
+interface RuletaSearchParams {
+  tokenId?: string;
+  theme?: string;
+}
+
+export default function RuletaPage({ searchParams }: { searchParams: RuletaSearchParams }) {
   const tokenId = searchParams.tokenId || "";
+  const themeFromQuery = typeof searchParams.theme === "string" ? searchParams.theme : undefined;
+  const theme = themeFromQuery || process.env.NEXT_PUBLIC_ROULETTE_THEME || "";
 
   return (
     <>
@@ -36,7 +43,7 @@ export default function RuletaPage({ searchParams }: { searchParams: { tokenId?:
         <div
           className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}
         >
-          <RouletteClientPage tokenId={tokenId} />
+          <RouletteClientPage tokenId={tokenId} theme={theme} />
         </div>
         <footer className="relative z-[1] pt-8 text-center text-white/50 text-xs roulette-footer">
           <p>© 2025 Go Lounge!</p>

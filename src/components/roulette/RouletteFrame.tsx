@@ -5,13 +5,16 @@ interface RouletteFrameProps {
   scale?: number; // relativo a 500
   wheelRadius?: number; // radio interno de segmentos para ajustar gap
   lowMotion?: boolean; // reduce efectos y animaciones
+  theme?: string;
 }
 
-const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius, lowMotion = false }) => {
+const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius, lowMotion = false, theme = '' }) => {
   const baseSize = 500;
   const width = baseSize * scale;
   const height = baseSize * scale;
   const center = baseSize / 2; // mantenemos viewBox base para simplificar escalado via width/height
+  const normalizedTheme = theme.trim().toLowerCase();
+  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
 
   // Ajuste dinámico del marco basado en wheelRadius
   const computedWheelRadius = wheelRadius ? (wheelRadius / scale) : 205; // convertir a coordenadas base
@@ -35,25 +38,23 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
   });
 
   return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${baseSize} ${baseSize}`} style={{ position: 'absolute', top: 0, left: 0, zIndex: 5 }}>
+    <svg
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${baseSize} ${baseSize}`}
+      style={{ position: 'absolute', top: 0, left: 0, zIndex: 5 }}
+    >
       <defs>
         <radialGradient id="goldGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-          <stop offset="60%" style={{ stopColor: '#F0B825' }} />
-          <stop offset="80%" style={{ stopColor: '#B47C00' }} />
-          <stop offset="100%" style={{ stopColor: '#8C5C00' }} />
+          <stop offset="60%" style={{ stopColor: isChristmasTheme ? '#E2C76A' : '#F0B825' }} />
+          <stop offset="80%" style={{ stopColor: isChristmasTheme ? '#B98C07' : '#B47C00' }} />
+          <stop offset="100%" style={{ stopColor: isChristmasTheme ? '#7A5603' : '#8C5C00' }} />
         </radialGradient>
         <radialGradient id="lightGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
           <stop offset="0%" style={{ stopColor: '#FFFFFF' }} />
-          <stop offset="40%" style={{ stopColor: '#FFFFE0' }} />
-          <stop offset="100%" style={{ stopColor: '#F0B825' }} />
+          <stop offset="40%" style={{ stopColor: isChristmasTheme ? '#FFF7D6' : '#FFFFE0' }} />
+          <stop offset="100%" style={{ stopColor: isChristmasTheme ? '#E9B949' : '#F0B825' }} />
         </radialGradient>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
         <filter id="enhancedGlow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="5" result="blur" />
           <feFlood floodColor="#FFFF00" floodOpacity="0.35" result="yellowGlow" />
@@ -63,117 +64,118 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        
-        {/* Definir patrones para textura del marco */}
-        <pattern id="noisePattern" width="100" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(0.1)">
-          <rect width="100%" height="100%" fill="#F0B825" />
-          <rect width="1" height="1" x="0" y="0" fill="#B47C00" opacity="0.2" />
-          <rect width="1" height="1" x="25" y="25" fill="#B47C00" opacity="0.2" />
-          <rect width="1" height="1" x="50" y="50" fill="#B47C00" opacity="0.2" />
-          <rect width="1" height="1" x="75" y="75" fill="#B47C00" opacity="0.2" />
-          <rect width="1" height="1" x="12" y="37" fill="#B47C00" opacity="0.2" />
-          <rect width="1" height="1" x="62" y="87" fill="#B47C00" opacity="0.2" />
+        <pattern
+          id="noisePattern"
+          width="100"
+          height="100"
+          patternUnits="userSpaceOnUse"
+          patternTransform="scale(0.1)"
+        >
+          <rect width="100%" height="100%" fill={isChristmasTheme ? '#F3DFA2' : '#F0B825'} />
+          <rect width="1" height="1" x="0" y="0" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="1" height="1" x="25" y="25" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="1" height="1" x="50" y="50" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="1" height="1" x="75" y="75" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="1" height="1" x="12" y="37" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="1" height="1" x="62" y="87" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
         </pattern>
       </defs>
 
-      {/* Marco exterior mejorado */}
-      <circle 
-        cx={center} 
-        cy={center} 
-        r={frameOuterRadius} 
-        fill="url(#goldGradient)" 
-        stroke="#4A3000" 
+      <circle
+        cx={center}
+        cy={center}
+        r={frameOuterRadius}
+        fill="url(#goldGradient)"
+        stroke="#4A3000"
         strokeWidth={3.2}
         style={{ filter: spinning && !lowMotion ? 'url(#enhancedGlow)' : 'none' }}
       />
-      
-      {/* Textura decorativa en el marco */}
-      <circle 
-        cx={center} 
-        cy={center} 
-        r={frameOuterRadius - 5} 
-        fill="url(#noisePattern)" 
-        opacity="0.1" 
+
+      <circle cx={center} cy={center} r={frameOuterRadius - 5} fill="url(#noisePattern)" opacity="0.1" />
+
+      <circle
+        cx={center}
+        cy={center}
+        r={frameInnerRadius}
+        fill="transparent"
+        stroke={isChristmasTheme ? '#FDEAB4' : '#FFF2AE'}
+        strokeWidth={2}
       />
-      
-      {/* Marco interior y decoración */}
-  <circle cx={center} cy={center} r={frameInnerRadius} fill="transparent" stroke="#FFF2AE" strokeWidth={2} />
-  <circle cx={center} cy={center} r={frameInnerRadius + 2} fill="transparent" stroke="#4A3000" strokeWidth={3.8} />
-      
-      {/* Detalles decorativos en el marco */}
+
+      <circle
+        cx={center}
+        cy={center}
+        r={frameInnerRadius + 2}
+        fill="transparent"
+        stroke={isChristmasTheme ? '#27613C' : '#4A3000'}
+        strokeWidth={3.8}
+      />
+
       {Array.from({ length: 12 }, (_, i) => {
         const angle = (i / 12) * 2 * Math.PI;
         const x1 = center + (frameInnerRadius + 10) * Math.cos(angle);
         const y1 = center + (frameInnerRadius + 10) * Math.sin(angle);
         const x2 = center + (frameOuterRadius - 10) * Math.cos(angle);
         const y2 = center + (frameOuterRadius - 10) * Math.sin(angle);
-        
+
         return (
-          <line 
-            key={`line-${i}`} 
-            x1={x1} 
-            y1={y1} 
-            x2={x2} 
-            y2={y2} 
-            stroke="#4A3000" 
-            strokeWidth="2" 
-            opacity="0.6" 
+          <line
+            key={`frame-mark-${i}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={isChristmasTheme ? '#1F4330' : '#4A3000'}
+            strokeWidth={2}
+            opacity={0.6}
           />
         );
       })}
 
-      {/* Luces con animación */}
-      <g style={{ filter: spinning ? 'url(#enhancedGlow)' : 'url(#glow)' }}>
-        {lights.map((light, i) => (
-          <circle 
-            key={i} 
-            cx={light.cx} 
-            cy={light.cy} 
-            r={lightSize} 
-            fill="url(#lightGradient)"
-            style={{ opacity: !spinning ? 0.6 : (lowMotion ? 0.85 : 1) }}
+      {lights.map((light, index) => {
+        const lightFill = isChristmasTheme ? (index % 2 === 0 ? '#C51732' : '#1E6138') : undefined;
+        return (
+          <circle
+            key={`frame-light-${index}`}
+            cx={light.cx}
+            cy={light.cy}
+            r={lightSize}
+            fill={lightFill || 'url(#lightGradient)'}
+            style={{ opacity: !spinning ? 0.6 : lowMotion ? 0.85 : 1 }}
           >
             {spinning && !lowMotion && (
               <>
-                <animate 
-                  attributeName="opacity" 
-                  values="1;0.1;1" 
-                  dur="0.7s" 
+                <animate
+                  attributeName="opacity"
+                  values="1;0.1;1"
+                  dur="0.7s"
                   repeatCount="indefinite"
                   begin={`${light.delay}s`}
                 />
-                <animate 
-                  attributeName="r" 
-                  values={`${lightSize};${lightSize*1.6};${lightSize}`} 
-                  dur="0.5s" 
+                <animate
+                  attributeName="r"
+                  values={`${lightSize};${lightSize * 1.6};${lightSize}`}
+                  dur="0.5s"
                   repeatCount="indefinite"
                   begin={`${light.delay}s`}
                 />
               </>
             )}
           </circle>
-        ))}
-      </g>
-      
-      {/* Efectos adicionales cuando está girando */}
-      {spinning && !lowMotion && (
-        <circle 
-          cx={center} 
-          cy={center} 
-          r={frameInnerRadius - 5} 
-          fill="none" 
-          stroke="#FFFFFF" 
-          strokeWidth="2" 
-          opacity="0.2"
-        >
-          <animate 
-            attributeName="opacity" 
-            values="0.2;0.5;0.2" 
-            dur="2s" 
-            repeatCount="indefinite" 
-          />
-        </circle>
-      )}
+        );
+      })}
+
+      <circle
+        cx={center}
+        cy={center}
+        r={frameInnerRadius - 5}
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2}
+        opacity={0.2}
+      >
+        <animate attributeName="opacity" values="0.2;0.5;0.2" dur="2s" repeatCount="indefinite" />
+      </circle>
     </svg>
   );
 };

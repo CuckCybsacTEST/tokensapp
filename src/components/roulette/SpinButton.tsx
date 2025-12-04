@@ -5,12 +5,33 @@ interface SpinButtonProps {
   onClick: () => void;
   disabled?: boolean;
   scale?: number; // escala relativa al tamaño base (500)
+  theme?: string;
 }
 
 // Componente de botón mejorado con mejor manejo de eventos
-const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scale = 1 }) => {
+const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scale = 1, theme = '' }) => {
   const [isHover, setIsHover] = useState(false);
   const [isPress, setIsPress] = useState(false);
+  const normalizedTheme = theme.trim().toLowerCase();
+  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
+  const glossyStart = isChristmasTheme
+    ? (isPress ? '#E64C65' : isHover ? '#F15A6B' : '#E6495F')
+    : (isPress ? '#FF7070' : isHover ? '#FF7F7F' : '#FF6B6B');
+  const glossyEnd = isChristmasTheme
+    ? (isPress ? '#8C152A' : isHover ? '#A3192E' : '#8C152A')
+    : (isPress ? '#D40000' : isHover ? '#D41010' : '#C40C0C');
+  const goldTop = isChristmasTheme
+    ? (isHover ? '#FFE6A3' : '#FDE6B0')
+    : (isHover ? '#FFF7D0' : '#FFF3C1');
+  const goldMid = isChristmasTheme ? '#E7B10A' : '#F0B825';
+  const goldBottom = isChristmasTheme
+    ? (isPress ? '#8C6314' : '#B8860B')
+    : (isPress ? '#8F6200' : '#B47C00');
+  const arrowMid = isChristmasTheme ? '#FFE8A8' : '#FFD700';
+  const arrowEnd = isChristmasTheme ? '#E7B10A' : '#F0B825';
+  const outerStroke = isChristmasTheme ? '#21503A' : '#A66F00';
+  const innerStroke = isChristmasTheme ? '#7A1026' : '#800000';
+  const glowFlood = isChristmasTheme ? '#F8D16A' : '#FFDD00';
   
   const size = 130 * scale; // escalar tamaño del botón
   const center = size / 2;
@@ -106,18 +127,18 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
   >
       <defs>
         <radialGradient id="redGlossy" cx="50%" cy="40%" r="50%" fx="50%" fy="40%">
-          <stop offset="0%" stopColor={isPress ? "#FF7070" : isHover ? "#FF7F7F" : "#FF6B6B"} />
-          <stop offset="100%" stopColor={isPress ? "#D40000" : isHover ? "#D41010" : "#C40C0C"} />
+          <stop offset="0%" stopColor={glossyStart} />
+          <stop offset="100%" stopColor={glossyEnd} />
         </radialGradient>
         <linearGradient id="spinButtonGold" x1="0.5" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stopColor={isHover ? "#FFF7D0" : "#FFF3C1"} />
-          <stop offset="50%" stopColor="#F0B825" />
-          <stop offset="100%" stopColor={isPress ? "#8F6200" : "#B47C00"} />
+          <stop offset="0%" stopColor={goldTop} />
+          <stop offset="50%" stopColor={goldMid} />
+          <stop offset="100%" stopColor={goldBottom} />
         </linearGradient>
         <linearGradient id="arrowGradient" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="50%" stopColor="#FFD700" />
-          <stop offset="100%" stopColor="#F0B825" />
+          <stop offset="50%" stopColor={arrowMid} />
+          <stop offset="100%" stopColor={arrowEnd} />
         </linearGradient>
         
         <filter id="arrowShadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -125,7 +146,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
         </filter>
         <filter id="buttonGlow" x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="3" result="blur" />
-          <feFlood floodColor="#FFDD00" floodOpacity="0.3" result="glowColor" />
+          <feFlood floodColor={glowFlood} floodOpacity="0.3" result="glowColor" />
           <feComposite in="glowColor" in2="blur" operator="in" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
@@ -142,7 +163,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
           cy={center} 
           r={outerRingRadius} 
           fill="url(#spinButtonGold)"
-          stroke="#A66F00"
+          stroke={outerStroke}
           strokeWidth="1.5"
           filter={isHover ? "url(#buttonGlow)" : "none"}
         />
@@ -153,7 +174,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
           cy={center} 
           r={innerCircleRadius} 
           fill="url(#redGlossy)" 
-          stroke="#800000" 
+          stroke={innerStroke} 
           strokeWidth={isPress ? 2 : 3.5}
         />
 

@@ -23,6 +23,8 @@ interface NewRouletteProps {
   variant?: 'fullscreen' | 'inline';
   /** Modo de bajo movimiento: reduce efectos/tiempos para dispositivos con menos recursos o usuarios que lo prefieren */
   lowMotion?: boolean;
+  /** Tema opcional para personalizar colores (ej: "christmas"). */
+  theme?: string;
 }
 
 const NewRoulette = ({
@@ -35,11 +37,13 @@ const NewRoulette = ({
   pointerOffset,
   lockScroll = true,
   variant = 'fullscreen',
-  lowMotion = false
+  lowMotion = false,
+  theme = ''
 }: NewRouletteProps) => {
   const [rotation, setRotation] = useState(0);
   const [internalSpinning, setInternalSpinning] = useState(false);
   const [spinCompleted, setSpinCompleted] = useState(false);
+  const normalizedTheme = theme.trim().toLowerCase();
 
   // Dimensiones dinámicas de la ruleta (se basan en el contenedor responsivo CSS)
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -177,7 +181,12 @@ const NewRoulette = ({
         ) : (
           <>
         {/* Puntero en la parte superior */}
-  <RoulettePointer spinning={spinning || internalSpinning} scale={scale} pointerOffset={pointerOffset} />
+  <RoulettePointer
+            spinning={spinning || internalSpinning}
+            scale={scale}
+            pointerOffset={pointerOffset}
+            theme={normalizedTheme}
+          />
         
         {/* La rueda con los segmentos que gira */}
         <div
@@ -219,6 +228,7 @@ const NewRoulette = ({
               radius={segmentsRadiusBase}
               center={center}
               scale={scale}
+              theme={normalizedTheme}
             />
           </svg>
         </div>
@@ -229,6 +239,7 @@ const NewRoulette = ({
           lowMotion={lowMotion}
           scale={scale}
           wheelRadius={segmentsRadiusReal}
+          theme={normalizedTheme}
         />
         
         {/* Botón para girar en el centro - Mejorado para capturar eventos de teclado */}
@@ -236,6 +247,7 @@ const NewRoulette = ({
           onClick={handleSpinClick} 
           disabled={spinning || internalSpinning}
           scale={scale}
+          theme={normalizedTheme}
         />
         
           </>
