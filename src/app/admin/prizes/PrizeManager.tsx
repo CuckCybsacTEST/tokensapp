@@ -306,11 +306,12 @@ export default function PrizeManager({
             countsByPrizePerBatch[b.batchId] = map;
         }
         const emittedFiltered = activeBatch==='ALL' ? emitted : emitted.filter(p => (countsByPrizePerBatch[activeBatch]||{})[p.id]);
-        // Mostrar premios con stock disponible que no son de sistema (retry/lose) y no tienen tokens reutilizables
+        // Mostrar premios con stock disponible que no son de sistema (retry/lose), no tienen tokens reutilizables y no contienen "reusable" en el key
         const pending = sorted.filter(
           (p) => (p.stock == null || (typeof p.stock === "number" && p.stock > 0)) &&
                  p.key !== 'retry' && p.key !== 'lose' &&
-                 !p.hasReusableTokens
+                 !p.hasReusableTokens &&
+                 !p.key?.toLowerCase().includes('reusable')
         );
         const neverUsed = sorted.filter((p) => p.stock === 0 && (p.emittedTotal ?? 0) === 0);
         function renderTable(
