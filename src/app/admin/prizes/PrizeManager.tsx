@@ -306,8 +306,10 @@ export default function PrizeManager({
             countsByPrizePerBatch[b.batchId] = map;
         }
         const emittedFiltered = activeBatch==='ALL' ? emitted : emitted.filter(p => (countsByPrizePerBatch[activeBatch]||{})[p.id]);
+        // Solo mostrar premios con actividad en ruleta (no reutilizables)
         const pending = sorted.filter(
-          (p) => p.stock == null || (typeof p.stock === "number" && p.stock > 0)
+          (p) => (p.stock == null || (typeof p.stock === "number" && p.stock > 0)) &&
+                 ((p.revealedCount ?? 0) > 0 || (p.deliveredCount ?? 0) > 0)
         );
         const neverUsed = sorted.filter((p) => p.stock === 0 && (p.emittedTotal ?? 0) === 0);
         function renderTable(
