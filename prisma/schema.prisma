@@ -17,6 +17,7 @@ model Prize {
   active         Boolean   @default(true)
   emittedTotal   Int       @default(0)
   lastEmittedAt  DateTime?
+  isReusable     Boolean   @default(false) // True for prizes used in reusable tokens
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   assignedTokens Token[]   @relation("AssignedPrize")
@@ -30,6 +31,7 @@ model Batch {
   createdAt        DateTime          @default(now())
   functionalDate   DateTime?
   staticTargetUrl  String?           // If present, this batch is a static redirect batch
+  isReusable       Boolean           @default(false) // True for reusable token batches
   rouletteSessions RouletteSession[]
   tokens           Token[]
 
@@ -56,6 +58,11 @@ model Token {
   validFrom         DateTime?
   // Pre-linked next token for "retry" control (optional, for printing determinism)
   pairedNextTokenId String?
+  // Reusable token fields
+  maxUses           Int?
+  usedCount         Int       @default(0)
+  startTime         DateTime?
+  endTime           DateTime?
   assignedPrize     Prize?    @relation("AssignedPrize", fields: [assignedPrizeId], references: [id])
   batch             Batch     @relation(fields: [batchId], references: [id])
   prize             Prize     @relation(fields: [prizeId], references: [id])
