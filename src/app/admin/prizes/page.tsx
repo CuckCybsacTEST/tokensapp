@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"; // evitar cache SSR para panel admin
 
 // Tipos enriquecidos
 type BasePrize = Awaited<ReturnType<typeof prisma.prize.findMany>>[number];
-type PrizeWithStats = BasePrize & { revealedCount: number; deliveredCount: number };
+type PrizeWithStats = BasePrize & { revealedCount: number; deliveredCount: number; hasReusableTokens: boolean };
 type LastBatchMap = Record<string, { id: string; name: string; createdAt: Date }>;
 type BatchPrizeStat = {
   batchId: string;
@@ -27,19 +27,7 @@ async function getPrizesWithLastBatch(): Promise<{
   lastBatch: LastBatchMap;
   batchPrizeStats: BatchPrizeStat[];
 }> {
-  // Primero obtener IDs de premios que tienen tokens en lotes NO reutilizables
-  const roulettePrizeIds = await prisma.token.findMany({
-    where: { batch: { isReusable: false } },
-    select: { prizeId: true },
-    distinct: ['prizeId']
-  });
-  const validPrizeIds = roulettePrizeIds.map(t => t.prizeId);
-
-  const prizes = await prisma.prize.findMany({
-    where: { id: { in: validPrizeIds } },
-    orderBy: { createdAt: "asc" }
-  });
-
+  const prizes = await prisma.prize.findMany({ orderBy: { createdAt: "asc" } });
   if (!prizes.length) {
     return { prizes: [], lastBatch: {}, batchPrizeStats: [] };
   }
@@ -92,10 +80,19 @@ async function getPrizesWithLastBatch(): Promise<{
   const revealedCount: Record<string, number> = Object.fromEntries(revealedAgg.map(r => [r.prizeId, r._count._all]));
   const deliveredCount: Record<string, number> = Object.fromEntries(deliveredAgg.map(r => [r.prizeId, r._count._all]));
 
+  // Identificar premios que tienen tokens en lotes reutilizables
+  const reusablePrizeIds = await prisma.token.findMany({
+    where: { batch: { isReusable: true } },
+    select: { prizeId: true },
+    distinct: ['prizeId']
+  });
+  const reusablePrizeIdSet = new Set(reusablePrizeIds.map(t => t.prizeId));
+
   const enriched: PrizeWithStats[] = prizes.map((p: BasePrize) => ({
     ...p,
     revealedCount: revealedCount[p.id] || 0,
     deliveredCount: deliveredCount[p.id] || 0,
+    hasReusableTokens: reusablePrizeIdSet.has(p.id)
   }));
 
   // Estadísticas recientes por batch
