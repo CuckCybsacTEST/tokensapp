@@ -27,7 +27,19 @@ async function getPrizesWithLastBatch(): Promise<{
   lastBatch: LastBatchMap;
   batchPrizeStats: BatchPrizeStat[];
 }> {
-  const prizes = await prisma.prize.findMany({ orderBy: { createdAt: "asc" } });
+  // Primero obtener IDs de premios que tienen tokens en lotes NO reutilizables
+  const roulettePrizeIds = await prisma.token.findMany({
+    where: { batch: { isReusable: false } },
+    select: { prizeId: true },
+    distinct: ['prizeId']
+  });
+  const validPrizeIds = roulettePrizeIds.map(t => t.prizeId);
+
+  const prizes = await prisma.prize.findMany({
+    where: { id: { in: validPrizeIds } },
+    orderBy: { createdAt: "asc" }
+  });
+
   if (!prizes.length) {
     return { prizes: [], lastBatch: {}, batchPrizeStats: [] };
   }

@@ -13,7 +13,18 @@ const prizeSchema = z.object({
 });
 
 export async function GET() {
-  const prizes = await prisma.prize.findMany({ orderBy: { createdAt: "asc" } });
+  // Solo devolver premios que tienen tokens en lotes NO reutilizables (ruleta)
+  const roulettePrizeIds = await prisma.token.findMany({
+    where: { batch: { isReusable: false } },
+    select: { prizeId: true },
+    distinct: ['prizeId']
+  });
+  const validPrizeIds = roulettePrizeIds.map(t => t.prizeId);
+
+  const prizes = await prisma.prize.findMany({
+    where: { id: { in: validPrizeIds } },
+    orderBy: { createdAt: "asc" }
+  });
   return apiOk(prizes, 200);
 }
 
