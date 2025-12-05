@@ -35,8 +35,12 @@ async function getPrizesWithLastBatch(): Promise<{
   const prizeIds = prizes.map((p: BasePrize) => p.id);
 
   // Último lote por premio (robusto): usamos distinct por prizeId ordenado por createdAt desc
+  // Solo tokens de lotes NO reutilizables (ruleta)
   const lastTokens = await prisma.token.findMany({
-    where: { prizeId: { in: prizeIds } },
+    where: { 
+      prizeId: { in: prizeIds },
+      batch: { isReusable: false }
+    },
     orderBy: [{ prizeId: 'asc' }, { createdAt: 'desc' }],
     distinct: ['prizeId'],
     select: { prizeId: true, batch: { select: { id: true, description: true, createdAt: true } } },
@@ -53,14 +57,24 @@ async function getPrizesWithLastBatch(): Promise<{
   }
 
   // Agregados correctos para mostrador: revelados (pendientes) y consumidos (entregados o legacy redeemed)
+  // Solo tokens de lotes NO reutilizables (ruleta)
   const revealedAgg = await prisma.token.groupBy({
     by: ['prizeId'],
-    where: { prizeId: { in: prizeIds }, revealedAt: { not: null }, deliveredAt: null },
+    where: { 
+      prizeId: { in: prizeIds }, 
+      revealedAt: { not: null }, 
+      deliveredAt: null,
+      batch: { isReusable: false }
+    },
     _count: { _all: true },
   });
   const deliveredAgg = await prisma.token.groupBy({
     by: ['prizeId'],
-    where: { prizeId: { in: prizeIds }, OR: [{ deliveredAt: { not: null } }, { redeemedAt: { not: null } }] },
+    where: { 
+      prizeId: { in: prizeIds }, 
+      OR: [{ deliveredAt: { not: null } }, { redeemedAt: { not: null } }],
+      batch: { isReusable: false }
+    },
     _count: { _all: true },
   });
   const revealedCount: Record<string, number> = Object.fromEntries(revealedAgg.map(r => [r.prizeId, r._count._all]));
@@ -73,7 +87,9 @@ async function getPrizesWithLastBatch(): Promise<{
   }));
 
   // Estadísticas recientes por batch
+  // Solo lotes NO reutilizables (ruleta)
   const recentBatches = await prisma.batch.findMany({
+    where: { isReusable: false },
     orderBy: { createdAt: 'desc' },
     take: 12,
     select: { id: true, description: true, createdAt: true }
