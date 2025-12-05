@@ -5,6 +5,7 @@ import { apiError } from '@/lib/apiError';
 import JSZip from 'jszip';
 import { generateQrPngDataUrl } from '@/lib/qr';
 import { headers } from 'next/headers';
+import { DateTime } from 'luxon';
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,15 +32,25 @@ export async function POST(req: NextRequest) {
       return apiError('PRIZE_NOT_FOUND', 'Premio no encontrado o inactivo');
     }
 
-    // Calculate expiration
+    // Calculate expiration using Lima timezone
     let expiresAt: Date;
+    const limaTimezone = 'America/Lima';
+    
     if (validity?.mode === 'byDays') {
-      expiresAt = new Date(Date.now() + validity.expirationDays * 24 * 60 * 60 * 1000);
+      // Calculate expiration from now in Lima time
+      const nowInLima = DateTime.now().setZone(limaTimezone);
+      const expiresInLima = nowInLima.plus({ days: validity.expirationDays });
+      expiresAt = expiresInLima.setZone('utc').toJSDate();
     } else if (validity?.mode === 'singleDay') {
-      expiresAt = new Date(validity.date + 'T23:59:59');
+      // Parse date as Lima time and set to end of day (23:59:59 Lima)
+      const dateInLima = DateTime.fromISO(validity.date, { zone: limaTimezone });
+      const expiresInLima = dateInLima.set({ hour: 23, minute: 59, second: 59 });
+      expiresAt = expiresInLima.setZone('utc').toJSDate();
     } else if (validity?.mode === 'singleHour') {
-      const start = new Date(validity.date + 'T' + validity.hour);
-      expiresAt = new Date(start.getTime() + validity.durationMinutes * 60 * 1000);
+      // Parse date and time as Lima time and add duration
+      const startInLima = DateTime.fromISO(`${validity.date}T${validity.hour}`, { zone: limaTimezone });
+      const expiresInLima = startInLima.plus({ minutes: validity.durationMinutes });
+      expiresAt = expiresInLima.setZone('utc').toJSDate();
     } else {
       return apiError('INVALID_VALIDITY', 'Modo de validez inválido');
     }
@@ -59,6 +70,13 @@ export async function POST(req: NextRequest) {
       const tokenId = `rt_${Date.now()}_${i}`;
       const signature = `reusable_sig_${tokenId}`;
 
+      // Calculate startTime for singleHour mode using Lima timezone
+      let startTime: Date | null = null;
+      if (validity?.mode === 'singleHour') {
+        const startInLima = DateTime.fromISO(`${validity.date}T${validity.hour}`, { zone: limaTimezone });
+        startTime = startInLima.setZone('utc').toJSDate();
+      }
+
       const token = await prisma.token.create({
         data: {
           id: tokenId,
@@ -68,7 +86,7 @@ export async function POST(req: NextRequest) {
           signature,
           maxUses,
           usedCount: 0,
-          startTime: validity?.mode === 'singleHour' ? new Date(validity.date + 'T' + validity.hour) : null,
+          startTime,
           endTime: validity?.mode === 'singleHour' ? expiresAt : null,
         }
       });
@@ -83,6 +101,7 @@ export async function POST(req: NextRequest) {
 
     // Generate ZIP with QRs and manifest
     const zip = new JSZip();
+    const generatedAtLima = DateTime.now().setZone(limaTimezone);
     const manifest = {
       batchId: batch.id,
       description: batch.description,
@@ -90,7 +109,7 @@ export async function POST(req: NextRequest) {
       totalTokens: tokens.length,
       maxUses,
       expiresAt: expiresAt.toISOString(),
-      generatedAt: new Date().toISOString(),
+      generatedAt: generatedAtLima.toISO(),
       tokens: tokens.map(t => ({ id: t.id, qrUrl: `${baseUrl}/reusable/${t.id}` }))
     };
     zip.file('manifest.json', JSON.stringify(manifest, null, 2));

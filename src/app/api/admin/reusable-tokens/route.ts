@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
             maxUses: true,
             usedCount: true,
             disabled: true,
+            deliveredAt: true,
             prize: { select: { key: true, label: true, color: true } }
           }
         },

@@ -12,6 +12,7 @@ interface Batch {
     maxUses: number | null;
     usedCount: number;
     disabled: boolean;
+    deliveredAt: string | null;
     prize: { key: string; label: string };
   }[];
   _count: { tokens: number };
@@ -33,6 +34,7 @@ interface Token {
   maxUses: number | null;
   usedCount: number;
   disabled: boolean;
+  deliveredAt?: string | null;
   prize: { key: string; label: string; color?: string };
 }
 
@@ -69,7 +71,7 @@ export default function ReusableTokensAdmin() {
   const fetchBatches = async () => {
     const res = await fetch('/api/admin/reusable-tokens');
     if (res.ok) {
-      const data = await res.json();
+      const data: Batch[] = await res.json();
       setBatches(data);
     }
     setLoading(false);
@@ -131,6 +133,27 @@ export default function ReusableTokensAdmin() {
     } else {
       const error = await res.json();
       alert(error.error || 'Error eliminando premio');
+    }
+  };
+
+  const markAsDelivered = async (tokenId: string) => {
+    if (!confirm('¿Marcar este token como entregado?')) return;
+
+    try {
+      const res = await fetch(`/api/admin/reusable-tokens/${tokenId}/deliver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (res.ok) {
+        alert('Token marcado como entregado');
+        fetchBatches(); // Refresh the list
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error marcando entrega');
+      }
+    } catch (error) {
+      alert('Error de red');
     }
   };
 
@@ -405,9 +428,25 @@ export default function ReusableTokensAdmin() {
                               <div className="text-slate-500 dark:text-slate-400">Expira: {new Date(token.expiresAt).toLocaleDateString('es-ES')}</div>
                             </div>
                           </div>
-                          <a href={`/reusable/${token.id}`} target="_blank" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 ml-2 transition-colors">
-                            Ver Token
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a href={`/reusable/${token.id}`} target="_blank" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                              Ver Token
+                            </a>
+                            {!token.deliveredAt && (
+                              <button
+                                onClick={() => markAsDelivered(token.id)}
+                                className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                                title="Marcar como entregado"
+                              >
+                                ✓ Entregar
+                              </button>
+                            )}
+                            {token.deliveredAt && (
+                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                Entregado
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

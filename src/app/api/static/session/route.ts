@@ -66,8 +66,9 @@ export async function GET(req: Request) {
       }
     }
 
+    // No hay sesión válida - devolver ok: false para usuarios públicos
     return NextResponse.json({
-      ok: true,
+      ok: false,
       isStaff: false,
       isAdmin: false
     });

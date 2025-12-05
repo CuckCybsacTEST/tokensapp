@@ -51,7 +51,8 @@ export async function middleware(req: NextRequest) {
       '/admin/attendance',
       '/admin/tokens',
       '/admin/day-brief',
-      '/admin/users'
+      '/admin/users',
+      '/admin/reusable-tokens'
     ];
 
     const isStaffAllowedRoute = staffAllowedRoutes.some(route => pathname.startsWith(route));
@@ -83,7 +84,9 @@ export async function middleware(req: NextRequest) {
       '/api/admin/tokens',
       '/api/admin/day-brief',
       '/api/admin/users',
-      '/api/admin/birthdays'  // Allow STAFF to access birthdays admin API
+      '/api/admin/birthdays',  // Allow STAFF to access birthdays admin API
+      '/api/admin/reusable-tokens',  // Allow STAFF to access reusable tokens API
+      '/api/admin/reusable-prizes'  // Allow STAFF to access reusable prizes API
     ];
 
     const isStaffAllowedAPI = staffAllowedAPIs.some(api => pathname.startsWith(api));
