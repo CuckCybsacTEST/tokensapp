@@ -59,6 +59,12 @@ export default function PrizeManager({
   batchPrizeStats?: Array<{ batchId: string; description: string; createdAt: string | Date; prizes: Array<{ prizeId: string; count: number; expired: number; valid: number }> }>;
 }) {
   const [prizes, setPrizes] = useState(initialPrizes);
+  
+  // Update local state when initialPrizes changes (e.g., on page refresh)
+  useEffect(() => {
+    setPrizes(initialPrizes);
+  }, [initialPrizes]);
+  
   async function updatePrizesWithRefresh() {
     try {
       const res = await fetch('/api/prizes');
@@ -306,10 +312,9 @@ export default function PrizeManager({
             countsByPrizePerBatch[b.batchId] = map;
         }
         const emittedFiltered = activeBatch==='ALL' ? emitted : emitted.filter(p => (countsByPrizePerBatch[activeBatch]||{})[p.id]);
-        // Mostrar premios con stock disponible que no son de sistema (retry/lose), no tienen tokens reutilizables y no contienen "reusable" en el key
+        // Mostrar premios con stock disponible (incluyendo retry/lose), que no tienen tokens reutilizables y no contienen "reusable" en el key
         const pending = sorted.filter(
           (p) => (p.stock == null || (typeof p.stock === "number" && p.stock > 0)) &&
-                 p.key !== 'retry' && p.key !== 'lose' &&
                  !p.hasReusableTokens &&
                  !p.key?.toLowerCase().includes('reusable')
         );
