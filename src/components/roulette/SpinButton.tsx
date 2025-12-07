@@ -1,43 +1,50 @@
 import React, { useState } from 'react';
 import btnStyles from './spinButton.module.css';
+import { ThemeName } from '@/lib/themes/types';
+import { useRouletteTheme } from '@/lib/themes/useRouletteTheme';
 
 interface SpinButtonProps {
   onClick: () => void;
   disabled?: boolean;
   scale?: number; // escala relativa al tamaño base (500)
-  theme?: string;
+  theme?: ThemeName;
 }
 
 // Componente de botón mejorado con mejor manejo de eventos
-const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scale = 1, theme = '' }) => {
+const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scale = 1, theme: propTheme }) => {
+  // Usar el hook de tema para obtener la configuración, con fallback
+  let theme = 'default';
+  let themeConfig = null;
+
+  try {
+    const themeContext = useRouletteTheme();
+    theme = propTheme || themeContext.theme;
+    themeConfig = themeContext.config;
+  } catch {
+    // Fallback si no hay provider
+    theme = propTheme || 'default';
+  }
+
   const [isHover, setIsHover] = useState(false);
   const [isPress, setIsPress] = useState(false);
-  const normalizedTheme = theme.trim().toLowerCase();
-  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
-  const glossyStart = isChristmasTheme
-    ? (isPress ? '#E64C65' : isHover ? '#F15A6B' : '#E6495F')
-    : (isPress ? '#FF7070' : isHover ? '#FF7F7F' : '#FF6B6B');
-  const glossyEnd = isChristmasTheme
-    ? (isPress ? '#8C152A' : isHover ? '#A3192E' : '#8C152A')
-    : (isPress ? '#D40000' : isHover ? '#D41010' : '#C40C0C');
-  const goldTop = isChristmasTheme
-    ? (isHover ? '#FFE6A3' : '#FDE6B0')
-    : (isHover ? '#FFF7D0' : '#FFF3C1');
-  const goldMid = isChristmasTheme ? '#E7B10A' : '#F0B825';
-  const goldBottom = isChristmasTheme
-    ? (isPress ? '#8C6314' : '#B8860B')
-    : (isPress ? '#8F6200' : '#B47C00');
-  const arrowMid = isChristmasTheme ? '#FFE8A8' : '#FFD700';
-  const arrowEnd = isChristmasTheme ? '#E7B10A' : '#F0B825';
-  const outerStroke = isChristmasTheme ? '#21503A' : '#A66F00';
-  const innerStroke = isChristmasTheme ? '#7A1026' : '#800000';
-  const glowFlood = isChristmasTheme ? '#F8D16A' : '#FFDD00';
-  
+
+  // Usar colores del tema con estados hover/press
+  const glossyStart = isPress ? '#E64C65' : isHover ? '#F15A6B' : '#E6495F';
+  const glossyEnd = isPress ? '#8C152A' : isHover ? '#A3192E' : '#8C152A';
+  const goldTop = isHover ? '#FFE6A3' : '#FDE6B0';
+  const goldMid = themeConfig?.roulette?.spinButton?.goldMid || '#F0B825';
+  const goldBottom = isPress ? '#8C6314' : '#B8860B';
+  const arrowMid = themeConfig?.roulette?.spinButton?.arrowMid || '#FFD700';
+  const arrowEnd = themeConfig?.roulette?.spinButton?.arrowEnd || '#F0B825';
+  const outerStroke = themeConfig?.roulette?.spinButton?.outerStroke || '#A66F00';
+  const innerStroke = themeConfig?.roulette?.spinButton?.innerStroke || '#800000';
+  const glowFlood = themeConfig?.roulette?.spinButton?.glowFlood || '#FFDD00';
+
   const size = 130 * scale; // escalar tamaño del botón
   const center = size / 2;
-  const outerRingRadius = 63 * scale; 
+  const outerRingRadius = 63 * scale;
   const innerCircleRadius = 54 * scale;
-  
+
   // Crear un área efectiva completa para detectar eventos del mouse
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,7 +52,7 @@ const SpinButton: React.FC<SpinButtonProps> = ({ onClick, disabled = false, scal
       onClick();
     }
   };
-  
+
   // Controladores de eventos simplificados
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();

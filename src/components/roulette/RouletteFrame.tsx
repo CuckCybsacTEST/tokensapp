@@ -1,20 +1,31 @@
 import React from 'react';
+import { ThemeName } from '@/lib/themes/types';
+import { useRouletteTheme } from '@/lib/themes/useRouletteTheme';
 
 interface RouletteFrameProps {
   spinning?: boolean;
   scale?: number; // relativo a 500
   wheelRadius?: number; // radio interno de segmentos para ajustar gap
   lowMotion?: boolean; // reduce efectos y animaciones
-  theme?: string;
+  theme?: ThemeName; // Usar ThemeName en lugar de string
 }
 
-const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale = 1, wheelRadius, lowMotion = false, theme = '' }) => {
+const RouletteFrame: React.FC<RouletteFrameProps> = ({
+  spinning = false,
+  scale = 1,
+  wheelRadius,
+  lowMotion = false,
+  theme: propTheme
+}) => {
+  // Usar el hook de tema para obtener la configuración
+  const { theme: contextTheme, config } = useRouletteTheme();
+  const theme = propTheme || contextTheme;
+  const themeConfig = config;
+
   const baseSize = 500;
   const width = baseSize * scale;
   const height = baseSize * scale;
   const center = baseSize / 2; // mantenemos viewBox base para simplificar escalado via width/height
-  const normalizedTheme = theme.trim().toLowerCase();
-  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
 
   // Ajuste dinámico del marco basado en wheelRadius
   const computedWheelRadius = wheelRadius ? (wheelRadius / scale) : 205; // convertir a coordenadas base
@@ -46,14 +57,14 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
     >
       <defs>
         <radialGradient id="goldGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-          <stop offset="60%" style={{ stopColor: isChristmasTheme ? '#E2C76A' : '#F0B825' }} />
-          <stop offset="80%" style={{ stopColor: isChristmasTheme ? '#B98C07' : '#B47C00' }} />
-          <stop offset="100%" style={{ stopColor: isChristmasTheme ? '#7A5603' : '#8C5C00' }} />
+          <stop offset="60%" style={{ stopColor: themeConfig.roulette.frame.goldGradient[0] }} />
+          <stop offset="80%" style={{ stopColor: themeConfig.roulette.frame.goldGradient[1] }} />
+          <stop offset="100%" style={{ stopColor: themeConfig.roulette.frame.goldGradient[2] }} />
         </radialGradient>
         <radialGradient id="lightGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
           <stop offset="0%" style={{ stopColor: '#FFFFFF' }} />
-          <stop offset="40%" style={{ stopColor: isChristmasTheme ? '#FFF7D6' : '#FFFFE0' }} />
-          <stop offset="100%" style={{ stopColor: isChristmasTheme ? '#E9B949' : '#F0B825' }} />
+          <stop offset="40%" style={{ stopColor: themeConfig.roulette.frame.innerGlow[0] }} />
+          <stop offset="100%" style={{ stopColor: themeConfig.roulette.frame.innerGlow[1] }} />
         </radialGradient>
         <filter id="enhancedGlow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="5" result="blur" />
@@ -71,13 +82,13 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
           patternUnits="userSpaceOnUse"
           patternTransform="scale(0.1)"
         >
-          <rect width="100%" height="100%" fill={isChristmasTheme ? '#F3DFA2' : '#F0B825'} />
-          <rect width="1" height="1" x="0" y="0" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
-          <rect width="1" height="1" x="25" y="25" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
-          <rect width="1" height="1" x="50" y="50" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
-          <rect width="1" height="1" x="75" y="75" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
-          <rect width="1" height="1" x="12" y="37" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
-          <rect width="1" height="1" x="62" y="87" fill={isChristmasTheme ? '#9A7024' : '#B47C00'} opacity="0.2" />
+          <rect width="100%" height="100%" fill={themeConfig.roulette.frame.goldGradient[0]} />
+          <rect width="1" height="1" x="0" y="0" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
+          <rect width="1" height="1" x="25" y="25" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
+          <rect width="1" height="1" x="50" y="50" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
+          <rect width="1" height="1" x="75" y="75" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
+          <rect width="1" height="1" x="12" y="37" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
+          <rect width="1" height="1" x="62" y="87" fill={themeConfig.roulette.frame.texturePattern} opacity="0.2" />
         </pattern>
       </defs>
 
@@ -98,7 +109,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
         cy={center}
         r={frameInnerRadius}
         fill="transparent"
-        stroke={isChristmasTheme ? '#FDEAB4' : '#FFF2AE'}
+        stroke={theme === 'christmas' ? '#FDEAB4' : '#FFF2AE'}
         strokeWidth={2}
       />
 
@@ -107,7 +118,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
         cy={center}
         r={frameInnerRadius + 2}
         fill="transparent"
-        stroke={isChristmasTheme ? '#27613C' : '#4A3000'}
+        stroke={theme === 'christmas' ? '#27613C' : '#4A3000'}
         strokeWidth={3.8}
       />
 
@@ -125,7 +136,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={isChristmasTheme ? '#1F4330' : '#4A3000'}
+            stroke={theme === 'christmas' ? '#1F4330' : '#4A3000'}
             strokeWidth={2}
             opacity={0.6}
           />
@@ -133,7 +144,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
       })}
 
       {lights.map((light, index) => {
-        const lightFill = isChristmasTheme ? (index % 2 === 0 ? '#C51732' : '#1E6138') : undefined;
+        const lightFill = theme === 'christmas' ? (index % 2 === 0 ? '#C51732' : '#1E6138') : undefined;
         return (
           <circle
             key={`frame-light-${index}`}
@@ -170,7 +181,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({ spinning = false, scale =
         cy={center}
         r={frameInnerRadius - 5}
         fill="none"
-        stroke="#FFFFFF"
+        stroke={themeConfig.roulette.frame.borderGlow}
         strokeWidth={2}
         opacity={0.2}
       >

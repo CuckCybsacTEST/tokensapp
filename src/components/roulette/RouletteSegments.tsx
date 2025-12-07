@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
 import { RouletteElement } from './types';
+import { ThemeName } from '@/lib/themes/types';
+import { useRouletteTheme } from '@/lib/themes/useRouletteTheme';
 
 interface RouletteSegmentsProps {
   elements: RouletteElement[];
   radius: number;
   center: number;
   scale?: number; // escala relativa al tamaño base 500px
-  theme?: string;
+  theme?: ThemeName;
 }
 
 // Heurística para dividir texto en líneas equilibradas (hasta 3 líneas para textos largos)
@@ -104,16 +106,15 @@ function splitLabel(label: string): string[] {
   return best ? best.lines : [clean];
 }
 
-const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme = '' }: RouletteSegmentsProps) => {
+const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme: propTheme }: RouletteSegmentsProps) => {
+  // Usar el hook de tema para obtener la configuración
+  const { theme: contextTheme, config } = useRouletteTheme();
+  const theme = propTheme || contextTheme;
+  const themeConfig = config;
+
   const totalElements = elements.length;
   const arcAngle = 360 / totalElements;
   const isSingle = totalElements === 1;
-  const normalizedTheme = theme.trim().toLowerCase();
-  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
-  const christmasPalette = useMemo(
-    () => ['#B8002D', '#155734', '#E7B10A', '#0B3D20'],
-    []
-  );
 
   // Función para calcular el path del segmento
   const getArcPath = (index: number) => {
@@ -174,7 +175,7 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme = '' 
           cx={center}
           cy={center}
           r={radius}
-          fill={isChristmasTheme ? christmasPalette[0] : (elements[0]?.color || '#CCCCCC')}
+          fill={themeConfig?.roulette?.segments?.palette[0] || (elements[0]?.color || '#CCCCCC')}
           stroke="url(#segmentBorderGold)"
           strokeWidth={3} /* Igual que la base */
           data-prize-id={elements[0]?.prizeId}
@@ -183,9 +184,7 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme = '' 
         elements.map((element, i) => {
           const d = getArcPath(i);
           if (!d) return null;
-          const segmentColor = isChristmasTheme
-            ? christmasPalette[i % christmasPalette.length]
-            : (element.color || '#CCCCCC');
+          const segmentColor = themeConfig?.roulette?.segments?.palette[i % (themeConfig?.roulette?.segments?.palette?.length || 7)] || (element.color || '#CCCCCC');
           return (
             <path
               key={`segment-${i}`}

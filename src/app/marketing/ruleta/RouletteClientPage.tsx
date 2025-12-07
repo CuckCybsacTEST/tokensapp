@@ -10,6 +10,8 @@ import LoseModal from "@/components/roulette/LoseModal";
 import SmartPreloader from "@/components/common/SmartPreloader";
 import { perfMark, perfMeasure, perfSummarize, perfCheckBudget } from "@/lib/perf";
 import CanvasConfetti from "@/components/visual/CanvasConfetti";
+import { ThemeName } from "@/lib/themes/types";
+import { useRouletteTheme } from "@/lib/themes/useRouletteTheme";
 
 // Confetti ahora usando canvas para menos costo en DOM
 const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowMotion?: boolean; colors?: string[] }) => (
@@ -55,10 +57,14 @@ interface TokenShape {
 
 interface RouletteClientPageProps {
   tokenId: string;
-  theme?: string;
+  theme?: ThemeName;
 }
 
-export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClientPageProps) {
+export default function RouletteClientPage({ tokenId, theme: propTheme = "default" }: RouletteClientPageProps) {
+  // Usar el hook de tema para obtener la configuración
+  const { theme: contextTheme, config } = useRouletteTheme();
+  const theme = propTheme || contextTheme;
+  const themeConfig = config;
   // Mark initial mount
   useEffect(() => {
     perfMark("page_mount");
@@ -103,16 +109,14 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
   const FETCH_TIMEOUT_MS = 8000; // abort fetch if backend stalls
   const MIN_LOADER_MS = 900; // shorter minimum loader time to feel snappy
   const LOAD_BUDGET_MS = 2500; // presupuesto orientativo para load_total
-  const normalizedTheme = theme.trim().toLowerCase();
-  const isChristmasTheme = normalizedTheme === "christmas" || normalizedTheme === "navidad";
 
   useEffect(() => {
     if (typeof document === "undefined") return;
     const target = document.documentElement;
     const attrName = "data-roulette-theme";
     const prevValue = target.getAttribute(attrName);
-    if (normalizedTheme) {
-      target.setAttribute(attrName, normalizedTheme);
+    if (theme) {
+      target.setAttribute(attrName, theme);
     } else {
       target.removeAttribute(attrName);
     }
@@ -123,7 +127,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
         target.removeAttribute(attrName);
       }
     };
-  }, [normalizedTheme]);
+  }, [theme]);
 
   // Cargar métrica de giros al montar (period today) para inicializar contador.
   useEffect(() => {
@@ -535,7 +539,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
     "relative",
     "w-full",
     retryOverlayOpen ? "pointer-events-none" : "",
-    isChristmasTheme ? "pt-16 sm:pt-0" : "",
+    theme === 'christmas' ? "pt-16 sm:pt-0" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -553,7 +557,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
   if (loading && !suppressLoader && !retryOverlayOpen) {
     return (
       <div
-        className={`fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none ${isChristmasTheme ? "roulette-theme--christmas" : ""}`}
+        className={`fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}
         style={{ overscrollBehavior: "contain" }}
       >
         <div className="relative z-[1]">
@@ -610,7 +614,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
 
   if (phase === "DELIVERED" || token?.redeemedAt || token?.deliveredAt) {
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${isChristmasTheme ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
           <p className="text-green-300 text-lg font-semibold">¡Premio ya canjeado!</p>
           <p className="mt-2 text-white/70">
@@ -641,7 +645,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
       }
     } catch {}
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${isChristmasTheme ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
           <p className="text-amber-300 text-lg font-semibold">Token no disponible</p>
           <p className="mt-2 text-white/70">
@@ -661,7 +665,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
 
   if (allowRestrictedScreens && new Date(token?.expiresAt || 0) < new Date()) {
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${isChristmasTheme ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
           <p className="text-amber-300 text-lg font-semibold">Token expirado</p>
           <p className="mt-2 text-white/70">Este token ha expirado y ya no puede ser utilizado.</p>
@@ -685,7 +689,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
       className={baseContainerClass}
       aria-hidden={retryOverlayOpen ? true : undefined}
       style={{ opacity: retryOverlayOpen ? 0 : 1 }}
-      data-roulette-theme={normalizedTheme || undefined}
+      data-roulette-theme={theme || undefined}
     >
       {!retryOverlayOpen && !shouldShowReservedPanel && (
         <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
@@ -702,7 +706,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
         active={showConfetti}
         lowMotion={lowMotion}
         colors={
-          isChristmasTheme
+          theme === 'christmas'
             ? ["#ff1c1c", "#ffb347", "#ffd700", "#2ecc71", "#34c759", "#ffffff"]
             : undefined
         }
@@ -767,7 +771,7 @@ export default function RouletteClientPage({ tokenId, theme = "" }: RouletteClie
             prizeIndex={prizeIndex}
             variant="inline"
             lowMotion={lowMotion}
-            theme={normalizedTheme}
+            theme={theme}
           />
         </div>
       )}

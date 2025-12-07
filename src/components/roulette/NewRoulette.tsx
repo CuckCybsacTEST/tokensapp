@@ -6,6 +6,7 @@ import RoulettePointer from './RoulettePointer';
 import styles from './roulette.module.css';
 import { useNoScroll } from './useNoScroll';
 import { RouletteElement } from './types';
+import { ThemeName } from '@/lib/themes/types';
 
 interface NewRouletteProps {
   elements: RouletteElement[];
@@ -24,7 +25,7 @@ interface NewRouletteProps {
   /** Modo de bajo movimiento: reduce efectos/tiempos para dispositivos con menos recursos o usuarios que lo prefieren */
   lowMotion?: boolean;
   /** Tema opcional para personalizar colores (ej: "christmas"). */
-  theme?: string;
+  theme?: ThemeName;
 }
 
 const NewRoulette = ({
@@ -38,12 +39,11 @@ const NewRoulette = ({
   lockScroll = true,
   variant = 'fullscreen',
   lowMotion = false,
-  theme = ''
+  theme = 'default'
 }: NewRouletteProps) => {
   const [rotation, setRotation] = useState(0);
   const [internalSpinning, setInternalSpinning] = useState(false);
   const [spinCompleted, setSpinCompleted] = useState(false);
-  const normalizedTheme = theme.trim().toLowerCase();
 
   // Dimensiones dinámicas de la ruleta (se basan en el contenedor responsivo CSS)
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -185,7 +185,7 @@ const NewRoulette = ({
             spinning={spinning || internalSpinning}
             scale={scale}
             pointerOffset={pointerOffset}
-            theme={normalizedTheme}
+            theme={theme}
           />
         
         {/* La rueda con los segmentos que gira */}
@@ -228,7 +228,7 @@ const NewRoulette = ({
               radius={segmentsRadiusBase}
               center={center}
               scale={scale}
-              theme={normalizedTheme}
+              theme={theme}
             />
           </svg>
         </div>
@@ -239,7 +239,7 @@ const NewRoulette = ({
           lowMotion={lowMotion}
           scale={scale}
           wheelRadius={segmentsRadiusReal}
-          theme={normalizedTheme}
+          theme={theme}
         />
         
         {/* Botón para girar en el centro - Mejorado para capturar eventos de teclado */}
@@ -247,7 +247,7 @@ const NewRoulette = ({
           onClick={handleSpinClick} 
           disabled={spinning || internalSpinning}
           scale={scale}
-          theme={normalizedTheme}
+          theme={theme}
         />
         
           </>

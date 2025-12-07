@@ -1,4 +1,6 @@
-import { prisma } from './src/lib/prisma.js';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 async function checkReusableTokens() {
   console.log('🔍 Revisando tokens reusables existentes...\n');

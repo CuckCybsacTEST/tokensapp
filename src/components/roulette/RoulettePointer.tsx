@@ -1,23 +1,29 @@
 import React from 'react';
 import { usePointerOffset } from './usePointerOffset';
+import { ThemeName } from '@/lib/themes/types';
+import { useRouletteTheme } from '@/lib/themes/useRouletteTheme';
 
 interface RoulettePointerProps {
   spinning?: boolean;
   scale?: number; // escala relativa a 500px
   /** Override directo (en px negativos). Si se provee, no se usa el hook. */
   pointerOffset?: number;
-  theme?: string;
+  theme?: ThemeName;
 }
 
-const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, scale = 1, pointerOffset, theme = '' }) => {
+const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, scale = 1, pointerOffset, theme: propTheme }) => {
+  // Usar el hook de tema para obtener la configuración
+  const { theme: contextTheme, config } = useRouletteTheme();
+  const theme = propTheme || contextTheme;
+  const themeConfig = config;
+
   const baseWidth = 60;
   const baseHeight = 70;
   const w = baseWidth * scale;
   const h = baseHeight * scale;
-  const normalizedTheme = theme.trim().toLowerCase();
-  const isChristmasTheme = normalizedTheme === 'christmas' || normalizedTheme === 'navidad';
   const dynamicOffset = usePointerOffset(scale);
-  const topOffset = (pointerOffset !== undefined ? pointerOffset : dynamicOffset) + (isChristmasTheme ? 20 : 0);
+  const topOffset = (pointerOffset !== undefined ? pointerOffset : dynamicOffset) + (themeConfig.roulette.pointer.offset || 0);
+
   return (
     <svg
       width={w}
@@ -25,16 +31,16 @@ const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, sca
       viewBox={`0 0 60 70`}
       style={{
         position: 'absolute',
-  top: `${topOffset}px`, // controlar vía hook/override
+        top: `${topOffset}px`, // controlar vía hook/override
         left: '50%',
-  transform: 'translateX(-50%)',
-  zIndex: 1000, // asegurar que quede por encima de glow/overlay
-        filter: spinning 
-          ? 'drop-shadow(0 0 8px rgba(255,215,0,0.8))' 
+        transform: 'translateX(-50%)',
+        zIndex: 1000, // asegurar que quede por encima de glow/overlay
+        filter: spinning
+          ? 'drop-shadow(0 0 8px rgba(255,215,0,0.8))'
           : 'drop-shadow(2px 2px 5px rgba(0,0,0,0.5))'
       }}
     >
-      {isChristmasTheme ? (
+      {theme === 'christmas' ? (
         <>
           <defs>
             <linearGradient id="pointerStar" x1="0.5" y1="0" x2="0.5" y2="1">
