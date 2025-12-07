@@ -114,6 +114,7 @@ export default function InlineAutoBatchPanel({ prizes }: Props) {
       const res = await fetch("/api/batch/generate-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(bodyPayload),
       });
       const ct = res.headers.get("Content-Type") || "";
