@@ -40,13 +40,13 @@ const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, sca
           : 'drop-shadow(2px 2px 5px rgba(0,0,0,0.5))'
       }}
     >
-      {theme === 'christmas' ? (
+      {themeConfig?.roulette?.pointer?.type === 'star' ? (
         <>
           <defs>
             <linearGradient id="pointerStar" x1="0.5" y1="0" x2="0.5" y2="1">
-              <stop offset="0%" stopColor="#FDF5A5" />
-              <stop offset="50%" stopColor="#F5C542" />
-              <stop offset="100%" stopColor="#C88F0A" />
+              <stop offset="0%" stopColor={themeConfig?.roulette?.pointer?.starColors?.[0] || "#FDF5A5"} />
+              <stop offset="50%" stopColor={themeConfig?.roulette?.pointer?.starColors?.[1] || "#F5C542"} />
+              <stop offset="100%" stopColor={themeConfig?.roulette?.pointer?.starColors?.[2] || "#C88F0A"} />
             </linearGradient>
             <filter id="pointerStarGlow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="2.5" result="glow" />
@@ -59,7 +59,7 @@ const RoulettePointer: React.FC<RoulettePointerProps> = ({ spinning = false, sca
           <path
             d="M30 6 L35.8 23.4 L54 23.4 L39 34.6 L44.6 52 L30 41.2 L15.4 52 L21 34.6 L6 23.4 L24.2 23.4 Z"
             fill="url(#pointerStar)"
-            stroke="#8C5C00"
+            stroke={themeConfig?.roulette?.pointer?.starStroke || "#8C5C00"}
             strokeWidth="1.6"
             filter={spinning ? "url(#pointerStarGlow)" : "none"}
           />

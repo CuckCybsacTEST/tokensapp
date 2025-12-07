@@ -109,7 +109,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
         cy={center}
         r={frameInnerRadius}
         fill="transparent"
-        stroke={theme === 'christmas' ? '#FDEAB4' : '#FFF2AE'}
+        stroke={themeConfig?.roulette?.frame?.innerBorderColor || '#FFF2AE'}
         strokeWidth={2}
       />
 
@@ -118,7 +118,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
         cy={center}
         r={frameInnerRadius + 2}
         fill="transparent"
-        stroke={theme === 'christmas' ? '#27613C' : '#4A3000'}
+        stroke={themeConfig?.roulette?.frame?.outerBorderColor || '#4A3000'}
         strokeWidth={3.8}
       />
 
@@ -136,7 +136,7 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={theme === 'christmas' ? '#1F4330' : '#4A3000'}
+            stroke={themeConfig?.roulette?.frame?.markLinesColor || '#4A3000'}
             strokeWidth={2}
             opacity={0.6}
           />
@@ -144,7 +144,9 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
       })}
 
       {lights.map((light, index) => {
-        const lightFill = theme === 'christmas' ? (index % 2 === 0 ? '#C51732' : '#1E6138') : undefined;
+        const lightFill = themeConfig?.roulette?.frame?.lightColors
+          ? themeConfig.roulette.frame.lightColors[index % 2]
+          : undefined;
         return (
           <circle
             key={`frame-light-${index}`}

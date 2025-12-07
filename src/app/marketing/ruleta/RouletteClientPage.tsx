@@ -18,23 +18,10 @@ const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowM
   <CanvasConfetti active={active && !lowMotion} lowMotion={lowMotion} colors={colors} />
 );
 
-// Función para obtener colores variados para los segmentos de la ruleta
-function getSegmentColor(index: number): string {
-  const colors = [
-    "#FF8A00", // Naranja
-    "#FF5252", // Rojo
-    "#E040FB", // Morado
-    "#7C4DFF", // Índigo
-    "#448AFF", // Azul
-    "#18FFFF", // Cyan
-    "#B2FF59", // Verde lima
-    "#EEFF41", // Amarillo claro
-    "#FFC400", // Ámbar
-    "#FF6D00", // Naranja oscuro
-  ];
-
-  return colors[index % colors.length];
-}
+// Función helper para obtener clases CSS del tema
+const getThemeClass = (themeConfig: any) => {
+  return themeConfig?.global?.layout?.themeClass || "";
+};
 
 interface TokenShape {
   id: string;
@@ -316,7 +303,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
           if (data.elements && Array.isArray(data.elements)) {
             const rouletteElements = data.elements.map((e: any, index: number) => ({
               label: e.label,
-              color: e.color || getSegmentColor(index),
+              color: e.color || (themeConfig?.roulette?.segments?.palette?.[index % (themeConfig?.roulette?.segments?.palette?.length || 8)] || '#CCCCCC'),
               prizeId: e.prizeId,
               key: e.key,
             }));
@@ -539,7 +526,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     "relative",
     "w-full",
     retryOverlayOpen ? "pointer-events-none" : "",
-    theme === 'christmas' ? "pt-16 sm:pt-0" : "",
+    themeConfig?.global?.layout?.containerClass || "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -557,7 +544,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   if (loading && !suppressLoader && !retryOverlayOpen) {
     return (
       <div
-        className={`fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}
+        className={`fixed inset-0 z-[100] overflow-hidden flex items-center justify-center roulette-loading-overlay touch-none ${getThemeClass(themeConfig)}`}
         style={{ overscrollBehavior: "contain" }}
       >
         <div className="relative z-[1]">
@@ -614,7 +601,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
   if (phase === "DELIVERED" || token?.redeemedAt || token?.deliveredAt) {
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${getThemeClass(themeConfig)}`}>
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
           <p className="text-green-300 text-lg font-semibold">¡Premio ya canjeado!</p>
           <p className="mt-2 text-white/70">
@@ -645,7 +632,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       }
     } catch {}
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${getThemeClass(themeConfig)}`}>
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
           <p className="text-amber-300 text-lg font-semibold">Token no disponible</p>
           <p className="mt-2 text-white/70">
@@ -665,7 +652,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
   if (allowRestrictedScreens && new Date(token?.expiresAt || 0) < new Date()) {
     return (
-      <div className={`text-center py-16 max-w-md mx-auto ${theme === 'christmas' ? "roulette-theme--christmas" : ""}`}>
+      <div className={`text-center py-16 max-w-md mx-auto ${getThemeClass(themeConfig)}`}>
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
           <p className="text-amber-300 text-lg font-semibold">Token expirado</p>
           <p className="mt-2 text-white/70">Este token ha expirado y ya no puede ser utilizado.</p>
@@ -705,11 +692,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       <Confetti
         active={showConfetti}
         lowMotion={lowMotion}
-        colors={
-          theme === 'christmas'
-            ? ["#ff1c1c", "#ffb347", "#ffd700", "#2ecc71", "#34c759", "#ffffff"]
-            : undefined
-        }
+        colors={themeConfig?.global?.background?.confettiColors}
       />
 
       {/* Estado: Token reservado (bi-token) */}

@@ -21,6 +21,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         innerGlow: ['#FFFFE0', '#F0B825'],
         texturePattern: '#B47C00',
         borderGlow: '#FFF2AE',
+        innerBorderColor: '#FFF2AE',
+        outerBorderColor: '#4A3000',
+        markLinesColor: '#4A3000',
       },
       segments: {
         palette: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'],
@@ -80,6 +83,10 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         innerGlow: ['#FFF7D6', '#E9B949'],
         texturePattern: '#9A7024',
         borderGlow: '#FDEAB4',
+        innerBorderColor: '#FDEAB4',
+        outerBorderColor: '#27613C',
+        markLinesColor: '#1F4330',
+        lightColors: ['#C51732', '#1E6138'],
       },
       segments: {
         palette: ['#B8002D', '#155734', '#E7B10A', '#0B3D20'],
@@ -89,6 +96,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
       pointer: {
         offset: 20,
         color: '#E7B10A',
+        type: 'star',
+        starColors: ['#FDF5A5', '#F5C542', '#C88F0A'],
+        starStroke: '#8C5C00',
       },
       spinButton: {
         glossyStart: '#FFFFFF',
@@ -118,6 +128,7 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
           colors: ['rgba(255, 255, 255, 0.7)', 'rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.55)', 'rgba(255, 255, 255, 0.65)'],
           sizes: ['2px 2px', '1.5px 1.5px', '1.2px 1.2px', '1.8px 1.8px'],
         },
+        confettiColors: ['#ff1c1c', '#ffb347', '#ffd700', '#2ecc71', '#34c759', '#ffffff'],
       },
       text: {
         primary: '#F7FAFC',
@@ -128,6 +139,8 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
           container: 'px-0 pt-0 pb-0',
           viewport: 'rouletteViewportChristmas',
         },
+        containerClass: 'pt-16 sm:pt-0',
+        themeClass: 'roulette-theme--christmas',
       },
     },
   },
@@ -150,6 +163,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         innerGlow: ['#FFB366', '#FF6B35'],
         texturePattern: '#F7931E',
         borderGlow: '#FF8C42',
+        innerBorderColor: '#FF8C42',
+        outerBorderColor: '#4A3000',
+        markLinesColor: '#4A3000',
       },
       segments: {
         palette: ['#FF6B35', '#F7931E', '#2D1B69', '#8B5CF6', '#F59E0B', '#EF4444'],
@@ -216,6 +232,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         innerGlow: ['#A5F3FC', '#06B6D4'],
         texturePattern: '#10B981',
         borderGlow: '#7DD3FC',
+        innerBorderColor: '#7DD3FC',
+        outerBorderColor: '#4A3000',
+        markLinesColor: '#4A3000',
       },
       segments: {
         palette: ['#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'],
@@ -271,4 +290,40 @@ export const getThemeConfig = (themeName: ThemeName): ThemeConfig => {
 
 export const getAvailableThemes = (): ThemeConfig[] => {
   return Object.values(themeRegistry);
+};
+
+// Funciones para gestión dinámica de temas
+export const updateThemeConfig = (themeName: ThemeName, newConfig: Partial<ThemeConfig>): boolean => {
+  if (!themeRegistry[themeName]) {
+    return false;
+  }
+
+  themeRegistry[themeName] = {
+    ...themeRegistry[themeName],
+    ...newConfig,
+  };
+
+  return true;
+};
+
+export const createTheme = (themeName: ThemeName, config: ThemeConfig): boolean => {
+  if (themeRegistry[themeName]) {
+    return false; // Tema ya existe
+  }
+
+  themeRegistry[themeName] = config;
+  return true;
+};
+
+export const deleteTheme = (themeName: ThemeName): boolean => {
+  if (!themeRegistry[themeName] || themeName === 'default') {
+    return false; // No existe o es el tema por defecto
+  }
+
+  delete themeRegistry[themeName];
+  return true;
+};
+
+export const getAvailableThemeNames = (): ThemeName[] => {
+  return Object.keys(themeRegistry) as ThemeName[];
 };

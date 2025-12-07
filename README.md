@@ -6,6 +6,38 @@ Aplicación Next.js para generación de tokens con premios preasignados, QRs y c
 
 > Rebrand: el proyecto antes referenciado como "QR Prizes" / "QR Platform" ahora se denomina **Go Lounge!**. Cualquier referencia antigua en logs o eventos se mantiene para trazabilidad histórica.
 
+## 🎨 Sistema de Temas de Ruleta
+
+**Sistema escalable y dinámico para personalización visual de la ruleta de tokens.**
+
+### Características
+- 🎯 **Temas Dinámicos**: Cambia apariencia completa vía URL (`?theme=christmas`)
+- 🎨 **Configuración Centralizada**: Todos los colores y estilos en un solo lugar
+- 🔧 **Panel de Administración**: Interfaz web para gestionar temas
+- 📱 **API REST**: Endpoints para CRUD de temas
+- 🛡️ **Type-Safe**: Completamente tipado con TypeScript
+- 🔄 **Backward Compatible**: Funciona sin cambios en código existente
+
+### Temas Incluidos
+- **Default**: Tema clásico dorado
+- **Christmas**: Colores navideños rojos/verde
+- **Halloween**: Tonos púrpura/naranja de Halloween
+- **Summer**: Colores vibrantes de verano
+
+### Acceso Rápido
+- **Panel Admin**: `http://localhost:3000/admin/themes`
+- **API Endpoints**: `/api/admin/themes`
+- **Documentación**: [`docs/theme-system-developer-guide.md`](./docs/theme-system-developer-guide.md)
+
+### Ejemplos de Uso
+```bash
+# Tema navideño
+http://localhost:3000/marketing/ruleta?tokenId=abc123&theme=christmas
+
+# Tema de Halloween
+http://localhost:3000/marketing/ruleta?tokenId=abc123&theme=halloween
+```
+
 ## 🍽️ Sistema de Menú Digital
 
 **¡NUEVO!** Sistema completo de menú digital para restaurante con comunicación en tiempo real.
