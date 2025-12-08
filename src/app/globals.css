@@ -320,11 +320,11 @@ body {
 }
 
 @keyframes rouletteSnowfall {
-  from {
-    transform: translateY(-8%);
+  0% {
+    transform: translateY(0);
   }
-  to {
-    transform: translateY(12%);
+  100% {
+    transform: translateY(400px); /* Match background-size for seamless loop */
   }
 }
 
@@ -351,15 +351,46 @@ html[data-roulette-theme="christmas"] body::before {
 html[data-roulette-theme="christmas"] body::after {
   content: "";
   position: fixed;
-  inset: 0;
+  top: -100%;
+  left: -50%;
+  right: -50%;
+  bottom: -100%;
   background-image:
-    radial-gradient(2px 2px at 10% 20%, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1.5px 1.5px at 30% 40%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.2px 1.2px at 70% 10%, rgba(255, 255, 255, 0.55), transparent),
-    radial-gradient(1.8px 1.8px at 90% 60%, rgba(255, 255, 255, 0.65), transparent);
-  background-size: 160px 160px;
-  opacity: 0.35;
-  animation: rouletteSnowfall 22s linear infinite;
+    /* Layer 1: Small flakes (dense) */
+    radial-gradient(2px 2px at 2% 10%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 12% 5%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 22% 15%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 32% 7%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 42% 12%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 52% 4%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 62% 14%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 72% 6%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 82% 11%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 92% 3%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 98% 13%, rgba(255, 255, 255, 0.9), transparent),
+    
+    /* Layer 2: Medium flakes (scattered) */
+    radial-gradient(3px 3px at 5% 40%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 15% 65%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(3px 3px at 25% 35%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 35% 70%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(3px 3px at 45% 45%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 55% 75%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(3px 3px at 65% 30%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 75% 60%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(3px 3px at 85% 40%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(3px 3px at 95% 80%, rgba(255, 255, 255, 0.6), transparent),
+
+    /* Layer 3: Large flakes (sparse) */
+    radial-gradient(4px 4px at 8% 25%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(4px 4px at 28% 85%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(4px 4px at 48% 55%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(4px 4px at 68% 20%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(4px 4px at 88% 90%, rgba(255, 255, 255, 0.8), transparent);
+    
+  background-size: 400px 400px;
+  opacity: 0.75;
+  animation: rouletteSnowfall 10s linear infinite;
   pointer-events: none;
   z-index: -1;
 }

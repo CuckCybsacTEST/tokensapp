@@ -13,7 +13,6 @@ import CanvasConfetti from "@/components/visual/CanvasConfetti";
 import { ThemeName } from "@/lib/themes/types";
 import { useRouletteTheme } from "@/lib/themes/useRouletteTheme";
 import { useRouletteSounds } from "@/hooks/useRouletteSounds";
-import SoundTest from "@/components/roulette/SoundTest";
 
 // Confetti ahora usando canvas para menos costo en DOM
 const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowMotion?: boolean; colors?: string[] }) => (
@@ -180,15 +179,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       return;
     }
     if (token.revealedAt && phase === "READY") {
-      console.log(`🔍 [Roulette] Token ya revelado detectado:`, {
-        tokenId: token.id,
-        revealedAt: token.revealedAt,
-        prize: token.prize?.key,
-        phase,
-        elementsCount: elements.length,
-        isRetryTransition,
-        functionalTokenId
-      });
       // Derivar prizeIndex del premio original.
       if (elements.length) {
         const idx = elements.findIndex((e) => e.prizeId === token.prize.id);
@@ -341,7 +331,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase("SPINNING");
     perfMark("spin_start");
-    console.log('🎰 VISUAL: Spin started');
 
     // Reproducir sonidos con un ligero retraso para sincronizar con el inicio visual (que espera al fetch)
     // Este delay simula la inercia mecánica y cubre el tiempo de respuesta del servidor
@@ -366,7 +355,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       setPrizeIndex(winIndex);
       // Si el backend indica RETRY, guardamos nextTokenId para transición suave
       if (data?.action === 'RETRY' && data?.nextTokenId) {
-        console.log(`🎯 [Roulette] Retry detectado, nextTokenId: ${data.nextTokenId}`);
         setNextTokenId(data.nextTokenId);
         setFunctionalTokenId(data.nextTokenId); // El token funcional es el nextTokenId
       } else {
@@ -418,11 +406,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
   // Callback cuando el token funcional está listo
   const handleFunctionalTokenReady = () => {
-    console.log(`🚀 [Roulette] Token funcional listo, iniciando transición automática:`, {
-      functionalTokenId,
-      nextTokenId,
-      isRetryTransition
-    });
 
     // Cleanup agresivo antes de la transición
     setToken(null); // Forzar recarga completa de token
@@ -435,7 +418,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     setTimeout(() => {
       try {
         const newUrl = `/marketing/ruleta?tokenId=${encodeURIComponent(functionalTokenId!)}`;
-        console.log(`🔗 [Roulette] Redirigiendo a: ${newUrl}`);
         window.history.replaceState(null, "", newUrl);
       } catch (error) {
         console.error(`❌ [Roulette] Error en redirección:`, error);
@@ -453,7 +435,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     }, 500); // Pequeño delay para que el usuario vea que está listo
   };
   const handleSpinEnd = (prize: RouletteElement) => {
-    console.log('🎰 VISUAL: Spin ended');
     perfMark("spin_end");
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
@@ -464,7 +445,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
     // Si hay RETRY, mostramos overlay con polling para esperar token funcional
     if (nextTokenId) {
-      console.log(`🎯 [Roulette] Iniciando overlay de retry para token funcional: ${nextTokenId}`);
       // Cancelar cualquier timeout de modal anterior
       if (prizeModalTimeoutRef.current) {
         clearTimeout(prizeModalTimeoutRef.current);
@@ -524,7 +504,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   // Cleanup de sonidos al desmontar
   useEffect(() => {
     return () => {
-      console.log('🧹 RouletteClientPage unmounting - cleaning up sounds');
       sounds.cleanup();
     };
   }, [sounds]);
@@ -679,9 +658,9 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       {!retryOverlayOpen && !shouldShowReservedPanel && (
         <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
           <RouletteHeading
-            kicker="BIENVENIDO"
+            kicker="BIENVENIDO A KTDRAL LOUNGE"
             title="Ruleta Token Show"
-            subtitle="Gira la ruleta y prueba tu suerte"
+            subtitle="Gírala y prueba tu suerte"
             onHeight={(h) => setRouletteHeadingHeight(h)}
           />
         </div>
@@ -976,9 +955,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
       {/* Modal específico para lose/piña */}
       {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key === 'lose' && !isRetryTransition && !functionalTokenId && <LoseModal open={true} />}
-
-      {/* Componente de prueba de sonidos (solo en desarrollo) */}
-      {process.env.NODE_ENV === 'development' && <SoundTest />}
     </div>
   );
 }

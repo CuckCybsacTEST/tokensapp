@@ -31,14 +31,11 @@ export const useRouletteSounds = (): RouletteSounds => {
 
   // Inicializar solo la activación automática (AudioContext se crea lazy)
   useEffect(() => {
-    console.log('🎵 Inicializando sistema de sonidos procedurales');
-
     // Listener para cerrar AudioContext cuando la página se descargue
     const handleBeforeUnload = () => {
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
         audioContextRef.current = null;
-        console.log('🎵 AudioContext closed on page unload');
       }
     };
 
@@ -53,11 +50,8 @@ export const useRouletteSounds = (): RouletteSounds => {
 
   // Función para asegurar que el AudioContext esté activo (lazy initialization)
   const ensureAudioContext = useCallback(async () => {
-    console.log('🔊 Ensuring AudioContext is active...');
-
     // Si ya está inicializado y funcionando, retornar temprano
     if (audioContextRef.current && audioContextRef.current.state === 'running') {
-      console.log('✅ AudioContext already active');
       return true;
     }
 
@@ -65,7 +59,6 @@ export const useRouletteSounds = (): RouletteSounds => {
     if (!audioContextRef.current) {
       try {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        console.log('🎵 AudioContext created, state:', audioContextRef.current.state);
         isInitializedRef.current = true;
       } catch (e) {
         console.warn('❌ Web Audio API not supported');
@@ -74,14 +67,11 @@ export const useRouletteSounds = (): RouletteSounds => {
     }
 
     const ctx = audioContextRef.current;
-    console.log('🎵 AudioContext state before resume:', ctx.state);
 
     // Intentar resumir si está suspendido
     if (ctx.state === 'suspended') {
-      console.log('🎵 Resuming AudioContext...');
       try {
         await ctx.resume();
-        console.log('✅ AudioContext resumed, new state:', ctx.state);
       } catch (e) {
         console.warn('❌ Failed to resume AudioContext:', e);
         return false;
@@ -89,17 +79,13 @@ export const useRouletteSounds = (): RouletteSounds => {
     }
 
     const isActive = ctx.state === 'running';
-    console.log('🎵 AudioContext active:', isActive);
     return isActive;
   }, []);
 
   // Función para activar AudioContext con interacción del usuario
   const activateAudioContext = useCallback(async () => {
-    console.log('🎵 Activating AudioContext on user interaction');
     const success = await ensureAudioContext();
-    if (success) {
-      console.log('✅ AudioContext activated successfully');
-    } else {
+    if (!success) {
       console.warn('❌ Failed to activate AudioContext');
     }
   }, [ensureAudioContext]);
@@ -140,11 +126,8 @@ export const useRouletteSounds = (): RouletteSounds => {
     // Asegurar que el AudioContext esté activo
     const isActive = await ensureAudioContext();
     if (!isActive || !audioContextRef.current) {
-      console.warn(`AudioContext not available for procedural sound (attempt ${retryCount + 1})`);
-
       // Intentar activar automáticamente y reintentar
       if (retryCount === 0) {
-        console.log('🔄 Attempting automatic AudioContext activation...');
         await activateAudioContext();
         return createProceduralSound(type, duration, retryCount + 1);
       }
@@ -233,22 +216,14 @@ export const useRouletteSounds = (): RouletteSounds => {
   const isLoopingRef = useRef<boolean>(false);
 
   const playSpinStart = useCallback(async () => {
-    console.log('🎵 Playing spin start sound');
     try {
-      const sound = await createProceduralSound('spinStart');
-      if (sound) {
-        console.log('✅ Spin start sound played successfully');
-      } else {
-        console.warn('⚠️ Spin start sound could not be created');
-      }
+      await createProceduralSound('spinStart');
     } catch (e) {
       console.warn('❌ Error playing spin start sound:', e);
     }
   }, [createProceduralSound]);
 
   const stopSpinLoop = useCallback(async () => {
-    console.log('🎵 Stopping spin loop sound - isLooping:', isLoopingRef.current);
-
     isLoopingRef.current = false;
 
     if (loopTimeoutRef.current) {
@@ -293,19 +268,15 @@ export const useRouletteSounds = (): RouletteSounds => {
       } catch (e) {}
       loopHumRef.current = null;
     }
-
-    console.log('🎵 Spin loop stopped successfully');
   }, []);
 
   const playSpinLoop = useCallback(async (options?: SpinLoopOptions) => {
-    console.log('🎵 Playing spin loop sound');
     try {
       // Detener loop anterior si existe
       await stopSpinLoop();
 
       const ctxReady = await ensureAudioContext();
       if (!ctxReady || !audioContextRef.current) {
-        console.warn('⚠️ AudioContext not ready for spin loop');
         return;
       }
 
@@ -374,13 +345,11 @@ export const useRouletteSounds = (): RouletteSounds => {
   }, [createProceduralSound, ensureAudioContext, stopSpinLoop]);
 
   const playSpinStop = useCallback(async () => {
-    console.log('🎵 Playing spin stop sound');
     try {
       await stopSpinLoop();
       // Pequeño delay antes del sonido de parada
       setTimeout(async () => {
         await createProceduralSound('spinStop');
-        console.log('✅ Spin stop sound played');
       }, 50);
     } catch (e) {
       console.warn('❌ Error playing spin stop sound:', e);
@@ -388,28 +357,23 @@ export const useRouletteSounds = (): RouletteSounds => {
   }, [createProceduralSound, stopSpinLoop]);
 
   const playWin = useCallback(async () => {
-    console.log('🎵 Playing win sound');
     try {
       // Solo sonido procedural (sin archivos de audio)
       await createProceduralSound('win');
-      console.log('✅ Win procedural sound played');
     } catch (e) {
       console.warn('❌ Error playing win sound:', e);
     }
   }, [createProceduralSound]);
 
   const playLose = useCallback(async () => {
-    console.log('🎵 Playing lose sound');
     try {
       await createProceduralSound('lose');
-      console.log('✅ Lose sound played');
     } catch (e) {
       console.warn('❌ Error playing lose sound:', e);
     }
   }, [createProceduralSound]);
 
   const cleanup = useCallback(async () => {
-    console.log('🧹 Cleanup triggered (component unmount or dependency change)');
     try {
       await stopSpinLoop();
 
@@ -426,7 +390,6 @@ export const useRouletteSounds = (): RouletteSounds => {
         if (document.visibilityState === 'hidden' || document.hidden) {
           audioContextRef.current.close();
           audioContextRef.current = null;
-          console.log('🎵 AudioContext closed due to page unload');
         }
       }
     } catch (e) {
