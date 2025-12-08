@@ -12,6 +12,8 @@ import { perfMark, perfMeasure, perfSummarize, perfCheckBudget } from "@/lib/per
 import CanvasConfetti from "@/components/visual/CanvasConfetti";
 import { ThemeName } from "@/lib/themes/types";
 import { useRouletteTheme } from "@/lib/themes/useRouletteTheme";
+import { useRouletteSounds } from "@/hooks/useRouletteSounds";
+import SoundTest from "@/components/roulette/SoundTest";
 
 // Confetti ahora usando canvas para menos costo en DOM
 const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowMotion?: boolean; colors?: string[] }) => (
@@ -52,6 +54,10 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   const { theme: contextTheme, config } = useRouletteTheme();
   const theme = propTheme || contextTheme;
   const themeConfig = config;
+
+  // Inicializar sonidos de la ruleta
+  const sounds = useRouletteSounds();
+
   // Mark initial mount
   useEffect(() => {
     perfMark("page_mount");
@@ -86,7 +92,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   // Bandera para auto-spin en retry, para suprimir errores
   const [isAutoSpin, setIsAutoSpin] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const winAudioRef = useRef<HTMLAudioElement | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
   const [rouletteHeadingHeight, setRouletteHeadingHeight] = useState(0);
   // Contador de giros (offset base 420). Se obtiene de métricas del periodo "today".
@@ -154,26 +159,6 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     return () => {
       abort = true;
     };
-  }, []);
-
-  // Inicializar audio al montar para reducir delay en giro
-  useEffect(() => {
-    if (!winAudioRef.current) {
-      const a = new Audio("/win-sound.mp3");
-      a.volume = 0.5;
-      winAudioRef.current = a;
-      // Intentar primar (algunos navegadores requieren gesto; si falla, se ignora)
-      a.muted = true;
-      a.play()
-        .then(() => {
-          a.pause();
-          a.currentTime = 0;
-          a.muted = false;
-        })
-        .catch(() => {
-          a.muted = false;
-        });
-    }
   }, []);
 
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
@@ -356,6 +341,12 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase("SPINNING");
     perfMark("spin_start");
+
+    // Reproducir sonidos de inicio del giro
+    sounds.playSpinStart();
+    const expectedSpinDuration = lowMotion ? 3500 : 6000;
+    void sounds.playSpinLoop({ expectedDurationMs: expectedSpinDuration });
+
     // Audio ya inicializado en useEffect
     try {
   const response = await fetch(`/api/token/${activeTokenId}/reveal`, { method: "POST" });
@@ -461,6 +452,10 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
     perfCheckBudget("spin_duration", lowMotion ? 3600 : 6200, "spin");
+
+    // Detener sonidos de giro y reproducir sonido de parada (sincronizado internamente)
+    void sounds.playSpinStop();
+
     // Si hay RETRY, mostramos overlay con polling para esperar token funcional
     if (nextTokenId) {
       console.log(`🎯 [Roulette] Iniciando overlay de retry para token funcional: ${nextTokenId}`);
@@ -489,23 +484,12 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     // Incrementar contador local tras completar un giro exitoso
     setSpinCounter((c) => (c == null ? SPIN_BASE_OFFSET + 1 : c + 1));
 
-    // Limpiamos cualquier timeout anterior
-    if (prizeModalTimeoutRef.current) {
-      clearTimeout(prizeModalTimeoutRef.current);
+    // Reproducir sonido de victoria o derrota según el premio
+    if (prize.key === 'lose') {
+      sounds.playLose();
+    } else {
+      sounds.playWin();
     }
-
-    // Temporizador para detener el confetti después de unos segundos
-    setTimeout(() => {
-      setShowConfetti(false);
-    }, 5000); // Detiene el confetti después de 5 segundos
-
-    // Reproducir efecto de sonido (ya inicializado)
-    try {
-      if (winAudioRef.current) {
-        winAudioRef.current.currentTime = 0;
-        winAudioRef.current.play().catch(() => {});
-      }
-    } catch {}
 
     // Delay antes de mostrar el modal para que el usuario vea el premio en la ruleta
     setTimeout(() => {
@@ -530,6 +514,13 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   ]
     .filter(Boolean)
     .join(" ");
+
+  // Cleanup de sonidos al desmontar
+  useEffect(() => {
+    return () => {
+      sounds.cleanup();
+    };
+  }, [sounds]);
 
   if (retryOverlayOpen) {
     return (
@@ -851,8 +842,8 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
               exit={{ y: 30, opacity: 0, scale: 0.9, transition: { duration: 0.4 } }}
               className="relative z-10 rounded-xl p-6 sm:p-8 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
               style={{
-                background: "linear-gradient(180deg, #0E0606, #07070C)",
-                boxShadow: "0 12px 32px -10px rgba(255,77,46,0.6)",
+                background: themeConfig?.global?.modal?.background || "linear-gradient(180deg, #0E0606, #07070C)",
+                boxShadow: themeConfig?.global?.modal?.boxShadow || "0 12px 32px -10px rgba(255,77,46,0.6)",
               }}
             >
               <motion.div
@@ -911,7 +902,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
                   >
                     ¡Bien hecho!
                   </motion.h2>
-                  <motion.div className="w-16 h-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] mx-auto rounded-full" />
+                  <motion.div className={`w-16 h-1 mx-auto rounded-full ${themeConfig?.global?.modal?.accentGradient || 'bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C]'}`} />
                 </motion.div>
 
                 <motion.div
@@ -929,7 +920,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
                     Has desbloqueado:
                   </motion.p>
                   <motion.p
-                    className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] my-2 px-2 sm:px-4 break-words"
+                    className={`text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text my-2 px-2 sm:px-4 break-words ${themeConfig?.global?.modal?.accentGradient || 'bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C]'}`}
                     animate={{
                       backgroundPosition: ["0% center", "100% center", "0% center"],
                     }}
@@ -978,6 +969,9 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
 
       {/* Modal específico para lose/piña */}
       {prizeWon && phase === "REVEALED_MODAL" && prizeWon.key === 'lose' && !isRetryTransition && !functionalTokenId && <LoseModal open={true} />}
+
+      {/* Componente de prueba de sonidos (solo en desarrollo) */}
+      {process.env.NODE_ENV === 'development' && <SoundTest />}
     </div>
   );
 }

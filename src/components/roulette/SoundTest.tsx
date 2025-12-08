@@ -32,7 +32,7 @@ export default function SoundTest() {
           🔄 Spin Loop
         </button>
         <button
-          onClick={() => sounds.stopSpinLoop()}
+          onClick={() => void sounds.stopSpinLoop({ force: true })}
           className="block w-full bg-red-600 hover:bg-red-700 px-3 py-2 rounded text-sm"
         >
           ⏹️ Stop Loop
