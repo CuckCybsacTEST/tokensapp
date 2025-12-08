@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 
 type SpinLoopOptions = {
   expectedDurationMs?: number;
@@ -8,21 +8,21 @@ type StopLoopOptions = {
   force?: boolean;
 };
 
-const DEFAULT_SPIN_LOOP_DURATION_MS = 6000;
-const SPIN_LOOP_BUFFER_MS = 120;
+const DEFAULT_SPIN_LOOP_DURATION_MS = 15000; // Safety timeout only
+const SPIN_LOOP_BUFFER_MS = 0; // No longer needed as we rely on explicit stop
 
 export interface RouletteSounds {
   playSpinStart: () => Promise<void>;
   playSpinLoop: (options?: SpinLoopOptions) => Promise<void>;
-  stopSpinLoop: (options?: StopLoopOptions) => Promise<void>;
+  stopSpinLoop: () => Promise<void>;
   playSpinStop: () => Promise<void>;
   playWin: () => Promise<void>;
   playLose: () => Promise<void>;
   cleanup: () => Promise<void>;
 }
 
-const SPIN_LOOP_TICK_DURATION = 0.18; // segundos que dura cada golpe de bola
-const SPIN_LOOP_INTERVAL_MS = 160; // separación entre golpes para sonido clásico
+const SPIN_LOOP_TICK_DURATION = 0.05; // Short click
+const SPIN_LOOP_INTERVAL_MS = 130; // Faster rhythm for classic feel
 
 export const useRouletteSounds = (): RouletteSounds => {
   // AudioContext para sonidos procedurales
@@ -171,14 +171,14 @@ export const useRouletteSounds = (): RouletteSounds => {
         break;
 
       case 'spinLoop':
-        // Sonido percutivo que simula la bola golpeando casillas
-        oscillator.type = 'triangle';
-        oscillator.frequency.setValueAtTime(1600, ctx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + SPIN_LOOP_TICK_DURATION);
-        gainNode.gain.cancelScheduledValues(ctx.currentTime);
-        gainNode.gain.setValueAtTime(0.001, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + SPIN_LOOP_TICK_DURATION);
+        // Sonido clásico: Click corto y seco (tipo bola golpeando metal)
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + SPIN_LOOP_TICK_DURATION);
+        
+        gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + SPIN_LOOP_TICK_DURATION);
+        
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + SPIN_LOOP_TICK_DURATION);
         return { oscillator, gainNode };
@@ -229,9 +229,7 @@ export const useRouletteSounds = (): RouletteSounds => {
   const activeLoopsRef = useRef<Array<{ oscillator: OscillatorNode; gainNode: GainNode }>>([]);
   const loopHumRef = useRef<{ oscillator: OscillatorNode; gainNode: GainNode } | null>(null);
   const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const loopStopDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const loopMinEndTimeRef = useRef<number>(0);
-  const loopStopResolversRef = useRef<Array<() => void>>([]);
+  const safetyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoopingRef = useRef<boolean>(false);
 
   const playSpinStart = useCallback(async () => {
@@ -248,96 +246,62 @@ export const useRouletteSounds = (): RouletteSounds => {
     }
   }, [createProceduralSound]);
 
-  const stopSpinLoop = useCallback(async ({ force = false }: StopLoopOptions = {}) => {
-    const remaining = Math.max(0, Math.round(loopMinEndTimeRef.current - performance.now()));
-    console.log('🎵 Stopping spin loop sound - isLooping:', isLoopingRef.current, 'hasTimeout:', !!loopTimeoutRef.current, 'activeSounds:', activeLoopsRef.current.length, 'remainingSyncMs:', remaining);
+  const stopSpinLoop = useCallback(async () => {
+    console.log('🎵 Stopping spin loop sound - isLooping:', isLoopingRef.current);
 
-    const finalizeStop = () => {
-      try {
-        isLoopingRef.current = false;
+    isLoopingRef.current = false;
 
-        if (loopTimeoutRef.current) {
-          clearTimeout(loopTimeoutRef.current);
-          loopTimeoutRef.current = null;
-          console.log('✅ Loop timeout cancelled');
-        }
-
-        if (loopStopDelayRef.current) {
-          clearTimeout(loopStopDelayRef.current);
-          loopStopDelayRef.current = null;
-        }
-
-        const ctx = audioContextRef.current;
-
-        activeLoopsRef.current.forEach(({ oscillator, gainNode }) => {
-          try {
-            if (ctx) {
-              gainNode.gain.cancelScheduledValues(ctx.currentTime);
-              gainNode.gain.setValueAtTime(Math.max(gainNode.gain.value, 0.0001), ctx.currentTime);
-              gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.05);
-              oscillator.stop(ctx.currentTime + 0.06);
-            } else {
-              oscillator.stop();
-            }
-            console.log('✅ Active loop sound stopped');
-          } catch (e) {
-            // Ya detenido
-          }
-        });
-        activeLoopsRef.current = [];
-
-        if (loopHumRef.current) {
-          const { oscillator, gainNode } = loopHumRef.current;
-          if (ctx) {
-            gainNode.gain.cancelScheduledValues(ctx.currentTime);
-            gainNode.gain.setValueAtTime(Math.max(gainNode.gain.value, 0.0001), ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.2);
-            try {
-              oscillator.stop(ctx.currentTime + 0.22);
-            } catch {
-              /* noop */
-            }
-          } else {
-            try {
-              oscillator.stop();
-            } catch {
-              /* noop */
-            }
-          }
-          loopHumRef.current = null;
-        }
-
-        loopMinEndTimeRef.current = 0;
-        const pendingResolvers = [...loopStopResolversRef.current];
-        loopStopResolversRef.current = [];
-        pendingResolvers.forEach((resolve) => resolve());
-        console.log('🎵 Spin loop stopped successfully');
-      } catch (e) {
-        console.warn('❌ Error stopping spin loop sound:', e);
-      }
-    };
-
-    if (!force && remaining > 5) {
-      return new Promise<void>((resolve) => {
-        loopStopResolversRef.current.push(resolve);
-        if (!loopStopDelayRef.current) {
-          loopStopDelayRef.current = setTimeout(() => {
-            loopStopDelayRef.current = null;
-            finalizeStop();
-          }, remaining);
-        }
-      });
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current);
+      loopTimeoutRef.current = null;
     }
 
-    finalizeStop();
-    return Promise.resolve();
+    if (safetyTimeoutRef.current) {
+      clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = null;
+    }
+
+    const ctx = audioContextRef.current;
+
+    // Detener todos los sonidos activos inmediatamente
+    activeLoopsRef.current.forEach(({ oscillator, gainNode }) => {
+      try {
+        if (ctx) {
+          gainNode.gain.cancelScheduledValues(ctx.currentTime);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
+          oscillator.stop(ctx.currentTime + 0.05);
+        } else {
+          oscillator.stop();
+        }
+      } catch (e) {
+        // Ya detenido
+      }
+    });
+    activeLoopsRef.current = [];
+
+    if (loopHumRef.current) {
+      const { oscillator, gainNode } = loopHumRef.current;
+      try {
+        if (ctx) {
+          gainNode.gain.cancelScheduledValues(ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+          oscillator.stop(ctx.currentTime + 0.1);
+        } else {
+          oscillator.stop();
+        }
+      } catch (e) {}
+      loopHumRef.current = null;
+    }
+
+    console.log('🎵 Spin loop stopped successfully');
   }, []);
 
   const playSpinLoop = useCallback(async (options?: SpinLoopOptions) => {
     console.log('🎵 Playing spin loop sound');
     try {
       // Detener loop anterior si existe
-      await stopSpinLoop({ force: true });
+      await stopSpinLoop();
 
       const ctxReady = await ensureAudioContext();
       if (!ctxReady || !audioContextRef.current) {
@@ -348,42 +312,56 @@ export const useRouletteSounds = (): RouletteSounds => {
       const ctx = audioContextRef.current;
       // Iniciar nuevo loop
       isLoopingRef.current = true;
+      const startTime = performance.now();
+      const duration = options?.expectedDurationMs || 6000;
 
-      const expectedDuration = (options?.expectedDurationMs ?? DEFAULT_SPIN_LOOP_DURATION_MS) + SPIN_LOOP_BUFFER_MS;
-      loopMinEndTimeRef.current = performance.now() + expectedDuration;
+      // Safety timeout para evitar loops infinitos si algo falla
+      safetyTimeoutRef.current = setTimeout(() => {
+        if (isLoopingRef.current) {
+          console.warn('⚠️ Spin loop safety timeout reached');
+          stopSpinLoop();
+        }
+      }, 15000); // 15s safety
 
+      // Sonido de fondo (hum)
       if (!loopHumRef.current) {
         const humOsc = ctx.createOscillator();
         humOsc.type = 'sawtooth';
-        humOsc.frequency.setValueAtTime(80, ctx.currentTime);
-        humOsc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 2);
+        humOsc.frequency.setValueAtTime(60, ctx.currentTime); // Más grave
         const humGain = ctx.createGain();
-        humGain.gain.setValueAtTime(0.015, ctx.currentTime);
-        humGain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 1);
+        humGain.gain.setValueAtTime(0.01, ctx.currentTime);
         humOsc.connect(humGain);
         humGain.connect(ctx.destination);
         humOsc.start(ctx.currentTime);
         loopHumRef.current = { oscillator: humOsc, gainNode: humGain };
       }
 
-      const startLoopIteration = async () => {
+      const startLoopIteration = () => {
         if (!isLoopingRef.current) return;
 
-        const loopSound = await createProceduralSound('spinLoop');
-        if (loopSound && isLoopingRef.current) {
-          const handle = loopSound;
-          activeLoopsRef.current.push(handle);
-          handle.oscillator.onended = () => {
-            activeLoopsRef.current = activeLoopsRef.current.filter((active) => active !== handle);
-          };
-          console.log('✅ Spin loop iteration created');
+        // Calcular intervalo dinámico basado en el progreso
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Curva de desaceleración: comienza rápido (50ms) y termina lento (400ms)
+        // Usamos una curva cúbica para que la desaceleración se sienta más al final
+        const minInterval = 50;
+        const maxInterval = 400;
+        const currentInterval = minInterval + (maxInterval - minInterval) * Math.pow(progress, 3);
 
-          // Programar siguiente iteración
-          loopTimeoutRef.current = setTimeout(startLoopIteration, SPIN_LOOP_INTERVAL_MS);
-        } else if (!loopSound) {
-          console.warn('⚠️ Could not create loop iteration, stopping loop');
-          isLoopingRef.current = false;
-        }
+        // No usamos await aquí para evitar drift acumulativo
+        createProceduralSound('spinLoop').then(loopSound => {
+          if (loopSound && isLoopingRef.current) {
+            const handle = loopSound;
+            activeLoopsRef.current.push(handle);
+            handle.oscillator.onended = () => {
+              activeLoopsRef.current = activeLoopsRef.current.filter((active) => active !== handle);
+            };
+          }
+        });
+
+        // Programar siguiente iteración con el intervalo calculado
+        loopTimeoutRef.current = setTimeout(startLoopIteration, currentInterval);
       };
 
       // Iniciar primera iteración
@@ -431,8 +409,9 @@ export const useRouletteSounds = (): RouletteSounds => {
   }, [createProceduralSound]);
 
   const cleanup = useCallback(async () => {
+    console.log('🧹 Cleanup triggered (component unmount or dependency change)');
     try {
-      await stopSpinLoop({ force: true });
+      await stopSpinLoop();
 
       // Limpiar referencias de loop
       isLoopingRef.current = false;
@@ -455,7 +434,7 @@ export const useRouletteSounds = (): RouletteSounds => {
     }
   }, [stopSpinLoop]);
 
-  return {
+  return useMemo(() => ({
     playSpinStart,
     playSpinLoop,
     stopSpinLoop,
@@ -463,5 +442,5 @@ export const useRouletteSounds = (): RouletteSounds => {
     playWin,
     playLose,
     cleanup
-  };
+  }), [playSpinStart, playSpinLoop, stopSpinLoop, playSpinStop, playWin, playLose, cleanup]);
 };

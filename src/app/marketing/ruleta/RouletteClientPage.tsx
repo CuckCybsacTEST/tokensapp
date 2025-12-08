@@ -341,11 +341,16 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     if (token?.revealedAt || token?.redeemedAt || token?.deliveredAt) return;
     setPhase("SPINNING");
     perfMark("spin_start");
+    console.log('🎰 VISUAL: Spin started');
 
-    // Reproducir sonidos de inicio del giro
-    sounds.playSpinStart();
-    const expectedSpinDuration = lowMotion ? 3500 : 6000;
-    void sounds.playSpinLoop({ expectedDurationMs: expectedSpinDuration });
+    // Reproducir sonidos con un ligero retraso para sincronizar con el inicio visual (que espera al fetch)
+    // Este delay simula la inercia mecánica y cubre el tiempo de respuesta del servidor
+    setTimeout(() => {
+      sounds.playSpinStart();
+      // Iniciar loop infinito con desaceleración basada en la duración visual
+      const spinDuration = lowMotion ? 3500 : 6000;
+      void sounds.playSpinLoop({ expectedDurationMs: spinDuration });
+    }, 300);
 
     // Audio ya inicializado en useEffect
     try {
@@ -448,6 +453,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
     }, 500); // Pequeño delay para que el usuario vea que está listo
   };
   const handleSpinEnd = (prize: RouletteElement) => {
+    console.log('🎰 VISUAL: Spin ended');
     perfMark("spin_end");
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
@@ -518,6 +524,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   // Cleanup de sonidos al desmontar
   useEffect(() => {
     return () => {
+      console.log('🧹 RouletteClientPage unmounting - cleaning up sounds');
       sounds.cleanup();
     };
   }, [sounds]);
