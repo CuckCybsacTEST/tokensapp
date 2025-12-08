@@ -56,6 +56,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         primary: '#F8FAFC',
         secondary: '#CBD5E1',
       },
+      buttons: {
+        primary: 'bg-gradient-to-r from-[#F0B825] to-[#B47C00] hover:from-[#D4A020] hover:to-[#9A6600] text-white',
+      },
       layout: {
         paddingAdjustments: {
           container: '',
@@ -134,6 +137,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         primary: '#F7FAFC',
         secondary: '#CBD5E1',
       },
+      buttons: {
+        primary: 'bg-gradient-to-r from-[#B8002D] to-[#155734] hover:from-[#A00028] hover:to-[#0F4229] text-white',
+      },
       layout: {
         paddingAdjustments: {
           container: 'px-0 pt-0 pb-0',
@@ -205,6 +211,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
         primary: '#F8FAFC',
         secondary: '#CBD5E1',
       },
+      buttons: {
+        primary: 'bg-gradient-to-r from-[#B8002D] to-[#155734] hover:from-[#A00028] hover:to-[#0F4229] text-white',
+      },
       layout: {
         paddingAdjustments: {
           container: '',
@@ -273,6 +282,9 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
       text: {
         primary: '#F8FAFC',
         secondary: '#CBD5E1',
+      },
+      buttons: {
+        primary: 'bg-gradient-to-r from-[#06B6D4] to-[#10B981] hover:from-[#0891B2] hover:to-[#059669] text-white',
       },
       layout: {
         paddingAdjustments: {

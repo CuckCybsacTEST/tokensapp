@@ -182,6 +182,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/prizes`, label: "Premios", icon: ICONS.starSmall },
           { href: `${pathPrefix}/roulettebatches`, label: "Lotes", icon: ICONS.box },
           { href: `${pathPrefix}/printroulette`, label: "Imprimir Pulseras", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/themes`, label: "Temas", icon: ICONS.starSmall },
           { href: `${pathPrefix}/roulettebatches/purge`, label: "Purge", icon: ICONS.check }
         ] : [
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart }

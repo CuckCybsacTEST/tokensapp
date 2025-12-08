@@ -959,7 +959,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 }}
-                  className="px-6 sm:px-10 py-3 sm:py-4 rounded-full bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] hover:from-[#ff5e44] hover:to-[#ff8a54] text-white font-bold transition-all shadow-lg hover:shadow-xl text-base sm:text-lg"
+                  className={`px-6 sm:px-10 py-3 sm:py-4 rounded-full font-bold transition-all shadow-lg hover:shadow-xl text-base sm:text-lg ${themeConfig?.global?.buttons?.primary || 'bg-gradient-to-r from-[#FF4D2E] to-[#FF7A3C] hover:from-[#ff5e44] hover:to-[#ff8a54] text-white'}`}
                   onClick={() => {
                     setPhase("REVEALED_PANEL");
                     setShowConfetti(false);

@@ -63,6 +63,10 @@ export interface GlobalThemeConfig {
     primary: string;
     secondary: string;
   };
+  buttons?: {
+    primary: string; // Clases CSS para botones primarios
+    secondary?: string; // Clases CSS para botones secundarios
+  };
   layout: {
     paddingAdjustments: {
       container: string;
