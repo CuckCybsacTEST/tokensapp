@@ -59,6 +59,11 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
       buttons: {
         primary: 'bg-gradient-to-r from-[#F0B825] to-[#B47C00] hover:from-[#D4A020] hover:to-[#9A6600] text-white',
       },
+      modal: {
+        background: 'linear-gradient(180deg, #0E0606, #07070C)',
+        boxShadow: '0 12px 32px -10px rgba(240, 184, 37, 0.6)',
+        accentGradient: 'bg-gradient-to-r from-[#F0B825] to-[#B47C00]',
+      },
       layout: {
         paddingAdjustments: {
           container: '',
@@ -139,6 +144,11 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
       },
       buttons: {
         primary: 'bg-gradient-to-r from-[#B8002D] to-[#155734] hover:from-[#A00028] hover:to-[#0F4229] text-white',
+      },
+      modal: {
+        background: 'linear-gradient(180deg, #0E0606, #07070C)',
+        boxShadow: '0 12px 32px -10px rgba(184, 0, 45, 0.6)',
+        accentGradient: 'bg-gradient-to-r from-[#B8002D] to-[#155734]',
       },
       layout: {
         paddingAdjustments: {
@@ -285,6 +295,11 @@ export const themeRegistry: Record<ThemeName, ThemeConfig> = {
       },
       buttons: {
         primary: 'bg-gradient-to-r from-[#06B6D4] to-[#10B981] hover:from-[#0891B2] hover:to-[#059669] text-white',
+      },
+      modal: {
+        background: 'linear-gradient(180deg, #0E0606, #07070C)',
+        boxShadow: '0 12px 32px -10px rgba(6, 182, 212, 0.6)',
+        accentGradient: 'bg-gradient-to-r from-[#06B6D4] to-[#10B981]',
       },
       layout: {
         paddingAdjustments: {

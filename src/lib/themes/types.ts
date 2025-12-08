@@ -67,6 +67,11 @@ export interface GlobalThemeConfig {
     primary: string; // Clases CSS para botones primarios
     secondary?: string; // Clases CSS para botones secundarios
   };
+  modal?: {
+    background: string; // Gradiente de fondo del modal
+    boxShadow: string; // Color de la sombra del modal
+    accentGradient: string; // Gradiente para elementos decorativos
+  };
   layout: {
     paddingAdjustments: {
       container: string;
