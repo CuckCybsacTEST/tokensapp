@@ -11,12 +11,11 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
       return NextResponse.json({ error: 'tokenId requerido' }, { status: 400 });
     }
 
-    // Get token with batch and prize info
-    const token = await prisma.token.findUnique({
+    // Get token with prize info (ReusableToken table)
+    const token = await prisma.reusableToken.findUnique({
       where: { id: tokenId },
       include: {
-        prize: { select: { key: true, label: true, color: true } },
-        batch: { select: { id: true, description: true, isReusable: true } }
+        prize: { select: { key: true, label: true, color: true } }
       }
     });
 
@@ -24,16 +23,15 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
       return NextResponse.json({ error: 'Token no encontrado' }, { status: 404 });
     }
 
-    // Check if it's a reusable token
-    if (!token.batch.isReusable) {
-      return NextResponse.json({ error: 'Este token no es reutilizable' }, { status: 404 });
-    }
-
-    // Return token data
+    // Return token data (adapt to expected format)
     const tokenData = {
       id: token.id,
       prize: token.prize,
-      batch: token.batch,
+      batch: {
+        id: `batch_${token.id}`, // Mock batch ID for compatibility
+        description: token.deliveryNote || `Token individual - ${token.prize.label}`,
+        isReusable: true
+      },
       expiresAt: token.expiresAt.toISOString(),
       maxUses: token.maxUses,
       usedCount: token.usedCount,

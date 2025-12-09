@@ -247,7 +247,22 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
     );
   }
 
-  const isExpired = new Date(tokenData.expiresAt) <= new Date();
+  // Check if token is expired (either by date or time window)
+  const now = DateTime.now().setZone('America/Lima');
+  const expiryDate = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
+  const isExpiredByDate = expiryDate <= now;
+
+  // Check time window if specified
+  let isOutsideTimeWindow = false;
+  if (tokenData.startTime && tokenData.endTime) {
+    // @ts-ignore - hour property exists in Luxon DateTime
+    const currentHour = now.hour;
+    const startHour = parseInt(tokenData.startTime.split(':')[0]);
+    const endHour = parseInt(tokenData.endTime.split(':')[0]);
+    isOutsideTimeWindow = currentHour < startHour || currentHour >= endHour;
+  }
+
+  const isExpired = isExpiredByDate || isOutsideTimeWindow;
   const isDisabled = tokenData.disabled;
   const maxUses = tokenData.maxUses || 1;
   const canRedeem = !isExpired && !isDisabled && tokenData.usedCount < maxUses;
@@ -434,6 +449,14 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
 
             {/* Expiration countdown - shows when < 24 hours remain */}
             <ExpirationCountdown expiresAt={tokenData.expiresAt} />
+
+            {/* Time window info */}
+            {tokenData.startTime && tokenData.endTime && (
+                <div className="flex items-center gap-2 text-xs text-blue-400/80 bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">
+                    <span>🕐</span>
+                    <span>Válido: {tokenData.startTime.slice(0, 5)} - {tokenData.endTime.slice(0, 5)} (Lima)</span>
+                </div>
+            )}
 
             {/* Fallback expiration display */}
             <div className="flex items-center gap-2 text-xs text-yellow-400/80 bg-yellow-400/10 px-3 py-1.5 rounded-full border border-yellow-400/20">

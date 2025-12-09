@@ -7,25 +7,47 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
   try {
     const tokenId = params.tokenId;
 
-    // Verify token exists and is reusable
-    const token = await prisma.token.findUnique({
-      where: { id: tokenId },
-      include: {
-        batch: { select: { isReusable: true } }
+    // Check if it's a reusable token (starts with 'rt_')
+    let qrUrl: string;
+    if (tokenId.startsWith('rt_')) {
+      // It's a reusable token - check ReusableToken table
+      const reusableToken = await prisma.reusableToken.findUnique({
+        where: { id: tokenId },
+        select: { id: true }
+      });
+
+      if (!reusableToken) {
+        return NextResponse.json({ error: 'Token not found' }, { status: 404 });
       }
-    });
 
-    if (!token || !token.batch.isReusable) {
-      return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+      // Get the base URL from the request headers
+      const headersList = headers();
+      const host = headersList.get('host') || 'localhost:3000';
+      const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      const baseUrl = `${protocol}://${host}`;
+
+      qrUrl = `${baseUrl}/reusable/${tokenId}`;
+    } else {
+      // It's a regular token - check Token table
+      const token = await prisma.token.findUnique({
+        where: { id: tokenId },
+        include: {
+          batch: { select: { isReusable: true } }
+        }
+      });
+
+      if (!token || !token.batch?.isReusable) {
+        return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+      }
+
+      // Get the base URL from the request headers
+      const headersList = headers();
+      const host = headersList.get('host') || 'localhost:3000';
+      const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      const baseUrl = `${protocol}://${host}`;
+
+      qrUrl = `${baseUrl}/reusable/${tokenId}`;
     }
-
-    // Get the base URL from the request headers
-    const headersList = headers();
-    const host = headersList.get('host') || 'localhost:3000';
-    const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-    const baseUrl = `${protocol}://${host}`;
-
-    const qrUrl = `${baseUrl}/reusable/${tokenId}`;
     const qrDataUrl = await generateQrPngDataUrl(qrUrl);
 
     // Convert data URL to buffer

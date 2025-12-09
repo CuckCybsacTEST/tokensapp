@@ -24,6 +24,48 @@ model Prize {
   tokens         Token[]
 }
 
+model ReusablePrize {
+  id             String    @id @default(cuid())
+  key            String    @unique
+  label          String
+  color          String?
+  description    String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tokens         ReusableToken[]
+
+  @@index([key])
+}
+
+model ReusableToken {
+  id                String    @id @default(cuid())
+  prizeId           String
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  redeemedAt        DateTime?
+  signature         String
+  signatureVersion  Int       @default(1)
+  disabled          Boolean   @default(false)
+  deliveredAt       DateTime?
+  deliveredByUserId String?
+  deliveryNote      String?
+  // Reusable token specific fields
+  maxUses           Int       @default(1)
+  usedCount         Int       @default(0)
+  // Time window validation (optional - if set, token is only valid during these hours)
+  startTime         DateTime? // Start of daily validity window (e.g., 18:00)
+  endTime           DateTime? // End of daily validity window (e.g., 24:00)
+  prize             ReusablePrize @relation(fields: [prizeId], references: [id])
+
+  @@index([prizeId])
+  @@index([expiresAt])
+  @@index([redeemedAt])
+  @@index([deliveredAt])
+  @@index([startTime])
+  @@index([endTime])
+}
+
 model Batch {
   id               String            @id @default(cuid())
   description      String?

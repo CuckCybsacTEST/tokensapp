@@ -12,18 +12,9 @@ export async function GET(req: NextRequest) {
       return apiError('UNAUTHORIZED', auth.error || 'No autorizado');
     }
 
-    const prizes = await prisma.prize.findMany({
-      where: { isReusable: true },
-      select: {
-        id: true,
-        key: true,
-        label: true,
-        color: true,
-        stock: true,
-        active: true,
-        emittedTotal: true
-      },
-      orderBy: { label: 'asc' }
+    const prizes = await prisma.reusablePrize.findMany({
+      where: { active: true },
+      orderBy: { createdAt: 'desc' }
     });
 
     return NextResponse.json(prizes);
@@ -42,38 +33,28 @@ export async function POST(req: NextRequest) {
       return apiError('UNAUTHORIZED', auth.error || 'No autorizado');
     }
 
-    const { label, color, stock } = await req.json();
+    const body = await req.json();
+    const { label, key, color, description } = body;
 
-    if (!label || label.trim().length === 0) {
-      return apiError('INVALID_INPUT', 'Label requerido');
+    if (!label?.trim() || !key?.trim()) {
+      return NextResponse.json({ error: 'Label y key son requeridos' }, { status: 400 });
     }
 
-    // Generate unique key
-    const baseKey = label.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
-    let key = baseKey;
-    let counter = 1;
-    while (await prisma.prize.findUnique({ where: { key } })) {
-      key = `${baseKey}${counter}`;
-      counter++;
+    // Check if key already exists
+    const existing = await prisma.reusablePrize.findUnique({
+      where: { key: key.trim() }
+    });
+
+    if (existing) {
+      return NextResponse.json({ error: 'Ya existe un premio con esa key' }, { status: 400 });
     }
 
-    const prize = await prisma.prize.create({
+    const prize = await prisma.reusablePrize.create({
       data: {
-        key,
         label: label.trim(),
+        key: key.trim(),
         color: color || null,
-        stock: stock ? parseInt(stock) : null,
-        isReusable: true,
-        active: true
-      },
-      select: {
-        id: true,
-        key: true,
-        label: true,
-        color: true,
-        stock: true,
-        active: true,
-        emittedTotal: true
+        description: description?.trim() || null
       }
     });
 

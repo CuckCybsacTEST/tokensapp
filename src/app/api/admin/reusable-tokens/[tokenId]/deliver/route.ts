@@ -26,20 +26,15 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
     }
 
     // Verificar que el token existe y es reutilizable
-    const token = await prisma.token.findUnique({
+    const token = await prisma.reusableToken.findUnique({
       where: { id: tokenId },
       include: {
-        batch: { select: { isReusable: true } },
         prize: { select: { key: true, label: true } }
       }
     });
 
     if (!token) {
       return apiError('TOKEN_NOT_FOUND', 'Token no encontrado', undefined, 404);
-    }
-
-    if (!token.batch?.isReusable) {
-      return apiError('NOT_REUSABLE_TOKEN', 'Este token no es reutilizable', undefined, 400);
     }
 
     // Verificar que no esté ya entregado
@@ -49,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
 
     // Marcar como entregado
     const deliveredAt = new Date();
-    await prisma.token.update({
+    await prisma.reusableToken.update({
       where: { id: tokenId },
       data: {
         deliveredAt,
