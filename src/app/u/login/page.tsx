@@ -148,6 +148,15 @@ function LoginClient() {
           </button>
         </div>
       </form>
+
+      <div className="text-center">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          ¿No tienes cuenta?{" "}
+          <a href="/u/register" className="text-[var(--color-accent)] hover:underline font-medium">
+            Crear cuenta
+          </a>
+        </p>
+      </div>
     </main>
   );
 }

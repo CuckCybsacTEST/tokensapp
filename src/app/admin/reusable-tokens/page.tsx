@@ -37,6 +37,7 @@ export default function ReusableTokensAdmin() {
     color: '',
     description: ''
   });
+  const [editingPrize, setEditingPrize] = useState<ReusablePrize | null>(null);
   const [individualForm, setIndividualForm] = useState({
     prizeId: '',
     maxUses: 1,
@@ -103,6 +104,73 @@ export default function ReusableTokensAdmin() {
       const error = await res.json();
       alert(error.error || 'Error creando premio');
     }
+  };
+
+  const editPrize = (prize: ReusablePrize) => {
+    setEditingPrize(prize);
+    setPrizeForm({
+      label: prize.label,
+      key: prize.key,
+      color: prize.color || '',
+      description: prize.description || ''
+    });
+  };
+
+  const updatePrize = async () => {
+    if (!editingPrize) return;
+    if (!prizeForm.label.trim() || !prizeForm.key.trim()) {
+      alert('Label y key son requeridos');
+      return;
+    }
+
+    const body = {
+      label: prizeForm.label.trim(),
+      key: prizeForm.key.trim(),
+      color: prizeForm.color || null,
+      description: prizeForm.description?.trim() || null
+    };
+
+    const res = await fetch(`/api/admin/reusable-prizes/${editingPrize.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      alert('Premio actualizado exitosamente');
+      setEditingPrize(null);
+      setPrizeForm({ label: '', key: '', color: '', description: '' });
+      fetchPrizes();
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Error actualizando premio');
+    }
+  };
+
+  const deletePrize = async (prizeId: string) => {
+    const prize = prizes.find(p => p.id === prizeId);
+    if (!prize) return;
+
+    if (!confirm(`¿Eliminar el premio "${prize.label}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    const res = await fetch(`/api/admin/reusable-prizes/${prizeId}`, {
+      method: 'DELETE'
+    });
+
+    if (res.ok) {
+      alert('Premio eliminado exitosamente');
+      fetchPrizes();
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Error eliminando premio');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingPrize(null);
+    setPrizeForm({ label: '', key: '', color: '', description: '' });
   };
 
   const generateIndividualToken = async () => {
@@ -209,12 +277,29 @@ export default function ReusableTokensAdmin() {
               />
             </div>
             <div className="flex items-end">
-              <button
-                onClick={savePrize}
-                className="btn w-full bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Crear Premio
-              </button>
+              {editingPrize ? (
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={updatePrize}
+                    className="btn flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Actualizar Premio
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="btn flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={savePrize}
+                  className="btn w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Crear Premio
+                </button>
+              )}
             </div>
           </div>
 
@@ -238,12 +323,30 @@ export default function ReusableTokensAdmin() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {prizes.map(prize => (
                   <div key={prize.id} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: prize.color || '#666' }}
-                      />
-                      <div className="font-medium text-slate-900 dark:text-slate-100">{prize.label}</div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: prize.color || '#666' }}
+                        />
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{prize.label}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => editPrize(prize)}
+                          className="btn-sm bg-blue-600 hover:bg-blue-700 text-white"
+                          title="Editar premio"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deletePrize(prize.id)}
+                          className="btn-sm bg-red-600 hover:bg-red-700 text-white"
+                          title="Eliminar premio"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
                       Key: <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{prize.key}</code>
@@ -251,6 +354,11 @@ export default function ReusableTokensAdmin() {
                     {prize.description && (
                       <div className="text-sm text-slate-600 dark:text-slate-400">{prize.description}</div>
                     )}
+                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      Estado: <span className={`font-medium ${prize.active ? 'text-green-600' : 'text-red-600'}`}>
+                        {prize.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>

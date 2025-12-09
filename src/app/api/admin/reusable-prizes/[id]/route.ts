@@ -14,9 +14,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const id = params.id;
 
-    const { label, color, stock, active } = await req.json();
+    const { label, key, color, description } = await req.json();
 
-    const existing = await prisma.prize.findUnique({ where: { id } });
+    const existing = await prisma.reusablePrize.findUnique({ where: { id } });
     if (!existing) {
       return apiError('NOT_FOUND', 'Premio no encontrado');
     }
@@ -28,11 +28,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
       updateData.label = label.trim();
     }
+    if (key !== undefined) {
+      if (!key || key.trim().length === 0) {
+        return apiError('INVALID_INPUT', 'Key requerido');
+      }
+      // Check if key already exists (excluding current prize)
+      const keyExists = await prisma.reusablePrize.findFirst({
+        where: { key: key.trim(), id: { not: id } }
+      });
+      if (keyExists) {
+        return apiError('CONFLICT', 'Ya existe un premio con esa key');
+      }
+      updateData.key = key.trim();
+    }
     if (color !== undefined) updateData.color = color || null;
-    if (stock !== undefined) updateData.stock = stock ? parseInt(stock) : null;
-    if (active !== undefined) updateData.active = Boolean(active);
+    if (description !== undefined) updateData.description = description?.trim() || null;
 
-    const prize = await prisma.prize.update({
+    const prize = await prisma.reusablePrize.update({
       where: { id },
       data: updateData,
       select: {
@@ -40,9 +52,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         key: true,
         label: true,
         color: true,
-        stock: true,
+        description: true,
         active: true,
-        emittedTotal: true
+        createdAt: true
       }
     });
 
@@ -68,20 +80,20 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const id = params.id;
 
     // Check if prize exists
-    const existing = await prisma.prize.findUnique({ where: { id } });
+    const existing = await prisma.reusablePrize.findUnique({ where: { id } });
     if (!existing) {
       return apiError('NOT_FOUND', 'Premio no encontrado');
     }
 
     // Check if prize is used in any tokens
-    const tokenCount = await prisma.token.count({
+    const tokenCount = await prisma.reusableToken.count({
       where: { prizeId: id }
     });
     if (tokenCount > 0) {
-      return apiError('CONFLICT', 'No se puede eliminar premio en uso');
+      return apiError('CONFLICT', `No se puede eliminar premio en uso (${tokenCount} tokens asociados)`);
     }
 
-    await prisma.prize.delete({
+    await prisma.reusablePrize.delete({
       where: { id }
     });
 
