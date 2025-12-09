@@ -56,6 +56,16 @@ export default async function UHome() {
     if(last && (last.type === 'IN' || last.type === 'OUT')) lastType = last.type;
   } catch {}
 
+  // Obtener información adicional del usuario
+  let hasDefaultPassword = false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { forcePasswordChange: true, person: { select: { dni: true } } }
+    });
+    hasDefaultPassword = user?.forcePasswordChange || false;
+  } catch {}
+
   return (
     <UHomeContent
       session={session}
@@ -64,6 +74,7 @@ export default async function UHome() {
       lastType={lastType}
       personName={personName}
       commitmentAcceptedVersion={commitmentAcceptedVersion}
+      hasDefaultPassword={hasDefaultPassword}
     />
   );
 }

@@ -73,6 +73,34 @@ function LoginClient() {
         <h1 className="text-2xl font-semibold tracking-tight">Acceso Colaborador</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">Inicia sesión para usar el scanner.</p>
       </div>
+
+      {/* Banner de Reset de Contraseñas */}
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              ⚠️ Contraseñas Reseteadas
+            </h3>
+            <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+              <p className="mb-2">
+                Por motivos de seguridad, todas las contraseñas han sido reseteadas a tu DNI.
+              </p>
+              <p className="mb-2">
+                <strong>Si ya cambiaste tu contraseña anteriormente, puedes ignorar este mensaje.</strong>
+              </p>
+              <p className="text-xs">
+                Si tu contraseña fue reseteada recientemente, el sistema te pedirá cambiarla después de ingresar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <form onSubmit={submit} className="space-y-6 card">
         <div className="card-body space-y-4">
           <div className="form-row">

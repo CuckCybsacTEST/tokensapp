@@ -189,12 +189,19 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       },
       ...(basePath === 'admin' ? [{
-        title: "TOKENS INDIVIDUALES",
+        title: "LOTES INDIVIDUALES",
         icon: ICONS.box,
         items: [
           { href: `${pathPrefix}/prizesstatics`, label: "Premios", icon: ICONS.starSmall },
           { href: `${pathPrefix}/static-batches`, label: "Lotes", icon: ICONS.box },
           { href: `${pathPrefix}/printstatics`, label: "Imprimir Pulseras", icon: ICONS.checkSmall }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "TOKENS REUTILIZABLES",
+        icon: ICONS.qr,
+        items: [
+          { href: `${pathPrefix}/reusable-tokens`, label: "Gestión de Tokens", icon: ICONS.qr }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{

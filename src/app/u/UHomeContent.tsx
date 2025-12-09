@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AutoAttendanceCard from './AutoAttendanceCard';
 import CommitmentModal from './CommitmentModal';
 import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage } from '@tabler/icons-react';
@@ -18,10 +18,28 @@ type PageProps = {
   lastType: 'IN' | 'OUT' | null;
   personName?: string;
   commitmentAcceptedVersion: number;
+  hasDefaultPassword?: boolean;
 };
 
-export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion }: PageProps) {
+export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false }: PageProps) {
   const [activeTab, setActiveTab] = useState<'personal' | 'work'>('personal');
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+
+  // Mostrar modal de reset de contraseña si es necesario
+  useEffect(() => {
+    if (hasDefaultPassword) {
+      // Verificar si ya se mostró el modal en esta sesión
+      const modalShown = sessionStorage.getItem('passwordResetModalShown');
+      if (!modalShown) {
+        setShowPasswordResetModal(true);
+      }
+    }
+  }, [hasDefaultPassword]);
+
+  const handleClosePasswordModal = () => {
+    setShowPasswordResetModal(false);
+    sessionStorage.setItem('passwordResetModalShown', 'true');
+  };
 
   const REQUIRED_COMMITMENT_VERSION = 1;
 
@@ -144,6 +162,55 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           )}
         </div>
       </div>
+      
+      {/* Modal de Reset de Contraseña */}
+      {showPasswordResetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">
+                    ¡Importante! Cambio de Contraseña Requerido
+                  </h3>
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">
+                  Por motivos de seguridad, todas las contraseñas han sido reseteadas a tu DNI. 
+                  Debes crear una nueva contraseña personal para continuar usando la aplicación.
+                </p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-4">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Tu contraseña actual es tu DNI.</strong> Cámbiala inmediatamente por seguridad.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Link
+                  href="/u/change-password"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md text-center transition-colors"
+                  onClick={handleClosePasswordModal}
+                >
+                  Cambiar Contraseña
+                </Link>
+                <button
+                  onClick={handleClosePasswordModal}
+                  className="px-4 py-2 text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 font-medium transition-colors"
+                >
+                  Recordar Después
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <CommitmentModal userId={session.userId} initialAcceptedVersion={commitmentAcceptedVersion} requiredVersion={REQUIRED_COMMITMENT_VERSION} />
     </div>
   );
