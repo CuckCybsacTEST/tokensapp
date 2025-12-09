@@ -83,18 +83,15 @@ function LoginClient() {
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-              ⚠️ Contraseñas Reseteadas
-            </h3>
             <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
-              <p className="mb-2">
-                Por motivos de seguridad, todas las contraseñas han sido reseteadas a tu DNI.
+              <p className="mb-2 font-semibold text-amber-900 dark:text-amber-100">
+                Todas las contraseñas han sido reseteadas al DNI/CE/PASAPORTE del usuario.
               </p>
               <p className="mb-2">
-                <strong>Si ya cambiaste tu contraseña anteriormente, puedes ignorar este mensaje.</strong>
+                <strong>Si tu contraseña fue reseteada recientemente, el sistema te pedirá cambiarla después de ingresar.</strong>
               </p>
               <p className="text-xs">
-                Si tu contraseña fue reseteada recientemente, el sistema te pedirá cambiarla después de ingresar.
+                Si ya cambiaste tu contraseña anteriormente, puedes ignorar este mensaje.
               </p>
             </div>
           </div>
