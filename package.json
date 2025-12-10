@@ -73,6 +73,8 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^0.545.0",
     "luxon": "^3.7.2",
+    "mime-types": "^3.0.2",
+    "multer": "^2.0.2",
     "next": "^14.2.32",
     "node-cron": "^4.2.1",
     "pdf-lib": "^1.17.1",

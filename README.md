@@ -48,6 +48,31 @@ http://localhost:3000/marketing/ruleta?tokenId=abc123&theme=halloween
 - ✅ **Dashboard Staff**: Gestión de pedidos para mozos y caja
 - ✅ **Identificación de Mesa**: QR codes para mesas
 - ✅ **Notificaciones Live**: Actualizaciones instantáneas
+
+## 🎨 Sistema de QR Personalizados
+
+**¡NUEVO!** Sistema avanzado de códigos QR personalizados para experiencias únicas.
+
+### Características Principales
+- ✅ **Generador Público**: `/qr-generator` - Clientes crean QR únicos
+- ✅ **Personalización Visual**: 5 temas predefinidos (Default, Navidad, Halloween, Verano, Cumpleaños)
+- ✅ **Campos Dinámicos**: Nombre, WhatsApp, frase personal, dato adicional
+- ✅ **Validación HMAC**: Seguridad avanzada con firmas digitales
+- ✅ **Lotes Temáticos**: Agrupación por campañas/eventos
+- ✅ **Dashboard Admin**: `/admin/custom-qrs` - Gestión completa
+- ✅ **Estadísticas**: Métricas en tiempo real y export CSV
+- ✅ **Sistema de Impresión**: PDF por lotes con templates reutilizables
+- ✅ **Zona Horaria Lima**: Todo calculado en America/Lima (PET)
+
+### Acceso Rápido
+- **Generador Público**: `http://localhost:3000/qr-generator`
+- **Panel Admin**: `http://localhost:3000/admin/custom-qrs`
+- **Documentación**: [`docs/custom-qr-system.md`](./docs/custom-qr-system.md)
+
+### Flujo Completo
+```mermaid
+Cliente → Generador → QR Personalizado → Redención → Admin Gestiona → Imprime Lotes
+```
 - ✅ **TypeScript**: Completamente tipado y validado
 
 ### Acceso Rápido

@@ -1249,3 +1249,120 @@ model TriviaPrize {
   @@index([validFrom])
   @@index([validUntil])
 }
+
+model CustomQr {
+  id                String    @id @default(cuid())
+  // Datos del cliente
+  customerName      String
+  customerWhatsapp  String
+  customerDni       String?   // DNI del cliente (opcional)
+  customerPhrase    String?   // Frase personalizable
+  customData        String?   // Campo adicional personalizable
+
+  // Personalización visual
+  theme             String    @default("default") // Tema visual del QR
+  qrColor           String?   // Color personalizado del QR
+  backgroundColor   String?   // Color de fondo
+
+  // Nueva funcionalidad de imagen
+  imageUrl          String?   // URL de la imagen optimizada
+  originalImageUrl  String?   // URL de la imagen original (opcional)
+  imageMetadata     String?   // JSON con info de optimización
+
+  // Datos técnicos
+  code              String    @unique // Código único para URL (/qr/[code])
+  signature         String    // HMAC para validación
+  signatureVersion  Int       @default(1)
+
+  // Estado y control
+  isActive          Boolean   @default(true)
+  expiresAt         DateTime? // Fecha de expiración opcional
+  createdAt         DateTime  @default(now())
+  redeemedAt        DateTime?
+  redeemedBy        String?   // ID del admin que lo procesó
+
+  // Control avanzado de expiración
+  expiryPolicy      String?   // Política de expiración aplicada
+  extendedCount     Int       @default(0) // Veces que se extendió
+  lastExtendedAt    DateTime? // Última vez que se extendió
+  revokedAt         DateTime? // Fecha de revocación
+  revokedBy         String?   // Quién revocó
+  revokeReason      String?   // Razón de revocación
+
+  // Lotes temáticos
+  batchId           String?   // Para agrupar en lotes de impresión/campaña
+  campaignName      String?   // Nombre de la campaña/evento
+  batch             CustomQrBatch? @relation(fields: [batchId], references: [id])
+
+  // Metadata
+  metadata          String?   // JSON con datos adicionales
+  ipAddress         String?   // IP del creador para auditoría
+  userAgent         String?   // User agent para auditoría
+
+  @@index([code])
+  @@index([isActive])
+  @@index([batchId])
+  @@index([campaignName])
+  @@index([expiresAt])
+  @@index([createdAt])
+  @@index([expiryPolicy])
+}
+
+model CustomQrBatch {
+  id          String    @id @default(cuid())
+  name        String    // Nombre del lote/campaña
+  description String?
+  theme       String    @default("default") // Tema por defecto del lote
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relaciones
+  qrs         CustomQr[] // QR que pertenecen a este lote
+
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model CustomQrPolicy {
+  id                String   @id @default(cuid())
+  name              String   // Nombre de la política
+  description       String?
+
+  // Configuración de expiración
+  defaultExpiryDays Int?     // Días por defecto para expiración
+  maxExtensions     Int      @default(1) // Máximo número de extensiones
+  extensionDays     Int      @default(30) // Días a extender por vez
+
+  // Configuración de campos
+  allowCustomData   Boolean  @default(true)
+  allowCustomPhrase Boolean  @default(true)
+  allowCustomColors Boolean  @default(true)
+  allowDni          Boolean  @default(false) // Permitir campo DNI
+  requireWhatsapp   Boolean  @default(true)  // WhatsApp obligatorio
+  requireDni        Boolean  @default(false) // DNI obligatorio (solo si allowDni es true)
+  defaultTheme      String   @default("default") // Tema por defecto para QR
+  defaultBatchId    String?  // Lote por defecto para QR generados con esta política
+
+  // Configuración de imágenes
+  allowImageUpload     Boolean  @default(true)
+  maxImageSize         Int      @default(5242880)  // 5MB en bytes
+  allowedImageFormats  String   @default("jpg,jpeg,png,webp")
+  imageQuality         Int      @default(80)      // 80% calidad
+  maxImageWidth        Int      @default(1200)    // Máx 1200px ancho
+  maxImageHeight       Int      @default(1200)    // Máx 1200px alto
+
+  // Límites y restricciones
+  rateLimitPerHour  Int?     // Generaciones por hora por IP
+  maxQrsPerUser     Int?     // Máximo QR por usuario
+  requireApproval   Boolean  @default(false) // Requiere aprobación admin
+
+  // Estado
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false) // Política por defecto
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isDefault])
+}
