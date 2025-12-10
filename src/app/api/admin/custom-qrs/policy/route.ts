@@ -49,7 +49,14 @@ export async function POST(req: Request) {
       requireApproval,
       isDefault,
       isActive,
-      defaultBatchId
+      defaultBatchId,
+      allowImageUpload,
+      maxImageSize,
+      allowedImageFormats,
+      imageQuality,
+      maxImageWidth,
+      maxImageHeight,
+      defaultTheme
     } = await req.json();
 
     if (!name || name.trim().length === 0) {
@@ -100,7 +107,14 @@ export async function POST(req: Request) {
         requireApproval: requireApproval ?? false,
         isDefault: isDefault ?? false,
         isActive: isActive ?? true,
-        defaultBatchId
+        defaultBatchId,
+        allowImageUpload: allowImageUpload ?? true,
+        maxImageSize: maxImageSize || 5242880,
+        allowedImageFormats: allowedImageFormats || 'jpg,jpeg,png,webp',
+        imageQuality: imageQuality || 80,
+        maxImageWidth: maxImageWidth || 1200,
+        maxImageHeight: maxImageHeight || 1200,
+        defaultTheme: defaultTheme || 'default'
       }
     });
 

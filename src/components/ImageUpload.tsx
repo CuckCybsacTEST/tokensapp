@@ -157,13 +157,7 @@ export function ImageUpload({
   };
 
   if (!policy?.allowImageUpload) {
-    return (
-      <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-        <div className="text-center text-gray-500">
-          📷 La subida de imágenes no está disponible según la política actual
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
