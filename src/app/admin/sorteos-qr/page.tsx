@@ -614,11 +614,12 @@ function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
           <div className="flex justify-center">
             <div className="relative w-12 h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
               <img
-                src={qr.imageUrl}
+                src={qr.imageUrl.startsWith('/uploads/') ? qr.imageUrl.replace('/uploads/', '/api/images/') : qr.imageUrl}
                 alt="Imagen subida"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
+                  console.error('Image load error for QR:', qr.id, 'URL:', img.src, 'Original URL:', qr.imageUrl);
                   const container = img.parentElement;
                   if (container) {
                     let errorDiv = container.querySelector('.image-error') as HTMLElement;

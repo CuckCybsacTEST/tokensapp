@@ -28,11 +28,15 @@ export class ImageOptimizer {
   private static readonly TEMP_DIR = path.join(this.UPLOAD_DIR, 'temp');
 
   static async initializeDirectories() {
+    console.log('Initializing directories...');
     const dirs = [this.UPLOAD_DIR, this.ORIGINAL_DIR, this.OPTIMIZED_DIR, this.TEMP_DIR];
+    console.log('Directories to create:', dirs);
     for (const dir of dirs) {
       try {
         await fs.access(dir);
+        console.log(`Directory exists: ${dir}`);
       } catch {
+        console.log(`Creating directory: ${dir}`);
         await fs.mkdir(dir, { recursive: true });
       }
     }
@@ -116,12 +120,22 @@ export class ImageOptimizer {
     type: 'original' | 'optimized' = 'optimized'
   ): Promise<string> {
     const dir = type === 'original' ? this.ORIGINAL_DIR : this.OPTIMIZED_DIR;
-    const filepath = path.join(dir, filename);
+    const filepath = path.resolve(dir, filename);
 
-    await fs.writeFile(filepath, new Uint8Array(buffer));
+    console.log(`Saving image: ${filename} to ${filepath}`);
+    console.log(`Directory: ${dir}`);
+    console.log(`Full path: ${filepath}`);
 
-    // Retornar URL relativa
-    return `/uploads/qr-images/${type}/${filename}`;
+    try {
+      await fs.writeFile(filepath, new Uint8Array(buffer));
+      console.log(`Image saved successfully: ${filepath}`);
+    } catch (error) {
+      console.error(`Error saving image: ${filepath}`, error);
+      throw error;
+    }
+
+    // Retornar URL para el API route
+    return `/api/images/qr-images/${type}/${filename}`;
   }
 
   static async validateImage(buffer: Buffer, policy: any): Promise<{ valid: boolean; error?: string }> {

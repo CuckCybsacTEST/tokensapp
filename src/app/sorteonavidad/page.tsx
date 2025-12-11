@@ -83,11 +83,11 @@ export default function SorteoNavidadPage() {
       // Fallback: política por defecto hardcodeada para el sorteo navideño
       setPolicy({
         allowImageUpload: true,
-        maxImageSize: 5 * 1024 * 1024, // 5MB
+        maxImageSize: 20 * 1024 * 1024, // 20MB para fotos grandes
         allowedImageFormats: 'jpg,jpeg,png,webp',
-        imageQuality: 80,
-        maxImageWidth: 1920,
-        maxImageHeight: 1080,
+        imageQuality: 85,
+        maxImageWidth: 6000,  // Aumentado para fotos de smartphones modernos
+        maxImageHeight: 6000, // Aumentado para fotos de smartphones modernos
         allowCustomPhrase: true,
         allowCustomData: true,
         allowDni: true,
