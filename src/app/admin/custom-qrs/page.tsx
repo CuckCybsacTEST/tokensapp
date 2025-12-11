@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { QR_THEMES } from "@/lib/qr-custom";
+import QRCode from 'qrcode';
 
 interface CustomQr {
   id: string;
@@ -37,6 +38,60 @@ interface Stats {
   redeemedToday: number;
   byTheme: Record<string, number>;
   byCampaign: Record<string, number>;
+}
+
+// Componente para mostrar el QR code
+function QrDisplay({ code, size = 64 }: { code: string; size?: number }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const generateQr = async () => {
+      try {
+        // Generar el redeem URL
+        const redeemUrl = `${window.location.origin}/qr/${code}`;
+        const dataUrl = await QRCode.toDataURL(redeemUrl, {
+          width: size,
+          margin: 1,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrDataUrl(dataUrl);
+      } catch (error) {
+        console.error('Error generating QR:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    generateQr();
+  }, [code, size]);
+
+  if (loading) {
+    return (
+      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center">
+        <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!qrDataUrl) {
+    return (
+      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded flex items-center justify-center text-xs text-slate-400">
+        Error
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={qrDataUrl}
+      alt={`QR Code ${code}`}
+      className="w-16 h-16 rounded border border-slate-200 dark:border-slate-700"
+    />
+  );
 }
 
 export default function CustomQrsAdminPage() {
@@ -219,6 +274,38 @@ export default function CustomQrsAdminPage() {
     return matchesFilter && matchesSearch;
   });
 
+  // Agrupar QR por lote
+  const qrsByBatch = React.useMemo(() => {
+    const grouped: Record<string, CustomQr[]> = {};
+    const withoutBatch: CustomQr[] = [];
+
+    filteredQrs.forEach(qr => {
+      if (qr.batchId) {
+        if (!grouped[qr.batchId]) {
+          grouped[qr.batchId] = [];
+        }
+        grouped[qr.batchId].push(qr);
+      } else {
+        withoutBatch.push(qr);
+      }
+    });
+
+    return { grouped, withoutBatch };
+  }, [filteredQrs]);
+
+  // Estado para controlar qué lotes están expandidos
+  const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
+
+  const toggleBatchExpansion = (batchId: string) => {
+    const newExpanded = new Set(expandedBatches);
+    if (newExpanded.has(batchId)) {
+      newExpanded.delete(batchId);
+    } else {
+      newExpanded.add(batchId);
+    }
+    setExpandedBatches(newExpanded);
+  };
+
   if (loading) {
     return (
       <div className="p-8 text-center">
@@ -233,9 +320,9 @@ export default function CustomQrsAdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">QR Personalizados</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">QR Personalizados por Lotes</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Gestiona códigos QR generados por clientes
+            Gestiona códigos QR organizados por lotes y campañas
           </p>
         </div>
         <div className="flex gap-2">
@@ -344,146 +431,75 @@ export default function CustomQrsAdminPage() {
         </div>
       </div>
 
-      {/* Lista de QR */}
-      <div className="space-y-4">
-        {filteredQrs.map(qr => (
-          <div key={qr.id} className="card">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4 flex-1">
-                <input
-                  type="checkbox"
-                  checked={selectedQrs.has(qr.id)}
-                  onChange={(e) => {
-                    const newSelected = new Set(selectedQrs);
-                    if (e.target.checked) {
-                      newSelected.add(qr.id);
-                    } else {
-                      newSelected.delete(qr.id);
-                    }
-                    setSelectedQrs(newSelected);
-                  }}
-                  className="mt-1"
-                />
-
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{qr.customerName}</span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
-                      {qr.code}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      qr.redeemedAt
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : qr.isActive && (!qr.expiresAt || new Date(qr.expiresAt) > new Date())
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {qr.redeemedAt ? 'Redimido' : qr.isActive && (!qr.expiresAt || new Date(qr.expiresAt) > new Date()) ? 'Activo' : 'Expirado'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-slate-500">
-                    <div>
-                      <span className="font-medium">WhatsApp:</span>
-                      <p>{qr.customerWhatsapp}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium">Tema:</span>
-                      <p className="capitalize">{QR_THEMES[qr.theme as keyof typeof QR_THEMES]?.name || qr.theme}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium">Creado:</span>
-                      <p>{new Date(qr.createdAt).toLocaleDateString('es-PE')}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium">Expira:</span>
-                      <p>{qr.expiresAt ? new Date(qr.expiresAt).toLocaleDateString('es-PE') : 'Nunca'}</p>
-                    </div>
-                  </div>
-
-                  {/* Información adicional */}
-                  <div className="flex flex-wrap gap-4 text-xs text-slate-400">
-                    {qr.extendedCount > 0 && (
-                      <span>🔄 Extendido {qr.extendedCount} vez(es)</span>
-                    )}
-                    {qr.lastExtendedAt && (
-                      <span>📅 Última extensión: {new Date(qr.lastExtendedAt).toLocaleDateString('es-PE')}</span>
-                    )}
-                    {qr.revokedAt && (
-                      <span className="text-red-600">🚫 Revocado: {qr.revokeReason}</span>
-                    )}
-                    {qr.batchId && (
-                      <span>📦 Lote: {batches.find(b => b.id === qr.batchId)?.name || qr.batchId}</span>
-                    )}
-                  </div>
-
-                  {/* Miniatura de imagen */}
-                  {qr.imageUrl && (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Imagen subida:</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-                          <img
-                            src={qr.imageUrl}
-                            alt="Imagen subida"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const img = e.currentTarget;
-                              const errorDiv = img.nextElementSibling as HTMLElement;
-                              if (img && errorDiv) {
-                                img.style.display = 'none';
-                                errorDiv.style.display = 'flex';
-                              }
-                            }}
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 hidden">
-                            <span>⚠️ Error</span>
-                          </div>
-                        </div>
-                        <div className="flex-1 text-xs text-slate-500">
-                          {qr.imageMetadata && (
-                            <div className="space-y-1">
-                              <div>📏 {qr.imageMetadata.width || '?'} × {qr.imageMetadata.height || '?'} px</div>
-                              <div>📁 {(qr.imageMetadata.size / 1024).toFixed(1)} KB</div>
-                              <div>🎨 {qr.imageMetadata.format?.toUpperCase() || 'Desconocido'}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {qr.customerPhrase && (
-                    <div>
-                      <span className="text-sm font-medium text-slate-500">Frase:</span>
-                      <p className="italic">"{qr.customerPhrase}"</p>
-                    </div>
-                  )}
-
-                  {qr.redeemedAt && (
-                    <div className="text-sm text-green-600 dark:text-green-400">
-                      ✅ Redimido el {new Date(qr.redeemedAt).toLocaleString('es-PE')}
-                      {qr.redeemedBy && ` por ${qr.redeemedBy}`}
-                    </div>
-                  )}
+      {/* Lista de Lotes y QR */}
+      <div className="space-y-6">
+        {/* QR sin lote asignado */}
+        {qrsByBatch.withoutBatch.length > 0 && (
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">📄</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">QR Sin Lote Asignado</h3>
+                  <p className="text-sm text-slate-500">{qrsByBatch.withoutBatch.length} QR</p>
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                {!qr.redeemedAt && qr.isActive && (
-                  <button
-                    onClick={() => handleRedeem(qr.id)}
-                    className="btn-secondary text-sm"
-                  >
-                    ✅ Redimir
-                  </button>
-                )}
-              </div>
+              <button
+                onClick={() => toggleBatchExpansion('unassigned')}
+                className="btn-secondary text-sm"
+              >
+                {expandedBatches.has('unassigned') ? '🔽 Ocultar' : '▶️ Mostrar'} {qrsByBatch.withoutBatch.length}
+              </button>
             </div>
+
+            {expandedBatches.has('unassigned') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t pt-4">
+                {qrsByBatch.withoutBatch.map(qr => (
+                  <QrCard key={qr.id} qr={qr} batches={batches} selectedQrs={selectedQrs} setSelectedQrs={setSelectedQrs} onRedeem={handleRedeem} />
+                ))}
+              </div>
+            )}
           </div>
-        ))}
+        )}
+
+        {/* Lotes con QR */}
+        {Object.entries(qrsByBatch.grouped).map(([batchId, batchQrs]) => {
+          const batch = batches.find(b => b.id === batchId);
+          return (
+            <div key={batchId} className="card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                    <span className="text-lg">📦</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{batch?.name || `Lote ${batchId.slice(0, 8)}`}</h3>
+                    <p className="text-sm text-slate-500">
+                      {batchQrs.length} QR
+                      {batch?.description && ` • ${batch.description}`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleBatchExpansion(batchId)}
+                  className="btn-secondary text-sm"
+                >
+                  {expandedBatches.has(batchId) ? '🔽 Ocultar' : '▶️ Mostrar'} {batchQrs.length}
+                </button>
+              </div>
+
+              {expandedBatches.has(batchId) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t pt-4">
+                  {batchQrs.map(qr => (
+                    <QrCard key={qr.id} qr={qr} batches={batches} selectedQrs={selectedQrs} setSelectedQrs={setSelectedQrs} onRedeem={handleRedeem} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {filteredQrs.length === 0 && (
           <div className="text-center py-8 text-slate-500">
@@ -510,6 +526,134 @@ export default function CustomQrsAdminPage() {
           onRefresh={loadData}
         />
       )}
+    </div>
+  );
+}
+
+// Componente para mostrar un QR individual
+function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
+  qr: CustomQr;
+  batches: any[];
+  selectedQrs: Set<string>;
+  setSelectedQrs: (selected: Set<string>) => void;
+  onRedeem: (id: string) => void;
+}) {
+  return (
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 hover:shadow-md transition-shadow">
+      <div className="flex flex-col space-y-3">
+        {/* Header con checkbox y estado */}
+        <div className="flex items-center justify-between">
+          <input
+            type="checkbox"
+            checked={selectedQrs.has(qr.id)}
+            onChange={(e) => {
+              const newSelected = new Set(selectedQrs);
+              if (e.target.checked) {
+                newSelected.add(qr.id);
+              } else {
+                newSelected.delete(qr.id);
+              }
+              setSelectedQrs(newSelected);
+            }}
+            className="rounded"
+          />
+          <span className={`text-xs px-2 py-1 rounded-full ${
+            qr.redeemedAt
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : qr.isActive && (!qr.expiresAt || new Date(qr.expiresAt) > new Date())
+              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+          }`}>
+            {qr.redeemedAt ? 'Redimido' : qr.isActive && (!qr.expiresAt || new Date(qr.expiresAt) > new Date()) ? 'Activo' : 'Expirado'}
+          </span>
+        </div>
+
+        {/* QR Code */}
+        <div className="flex justify-center">
+          <QrDisplay code={qr.code} size={80} />
+        </div>
+
+        {/* Información del cliente */}
+        <div className="text-center space-y-1">
+          <div className="font-medium text-sm truncate" title={qr.customerName}>
+            {qr.customerName}
+          </div>
+          <div className="text-xs text-slate-500 truncate" title={qr.customerWhatsapp}>
+            {qr.customerWhatsapp}
+          </div>
+          {qr.customerDni && (
+            <div className="text-xs text-slate-600 dark:text-slate-400">
+              DNI: {qr.customerDni}
+            </div>
+          )}
+          <div className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+            {qr.code}
+          </div>
+        </div>
+
+        {/* Miniatura de imagen si existe */}
+        {qr.imageUrl && (
+          <div className="flex justify-center">
+            <div className="relative w-12 h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
+              <img
+                src={qr.imageUrl}
+                alt="Imagen subida"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  const container = img.parentElement;
+                  if (container) {
+                    let errorDiv = container.querySelector('.image-error') as HTMLElement;
+                    if (!errorDiv) {
+                      errorDiv = document.createElement('div');
+                      errorDiv.className = 'image-error absolute inset-0 flex items-center justify-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800';
+                      errorDiv.innerHTML = '<span>⚠️</span>';
+                      container.appendChild(errorDiv);
+                    }
+                    img.style.display = 'none';
+                    errorDiv.style.display = 'flex';
+                  }
+                }}
+                onLoad={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  const container = img.parentElement;
+                  if (container) {
+                    const errorDiv = container.querySelector('.image-error') as HTMLElement;
+                    if (errorDiv) {
+                      errorDiv.style.display = 'none';
+                    }
+                    img.style.display = 'block';
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Botones de acción */}
+        <div className="flex gap-1">
+          {!qr.redeemedAt && qr.isActive && (
+            <button
+              onClick={() => onRedeem(qr.id)}
+              className="flex-1 btn-secondary text-xs py-1"
+            >
+              ✅ Redimir
+            </button>
+          )}
+        </div>
+
+        {/* Información adicional compacta */}
+        <div className="text-xs text-slate-400 space-y-1">
+          {qr.extendedCount > 0 && (
+            <div className="text-center">🔄 Extendido {qr.extendedCount}x</div>
+          )}
+          {qr.redeemedAt && (
+            <div className="text-center text-green-600">
+              {new Date(qr.redeemedAt).toLocaleDateString('es-PE')}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
