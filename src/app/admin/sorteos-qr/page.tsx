@@ -1003,6 +1003,7 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
     defaultTheme: initialData?.defaultTheme || 'default',
     defaultBatchId: initialData?.defaultBatchId || null,
     allowImageUpload: initialData?.allowImageUpload ?? true,
+    requireImageUpload: initialData?.requireImageUpload ?? false,
     maxImageSize: initialData?.maxImageSize || 5242880,
     allowedImageFormats: initialData?.allowedImageFormats || 'jpg,jpeg,png,webp',
     imageQuality: initialData?.imageQuality || 80,
@@ -1187,6 +1188,17 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
               onChange={(e) => setFormData({...formData, allowImageUpload: e.target.checked})}
             />
             Permitir subida de imágenes
+          </label>
+        </div>
+        <div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={formData.requireImageUpload}
+              onChange={(e) => setFormData({...formData, requireImageUpload: e.target.checked})}
+              disabled={!formData.allowImageUpload}
+            />
+            Imagen obligatoria (solo si está permitida)
           </label>
         </div>
         <div>

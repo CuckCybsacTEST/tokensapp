@@ -164,7 +164,7 @@ export function ImageUpload({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Sube tu foto con motivo navideño
+          Sube tu foto con motivo navideño{policy?.requireImageUpload ? ' *' : ''}
         </label>
         {preview && (
           <button

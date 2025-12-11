@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { QR_THEMES, FORM_FIELDS, type QrTheme, type FormFieldKey } from "@/lib/qr-custom";
 import { ImageUpload } from "@/components/ImageUpload";
+import { ErrorModal, useErrorModal } from "@/components/ErrorModal";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -35,10 +36,10 @@ export default function SorteoNavidadPage() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QrResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [imageData, setImageData] = useState<any>(null);
   const router = useRouter();
+  const { errorModal, showError, closeError } = useErrorModal();
 
   // Campos activos en el formulario basados en la política
   const activeFields: FormFieldKey[] = React.useMemo(() => {
@@ -114,24 +115,23 @@ export default function SorteoNavidadPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError(null);
 
     try {
       // Validaciones del lado del cliente según la política
       if (policy?.requireWhatsapp && !formData.customerWhatsapp?.trim()) {
-        setError('El número de WhatsApp es obligatorio');
+        showError('Campo obligatorio', 'El número de WhatsApp es obligatorio');
         setIsSubmitting(false);
         return;
       }
 
       if (policy?.requireDni && policy?.allowDni && !formData.customerDni?.trim()) {
-        setError('El DNI es obligatorio');
+        showError('Campo obligatorio', 'El DNI es obligatorio');
         setIsSubmitting(false);
         return;
       }
 
       if (policy?.requireDni && policy?.allowDni && formData.customerDni && !/^\d{8}$/.test(formData.customerDni)) {
-        setError('El DNI debe tener exactamente 8 dígitos');
+        showError('Formato inválido', 'El DNI debe tener exactamente 8 dígitos');
         setIsSubmitting(false);
         return;
       }
@@ -172,7 +172,8 @@ export default function SorteoNavidadPage() {
       const data = await response.json();
       setResult(data);
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'Error desconocido al generar QR';
+      showError('Error al generar QR', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -486,6 +487,12 @@ export default function SorteoNavidadPage() {
         </div>
       </div>
     </div>
-    </div>
+
+    <ErrorModal
+      isOpen={!!errorModal}
+      onClose={closeError}
+      title={errorModal?.title || ''}
+      message={errorModal?.message || ''}
+    />
   );
 }

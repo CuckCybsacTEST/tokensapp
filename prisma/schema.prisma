@@ -1347,6 +1347,7 @@ model CustomQrPolicy {
 
   // Configuración de imágenes
   allowImageUpload     Boolean  @default(true)
+  requireImageUpload   Boolean  @default(false) // Imagen obligatoria (solo si allowImageUpload es true)
   maxImageSize         Int      @default(5242880)  // 5MB en bytes
   allowedImageFormats  String   @default("jpg,jpeg,png,webp")
   imageQuality         Int      @default(80)      // 80% calidad

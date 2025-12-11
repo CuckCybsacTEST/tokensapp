@@ -17,6 +17,7 @@ interface QrResult {
 
 interface Policy {
   allowImageUpload: boolean;
+  requireImageUpload?: boolean;
   maxImageSize: number;
   allowedImageFormats: string;
   imageQuality: number;
@@ -81,6 +82,7 @@ export default function QrGeneratorPage() {
       // Fallback: política por defecto hardcodeada para el sorteo navideño
       setPolicy({
         allowImageUpload: true,
+        requireImageUpload: false,
         maxImageSize: 20 * 1024 * 1024, // 20MB para fotos grandes
         allowedImageFormats: 'jpg,jpeg,png,webp',
         imageQuality: 85,
@@ -130,6 +132,13 @@ export default function QrGeneratorPage() {
 
       if (policy?.requireDni && policy?.allowDni && formData.customerDni && !/^\d{8}$/.test(formData.customerDni)) {
         setError('El DNI debe tener exactamente 8 dígitos');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validar que se haya subido imagen si es obligatoria
+      if (policy?.requireImageUpload && !imageData) {
+        setError('Debes subir una imagen para continuar');
         setIsSubmitting(false);
         return;
       }
