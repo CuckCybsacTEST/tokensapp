@@ -986,6 +986,7 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
     allowDni: initialData?.allowDni ?? false,
     requireWhatsapp: initialData?.requireWhatsapp ?? true,
     requireDni: initialData?.requireDni ?? false,
+    requireUniqueDni: initialData?.requireUniqueDni ?? false,
     defaultTheme: initialData?.defaultTheme || 'default',
     defaultBatchId: initialData?.defaultBatchId || null,
     allowImageUpload: initialData?.allowImageUpload ?? true,
@@ -1150,6 +1151,20 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
             />
             DNI obligatorio (solo si está permitido)
           </label>
+        </div>
+        <div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={formData.requireUniqueDni}
+              onChange={(e) => setFormData({...formData, requireUniqueDni: e.target.checked})}
+              disabled={!formData.allowDni}
+            />
+            DNI único por usuario (solo si está permitido)
+          </label>
+          <p className="text-xs text-blue-600 mt-1">
+            🔒 Evita que el mismo DNI genere múltiples QR activos
+          </p>
         </div>
         <div>
           <label className="flex items-center gap-2">

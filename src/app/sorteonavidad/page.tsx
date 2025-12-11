@@ -31,7 +31,7 @@ interface Policy {
   defaultTheme: string;
 }
 
-export default function QrGeneratorPage() {
+export default function SorteoNavidadPage() {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QrResult | null>(null);
@@ -168,7 +168,7 @@ export default function QrGeneratorPage() {
 
     const link = document.createElement('a');
     link.href = result.qrDataUrl;
-    link.download = `qr-${result.code}.png`;
+    link.download = `sorteo-navidad-${result.code}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -189,10 +189,10 @@ export default function QrGeneratorPage() {
               <div className="text-2xl sm:text-3xl md:text-4xl">🎄</div>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 to-red-400 bg-clip-text text-transparent leading-tight">
-              ¡QR Navideño Generado!
+              ¡Tu Boleto Navideño Está Listo!
             </h1>
             <p className="text-white/80 text-xs sm:text-sm md:text-base font-medium px-2">
-              ¡Tu QR navideño está listo para el sorteo!
+              ¡Ya estás participando en el Gran Sorteo Navideño!
             </p>
           </div>
 
@@ -212,15 +212,15 @@ export default function QrGeneratorPage() {
               {/* QR Code Section - integrado dentro de la tarjeta */}
               <div className="pt-1 sm:pt-2 border-t border-white/10">
                 <div className="text-center mb-2 sm:mb-3">
-                  <span className="text-xs sm:text-sm font-medium text-white/60 block mb-1">Descarga tu qr ahora!</span>
+                  <span className="text-xs sm:text-sm font-medium text-white/60 block mb-1">Tu boleto del sorteo:</span>
                   <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg transform transition-transform hover:scale-105 duration-300 inline-block mx-auto">
                     <img
                       src={result.qrDataUrl}
-                      alt="Código QR personalizado"
+                      alt="Boleto del Gran Sorteo Navideño"
                       className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 object-contain"
                     />
                     <div className="flex items-center justify-between mt-2">
-                      <div className="text-black/60 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest">🎄 Boleto navideño</div>
+                      <div className="text-black/60 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest">🎄 SORTEO NAVIDAD</div>
                       <button
                         onClick={downloadQr}
                         className="text-black/40 hover:text-black/60 transition-colors p-1 rounded hover:bg-black/5"
@@ -243,7 +243,7 @@ export default function QrGeneratorPage() {
                   onClick={downloadQr}
                   className="bg-gradient-to-r from-yellow-500 to-red-500 hover:from-yellow-600 hover:to-red-600 text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md text-xs"
                 >
-                  Descargar QR
+                  Descargar Boleto
                 </button>
 
                 <button
@@ -272,13 +272,13 @@ export default function QrGeneratorPage() {
                 <div className="text-center mb-2 sm:mb-3">
                   <div className="inline-flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-yellow-500/20 to-red-500/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-yellow-500/30 animate-pulse">
                     <span className="text-yellow-400 text-sm">🎯</span>
-                    <span className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Fecha de Sorteo</span>
+                    <span className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Fecha del Sorteo</span>
                   </div>
                   <div className="text-lg sm:text-xl font-bold text-white mt-1 bg-gradient-to-r from-yellow-400 to-red-400 bg-clip-text text-transparent">
                     {result.expiresAt}
                   </div>
                   <div className="text-xs text-white/60">
-                    ¡No te lo pierdas!
+                    ¡No te lo pierdas! Sigue nuestras redes
                   </div>
                 </div>
               </div>
@@ -291,17 +291,17 @@ export default function QrGeneratorPage() {
                   ¡El sorteo será transmitido en vivo por todas nuestras plataformas!
                 </p>
                 <p className="text-xs text-white/60">
-                  Facebook • Instagram • TikTok
+                  Facebook • Instagram • TikTok • WhatsApp
                 </p>
               </div>
             </div>
 
             <div className="text-center mt-3 sm:mt-4">
               <p className="text-xs sm:text-sm text-white/40 px-2">
-                🎄 ¡Suerte en el Gran Sorteo Navideño! 🎄
+                🎄 ¡Mucha suerte en el Gran Sorteo Navideño! 🎄
               </p>
               <p className="text-xs text-white/30 mt-1 px-2 leading-relaxed">
-                Este QR es válido y puede ser redimido por el personal de Go Lounge
+                Tu boleto es único y válido para participar
               </p>
             </div>
           </div>
@@ -321,13 +321,16 @@ export default function QrGeneratorPage() {
       <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto relative z-10">
         <div className="text-center space-y-2 mb-4 sm:mb-6 md:mb-8">
           <div className="inline-block p-2 sm:p-3 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full mb-2 sm:mb-3">
-            <div className="text-2xl sm:text-3xl md:text-4xl">🎁</div>
+            <div className="text-2xl sm:text-3xl md:text-4xl">🎄</div>
           </div>
           <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-2 bg-gradient-to-r from-yellow-400 to-red-400 bg-clip-text text-transparent leading-tight">
-            GRAN SORTEO: 2 CANASTAS y 2 PAVOS NAVIDEÑOS
+            GRAN SORTEO NAVIDEÑO
           </h1>
           <p className="text-white/80 text-xs sm:text-sm font-medium px-2">
-            Completa tus datos y sube una foto familiar con motivo navideño para participar
+            2 CANASTAS NAVIDEÑAS + 2 PAVOS COMPLETOS
+          </p>
+          <p className="text-white/60 text-xs sm:text-sm px-2">
+            Completa tus datos y sube una foto familiar navideña para participar
           </p>
         </div>
 
@@ -430,7 +433,7 @@ export default function QrGeneratorPage() {
           className="w-full bg-gradient-to-r from-yellow-500 to-red-500 hover:from-yellow-600 hover:to-red-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-3 sm:py-4 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100 shadow-lg text-sm sm:text-base disabled:opacity-50"
           type="submit"
         >
-          {isSubmitting ? "🎄 Generando tu QR navideño..." : "¡Generar mi QR!"}
+          {isSubmitting ? "🎄 Generando tu boleto navideño..." : "¡Participar en el Sorteo!"}
         </button>
       </form>
 
@@ -439,7 +442,7 @@ export default function QrGeneratorPage() {
           🎄 ¡Gracias Ktdral Lounge por este increíble sorteo navideño! 🎄
         </p>
         <p className="text-xs text-white/30 mt-1 px-2">
-          Tu QR será único y personalizado para participar
+          Cada participante recibe un boleto único personalizado
         </p>
         <div className="mt-4 sm:mt-6 flex justify-center">
           <img

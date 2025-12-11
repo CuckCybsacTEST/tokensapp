@@ -1341,6 +1341,7 @@ model CustomQrPolicy {
   allowDni          Boolean  @default(false) // Permitir campo DNI
   requireWhatsapp   Boolean  @default(true)  // WhatsApp obligatorio
   requireDni        Boolean  @default(false) // DNI obligatorio (solo si allowDni es true)
+  requireUniqueDni  Boolean  @default(false) // DNI único por usuario (solo si allowDni es true)
   defaultTheme      String   @default("default") // Tema por defecto para QR
   defaultBatchId    String?  // Lote por defecto para QR generados con esta política
 

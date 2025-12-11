@@ -64,6 +64,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verificar unicidad del DNI si la política lo requiere
+    if (activePolicy.requireUniqueDni && customerDni) {
+      const existingDniQr = await (prisma as any).customQr.findFirst({
+        where: {
+          customerDni: customerDni,
+          isActive: true,
+          expiresAt: {
+            gt: new Date()
+          }
+        }
+      });
+
+      if (existingDniQr) {
+        return NextResponse.json(
+          { ok: false, error: 'Este DNI ya tiene un QR activo. Cada DNI puede tener solo un QR válido a la vez.' },
+          { status: 409 }
+        );
+      }
+    }
+
     // Verificar unicidad del nombre + whatsapp (prevenir spam)
     const existingQr = await (prisma as any).customQr.findFirst({
       where: {
