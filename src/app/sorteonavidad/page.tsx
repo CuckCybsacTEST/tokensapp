@@ -18,6 +18,7 @@ interface QrResult {
 
 interface Policy {
   allowImageUpload: boolean;
+  requireImageUpload?: boolean;
   maxImageSize: number;
   allowedImageFormats: string;
   imageQuality: number;
@@ -84,6 +85,7 @@ export default function SorteoNavidadPage() {
       // Fallback: política por defecto hardcodeada para el sorteo navideño
       setPolicy({
         allowImageUpload: true,
+        requireImageUpload: true,
         maxImageSize: 20 * 1024 * 1024, // 20MB para fotos grandes
         allowedImageFormats: 'jpg,jpeg,png,webp',
         imageQuality: 85,
@@ -142,6 +144,13 @@ export default function SorteoNavidadPage() {
         console.log('Validando unicidad de DNI:', formData.customerDni);
       }
 
+      // Validar que se haya subido imagen si es obligatoria
+      if (policy?.requireImageUpload && !imageData) {
+        showError('Imagen obligatoria', 'Debes subir una foto con motivo navideño para participar');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Asegurar que el WhatsApp tenga el formato correcto
       const processedFormData = {
         ...formData,
@@ -179,15 +188,82 @@ export default function SorteoNavidadPage() {
     }
   };
 
-  const downloadQr = () => {
+  const downloadQr = async () => {
     if (!result) return;
 
-    const link = document.createElement('a');
-    link.href = result.qrDataUrl;
-    link.download = `sorteo-navidad-${result.code}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Generar imagen compuesta con plantilla
+      const brandedQrDataUrl = await generateBrandedQr(result.qrDataUrl);
+
+      // Descargar imagen personalizada
+      const link = document.createElement('a');
+      link.href = brandedQrDataUrl;
+      link.download = `boleto-sorteo-navidad-${result.code}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error generando QR personalizado:', error);
+      // Fallback: descargar QR original
+      const link = document.createElement('a');
+      link.href = result.qrDataUrl;
+      link.download = `sorteo-navidad-${result.code}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Función para generar QR personalizado con plantilla
+  const generateBrandedQr = (qrDataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Canvas no soportado'));
+        return;
+      }
+
+      canvas.width = 1080;
+      canvas.height = 1080;
+
+      const templateImg = new Image();
+      const qrImg = new Image();
+
+      templateImg.crossOrigin = 'anonymous';
+      qrImg.crossOrigin = 'anonymous';
+
+      templateImg.onload = () => {
+        // Dibujar plantilla como fondo
+        ctx.drawImage(templateImg, 0, 0, 1080, 1080);
+
+        qrImg.onload = () => {
+          // Dibujar QR en la posición especificada: X=290, Y=297, 500x500px
+          ctx.drawImage(qrImg, 290, 297, 500, 500);
+
+          // Convertir a DataURL y resolver
+          try {
+            const brandedDataUrl = canvas.toDataURL('image/png');
+            resolve(brandedDataUrl);
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        qrImg.onerror = () => {
+          reject(new Error('Error cargando imagen QR'));
+        };
+
+        qrImg.src = qrDataUrl;
+      };
+
+      templateImg.onerror = () => {
+        reject(new Error('Error cargando plantilla'));
+      };
+
+      templateImg.src = '/templates/templatenavidad.png';
+    });
   };
 
   if (result) {
@@ -328,8 +404,8 @@ export default function SorteoNavidadPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#0E0606] text-white px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-12 relative overflow-hidden">
+  return (<>
+      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-12 relative overflow-hidden">
       {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
       <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
       <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
@@ -426,7 +502,7 @@ export default function SorteoNavidadPage() {
         )}
 
         {/* Subida de imagen - después del DNI */}
-        {policy && (
+        {policy?.allowImageUpload && (
           <ImageUpload
             onImageUploaded={handleImageUploaded}
             onImageRemoved={handleImageRemoved}
@@ -456,12 +532,6 @@ export default function SorteoNavidadPage() {
           );
         })}
 
-        {error && (
-          <div className="p-3 sm:p-4 bg-red-900/20 border border-red-500/30 rounded-lg backdrop-blur-sm">
-            <p className="text-xs sm:text-sm text-red-300">{error}</p>
-          </div>
-        )}
-
         <button
           disabled={isSubmitting}
           className="w-full bg-gradient-to-r from-yellow-500 to-red-500 hover:from-yellow-600 hover:to-red-600 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold py-3 sm:py-4 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100 shadow-lg text-sm sm:text-base disabled:opacity-50"
@@ -486,13 +556,15 @@ export default function SorteoNavidadPage() {
           />
         </div>
       </div>
+
+      </div>
     </div>
 
-    <ErrorModal
-      isOpen={!!errorModal}
-      onClose={closeError}
-      title={errorModal?.title || ''}
-      message={errorModal?.message || ''}
-    />
-  );
+      <ErrorModal
+        isOpen={!!errorModal}
+        onClose={closeError}
+        title={errorModal?.title || ''}
+        message={errorModal?.message || ''}
+      />
+    </>);
 }
