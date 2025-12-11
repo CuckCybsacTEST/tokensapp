@@ -111,7 +111,7 @@ export default function CustomQrsAdminPage() {
 
   useEffect(() => {
     // Check URL parameters to show specific sections
-    const tab = searchParams.get('tab');
+    const tab = searchParams?.get('tab');
     if (tab === 'stats') {
       setShowStats(true);
     } else if (tab === 'batches') {

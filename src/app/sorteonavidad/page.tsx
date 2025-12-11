@@ -70,25 +70,32 @@ export default function SorteoNavidadPage() {
 
   const loadPolicy = async () => {
     try {
-      const response = await fetch('/api/admin/custom-qrs/policy/active');
+      // Usar endpoint público en lugar de admin
+      const response = await fetch('/api/qr/policy');
       if (response.ok) {
         const data = await response.json();
         if (data.policy) {
           setPolicy(data.policy);
-        } else {
-          // Fallback: intentar con políticas por defecto
-          const fallbackResponse = await fetch('/api/admin/custom-qrs/policy');
-          if (fallbackResponse.ok) {
-            const policies = await fallbackResponse.json();
-            const defaultPolicy = policies.find((p: any) => p.isDefault) || policies[0];
-            if (defaultPolicy) {
-              setPolicy(defaultPolicy);
-            }
-          }
         }
       }
     } catch (error) {
       console.error('Error loading policy:', error);
+      // Fallback: política por defecto hardcodeada para el sorteo navideño
+      setPolicy({
+        allowImageUpload: true,
+        maxImageSize: 5 * 1024 * 1024, // 5MB
+        allowedImageFormats: 'jpg,jpeg,png,webp',
+        imageQuality: 80,
+        maxImageWidth: 1920,
+        maxImageHeight: 1080,
+        allowCustomPhrase: true,
+        allowCustomData: true,
+        allowDni: true,
+        requireWhatsapp: true,
+        requireDni: false,
+        requireUniqueDni: false,
+        defaultTheme: 'navidad'
+      });
     }
   };
 
