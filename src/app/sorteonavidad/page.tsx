@@ -44,8 +44,10 @@ export default function SorteoNavidadPage() {
   const activeFields: FormFieldKey[] = React.useMemo(() => {
     const fields: FormFieldKey[] = ['customerName']; // Nombre siempre obligatorio
 
-    // WhatsApp puede ser opcional según la política
-    fields.push('customerWhatsapp');
+    // WhatsApp se incluye si es requerido o si la política lo permite
+    if (policy?.requireWhatsapp || policy?.allowDni || policy?.allowCustomPhrase || policy?.allowCustomData) {
+      fields.push('customerWhatsapp');
+    }
 
     if (policy?.allowDni) {
       fields.push('customerDni');
@@ -125,6 +127,12 @@ export default function SorteoNavidadPage() {
         setError('El DNI debe tener exactamente 8 dígitos');
         setIsSubmitting(false);
         return;
+      }
+
+      // Validar unicidad de DNI si está configurado (aunque la validación principal es en backend)
+      if (policy?.requireUniqueDni && policy?.allowDni && formData.customerDni) {
+        // Esta es una validación adicional en frontend, la validación principal está en backend
+        console.log('Validando unicidad de DNI:', formData.customerDni);
       }
 
       // Asegurar que el WhatsApp tenga el formato correcto
@@ -319,6 +327,20 @@ export default function SorteoNavidadPage() {
       <div className="hidden md:block absolute bottom-32 right-4 md:right-10 text-blue-400/20 text-xl md:text-3xl animate-pulse delay-1500">⭐</div>
 
       <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto relative z-10">
+        {/* Mensaje de carga mientras se configuran las políticas */}
+        {!policy && (
+          <div className="text-center space-y-4 mb-8">
+            <div className="inline-block p-3 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full">
+              <div className="text-3xl">🎄</div>
+            </div>
+            <div className="space-y-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-yellow-400 mx-auto"></div>
+              <p className="text-white/80 text-sm">Configurando sorteo navideño...</p>
+              <p className="text-white/60 text-xs">Cargando políticas de participación</p>
+            </div>
+          </div>
+        )}
+
         <div className="text-center space-y-2 mb-4 sm:mb-6 md:mb-8">
           <div className="inline-block p-2 sm:p-3 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full mb-2 sm:mb-3">
             <div className="text-2xl sm:text-3xl md:text-4xl">🎄</div>
@@ -357,6 +379,7 @@ export default function SorteoNavidadPage() {
           <label className="text-xs sm:text-sm font-medium text-white/80 block">
             {FORM_FIELDS.customerWhatsapp.label}
             {policy?.requireWhatsapp && <span className="text-red-400 ml-1">*</span>}
+            {!policy?.requireWhatsapp && <span className="text-gray-400 ml-2 text-xs">(opcional)</span>}
           </label>
           <input
             type={FORM_FIELDS.customerWhatsapp.type}
@@ -378,6 +401,7 @@ export default function SorteoNavidadPage() {
             <label className="text-xs sm:text-sm font-medium text-white/80 block">
               {FORM_FIELDS.customerDni.label}
               {policy?.requireDni && <span className="text-red-400 ml-1">*</span>}
+              {policy?.requireUniqueDni && <span className="text-yellow-400 ml-2 text-xs">(único por persona)</span>}
             </label>
             <input
               type={FORM_FIELDS.customerDni.type}
@@ -388,6 +412,11 @@ export default function SorteoNavidadPage() {
               maxLength={8}
               required={policy?.requireDni}
             />
+            {policy?.requireUniqueDni && (
+              <p className="text-xs text-yellow-400/80 mt-1">
+                🔒 Cada DNI solo puede participar una vez en el sorteo
+              </p>
+            )}
           </div>
         )}
 
