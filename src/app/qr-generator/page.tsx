@@ -445,7 +445,7 @@ export default function QrGeneratorPage() {
 
       <div className="text-center mt-3 sm:mt-4">
         <p className="text-xs sm:text-sm text-white/40 px-2">
-          🎄 ¡Gracias Ktdral Lounge por este increíble sorteo navideño! 🎄
+          🎄 ¡Gracias a Ktdral lounge! 🎄
         </p>
         <p className="text-xs text-white/30 mt-1 px-2">
           Tu QR será único y personalizado para participar

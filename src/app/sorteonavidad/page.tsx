@@ -191,7 +191,7 @@ export default function SorteoNavidadPage() {
 
   if (result) {
     return (
-      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-4 sm:px-6 sm:py-6 md:px-8 lg:px-12 relative overflow-hidden">
+      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-2 sm:px-6 sm:py-4 md:px-8 lg:px-12 relative overflow-hidden">
         {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
         <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
         <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
@@ -199,11 +199,11 @@ export default function SorteoNavidadPage() {
         <div className="hidden md:block absolute bottom-32 right-4 md:right-10 text-blue-400/20 text-xl md:text-3xl animate-pulse delay-1500">⭐</div>
 
         <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto relative z-10">
-          <div className="text-center space-y-4 mb-4 sm:mb-6">
-            <div className="inline-block p-2 sm:p-3 md:p-4 bg-gradient-to-r from-green-500/20 to-red-500/20 rounded-full mb-3 sm:mb-4">
+          <div className="text-center space-y-2 mb-2 sm:mb-4">
+            <div className="inline-block p-2 sm:p-3 md:p-4 bg-gradient-to-r from-green-500/20 to-red-500/20 rounded-full mb-2 sm:mb-3">
               <div className="text-2xl sm:text-3xl md:text-4xl">🎄</div>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 to-red-400 bg-clip-text text-transparent leading-tight">
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 bg-gradient-to-r from-green-400 to-red-400 bg-clip-text text-transparent leading-tight">
               ¡Tu Boleto Navideño Está Listo!
             </h1>
             <p className="text-white/80 text-xs sm:text-sm md:text-base font-medium px-2">
@@ -211,9 +211,9 @@ export default function SorteoNavidadPage() {
             </p>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5">
-            <div className="space-y-2 sm:space-y-3">
-              <div className="text-center space-y-3 sm:space-y-4">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-2 sm:p-3 md:p-4">
+            <div className="space-y-1 sm:space-y-2">
+              <div className="text-center space-y-2 sm:space-y-3">
                 <div>
                   <span className="font-medium text-white/60 block text-xs sm:text-sm">Participante:</span>
                   <p className="mt-1 text-white text-sm sm:text-base break-words">{result.customerName}</p>
@@ -226,7 +226,7 @@ export default function SorteoNavidadPage() {
 
               {/* QR Code Section - integrado dentro de la tarjeta */}
               <div className="pt-1 sm:pt-2 border-t border-white/10">
-                <div className="text-center mb-2 sm:mb-3">
+                <div className="text-center mb-1 sm:mb-2">
                   <span className="text-xs sm:text-sm font-medium text-white/60 block mb-1">Tu boleto del sorteo:</span>
                   <div className="flex justify-center">
                     <div className="inline-flex w-36 sm:w-48 md:w-56 flex-col items-center bg-white p-3 sm:p-4 rounded-xl shadow-lg transform transition-transform hover:scale-105 duration-300">
@@ -255,7 +255,7 @@ export default function SorteoNavidadPage() {
               </div>
 
               {/* Botones más pequeños debajo del QR */}
-              <div className="flex gap-2 justify-center mt-3">
+              <div className="flex gap-2 justify-center mt-2">
                 <button
                   onClick={downloadQr}
                   className="bg-gradient-to-r from-yellow-500 to-red-500 hover:from-yellow-600 hover:to-red-600 text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md text-xs"
@@ -285,8 +285,8 @@ export default function SorteoNavidadPage() {
                 </div>
               )}
 
-              <div className="pt-2 sm:pt-3 border-t border-white/10">
-                <div className="text-center mb-2 sm:mb-3">
+              <div className="pt-1 sm:pt-2 border-t border-white/10">
+                <div className="text-center mb-1 sm:mb-2">
                   <div className="inline-flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-yellow-500/20 to-red-500/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full border border-yellow-500/30 animate-pulse">
                     <span className="text-yellow-400 text-sm">🎯</span>
                     <span className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Fecha del Sorteo</span>
@@ -302,9 +302,9 @@ export default function SorteoNavidadPage() {
             </div>
 
             {/* Social Media Announcement */}
-            <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-white/10">
+            <div className="mt-2 sm:mt-3 pt-1 sm:pt-2 border-t border-white/10">
               <div className="text-center">
-                <p className="text-white/80 text-xs sm:text-sm mb-1 sm:mb-2 px-2">
+                <p className="text-white/80 text-xs sm:text-sm mb-1 px-2">
                   ¡El sorteo será transmitido en vivo por todas nuestras plataformas!
                 </p>
                 <p className="text-xs text-white/60">
@@ -313,7 +313,7 @@ export default function SorteoNavidadPage() {
               </div>
             </div>
 
-            <div className="text-center mt-3 sm:mt-4">
+            <div className="text-center mt-2 sm:mt-3">
               <p className="text-xs sm:text-sm text-white/40 px-2">
                 🎄 ¡Mucha suerte en el Gran Sorteo Navideño! 🎄
               </p>
@@ -328,7 +328,7 @@ export default function SorteoNavidadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0606] text-white px-4 py-4 sm:px-6 sm:py-6 md:px-8 lg:px-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0E0606] text-white px-4 py-2 sm:px-6 sm:py-4 md:px-8 lg:px-12 relative overflow-hidden">
       {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
       <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
       <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
@@ -338,7 +338,7 @@ export default function SorteoNavidadPage() {
       <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto relative z-10">
         {/* Mensaje de carga mientras se configuran las políticas */}
         {!policy && (
-          <div className="text-center space-y-4 mb-8">
+          <div className="text-center space-y-2 mb-4">
             <div className="inline-block p-3 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full">
               <div className="text-3xl">🎄</div>
             </div>
@@ -350,11 +350,11 @@ export default function SorteoNavidadPage() {
           </div>
         )}
 
-        <div className="text-center space-y-2 mb-4 sm:mb-6 md:mb-8">
+        <div className="text-center space-y-2 mb-2 sm:mb-4 md:mb-6">
           <div className="inline-block p-2 sm:p-3 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full mb-2 sm:mb-3">
             <div className="text-2xl sm:text-3xl md:text-4xl">🎄</div>
           </div>
-          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-2 bg-gradient-to-r from-yellow-400 to-red-400 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1 bg-gradient-to-r from-yellow-400 to-red-400 bg-clip-text text-transparent leading-tight">
             GRAN SORTEO NAVIDEÑO
           </h1>
           <p className="text-white/80 text-xs sm:text-sm font-medium px-2">
@@ -365,7 +365,7 @@ export default function SorteoNavidadPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3">
 
         {/* Campo de nombre */}
         <div className="space-y-2">
@@ -421,11 +421,6 @@ export default function SorteoNavidadPage() {
               maxLength={8}
               required={policy?.requireDni}
             />
-            {policy?.requireUniqueDni && (
-              <p className="text-xs text-yellow-400/80 mt-1">
-                🔒 Cada DNI solo puede participar una vez en el sorteo
-              </p>
-            )}
           </div>
         )}
 
@@ -477,7 +472,7 @@ export default function SorteoNavidadPage() {
 
       <div className="text-center mt-3 sm:mt-4">
         <p className="text-xs sm:text-sm text-white/40 px-2">
-          🎄 ¡Gracias Ktdral Lounge por este increíble sorteo navideño! 🎄
+          🎄 ¡Gracias a Ktdral lounge! 🎄
         </p>
         <p className="text-xs text-white/30 mt-1 px-2">
           Cada participante recibe un boleto único personalizado
