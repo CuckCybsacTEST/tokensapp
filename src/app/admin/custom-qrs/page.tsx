@@ -344,6 +344,12 @@ export default function CustomQrsAdminPage() {
           >
             ⚙️ Políticas
           </button>
+          <a
+            href="/admin/custom-qrs/purge"
+            className="btn-danger !px-3 !py-1.5 text-sm"
+          >
+            🗑️ Purgar Lotes
+          </a>
           <button
             onClick={handleExportCsv}
             className="btn-secondary"
