@@ -116,7 +116,7 @@ async function testQrCustomSystem() {
   console.log('1. Ejecutar migración: npx prisma db push');
   console.log('2. Iniciar servidor: npm run dev');
   console.log('3. Probar generador: http://localhost:3000/qr-generator');
-  console.log('4. Probar admin: http://localhost:3000/admin/custom-qrs');
+  console.log('4. Probar admin: http://localhost:3000/admin/sorteos-qr');
 }
 
 // Ejecutar pruebas

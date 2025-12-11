@@ -208,7 +208,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         title: "QR PERSONALIZADOS",
         icon: ICONS.qr,
         items: [
-          { href: `${pathPrefix}/custom-qrs`, label: "Gestión de QR", icon: ICONS.qr },
+          { href: `${pathPrefix}/sorteos-qr`, label: "Gestión de QR", icon: ICONS.qr },
           { href: "/qr-generator", label: "Generador Público", icon: ICONS.starSmall }
         ]
       }] : []),
