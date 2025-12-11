@@ -191,7 +191,7 @@ export default function SorteoNavidadPage() {
 
   if (result) {
     return (
-      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-2 sm:px-6 sm:py-4 md:px-8 lg:px-12 relative overflow-hidden">
+      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-12 relative overflow-hidden">
         {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
         <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
         <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
@@ -328,7 +328,7 @@ export default function SorteoNavidadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0E0606] text-white px-4 py-2 sm:px-6 sm:py-4 md:px-8 lg:px-12 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0E0606] text-white px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-12 relative overflow-hidden">
       {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
       <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
       <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
