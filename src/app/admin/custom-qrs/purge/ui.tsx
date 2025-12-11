@@ -22,15 +22,25 @@ type DryRunSummary = {
 interface DryRunResponse { ok: true; dryRun: true; batchIds: string[]; summary: DryRunSummary }
 interface PurgeResult { ok: true; batchIds: string[]; deleted: any }
 
+type OrphanStats = {
+  totalQrs: number;
+  redeemed: number;
+  expired: number;
+  active: number;
+  distinctThemes: number;
+};
+
 export default function PurgeCustomQrsClient() {
   const [loading, setLoading] = useState(false);
   const [batches, setBatches] = useState<BatchRow[]>([]);
+  const [orphanStats, setOrphanStats] = useState<OrphanStats | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState<DryRunResponse | null>(null);
   const [result, setResult] = useState<PurgeResult | null>(null);
   const [force, setForce] = useState(false);
   const [confirmText, setConfirmText] = useState('');
+  const [purgeOrphansOnly, setPurgeOrphansOnly] = useState(false);
 
   const redeemedMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -48,6 +58,7 @@ export default function PurgeCustomQrsClient() {
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error');
       const rows: BatchRow[] = j.batches.map((b: any) => ({ ...b, createdAt: b.createdAt }));
       setBatches(rows);
+      setOrphanStats(j.orphanStats || null);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -66,26 +77,45 @@ export default function PurgeCustomQrsClient() {
   const selectLatest = useCallback((n: number) => { setSelected(new Set(batches.slice(0, n).map(b => b.id))); }, [batches]);
 
   async function runDry() {
-    if (!selected.size) return;
-    setDryRun(null); setResult(null); setError(null);
+    if (!purgeOrphansOnly && !selected.size) return;
+    setDryRun(null);
+    setResult(null);
+    setError(null);
     try {
-      const body = { batchIds: Array.from(selected), options: { dryRun: true } };
-      const r = await fetch('/api/admin/custom-qrs/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const body = purgeOrphansOnly
+        ? { options: { dryRun: true, purgeOrphansOnly } }
+        : { batchIds: Array.from(selected), options: { dryRun: true, purgeOrphansOnly } };
+      const r = await fetch('/api/admin/custom-qrs/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error dry-run');
       setDryRun(j);
-    } catch (e: any) { setError(e.message || String(e)); }
+    } catch (e: any) {
+      setError(e.message || String(e));
+    }
   }
 
-  const anyRedeemed = useMemo(() => dryRun && Array.isArray(dryRun.summary.redeemed) ? dryRun.summary.redeemed.some(r => r._count._all > 0) : false, [dryRun]);
+  const anyRedeemed = useMemo(() => {
+    if (!dryRun) return false;
+    if (purgeOrphansOnly) {
+      // Para huérfanos, verificar si hay redimidos en el summary
+      return Array.isArray(dryRun.summary.redeemed) && dryRun.summary.redeemed.some(r => r._count._all > 0);
+    }
+    return Array.isArray(dryRun.summary.redeemed) ? dryRun.summary.redeemed.some(r => r._count._all > 0) : false;
+  }, [dryRun, purgeOrphansOnly]);
 
   async function executePurge() {
     if (!dryRun) return;
-    if (anyRedeemed && !force) { setError('Hay QR redimidos. Marca FORCE para continuar.'); return; }
+    if (!purgeOrphansOnly && anyRedeemed && !force) { setError('Hay QR redimidos. Marca FORCE para continuar.'); return; }
     if (confirmText !== 'PURGE') { setError('Debes escribir PURGE para confirmar.'); return; }
     setError(null);
     try {
-      const body = { batchIds: dryRun.batchIds, options: { dryRun: false } };
+      const body = purgeOrphansOnly
+        ? { options: { dryRun: false, purgeOrphansOnly } }
+        : { batchIds: dryRun.batchIds, options: { dryRun: false, purgeOrphansOnly } };
       const r = await fetch('/api/admin/custom-qrs/purge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.message || 'Error purge');
@@ -106,7 +136,40 @@ export default function PurgeCustomQrsClient() {
         <button onClick={() => selectLatest(20)} className="btn-outline text-sm" disabled={loading}>Últimos 20</button>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Opción para purgar huérfanos */}
+      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            id="purgeOrphans"
+            checked={purgeOrphansOnly}
+            onChange={e => {
+              setPurgeOrphansOnly(e.target.checked);
+              if (e.target.checked) {
+                setSelected(new Set()); // Limpiar selección de lotes
+              }
+            }}
+            className="rounded"
+          />
+          <label htmlFor="purgeOrphans" className="font-medium text-amber-800 dark:text-amber-200">
+            Purgar solo QR huérfanos (sin lote asignado)
+          </label>
+        </div>
+        {orphanStats && (
+          <div className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div>Total: <strong>{orphanStats.totalQrs}</strong></div>
+              <div>Redimidos: <strong>{orphanStats.redeemed}</strong></div>
+              <div>Expirados: <strong>{orphanStats.expired}</strong></div>
+              <div>Activos: <strong>{orphanStats.active}</strong></div>
+              <div>Temas: <strong>{orphanStats.distinctThemes}</strong></div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!purgeOrphansOnly && (
+        <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-slate-200 dark:border-slate-700">
           <thead className="bg-slate-50 dark:bg-slate-800">
             <tr>
@@ -145,11 +208,17 @@ export default function PurgeCustomQrsClient() {
           </tbody>
         </table>
       </div>
+      )}
 
-      {selected.size > 0 && (
+      {(selected.size > 0 || purgeOrphansOnly) && (
         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center justify-between">
-            <span>{selected.size} lote(s) seleccionado(s)</span>
+            <span>
+              {purgeOrphansOnly
+                ? `${orphanStats?.totalQrs || 0} QR huérfano(s)`
+                : `${selected.size} lote(s) seleccionado(s)`
+              }
+            </span>
             <button onClick={runDry} className="btn-primary" disabled={loading}>
               {loading ? 'Cargando...' : 'Ejecutar Dry-Run'}
             </button>
@@ -161,10 +230,20 @@ export default function PurgeCustomQrsClient() {
         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <h3 className="font-semibold mb-2">Resultado del Dry-Run</h3>
           <div className="space-y-2 text-sm">
-            <div>Lotes a purgar: {dryRun.batchIds.length}</div>
-            <div>QR totales: {dryRun.summary.qrCounts.reduce((sum, c) => sum + c._count._all, 0)}</div>
-            <div>QR redimidos: {dryRun.summary.redeemed.reduce((sum, r) => sum + r._count._all, 0)}</div>
-            <div>QR expirados: {dryRun.summary.expired.reduce((sum, e) => sum + e._count._all, 0)}</div>
+            {purgeOrphansOnly ? (
+              <>
+                <div>QR huérfanos a purgar: {dryRun.summary.qrCounts.reduce((sum, c) => sum + c._count._all, 0)}</div>
+                <div>QR redimidos: {dryRun.summary.redeemed.reduce((sum, r) => sum + r._count._all, 0)}</div>
+                <div>QR expirados: {dryRun.summary.expired.reduce((sum, e) => sum + e._count._all, 0)}</div>
+              </>
+            ) : (
+              <>
+                <div>Lotes a purgar: {dryRun.batchIds.length}</div>
+                <div>QR totales: {dryRun.summary.qrCounts.reduce((sum, c) => sum + c._count._all, 0)}</div>
+                <div>QR redimidos: {dryRun.summary.redeemed.reduce((sum, r) => sum + r._count._all, 0)}</div>
+                <div>QR expirados: {dryRun.summary.expired.reduce((sum, e) => sum + e._count._all, 0)}</div>
+              </>
+            )}
           </div>
 
           {anyRedeemed && (

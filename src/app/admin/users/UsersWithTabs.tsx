@@ -428,6 +428,7 @@ export default function UsersWithTabs() {
                   name="users"
                   list={UserList}
                   create={UserCreate}
+                  edit={UserEdit}
                 />
               </Admin>
             </Box>

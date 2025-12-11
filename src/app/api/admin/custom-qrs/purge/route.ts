@@ -46,7 +46,25 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({ ok: true, batches: rows });
+    // Contar QR huérfanos (sin lote asignado)
+    const orphanQrs = await (prisma as any).customQr.findMany({
+      where: { batchId: null },
+      select: {
+        redeemedAt: true,
+        expiresAt: true,
+        theme: true
+      }
+    });
+
+    const orphanStats = {
+      totalQrs: orphanQrs.length,
+      redeemed: orphanQrs.filter((q: any) => q.redeemedAt).length,
+      expired: orphanQrs.filter((q: any) => !q.redeemedAt && q.expiresAt < new Date()).length,
+      active: orphanQrs.filter((q: any) => !q.redeemedAt && (!q.expiresAt || q.expiresAt >= new Date())).length,
+      distinctThemes: new Set(orphanQrs.map((q: any) => q.theme)).size
+    };
+
+    return NextResponse.json({ ok: true, batches: rows, orphanStats });
   } catch (e: any) {
     return err('INTERNAL', e?.message || 'internal error', 500);
   }
@@ -62,8 +80,51 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const batchIds: string[] = Array.isArray(body.batchIds) ? body.batchIds.filter((x: any) => typeof x === 'string' && x.trim()) : [];
     const dryRun = !!body?.options?.dryRun;
+    const purgeOrphansOnly = !!body?.options?.purgeOrphansOnly;
 
-    if (!batchIds.length) return err('NO_BATCH_IDS', 'Provide batchIds[]');
+    if (purgeOrphansOnly) {
+      // Contar QR huérfanos
+      const orphanQrs = await (prisma as any).customQr.findMany({
+        where: { batchId: null },
+        select: { id: true, redeemedAt: true, expiresAt: true }
+      });
+
+      if (dryRun) {
+        const redeemed = orphanQrs.filter((q: any) => q.redeemedAt).length;
+        const expired = orphanQrs.filter((q: any) => !q.redeemedAt && q.expiresAt < new Date()).length;
+        return NextResponse.json({
+          ok: true,
+          dryRun: true,
+          batchIds: [],
+          summary: {
+            qrCounts: [{ batchId: null, _count: { _all: orphanQrs.length } }],
+            redeemed: [{ batchId: null, _count: { _all: redeemed } }],
+            expired: [{ batchId: null, _count: { _all: expired } }]
+          }
+        });
+      }
+
+      if (!orphanQrs.length) {
+        return NextResponse.json({
+          ok: true,
+          batchIds: [],
+          deleted: { qrs: 0 }
+        });
+      }
+
+      // Ejecutar purga de huérfanos
+      const deletedQrs = await (prisma as any).customQr.deleteMany({
+        where: { batchId: null }
+      });
+
+      return NextResponse.json({
+        ok: true,
+        batchIds: [],
+        deleted: { qrs: deletedQrs.count }
+      });
+    }
+
+    if (!batchIds.length) return err('NO_BATCH_IDS', 'Provide batchIds[] or set options.purgeOrphansOnly');
 
     // Aggregations
     const redeemed = await (prisma as any).customQr.groupBy({
