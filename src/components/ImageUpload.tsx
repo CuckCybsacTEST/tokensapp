@@ -237,25 +237,6 @@ export function ImageUpload({
         )}
       </div>
 
-      {/* Información de la imagen */}
-      {metadata && (
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-xs space-y-1">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-            <div>
-              <span className="font-medium">Original:</span>
-              <p>{metadata.originalWidth}×{metadata.originalHeight}px • {formatFileSize(metadata.originalSize)}</p>
-            </div>
-            <div>
-              <span className="font-medium">Optimizada:</span>
-              <p>{metadata.optimizedWidth}×{metadata.optimizedHeight}px • {formatFileSize(metadata.optimizedSize)}</p>
-            </div>
-            <div className="text-green-600 col-span-2 sm:col-span-3">
-              💾 Ahorro: {metadata.compressionRatio.toFixed(1)}% • Calidad: {policy.imageQuality}%
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Error */}
       {error && (
         <div className="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-3">

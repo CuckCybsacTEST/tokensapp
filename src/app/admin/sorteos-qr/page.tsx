@@ -1271,7 +1271,7 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
                 onChange={(e) => setFormData({...formData, maxImageWidth: Number(e.target.value)})}
                 className="input"
                 min="100"
-                max="2000"
+                max="6000"
               />
             </div>
             <div>
@@ -1282,7 +1282,7 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
                 onChange={(e) => setFormData({...formData, maxImageHeight: Number(e.target.value)})}
                 className="input"
                 min="100"
-                max="2000"
+                max="6000"
               />
             </div>
           </div>
