@@ -281,10 +281,10 @@ export default function SorteoNavidadPage() {
               <div className="text-3xl sm:text-4xl md:text-5xl">🎄</div>
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-green-400 to-red-400 bg-clip-text text-transparent leading-tight">
-              ¡Tu Boleto Navideño Está Listo!
+              ¡Estás participando!
             </h1>
             <p className="text-white/80 text-sm sm:text-base font-medium px-2">
-              ¡Ya estás participando en el Gran Sorteo Navideño!
+              Descarga tu QR y guárdalo en un lugar seguro
             </p>
           </div>
 
@@ -296,15 +296,14 @@ export default function SorteoNavidadPage() {
                   <p className="mt-1 text-white text-sm sm:text-base break-words">{result.customerName}</p>
                 </div>
                 <div>
-                  <span className="font-medium text-white/60 block text-xs sm:text-sm">WhatsApp:</span>
-                  <p className="mt-1 text-white text-sm sm:text-base break-words">{formData.customerWhatsapp}</p>
+                  <span className="font-medium text-white/60 block text-xs sm:text-sm">DNI:</span>
+                  <p className="mt-1 text-white text-sm sm:text-base break-words">{formData.customerDni}</p>
                 </div>
               </div>
 
               {/* QR Code Section - integrado dentro de la tarjeta */}
               <div className="pt-3 sm:pt-4 border-t border-white/10">
                 <div className="text-center mb-3 sm:mb-4">
-                  <span className="text-xs sm:text-sm font-medium text-white/60 block mb-1">Tu boleto del sorteo:</span>
                   <div className="flex justify-center">
                     <div className="inline-flex w-36 sm:w-48 md:w-56 flex-col items-center bg-white p-3 sm:p-4 rounded-xl shadow-lg transform transition-transform hover:scale-105 duration-300">
                       <img
@@ -312,19 +311,8 @@ export default function SorteoNavidadPage() {
                         alt="Boleto del Gran Sorteo Navideño"
                         className="w-full h-auto object-contain"
                       />
-                      <div className="mt-2 flex w-full flex-col items-center gap-1 sm:flex-row sm:justify-between">
-                        <div className="text-black/60 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-center sm:text-left">🎄 SORTEO NAVIDAD</div>
-                        <button
-                          onClick={downloadQr}
-                          className="text-black/40 hover:text-black/60 transition-colors p-1 rounded hover:bg-black/5"
-                          title="Descargar boleto del sorteo"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7,10 12,15 17,10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                          </svg>
-                        </button>
+                      <div className="mt-2 flex w-full justify-center">
+                        <div className="text-black/60 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-center">🎄 SORTEO NAVIDAD</div>
                       </div>
                     </div>
                   </div>
@@ -337,7 +325,7 @@ export default function SorteoNavidadPage() {
                   onClick={downloadQr}
                   className="bg-gradient-to-r from-yellow-500 to-red-500 hover:from-yellow-600 hover:to-red-600 text-white font-medium py-2 px-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md text-xs"
                 >
-                  Descargar Boleto
+                  Descargar QR
                 </button>
 
                 <button
@@ -381,7 +369,7 @@ export default function SorteoNavidadPage() {
             {/* Social Media Announcement */}
             <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-white/10">
               <div className="text-center">
-                <p className="text-white/80 text-sm sm:text-base mb-2 px-2">
+                <p className="text-white text-sm sm:text-base mb-2 px-2 font-semibold">
                   ¡El sorteo será transmitido en vivo por todas nuestras plataformas!
                 </p>
                 <p className="text-sm text-white/60">
