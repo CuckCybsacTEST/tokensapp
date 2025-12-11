@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { QR_THEMES, FORM_FIELDS, type QrTheme, type FormFieldKey } from "@/lib/qr-custom";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ErrorModal, useErrorModal } from "@/components/ErrorModal";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -392,6 +393,17 @@ export default function SorteoNavidadPage() {
     );
   }
 
+  // Mostrar pantalla de carga completa si no hay política cargada
+  if (!policy) {
+    return (
+      <LoadingScreen
+        title="Configurando sorteo navideño..."
+        subtitle="Cargando políticas de participación"
+        icon="🎄"
+      />
+    );
+  }
+
   return (<>
       <div className="min-h-screen bg-[#0E0606] text-white px-4 py-8 sm:px-6 sm:py-10 md:px-8 lg:px-12 relative overflow-hidden flex flex-col">
       {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
@@ -401,20 +413,6 @@ export default function SorteoNavidadPage() {
       <div className="hidden md:block absolute bottom-32 right-4 md:right-10 text-blue-400/20 text-xl md:text-3xl animate-pulse delay-1500">⭐</div>
 
       <div className="flex-1 flex flex-col justify-center max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-auto relative z-10 w-full">
-        {/* Mensaje de carga mientras se configuran las políticas */}
-        {!policy && (
-          <div className="text-center space-y-4 mb-6">
-            <div className="inline-block p-4 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full">
-              <div className="text-4xl">🎄</div>
-            </div>
-            <div className="space-y-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400 mx-auto"></div>
-              <p className="text-white/80 text-base">Configurando sorteo navideño...</p>
-              <p className="text-white/60 text-sm">Cargando políticas de participación</p>
-            </div>
-          </div>
-        )}
-
         <div className="text-center space-y-4 mb-6 sm:mb-8 md:mb-10">
           <div className="inline-block p-4 sm:p-5 bg-gradient-to-r from-yellow-500/20 to-red-500/20 rounded-full mb-3 sm:mb-4">
             <div className="text-3xl sm:text-4xl md:text-5xl">🎄</div>
