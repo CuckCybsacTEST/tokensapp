@@ -80,7 +80,7 @@ export default function CustomQrPage({ params }: QrPageProps) {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0E0606] text-white px-4 py-6 sm:px-6 sm:py-8">
-        <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 border-b-2 border-white"></div>
+        <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:h-12 border-b-2 border-white"></div>
         <p className="mt-4 text-white/60 text-sm sm:text-base">Cargando QR personalizado...</p>
       </div>
     );

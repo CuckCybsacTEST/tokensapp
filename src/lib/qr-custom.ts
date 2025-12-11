@@ -199,7 +199,7 @@ export function isValidPeruvianDni(dni: string): boolean {
 // Generar URL de redención para QR personalizado
 export function generateRedeemUrl(code: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  return `${baseUrl}/qr/${code}`;
+  return `${baseUrl}/sorteos-qr/${code}`;
 }
 
 // Calcular fecha de expiración (por defecto 30 días)

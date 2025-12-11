@@ -49,7 +49,7 @@ function QrDisplay({ code, size = 64 }: { code: string; size?: number }) {
     const generateQr = async () => {
       try {
         // Generar el redeem URL
-        const redeemUrl = `${window.location.origin}/qr/${code}`;
+        const redeemUrl = `${window.location.origin}/sorteos-qr/${code}`;
         const dataUrl = await QRCode.toDataURL(redeemUrl, {
           width: size,
           margin: 1,
