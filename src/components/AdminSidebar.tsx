@@ -205,10 +205,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "QR PERSONALIZADOS",
+        title: "SORTEOS QR",
         icon: ICONS.qr,
         items: [
-          { href: `${pathPrefix}/sorteos-qr`, label: "Gestión de QR", icon: ICONS.qr },
+          { href: `${pathPrefix}/sorteos-qr?tab=batches`, label: "Lotes", icon: ICONS.qr },
+          { href: `${pathPrefix}/sorteos-qr?tab=policies`, label: "Políticas", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/sorteos-qr/purge`, label: "Purge", icon: ICONS.box },
+          { href: `${pathPrefix}/sorteos-qr?tab=stats`, label: "Estadísticas", icon: ICONS.chart },
           { href: "/qr-generator", label: "Generador Público", icon: ICONS.starSmall }
         ]
       }] : []),

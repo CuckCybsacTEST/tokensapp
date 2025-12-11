@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { QR_THEMES } from "@/lib/qr-custom";
 import QRCode from 'qrcode';
 
@@ -95,6 +96,7 @@ function QrDisplay({ code, size = 64 }: { code: string; size?: number }) {
 }
 
 export default function CustomQrsAdminPage() {
+  const searchParams = useSearchParams();
   const [qrs, setQrs] = useState<CustomQr[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,8 +110,18 @@ export default function CustomQrsAdminPage() {
   const [policies, setPolicies] = useState<any[]>([]);
 
   useEffect(() => {
+    // Check URL parameters to show specific sections
+    const tab = searchParams.get('tab');
+    if (tab === 'stats') {
+      setShowStats(true);
+    } else if (tab === 'batches') {
+      setShowBatchManager(true);
+    } else if (tab === 'policies') {
+      setShowPolicyManager(true);
+    }
+    
     loadData();
-  }, []);
+  }, [searchParams]);
 
   const loadData = async () => {
     try {
