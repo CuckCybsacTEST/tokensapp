@@ -2,7 +2,20 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs/promises';
 import { randomBytes } from 'crypto';
-import { supabaseAdmin, STORAGE_BUCKET, STORAGE_FOLDERS, type StorageFolder } from './supabase';
+// Lazy import to avoid build-time validation
+let supabaseAdmin: any = null;
+let STORAGE_BUCKET: string = '';
+let STORAGE_FOLDERS: any = null;
+
+const getSupabaseAdmin = async () => {
+  if (!supabaseAdmin) {
+    const supabaseModule = await import('./supabase');
+    supabaseAdmin = supabaseModule.supabaseAdmin;
+    STORAGE_BUCKET = supabaseModule.STORAGE_BUCKET;
+    STORAGE_FOLDERS = supabaseModule.STORAGE_FOLDERS;
+  }
+  return supabaseAdmin;
+};
 
 export interface ImageOptimizationOptions {
   quality: number;
@@ -23,8 +36,12 @@ export interface ImageMetadata {
 }
 
 export class ImageOptimizer {
-  private static readonly STORAGE_BUCKET = STORAGE_BUCKET;
-  private static readonly STORAGE_FOLDERS = STORAGE_FOLDERS;
+  private static readonly STORAGE_BUCKET = 'qr-images';
+  private static readonly STORAGE_FOLDERS = {
+    ORIGINAL: 'original',
+    OPTIMIZED: 'optimized',
+    TEMP: 'temp'
+  };
 
   static async initializeDirectories() {
     // No longer needed with Supabase - directories are virtual
@@ -108,6 +125,7 @@ export class ImageOptimizer {
     filename: string,
     type: 'original' | 'optimized' = 'optimized'
   ): Promise<string> {
+    const supabaseAdmin = await getSupabaseAdmin();
     const folder = type === 'original' ? this.STORAGE_FOLDERS.ORIGINAL : this.STORAGE_FOLDERS.OPTIMIZED;
     const filePath = `${folder}/${filename}`;
 
