@@ -236,8 +236,8 @@ export class ImageOptimizer {
         };
       }
 
-      const optimizedSize = optimizedFiles?.reduce((total, file) => total + (file.metadata?.size || 0), 0) || 0;
-      const originalSize = originalFiles?.reduce((total, file) => total + (file.metadata?.size || 0), 0) || 0;
+      const optimizedSize = optimizedFiles?.reduce((total: number, file: any) => total + (file.metadata?.size || 0), 0) || 0;
+      const originalSize = originalFiles?.reduce((total: number, file: any) => total + (file.metadata?.size || 0), 0) || 0;
 
       return {
         totalImages: (optimizedFiles?.length || 0) + (originalFiles?.length || 0),
