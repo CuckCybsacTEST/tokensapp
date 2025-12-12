@@ -47,6 +47,7 @@
     "cron:enable-tokens:today": "node -e \"fetch(require('node:process').env.CRON_BASE_URL+'/api/system/tokens/enable-scheduled',{method:'POST',headers:{'x-cron-secret':require('node:process').env.CRON_SECRET,'Content-Type':'application/json'},body:'{}'}).then(r=>r.text()).then(t=>console.log(t)).catch(e=>console.error(e))\"",
     "cookie:admin": "tsx scripts/genAdminCookie.ts admin",
     "cookie:staff": "tsx scripts/genAdminCookie.ts staff",
+    "upload:real-images": "node scripts/upload-real-images.js",
     "postinstall": "prisma generate",
     "build:css": "npx postcss src/app/globals.css -o src/app/output.css"
   },
@@ -61,6 +62,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^7.3.4",
     "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.87.1",
     "@tabler/icons-react": "^3.35.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",

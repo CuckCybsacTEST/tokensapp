@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs/promises';
 import { randomBytes } from 'crypto';
+import { supabaseAdmin, STORAGE_BUCKET, STORAGE_FOLDERS, type StorageFolder } from './supabase';
 
 export interface ImageOptimizationOptions {
   quality: number;
@@ -22,24 +23,12 @@ export interface ImageMetadata {
 }
 
 export class ImageOptimizer {
-  private static readonly UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'qr-images');
-  private static readonly ORIGINAL_DIR = path.join(this.UPLOAD_DIR, 'original');
-  private static readonly OPTIMIZED_DIR = path.join(this.UPLOAD_DIR, 'optimized');
-  private static readonly TEMP_DIR = path.join(this.UPLOAD_DIR, 'temp');
+  private static readonly STORAGE_BUCKET = STORAGE_BUCKET;
+  private static readonly STORAGE_FOLDERS = STORAGE_FOLDERS;
 
   static async initializeDirectories() {
-    console.log('Initializing directories...');
-    const dirs = [this.UPLOAD_DIR, this.ORIGINAL_DIR, this.OPTIMIZED_DIR, this.TEMP_DIR];
-    console.log('Directories to create:', dirs);
-    for (const dir of dirs) {
-      try {
-        await fs.access(dir);
-        console.log(`Directory exists: ${dir}`);
-      } catch {
-        console.log(`Creating directory: ${dir}`);
-        await fs.mkdir(dir, { recursive: true });
-      }
-    }
+    // No longer needed with Supabase - directories are virtual
+    console.log('Supabase storage initialized - no local directories needed');
   }
 
   static generateFileName(extension: string): string {
@@ -119,23 +108,44 @@ export class ImageOptimizer {
     filename: string,
     type: 'original' | 'optimized' = 'optimized'
   ): Promise<string> {
-    const dir = type === 'original' ? this.ORIGINAL_DIR : this.OPTIMIZED_DIR;
-    const filepath = path.resolve(dir, filename);
+    const folder = type === 'original' ? this.STORAGE_FOLDERS.ORIGINAL : this.STORAGE_FOLDERS.OPTIMIZED;
+    const filePath = `${folder}/${filename}`;
 
-    console.log(`Saving image: ${filename} to ${filepath}`);
-    console.log(`Directory: ${dir}`);
-    console.log(`Full path: ${filepath}`);
+    console.log(`Uploading image to Supabase: ${filePath}`);
 
     try {
-      await fs.writeFile(filepath, new Uint8Array(buffer));
-      console.log(`Image saved successfully: ${filepath}`);
+      const { data, error } = await supabaseAdmin.storage
+        .from(this.STORAGE_BUCKET)
+        .upload(filePath, buffer, {
+          contentType: type === 'original'
+            ? 'image/jpeg' // Default, will be overridden by actual type
+            : 'image/webp',
+          upsert: false // Don't overwrite existing files
+        });
+
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw error;
+      }
+
+      console.log(`Image uploaded successfully: ${data.path}`);
+
+      // Get public URL
+      const { data: urlData } = supabaseAdmin.storage
+        .from(this.STORAGE_BUCKET)
+        .getPublicUrl(filePath);
+
+      if (!urlData.publicUrl) {
+        throw new Error('Failed to get public URL');
+      }
+
+      console.log(`Public URL: ${urlData.publicUrl}`);
+      return urlData.publicUrl;
+
     } catch (error) {
-      console.error(`Error saving image: ${filepath}`, error);
+      console.error(`Error uploading image to Supabase: ${filePath}`, error);
       throw error;
     }
-
-    // Retornar URL para el API route
-    return `/api/images/qr-images/${type}/${filename}`;
   }
 
   static async validateImage(buffer: Buffer, policy: any): Promise<{ valid: boolean; error?: string }> {
@@ -178,36 +188,53 @@ export class ImageOptimizer {
   }
 
   static async cleanupTempFiles(): Promise<void> {
-    try {
-      const files = await fs.readdir(this.TEMP_DIR);
-      const now = Date.now();
-      const maxAge = 24 * 60 * 60 * 1000; // 24 horas
-
-      for (const file of files) {
-        const filepath = path.join(this.TEMP_DIR, file);
-        const stats = await fs.stat(filepath);
-
-        if (now - stats.mtime.getTime() > maxAge) {
-          await fs.unlink(filepath);
-        }
-      }
-    } catch (error) {
-      console.error('Error limpiando archivos temporales:', error);
-    }
+    // No longer needed with Supabase - temp files are handled by Supabase
+    console.log('Temp file cleanup not needed with Supabase storage');
   }
 
-  static getStorageStats(): Promise<{
+  static async getStorageStats(): Promise<{
     totalImages: number;
     totalSize: number;
     optimizedSize: number;
     originalSize: number;
   }> {
-    // Implementar estadísticas de almacenamiento
-    return Promise.resolve({
-      totalImages: 0,
-      totalSize: 0,
-      optimizedSize: 0,
-      originalSize: 0
-    });
+    try {
+      // Get storage stats from Supabase
+      const { data: optimizedFiles, error: optimizedError } = await supabaseAdmin.storage
+        .from(this.STORAGE_BUCKET)
+        .list(this.STORAGE_FOLDERS.OPTIMIZED);
+
+      const { data: originalFiles, error: originalError } = await supabaseAdmin.storage
+        .from(this.STORAGE_BUCKET)
+        .list(this.STORAGE_FOLDERS.ORIGINAL);
+
+      if (optimizedError || originalError) {
+        console.error('Error getting storage stats:', optimizedError || originalError);
+        return {
+          totalImages: 0,
+          totalSize: 0,
+          optimizedSize: 0,
+          originalSize: 0
+        };
+      }
+
+      const optimizedSize = optimizedFiles?.reduce((total, file) => total + (file.metadata?.size || 0), 0) || 0;
+      const originalSize = originalFiles?.reduce((total, file) => total + (file.metadata?.size || 0), 0) || 0;
+
+      return {
+        totalImages: (optimizedFiles?.length || 0) + (originalFiles?.length || 0),
+        totalSize: optimizedSize + originalSize,
+        optimizedSize,
+        originalSize
+      };
+    } catch (error) {
+      console.error('Error getting Supabase storage stats:', error);
+      return {
+        totalImages: 0,
+        totalSize: 0,
+        optimizedSize: 0,
+        originalSize: 0
+      };
+    }
   }
 }

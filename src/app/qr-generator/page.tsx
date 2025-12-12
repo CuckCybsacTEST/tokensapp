@@ -192,7 +192,7 @@ export default function QrGeneratorPage() {
 
   if (result) {
     return (
-      <div className="min-h-screen bg-[#0E0606] text-white px-4 py-4 sm:px-6 sm:py-6 md:px-8 lg:px-12 relative overflow-hidden">
+      <div className="min-h-screen bg-[#0E0606] text-white px-4 pt-8 pb-4 sm:px-6 sm:pt-12 sm:pb-6 md:px-8 lg:px-12 relative overflow-hidden">
         {/* Elementos decorativos navideños - ocultos en móviles pequeños */}
         <div className="hidden sm:block absolute top-10 left-4 md:left-10 text-yellow-400/20 text-2xl md:text-4xl animate-pulse">🎄</div>
         <div className="hidden sm:block absolute top-20 right-4 md:right-16 text-red-400/20 text-xl md:text-3xl animate-pulse delay-1000">🎁</div>
@@ -457,7 +457,7 @@ export default function QrGeneratorPage() {
           🎄 ¡Gracias a Ktdral lounge! 🎄
         </p>
         <p className="text-xs text-white/30 mt-1 px-2">
-          Tu QR será único y personalizado para participar
+          Tu QR será único y personalizado para participar.
         </p>
         <div className="mt-4 sm:mt-6 flex justify-center">
           <img
