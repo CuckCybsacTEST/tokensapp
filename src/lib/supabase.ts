@@ -13,19 +13,33 @@ const validateSupabaseConfig = () => {
   }
 }
 
+// Lazy initialization for clients
+let _supabase: any = null
+let _supabaseAdmin: any = null
+
 // Client for public operations (uploads from client)
-export const supabase = (() => {
-  validateSupabaseConfig()
-  return createClient(supabaseUrl!, supabaseAnonKey!)
-})()
+export const supabase = new Proxy({} as any, {
+  get(target, prop) {
+    if (!_supabase) {
+      validateSupabaseConfig()
+      _supabase = createClient(supabaseUrl!, supabaseAnonKey!)
+    }
+    return _supabase[prop]
+  }
+})
 
 // Client for server operations (admin operations)
-export const supabaseAdmin = (() => {
-  validateSupabaseConfig()
-  return supabaseServiceKey
-    ? createClient(supabaseUrl!, supabaseServiceKey)
-    : supabase
-})()
+export const supabaseAdmin = new Proxy({} as any, {
+  get(target, prop) {
+    if (!_supabaseAdmin) {
+      validateSupabaseConfig()
+      _supabaseAdmin = supabaseServiceKey
+        ? createClient(supabaseUrl!, supabaseServiceKey)
+        : _supabase || createClient(supabaseUrl!, supabaseAnonKey!)
+    }
+    return _supabaseAdmin[prop]
+  }
+})
 
 // Storage bucket name
 export const STORAGE_BUCKET = 'qr-images'
