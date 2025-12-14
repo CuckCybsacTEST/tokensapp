@@ -6,28 +6,7 @@ import fs from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 import { apiError, apiOk } from '@/lib/apiError';
-
-// Función helper para eliminar archivos de manera segura
-async function safeDeleteFile(filePath: string, context: string = 'archivo') {
-  try {
-    if (existsSync(filePath)) {
-      await fs.unlink(filePath);
-      console.log(`${context} eliminado: ${filePath}`);
-      return true;
-    } else {
-      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
-      return false;
-    }
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
-      return false;
-    } else {
-      console.error(`Error al eliminar ${context}:`, error);
-      throw error; // Re-lanzar errores no relacionados con ENOENT
-    }
-  }
-}
+import { safeDeleteFile, deleteFromSupabase } from '@/lib/supabase';
 
 export async function DELETE(request: Request) {
   try {
@@ -36,20 +15,28 @@ export async function DELETE(request: Request) {
   if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
     const roleCheck = requireRole(session, ['ADMIN']);
   if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
-    
+
     // Buscar todas las plantillas
     const templates = await prisma.printTemplate.findMany({
       select: {
         id: true,
-        filePath: true
+        filePath: true,
+        storageKey: true
       }
     });
 
-    // Eliminar archivos físicos
+    // Eliminar archivos de Supabase
     for (const template of templates) {
-      if (template.filePath) {
+      if (template.storageKey) {
+        await deleteFromSupabase(template.storageKey);
+      }
+    }
+
+    // Eliminar archivos físicos locales (compatibilidad)
+    for (const template of templates) {
+      if (template.filePath && template.filePath.startsWith('public/')) {
         const absolutePath = path.join(process.cwd(), template.filePath);
-        await safeDeleteFile(absolutePath, `Archivo de plantilla ${template.id}`);
+        await safeDeleteFile(absolutePath);
       }
     }
 

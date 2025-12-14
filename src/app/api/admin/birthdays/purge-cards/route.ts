@@ -4,6 +4,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
+import { deleteFromSupabase, safeDeleteFile } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   const cookie = getSessionCookieFromRequest(req as unknown as Request);
@@ -19,17 +20,45 @@ export async function POST(req: NextRequest) {
     const tokens = await prisma.inviteToken.findMany({ where: { reservationId: { in: ids } }, select: { id:true, reservationId:true } });
     const tokenIds = tokens.map(t=>t.id);
     console.log('[PURGE] Tokens encontrados:', tokens);
-    // Eliminar archivos host/guest por reserva
+    // Obtener cards con storage keys
+    const cards = await prisma.$queryRawUnsafe<Array<{ storageKey?: string; filePath?: string }>>(
+      `SELECT "storageKey", "filePath" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_,i)=>'$'+(i+1)).join(',')})`,
+      ...tokenIds
+    ).catch(() => []);
+
+    // Eliminar archivos de Supabase
+    for (const card of cards) {
+      if (card.storageKey) {
+        await deleteFromSupabase(card.storageKey);
+        console.log(`[PURGE] Archivo eliminado de Supabase: ${card.storageKey}`);
+      }
+    }
+
+    // Eliminar archivos locales (compatibilidad)
     let filesRemoved = 0;
     for (const rid of [...new Set(tokens.map(t=>t.reservationId))]) {
       const dir = path.resolve(process.cwd(),'public','birthday-cards', rid);
       // intentamos borrar host.png y guest.png si existen
       for (const name of ['host.png','guest.png']) {
         const f = path.join(dir, name);
-        try { await fs.promises.unlink(f); filesRemoved++; console.log(`[PURGE] Archivo eliminado: ${f}`); } catch { console.log(`[PURGE] Archivo no encontrado: ${f}`); }
+        try {
+          await safeDeleteFile(f);
+          filesRemoved++;
+          console.log(`[PURGE] Archivo local eliminado: ${f}`);
+        } catch {
+          console.log(`[PURGE] Archivo local no encontrado: ${f}`);
+        }
       }
       // si la carpeta queda vacía intentamos eliminarla (best-effort)
-      try { const rest = await fs.promises.readdir(dir); if (!rest.length) { await fs.promises.rmdir(dir); console.log(`[PURGE] Carpeta eliminada: ${dir}`); } } catch { console.log(`[PURGE] Carpeta no eliminada o no vacía: ${dir}`); }
+      try {
+        const rest = await fs.promises.readdir(dir);
+        if (!rest.length) {
+          await fs.promises.rmdir(dir);
+          console.log(`[PURGE] Carpeta eliminada: ${dir}`);
+        }
+      } catch {
+        console.log(`[PURGE] Carpeta no eliminada o no vacía: ${dir}`);
+      }
     }
     // Borrar registros InviteTokenCard
     if (tokenIds.length) {

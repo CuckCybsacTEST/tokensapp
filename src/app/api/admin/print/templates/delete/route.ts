@@ -4,34 +4,13 @@ import fs from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { apiError, apiOk } from '@/lib/apiError';
-
-// Función helper para eliminar archivos de manera segura
-async function safeDeleteFile(filePath: string, context: string = 'archivo') {
-  try {
-    if (existsSync(filePath)) {
-      await fs.unlink(filePath);
-      console.log(`${context} eliminado: ${filePath}`);
-      return true;
-    } else {
-      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
-      return false;
-    }
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
-      return false;
-    } else {
-      console.error(`Error al eliminar ${context}:`, error);
-      throw error; // Re-lanzar errores no relacionados con ENOENT
-    }
-  }
-}
+import { safeDeleteFile, deleteFromSupabase } from '@/lib/supabase';
 
 export async function DELETE(request: Request) {
   // Extraer el ID de la plantilla de la URL
   const url = new URL(request.url);
   const id = url.searchParams.get('id');
-  
+
   if (!id) {
     return apiError('INVALID_ID','ID de plantilla no proporcionado',undefined,400);
   }
@@ -46,10 +25,15 @@ export async function DELETE(request: Request) {
       return apiError('NOT_FOUND','Plantilla no encontrada',undefined,404);
     }
 
-    // Eliminar el archivo físico
-    if (template.filePath) {
+    // Eliminar archivo de Supabase si tiene storageKey
+    if (template.storageKey) {
+      await deleteFromSupabase(template.storageKey);
+    }
+
+    // Eliminar archivo físico local (compatibilidad con sistema antiguo)
+    if (template.filePath && template.filePath.startsWith('public/')) {
       const absolutePath = path.join(process.cwd(), template.filePath);
-      await safeDeleteFile(absolutePath, 'Archivo físico');
+      await safeDeleteFile(absolutePath);
     }
 
     // Eliminar el registro de la base de datos

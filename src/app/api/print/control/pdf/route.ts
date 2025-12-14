@@ -7,10 +7,14 @@ import assemblePages from '@/lib/print/layout';
 import composePdfFromPagePngs from '@/lib/print/pdf';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { writeFile, unlink } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { audit } from '@/lib/audit';
 import { getPublicBaseUrl } from '@/lib/config';
 import { apiError } from '@/lib/apiError';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Helper to convert dataURL to Buffer
 function dataUrlToBuffer(dataUrl: string): Buffer {
@@ -20,6 +24,8 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
 }
 
 export async function GET(req: Request) {
+  let tempTemplatePath: string | null = null;
+
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
@@ -98,8 +104,34 @@ export async function GET(req: Request) {
       return apiError('TEMPLATE_NOT_FOUND','Plantilla no encontrada',undefined,404);
     }
 
-    // Configurar la ruta de la plantilla y metadatos
-    let templatePath = path.resolve(process.cwd(), template.filePath.startsWith('public/') ? template.filePath : `public/templates/${template.filePath}`);
+    // Obtener la ruta del archivo de plantilla
+    let templatePath: string;
+
+    if (template.storageUrl) {
+      // Descargar desde Supabase
+      console.log('Descargando plantilla desde Supabase:', template.storageUrl);
+      const response = await fetch(template.storageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download template from Supabase: ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      tempTemplatePath = path.join(os.tmpdir(), `template-${randomUUID()}.png`);
+      await writeFile(tempTemplatePath, new Uint8Array(arrayBuffer));
+      templatePath = tempTemplatePath;
+    } else if (template.filePath) {
+      // Usar ruta local (compatibilidad)
+      templatePath = path.resolve(process.cwd(), template.filePath.startsWith('public/') ? template.filePath : `public/templates/${template.filePath}`);
+
+      // Verificar que el archivo existe
+      if (!fs.existsSync(templatePath)) {
+        console.error('El archivo de plantilla no existe en la ruta:', templatePath);
+        return apiError('TEMPLATE_FILE_NOT_FOUND','Archivo de plantilla no encontrado',{ path: templatePath },404);
+      }
+    } else {
+      return apiError('TEMPLATE_FILE_NOT_FOUND','No se encontró archivo de plantilla',undefined,404);
+    }
+
+    console.log('Ruta de plantilla a usar:', templatePath);
     let dpi = 300;
     let cols = 1;
     let rows = 8;
@@ -224,6 +256,25 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error('print control error', err);
+
+    // Limpiar archivo temporal si existe
+    if (tempTemplatePath) {
+      try {
+        await unlink(tempTemplatePath);
+      } catch (cleanupError) {
+        console.warn('Error limpiando archivo temporal:', cleanupError);
+      }
+    }
+
     return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
+  } finally {
+    // Limpiar archivo temporal si existe
+    if (tempTemplatePath) {
+      try {
+        await unlink(tempTemplatePath);
+      } catch (cleanupError) {
+        console.warn('Error limpiando archivo temporal:', cleanupError);
+      }
+    }
   }
 }

@@ -6,9 +6,13 @@ import assemblePages from '@/lib/print/layout';
 import composePdfFromPagePngs from '@/lib/print/pdf';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { writeFile, unlink } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { audit } from '@/lib/audit';
 import { apiError } from '@/lib/apiError';
 import { getPublicBaseUrl } from '@/lib/config';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Optional: try to import Prisma client if present for fallback
 // Do not require prisma at module load time; tests set global._prisma after import.
@@ -22,6 +26,8 @@ function dataUrlToBuffer(dataUrl: string): Buffer {
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  let tempTemplatePath: string | null = null;
+
   try {
   const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
@@ -144,8 +150,23 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       try {
         const tpl = await prisma.printTemplate.findUnique({ where: { id: templateId } });
         if (tpl) {
-          // filePath stored as public/...; resolve to FS path
-          templatePath = path.resolve(process.cwd(), tpl.filePath.startsWith('public/') ? tpl.filePath : `public/templates/${tpl.filePath}`);
+          // Resolve template path - prefer Supabase URL, fallback to local file
+          if (tpl.storageUrl) {
+            // Download from Supabase
+            console.log('Downloading template from Supabase:', tpl.storageUrl);
+            const response = await fetch(tpl.storageUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to download template from Supabase: ${response.status}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            tempTemplatePath = path.join(os.tmpdir(), `template-${randomUUID()}.png`);
+            await writeFile(tempTemplatePath, new Uint8Array(arrayBuffer));
+            templatePath = tempTemplatePath;
+          } else if (tpl.filePath) {
+            // Use local file (compatibility)
+            templatePath = path.resolve(process.cwd(), tpl.filePath.startsWith('public/') ? tpl.filePath : `public/templates/${tpl.filePath}`);
+          }
+
           if (tpl.meta) {
             try {
               const metaObj = JSON.parse(tpl.meta);
@@ -263,7 +284,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     //  - finalize the PDF and close the stream
     // This avoids building the whole PDF in memory and supports backpressure to the HTTP socket.
   // Return a plain ArrayBuffer (copied) to satisfy BodyInit typing in all runtimes
-  return new NextResponse(arrCopy, {
+  const response = new NextResponse(arrCopy, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
@@ -274,8 +295,31 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           'X-Content-Range': contentRangeHeader,
       },
     });
+
+  // Clean up temporary template file if it was downloaded
+  if (tempTemplatePath) {
+    try {
+      await unlink(tempTemplatePath);
+      console.log('Cleaned up temporary template file:', tempTemplatePath);
+    } catch (e) {
+      console.warn('Failed to clean up temporary template file:', e);
+    }
+  }
+
+  return response;
   } catch (err: any) {
     console.error('print batch error', err);
+
+    // Clean up temporary template file if it was downloaded
+    if (tempTemplatePath) {
+      try {
+        await unlink(tempTemplatePath);
+        console.log('Cleaned up temporary template file after error:', tempTemplatePath);
+      } catch (e) {
+        console.warn('Failed to clean up temporary template file after error:', e);
+      }
+    }
+
     return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

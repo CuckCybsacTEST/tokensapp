@@ -4,9 +4,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { generateInviteCard } from '@/lib/birthdays/generateInviteCard';
 import { generateInviteTokens } from '@/lib/birthdays/service';
+import { uploadFromTempAndCleanup, safeDeleteFile, getTempFilePath } from '@/lib/supabase';
 
 // Shadow type until prisma generate creates the official InviteTokenCard delegate
-type InviteTokenCardRow = { id: string; inviteTokenId: string; kind: 'host' | 'guest'; filePath: string; createdAt: Date };
+type InviteTokenCardRow = { id: string; inviteTokenId: string; kind: 'host' | 'guest'; filePath: string; storageProvider?: string; storageKey?: string; storageUrl?: string; createdAt: Date };
 
 export async function ensureBirthdayCards(reservationId: string, baseUrl: string) {
   // Fetch tokens (host + guest) first
@@ -26,7 +27,7 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
   let existing: InviteTokenCardRow[] = [];
   try {
     existing = await prisma.$queryRawUnsafe<InviteTokenCardRow[]>(
-      'SELECT id, "inviteTokenId", kind, "filePath", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" IN ($1,$2)',
+      'SELECT id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" IN ($1,$2)',
       host.id, guest.id
     );
   } catch (e) {
@@ -38,7 +39,12 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
   if (hasHost && hasGuest) {
     return {
       already: true,
-      paths: existing.reduce<Record<string,string>>((acc, c) => { acc[c.kind] = '/' + c.filePath.replace(/^[\\/]+/, ''); return acc; }, {}),
+      paths: existing.reduce<Record<string,string>>((acc, c) => {
+        // Prefer storageUrl if available, fallback to filePath
+        const url = c.storageUrl || (c.filePath ? '/' + c.filePath.replace(/^[\\/]+/, '') : '');
+        acc[c.kind] = url;
+        return acc;
+      }, {}),
     };
   }
 
@@ -61,21 +67,37 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
   async function create(kind: 'host' | 'guest', tokenId: string, code: string, url: string) {
     // If card exists skip
     const prior = existing.find(c => c.inviteTokenId === tokenId);
-    if (prior) { createdPaths[kind] = '/' + prior.filePath.replace(/^[\\/]+/, ''); return; }
+    if (prior) {
+      createdPaths[kind] = prior.storageUrl || (prior.filePath ? '/' + prior.filePath.replace(/^[\\/]+/, '') : '');
+      return;
+    }
+
+    // Generate image
     const buf = await generateInviteCard(kind, code, url, 'png', celebrantFirst, reservationDateISO);
-    const relFile = path.posix.join(relDir, `${kind}.png`);
-    const absFile = path.resolve(process.cwd(), 'public', relFile);
-  // Cast to Uint8Array to satisfy writeFile overload differences in some TS lib configs
-  await fs.promises.writeFile(absFile, buf as unknown as Uint8Array);
+
+    // Create temp file
+    const tempFilePath = getTempFilePath('birthday-card', 'png');
+    await fs.promises.writeFile(tempFilePath, buf as unknown as Uint8Array);
+
+    // Upload to Supabase
+    const storageKey = `birthday-cards/${reservationId}/${kind}.png`;
+    const { url: storageUrl, storageKey: finalStorageKey } = await uploadFromTempAndCleanup(
+      tempFilePath,
+      storageKey
+    );
+
+    // Save to database
     try {
       await prisma.$executeRawUnsafe(
-        'INSERT INTO "InviteTokenCard" (id, "inviteTokenId", kind, "filePath", "createdAt") VALUES ($1,$2,$3,$4, NOW()) ON CONFLICT ("inviteTokenId") DO NOTHING',
-        crypto.randomUUID(), tokenId, kind, relFile
+        'INSERT INTO "InviteTokenCard" (id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7, NOW()) ON CONFLICT ("inviteTokenId") DO NOTHING',
+        crypto.randomUUID(), tokenId, kind, `birthday-cards/${reservationId}/${kind}.png`, 'supabase', finalStorageKey, storageUrl
       );
     } catch (e) {
       // ignore until migration is applied
+      console.warn('Failed to save birthday card to database:', e);
     }
-    createdPaths[kind] = '/' + relFile.replace(/^[\\/]+/, '');
+
+    createdPaths[kind] = storageUrl;
   }
 
   if (!hasHost) await create('host', host.id, host.code, hostUrl);
@@ -90,13 +112,16 @@ export async function getBirthdayCards(reservationId: string) {
   let cards: InviteTokenCardRow[] = [];
   try {
     cards = await prisma.$queryRawUnsafe<InviteTokenCardRow[]>(
-      `SELECT id, "inviteTokenId", kind, "filePath", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokens.map((_, i) => '$' + (i + 1)).join(',')})`,
+      `SELECT id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokens.map((_, i) => '$' + (i + 1)).join(',')})`,
       ...tokens.map(t => t.id)
     );
   } catch (e) {
     cards = [];
   }
   const paths: Record<string,string> = {};
-  for (const c of cards) paths[c.kind] = '/' + c.filePath.replace(/^[\\/]+/, '');
+  for (const c of cards) {
+    // Prefer storageUrl if available, fallback to filePath
+    paths[c.kind] = c.storageUrl || (c.filePath ? '/' + c.filePath.replace(/^[\\/]+/, '') : '');
+  }
   return { paths, tokens };
 }

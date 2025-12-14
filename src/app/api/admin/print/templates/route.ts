@@ -6,28 +6,7 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import { apiError, apiOk } from '@/lib/apiError';
-
-// Función helper para eliminar archivos de manera segura
-async function safeDeleteFile(filePath: string, context: string = 'archivo') {
-  try {
-    if (existsSync(filePath)) {
-      await fs.unlink(filePath);
-      console.log(`${context} eliminado: ${filePath}`);
-      return true;
-    } else {
-      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
-      return false;
-    }
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
-      return false;
-    } else {
-      console.error(`Error al eliminar ${context}:`, error);
-      throw error; // Re-lanzar errores no relacionados con ENOENT
-    }
-  }
-}
+import { safeDeleteFile, deleteFromSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   try {
@@ -40,7 +19,7 @@ export async function GET(req: Request) {
     // Obtener solo las plantillas recientes (últimas 24 horas)
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    
+
     // Encontrar plantillas antiguas para eliminar
     const oldTemplates = await prisma.printTemplate.findMany({
       where: {
@@ -50,18 +29,23 @@ export async function GET(req: Request) {
       },
       select: {
         id: true,
-        filePath: true
+        filePath: true,
+        storageKey: true
       }
     });
-    
-    // Eliminar archivos físicos de plantillas antiguas
+
+    // Eliminar archivos de Supabase de plantillas antiguas
     for (const template of oldTemplates) {
-      if (template.filePath) {
+      if (template.storageKey) {
+        await deleteFromSupabase(template.storageKey);
+      }
+      // También eliminar archivos locales si existen (compatibilidad)
+      if (template.filePath && template.filePath.startsWith('public/')) {
         const absolutePath = path.join(process.cwd(), template.filePath);
-        await safeDeleteFile(absolutePath, `Archivo físico de plantilla ${template.id}`);
+        await safeDeleteFile(absolutePath);
       }
     }
-    
+
     // Eliminar registros de plantillas antiguas de la base de datos
     await prisma.printTemplate.deleteMany({
       where: {
@@ -70,7 +54,7 @@ export async function GET(req: Request) {
         }
       }
     });
-    
+
     // Obtener plantillas recientes
     const templates = await prisma.printTemplate.findMany({
       where: {
@@ -83,6 +67,9 @@ export async function GET(req: Request) {
         id: true,
         name: true,
         filePath: true,
+        storageProvider: true,
+        storageKey: true,
+        storageUrl: true,
         meta: true,
         createdAt: true
       }

@@ -9,8 +9,11 @@ import os from 'os';
 import { writeFile, unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { apiError } from '@/lib/apiError';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: Request) {
+  let tempTemplatePath: string | null = null;
+
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
@@ -21,13 +24,13 @@ export async function GET(req: Request) {
     // Obtener parámetros de la URL
     const url = new URL(req.url);
     const templateId = url.searchParams.get('templateId');
-    
+
     if (!templateId) {
       return apiError('MISSING_TEMPLATE_ID','Falta templateId',undefined,400);
     }
 
     // Cargar la plantilla desde la base de datos
-    const template = await prisma.printTemplate.findUnique({ 
+    const template = await prisma.printTemplate.findUnique({
       where: { id: templateId }
     });
 
@@ -35,26 +38,41 @@ export async function GET(req: Request) {
       return apiError('TEMPLATE_NOT_FOUND','Plantilla no encontrada',undefined,404);
     }
 
-    // Configurar la ruta de la plantilla y metadatos
     console.log('Template encontrado:', template);
-    console.log('Ruta almacenada en la BD:', template.filePath);
-    
-    // Normalizar la ruta de la plantilla
-    let templatePath;
-    if (template.filePath.startsWith('public/')) {
-      templatePath = path.resolve(process.cwd(), template.filePath);
+
+    // Obtener la ruta del archivo de plantilla
+    let templatePath: string;
+
+    if (template.storageUrl) {
+      // Descargar desde Supabase
+      console.log('Descargando plantilla desde Supabase:', template.storageUrl);
+      const response = await fetch(template.storageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download template from Supabase: ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      tempTemplatePath = path.join(os.tmpdir(), `template-${randomUUID()}.png`);
+      await writeFile(tempTemplatePath, new Uint8Array(arrayBuffer));
+      templatePath = tempTemplatePath;
+    } else if (template.filePath) {
+      // Usar ruta local (compatibilidad)
+      if (template.filePath.startsWith('public/')) {
+        templatePath = path.resolve(process.cwd(), template.filePath);
+      } else {
+        templatePath = path.resolve(process.cwd(), 'public/templates', template.filePath);
+      }
+
+      // Verificar que el archivo existe
+      const fs = require('fs');
+      if (!fs.existsSync(templatePath)) {
+        console.error('El archivo de plantilla no existe en la ruta:', templatePath);
+        return apiError('TEMPLATE_FILE_NOT_FOUND','Archivo de plantilla no encontrado',{ path: templatePath },404);
+      }
     } else {
-      templatePath = path.resolve(process.cwd(), 'public/templates', template.filePath);
+      return apiError('TEMPLATE_FILE_NOT_FOUND','No se encontró archivo de plantilla',undefined,404);
     }
-    
-    console.log('Ruta normalizada para la plantilla:', templatePath);
-    
-    // Verificar que el archivo existe
-    const fs = require('fs');
-    if (!fs.existsSync(templatePath)) {
-      console.error('El archivo de plantilla no existe en la ruta:', templatePath);
-      return apiError('TEMPLATE_FILE_NOT_FOUND','Archivo de plantilla no encontrado',{ path: templatePath },404);
-    }
+
+    console.log('Ruta de plantilla a usar:', templatePath);
     
     let dpi = 300;
     let defaultQrMeta = { xMm: 150, yMm: 230, widthMm: 30, rotationDeg: 0 };
@@ -96,7 +114,7 @@ export async function GET(req: Request) {
 
       // Convertir el Buffer a Uint8Array para asegurar compatibilidad con NextResponse
       const uint8Array = new Uint8Array(previewImage);
-      
+
       // Devolver la imagen compuesta
       return new NextResponse(uint8Array, {
         status: 200,
@@ -115,10 +133,29 @@ export async function GET(req: Request) {
         qr: defaultQrMeta,
         dpi
       },500);
+    } finally {
+      // Limpiar archivo temporal si se creó
+      if (tempTemplatePath) {
+        try {
+          await unlink(tempTemplatePath);
+        } catch (cleanupError) {
+          console.warn('Error limpiando archivo temporal:', cleanupError);
+        }
+      }
     }
 
   } catch (err: any) {
     console.error('print preview error', err);
+
+    // Limpiar archivo temporal si se creó
+    if (tempTemplatePath) {
+      try {
+        await unlink(tempTemplatePath);
+      } catch (cleanupError) {
+        console.warn('Error limpiando archivo temporal:', cleanupError);
+      }
+    }
+
     return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

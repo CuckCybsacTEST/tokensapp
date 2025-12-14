@@ -5,6 +5,7 @@ import path from 'path';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { apiError, apiOk } from '@/lib/apiError';
+import { uploadFromTempAndCleanup, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase';
 
 // Helper para sanitizar nombres de archivo
 function sanitizeFileName(name: string): string {
@@ -15,29 +16,9 @@ function sanitizeFileName(name: string): string {
     .replace(/-+/g, '-');
 }
 
-// Función helper para eliminar archivos de manera segura
-async function safeDeleteFile(filePath: string, context: string = 'archivo') {
-  try {
-    if (existsSync(filePath)) {
-      await unlink(filePath);
-      console.log(`${context} eliminado: ${filePath}`);
-      return true;
-    } else {
-      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
-      return false;
-    }
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
-      return false;
-    } else {
-      console.error(`Error al eliminar ${context}:`, error);
-      throw error; // Re-lanzar errores no relacionados con ENOENT
-    }
-  }
-}
-
 export async function POST(req: NextRequest) {
+  let tempFilePath: string | null = null;
+
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
@@ -63,37 +44,32 @@ export async function POST(req: NextRequest) {
       return apiError('INVALID_IMAGE_TYPE','El archivo debe ser una imagen',{ type: file.type },400);
     }
 
-    // Preparar el directorio para guardar la plantilla
-    const templatesDir = path.resolve(process.cwd(), 'public', 'templates');
-    if (!existsSync(templatesDir)) {
-      await mkdir(templatesDir, { recursive: true });
-    }
-
-    // Generar nombre de archivo único
-    const timestamp = Date.now();
+    // Generar ID único para la plantilla
+    const templateId = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const fileExt = file.name.split('.').pop() || 'png';
-    const sanitizedName = sanitizeFileName(name);
-    const fileName = `${sanitizedName}-${timestamp}.${fileExt}`;
-    const filePath = path.join(templatesDir, fileName);
-    const publicPath = `public/templates/${fileName}`;
+    const storageKey = `templates/${templateId}.${fileExt}`;
 
-    // Guardar el archivo
+    // Crear archivo temporal
+    tempFilePath = getTempFilePath('template', fileExt);
     const arrayBuffer = await file.arrayBuffer();
-    console.log('Guardando archivo en:', filePath);
-    console.log('Ruta pública:', publicPath);
-    await writeFile(filePath, new Uint8Array(arrayBuffer));
-    
-    // Verificar que el archivo se guardó correctamente
-    if (!existsSync(filePath)) {
-      throw new Error(`No se pudo guardar el archivo en ${filePath}`);
-    }
+    await writeFile(tempFilePath, new Uint8Array(arrayBuffer));
 
-    console.log('Archivo guardado correctamente. Tamaño:', arrayBuffer.byteLength, 'bytes');
+    console.log('Archivo temporal creado:', tempFilePath);
 
-    // Limpiar plantillas antiguas
+    // Subir a Supabase
+    const { url, storageKey: finalStorageKey } = await uploadFromTempAndCleanup(
+      tempFilePath,
+      storageKey
+    );
+
+    tempFilePath = null; // Ya se limpió
+
+    console.log('Archivo subido a Supabase:', { url, storageKey: finalStorageKey });
+
+    // Limpiar plantillas antiguas (más de 1 día)
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    
+
     // Buscar plantillas antiguas
     const oldTemplates = await prisma.printTemplate.findMany({
       where: {
@@ -103,18 +79,23 @@ export async function POST(req: NextRequest) {
       },
       select: {
         id: true,
+        storageKey: true,
         filePath: true
       }
     });
-    
-    // Eliminar archivos físicos de plantillas antiguas
+
+    // Eliminar archivos de Supabase de plantillas antiguas
     for (const oldTemplate of oldTemplates) {
-      if (oldTemplate.filePath) {
+      if (oldTemplate.storageKey) {
+        await deleteFromSupabase(oldTemplate.storageKey);
+      }
+      // También intentar eliminar archivo local si existe (compatibilidad)
+      if (oldTemplate.filePath && oldTemplate.filePath.startsWith('public/')) {
         const absolutePath = path.join(process.cwd(), oldTemplate.filePath);
-        await safeDeleteFile(absolutePath, `Archivo antiguo de plantilla ${oldTemplate.id}`);
+        await safeDeleteFile(absolutePath);
       }
     }
-    
+
     // Eliminar registros antiguos
     await prisma.printTemplate.deleteMany({
       where: {
@@ -123,12 +104,15 @@ export async function POST(req: NextRequest) {
         }
       }
     });
-    
+
     // Crear registro en la base de datos
     const template = await prisma.printTemplate.create({
       data: {
         name: name,
-        filePath: publicPath,
+        filePath: `public/templates/${templateId}.${fileExt}`, // Legacy compatibility
+        storageProvider: 'supabase',
+        storageKey: finalStorageKey,
+        storageUrl: url,
         meta: JSON.stringify({
           dpi: 300,
           cols: 1,
@@ -137,12 +121,18 @@ export async function POST(req: NextRequest) {
         })
       }
     });
-    
+
     console.log('Plantilla registrada en la base de datos:', template);
 
     return apiOk(template);
   } catch (err: any) {
     console.error('Error al subir la plantilla:', err);
+
+    // Limpiar archivo temporal si existe
+    if (tempFilePath) {
+      await safeDeleteFile(tempFilePath);
+    }
+
     return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
   }
 }

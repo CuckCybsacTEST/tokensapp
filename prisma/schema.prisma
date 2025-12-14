@@ -137,12 +137,15 @@ model EventLog {
 }
 
 model PrintTemplate {
-  id        String   @id @default(cuid())
-  name      String
-  filePath  String
-  meta      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  filePath        String?  // Legacy field - use storageKey instead
+  storageProvider String?  @default("supabase") // 'supabase' or 'local'
+  storageKey      String?  // Storage key (e.g. 'templates/template-id.png')
+  storageUrl      String?  // Cached public URL
+  meta            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([name])
 }
@@ -410,12 +413,15 @@ model InviteToken {
 }
 
 model InviteTokenCard {
-  id            String      @id @default(cuid())
-  inviteTokenId String      @unique
-  kind          String
-  filePath      String      // relative to public/ (e.g. birthday-cards/<reservationId>/host.png)
-  createdAt     DateTime    @default(now())
-  inviteToken   InviteToken @relation(fields: [inviteTokenId], references: [id], onDelete: Cascade)
+  id              String      @id @default(cuid())
+  inviteTokenId   String      @unique
+  kind            String
+  filePath        String?     // Legacy field - use storageKey instead
+  storageProvider String?     @default("supabase") // 'supabase' or 'local'
+  storageKey      String?     // Storage key (e.g. 'birthday-cards/reservation-id/host.png')
+  storageUrl      String?     // Cached public URL
+  createdAt       DateTime    @default(now())
+  inviteToken     InviteToken @relation(fields: [inviteTokenId], references: [id], onDelete: Cascade)
 
   @@index([kind])
   @@index([createdAt])

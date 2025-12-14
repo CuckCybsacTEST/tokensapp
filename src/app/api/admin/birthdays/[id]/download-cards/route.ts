@@ -9,7 +9,11 @@ import { generateQrPngDataUrl } from '@/lib/qr';
 import { composeTemplateWithQr } from '@/lib/print/compose';
 import { createZipStream } from '@/lib/zip';
 import path from 'path';
+import os from 'os';
+import { writeFile, unlink } from 'fs/promises';
+import { randomUUID } from 'crypto';
 import { getBirthdayQrBaseUrl } from '@/lib/config';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const QuerySchema = z.object({
   templateId: z.string().optional(),
@@ -63,16 +67,38 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const guest = tokens.find(t => t.kind === 'guest');
 
   // Resolve print template
-  let template = null as null | { id: string; filePath: string; meta: string | null };
+  let template = null as null | { id: string; filePath: string | null; storageUrl: string | null; storageKey: string | null; meta: string | null };
   if (parsed.data.templateId) {
-    template = await prisma.printTemplate.findUnique({ where: { id: parsed.data.templateId }, select: { id: true, filePath: true, meta: true } });
+    template = await prisma.printTemplate.findUnique({ where: { id: parsed.data.templateId }, select: { id: true, filePath: true, storageUrl: true, storageKey: true, meta: true } });
   } else {
     // use latest template as default
-    template = await prisma.printTemplate.findFirst({ orderBy: { createdAt: 'desc' }, select: { id: true, filePath: true, meta: true } });
+    template = await prisma.printTemplate.findFirst({ orderBy: { createdAt: 'desc' }, select: { id: true, filePath: true, storageUrl: true, storageKey: true, meta: true } });
   }
   if (!template) return apiError('NO_TEMPLATE', 'No print template configured', undefined, 400);
 
-  let templatePath = path.resolve(process.cwd(), template.filePath.startsWith('public/') ? template.filePath : `public/templates/${template.filePath}`);
+  // Resolve template path - prefer Supabase URL, fallback to local file
+  let templatePath: string;
+  let tempTemplatePath: string | null = null;
+
+  if (template.storageUrl) {
+    // Download from Supabase
+    console.log('Downloading template from Supabase:', template.storageUrl);
+    const response = await fetch(template.storageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download template from Supabase: ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    tempTemplatePath = path.join(os.tmpdir(), `template-${randomUUID()}.png`);
+    await writeFile(tempTemplatePath, new Uint8Array(arrayBuffer));
+    templatePath = tempTemplatePath;
+  } else if (template.filePath) {
+    // Use local file (compatibility)
+    templatePath = path.resolve(process.cwd(), template.filePath.startsWith('public/') ? template.filePath : `public/templates/${template.filePath}`);
+  } else {
+    return apiError('TEMPLATE_FILE_NOT_FOUND', 'No template file available', undefined, 400);
+  }
+
+  console.log('Using template path:', templatePath);
   let dpi = 300;
   let qrMeta = { xMm: 150, yMm: 230, widthMm: 30, rotationDeg: 0 } as { xMm: number; yMm: number; widthMm: number; rotationDeg?: number };
   if (template.meta) {
@@ -124,6 +150,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       await archive.finalize();
     } catch (e) {
       archive.emit('error', e as any);
+    } finally {
+      // Clean up temp template file
+      if (tempTemplatePath) {
+        try {
+          await unlink(tempTemplatePath);
+        } catch (cleanupError) {
+          console.warn('Error cleaning up temp template file:', cleanupError);
+        }
+      }
     }
   })();
 
