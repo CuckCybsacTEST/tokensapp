@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { apiError, apiOk } from '@/lib/apiError';
+
+// Función helper para eliminar archivos de manera segura
+async function safeDeleteFile(filePath: string, context: string = 'archivo') {
+  try {
+    if (existsSync(filePath)) {
+      await fs.unlink(filePath);
+      console.log(`${context} eliminado: ${filePath}`);
+      return true;
+    } else {
+      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
+      return false;
+    }
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
+      return false;
+    } else {
+      console.error(`Error al eliminar ${context}:`, error);
+      throw error; // Re-lanzar errores no relacionados con ENOENT
+    }
+  }
+}
 
 export async function DELETE(request: Request) {
   // Extraer el ID de la plantilla de la URL
@@ -25,13 +48,8 @@ export async function DELETE(request: Request) {
 
     // Eliminar el archivo físico
     if (template.filePath) {
-      try {
-        const absolutePath = path.join(process.cwd(), template.filePath);
-        await fs.unlink(absolutePath);
-      } catch (fileError) {
-        console.error("Error al eliminar el archivo físico:", fileError);
-        // Continuamos con la eliminación en la base de datos aunque falle la eliminación del archivo
-      }
+      const absolutePath = path.join(process.cwd(), template.filePath);
+      await safeDeleteFile(absolutePath, 'Archivo físico');
     }
 
     // Eliminar el registro de la base de datos

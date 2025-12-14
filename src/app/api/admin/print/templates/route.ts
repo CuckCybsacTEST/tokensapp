@@ -3,8 +3,31 @@ import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import { apiError, apiOk } from '@/lib/apiError';
+
+// Función helper para eliminar archivos de manera segura
+async function safeDeleteFile(filePath: string, context: string = 'archivo') {
+  try {
+    if (existsSync(filePath)) {
+      await fs.unlink(filePath);
+      console.log(`${context} eliminado: ${filePath}`);
+      return true;
+    } else {
+      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
+      return false;
+    }
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
+      return false;
+    } else {
+      console.error(`Error al eliminar ${context}:`, error);
+      throw error; // Re-lanzar errores no relacionados con ENOENT
+    }
+  }
+}
 
 export async function GET(req: Request) {
   try {
@@ -33,15 +56,9 @@ export async function GET(req: Request) {
     
     // Eliminar archivos físicos de plantillas antiguas
     for (const template of oldTemplates) {
-      try {
-        if (template.filePath) {
-          const absolutePath = path.join(process.cwd(), template.filePath);
-          await fs.unlink(absolutePath).catch(err => {
-            console.error(`Error al eliminar archivo físico de plantilla ${template.id}:`, err);
-          });
-        }
-      } catch (fileErr) {
-        console.error(`Error al procesar eliminación de archivo para plantilla ${template.id}:`, fileErr);
+      if (template.filePath) {
+        const absolutePath = path.join(process.cwd(), template.filePath);
+        await safeDeleteFile(absolutePath, `Archivo físico de plantilla ${template.id}`);
       }
     }
     

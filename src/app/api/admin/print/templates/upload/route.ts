@@ -15,6 +15,28 @@ function sanitizeFileName(name: string): string {
     .replace(/-+/g, '-');
 }
 
+// Función helper para eliminar archivos de manera segura
+async function safeDeleteFile(filePath: string, context: string = 'archivo') {
+  try {
+    if (existsSync(filePath)) {
+      await unlink(filePath);
+      console.log(`${context} eliminado: ${filePath}`);
+      return true;
+    } else {
+      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
+      return false;
+    }
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
+      return false;
+    } else {
+      console.error(`Error al eliminar ${context}:`, error);
+      throw error; // Re-lanzar errores no relacionados con ENOENT
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req);
@@ -87,16 +109,9 @@ export async function POST(req: NextRequest) {
     
     // Eliminar archivos físicos de plantillas antiguas
     for (const oldTemplate of oldTemplates) {
-      try {
-        if (oldTemplate.filePath) {
-          const absolutePath = path.join(process.cwd(), oldTemplate.filePath);
-          if (existsSync(absolutePath)) {
-            await unlink(absolutePath);
-            console.log(`Archivo antiguo eliminado: ${absolutePath}`);
-          }
-        }
-      } catch (fileErr: any) {
-        console.error(`Error al eliminar archivo antiguo: ${fileErr?.message || String(fileErr)}`);
+      if (oldTemplate.filePath) {
+        const absolutePath = path.join(process.cwd(), oldTemplate.filePath);
+        await safeDeleteFile(absolutePath, `Archivo antiguo de plantilla ${oldTemplate.id}`);
       }
     }
     

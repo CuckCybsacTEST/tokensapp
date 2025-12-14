@@ -7,6 +7,28 @@ import path from "path";
 import { existsSync } from "fs";
 import { apiError, apiOk } from '@/lib/apiError';
 
+// Función helper para eliminar archivos de manera segura
+async function safeDeleteFile(filePath: string, context: string = 'archivo') {
+  try {
+    if (existsSync(filePath)) {
+      await fs.unlink(filePath);
+      console.log(`${context} eliminado: ${filePath}`);
+      return true;
+    } else {
+      console.log(`${context} no encontrado (ya eliminado): ${filePath}`);
+      return false;
+    }
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`${context} no encontrado (ENOENT): ${filePath}`);
+      return false;
+    } else {
+      console.error(`Error al eliminar ${context}:`, error);
+      throw error; // Re-lanzar errores no relacionados con ENOENT
+    }
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const raw = getSessionCookieFromRequest(request);
@@ -25,17 +47,9 @@ export async function DELETE(request: Request) {
 
     // Eliminar archivos físicos
     for (const template of templates) {
-      try {
-        if (template.filePath) {
-          const absolutePath = path.join(process.cwd(), template.filePath);
-          if (existsSync(absolutePath)) {
-            await fs.unlink(absolutePath);
-            console.log(`Archivo eliminado: ${absolutePath}`);
-          }
-        }
-      } catch (fileError: any) {
-        console.error(`Error al eliminar el archivo físico de plantilla ${template.id}:`, fileError?.message || String(fileError));
-        // Continuamos con la eliminación en la base de datos aunque falle la eliminación del archivo
+      if (template.filePath) {
+        const absolutePath = path.join(process.cwd(), template.filePath);
+        await safeDeleteFile(absolutePath, `Archivo de plantilla ${template.id}`);
       }
     }
 
