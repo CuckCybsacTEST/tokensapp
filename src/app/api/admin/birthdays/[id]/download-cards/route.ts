@@ -12,6 +12,7 @@ import path from 'path';
 import os from 'os';
 import { writeFile, unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
+import { getBirthdayCards } from '@/lib/birthdays/cards';
 import { getBirthdayQrBaseUrl } from '@/lib/config';
 import { supabaseAdmin } from '@/lib/supabase';
 
@@ -66,6 +67,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const host = tokens.find(t => t.kind === 'host');
   const guest = tokens.find(t => t.kind === 'guest');
 
+  // Try to get pre-generated birthday cards from storage
+  const { paths: storedCardUrls } = await getBirthdayCards(reservationId);
+  const hasStoredHost = storedCardUrls.host && storedCardUrls.host.startsWith('http');
+  const hasStoredGuest = storedCardUrls.guest && storedCardUrls.guest.startsWith('http');
+
   // Resolve print template
   let template = null as null | { id: string; filePath: string | null; storageUrl: string | null; storageKey: string | null; meta: string | null };
   if (parsed.data.templateId) {
@@ -118,21 +124,41 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   (async () => {
     try {
       const baseUrl = getBirthdayQrBaseUrl(req.url);
+
+      // Helper function to download stored card or generate on-demand
+      async function getCardBuffer(kind: 'host' | 'guest', tokenCode: string, redeemUrl: string): Promise<Buffer> {
+        const storedUrl = storedCardUrls[kind];
+        if (storedUrl && storedUrl.startsWith('http')) {
+          // Download from Supabase
+          console.log(`Downloading stored ${kind} card from:`, storedUrl);
+          const response = await fetch(storedUrl);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+          } else {
+            console.warn(`Failed to download stored ${kind} card, falling back to generation`);
+          }
+        }
+
+        // Generate on-demand
+        console.log(`Generating ${kind} card on-demand`);
+        const dataUrl = await generateQrPngDataUrl(redeemUrl);
+        const qrBuf = dataUrlToBuffer(dataUrl);
+        return await composeTemplateWithQr({ templatePath, qrBuffer: qrBuf, qrMetadata: qrMeta, dpi });
+      }
+
       if (host && guest) {
         // 1 host card
-  const hostUrl = `${baseUrl}/b/${encodeURIComponent(host.code)}`;
-        const hostDataUrl = await generateQrPngDataUrl(hostUrl);
-        const hostBuf = dataUrlToBuffer(hostDataUrl);
-        const hostPng = await composeTemplateWithQr({ templatePath, qrBuffer: hostBuf, qrMetadata: qrMeta, dpi });
+        const hostUrl = `${baseUrl}/b/${encodeURIComponent(host.code)}`;
+        const hostPng = await getCardBuffer('host', host.code, hostUrl);
         archive.append(hostPng, { name: `invite-host-${host.code}.png` });
 
         // N guest copies (limited by 'limit')
         const maxCopies = Math.min(limit, (guest as any).maxUses || reservation.pack.qrCount || 1);
+        const guestUrl = `${baseUrl}/b/${encodeURIComponent(guest.code)}`;
+        const guestPng = await getCardBuffer('guest', guest.code, guestUrl);
+
         for (let i = 1; i <= maxCopies; i++) {
-          const guestUrl = `${baseUrl}/b/${encodeURIComponent(guest.code)}`;
-          const guestDataUrl = await generateQrPngDataUrl(guestUrl);
-          const guestBuf = dataUrlToBuffer(guestDataUrl);
-          const guestPng = await composeTemplateWithQr({ templatePath, qrBuffer: guestBuf, qrMetadata: qrMeta, dpi });
           archive.append(guestPng, { name: `invite-guest-${guest.code}-${i.toString().padStart(2,'0')}.png` });
         }
       } else {
