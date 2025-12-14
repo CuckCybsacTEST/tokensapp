@@ -1,1 +1,0 @@
-SELECT id, name, qrCount, active FROM BirthdayPack WHERE active = true ORDER BY name;

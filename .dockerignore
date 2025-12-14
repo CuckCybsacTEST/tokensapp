@@ -38,5 +38,12 @@ Thumbs.db
 .idea
 *.swp
 
+# Migrated to Supabase - exclude from build context
+public/templates
+public/birthday-cards
+public/qr-images
+public/invite-cards
+public/uploads
+
 # Keep example envs, ignore actual
 !.env.example

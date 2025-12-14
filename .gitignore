@@ -38,6 +38,12 @@ public/birthday-cards/*
 !public/birthday-cards/.gitkeep
 !public/birthday-cards/README.md
 
+# Migrated to Supabase Storage - no longer needed locally
+public/templates/
+public/qr-images/
+public/invite-cards/
+public/uploads/  # If uploads are now in Supabase
+
 # Next.js build/trace cache (avoid backup locking)
 .next/cache/
 .next/trace
