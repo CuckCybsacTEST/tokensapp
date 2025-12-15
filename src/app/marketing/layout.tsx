@@ -1,7 +1,7 @@
 import React from "react";
 // Nota: este layout de marketing es independiente del root y no participa en theme dark/light global.
 import { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
+// import { Inter, Poppins } from "next/font/google";
 
 // Metadata específica para la landing page
 export const metadata: Metadata = {
@@ -59,14 +59,31 @@ export const metadata: Metadata = {
   },
 };
 
-// Fuentes modernas: Inter (texto) y Poppins (títulos)
-const inter = Inter({ subsets: ["latin"], variable: "--font-text", display: "swap" });
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "600", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
+// Fuentes modernas: Inter (texto) y Poppins (títulos) - usando fuentes del sistema para evitar problemas de build
+// const inter = Inter({ subsets: ["latin"], variable: "--font-text", display: "swap" });
+// const poppins = Poppins({
+//   subsets: ["latin"],
+//   weight: ["400", "600", "800"],
+//   variable: "--font-display",
+//   display: "swap",
+// });
+
+// Usando fuentes del sistema para evitar timeouts en build
+const inter = {
+  variable: "--font-text",
+  className: "",
+  style: {
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  }
+};
+
+const poppins = {
+  variable: "--font-display", 
+  className: "",
+  style: {
+    fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
+  }
+};
 
 // Layout completamente independiente para marketing
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
