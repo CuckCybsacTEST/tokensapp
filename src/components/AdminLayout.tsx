@@ -52,6 +52,7 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
 
   // Get user info for mobile header
   useEffect(() => {
+    console.log('[AdminLayout] useEffect triggered, hasSession:', hasSession);
     const getUserInfo = async () => {
       try {
         console.log('[AdminLayout] Fetching user info...');

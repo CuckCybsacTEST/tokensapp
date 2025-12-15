@@ -62,10 +62,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-    console.error('Error en /api/auth/me:', error);
-    return NextResponse.json(
-      { role: 'GUEST', displayName: 'Invitado' },
-      { status: 500 }
-    );
-  }
-}

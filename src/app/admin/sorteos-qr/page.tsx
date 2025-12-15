@@ -134,6 +134,7 @@ export default function CustomQrsAdminPage() {
   }, [hasMore, loadingMore]);
 
   useEffect(() => {
+    console.log('[sorteos-qr] useEffect tab triggered, searchParams:', searchParams?.get('tab'));
     // Check URL parameters to show specific sections
     const tab = searchParams?.get('tab');
     if (tab === 'stats') {
@@ -146,6 +147,7 @@ export default function CustomQrsAdminPage() {
   }, [searchParams]);
 
   useEffect(() => {
+    console.log('[sorteos-qr] useEffect loadData triggered');
     loadData();
   }, []); // Solo cargar una vez al montar
 
