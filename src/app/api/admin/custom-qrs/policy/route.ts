@@ -6,6 +6,7 @@ import { apiError } from '@/lib/apiError';
 import { DateTime } from 'luxon';
 
 export async function GET(req: Request) {
+  console.log('[api/custom-qrs/policy] GET request received');
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);

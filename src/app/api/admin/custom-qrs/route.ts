@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { apiError } from '@/lib/apiError';
 
 export async function GET(req: Request) {
+  console.log('[api/custom-qrs] GET request received');
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
