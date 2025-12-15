@@ -34,6 +34,7 @@ export async function GET(req: Request) {
           theme: true,
           imageUrl: true,
           originalImageUrl: true,
+          thumbnailUrl: true,
           imageMetadata: true,
           isActive: true,
           expiresAt: true,

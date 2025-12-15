@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     const theme = (typeof body.theme === 'string' ? body.theme : 'default') as QrTheme;
     const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : null;
     const originalImageUrl = typeof body.originalImageUrl === 'string' ? body.originalImageUrl.trim() : null;
+    const thumbnailUrl = typeof body.thumbnailUrl === 'string' ? body.thumbnailUrl.trim() : null;
     const imageMetadata = body.imageMetadata || null;
 
     // Validaciones
@@ -154,6 +155,7 @@ export async function POST(req: NextRequest) {
         theme,
         imageUrl,
         originalImageUrl,
+        thumbnailUrl,
         imageMetadata: imageMetadata ? JSON.stringify(imageMetadata) : null,
         signature,
         expiresAt,

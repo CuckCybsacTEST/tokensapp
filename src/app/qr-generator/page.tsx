@@ -156,6 +156,7 @@ export default function QrGeneratorPage() {
         theme: policy?.defaultTheme || 'default',
         imageUrl: imageData?.imageUrl,
         originalImageUrl: imageData?.originalImageUrl,
+        thumbnailUrl: imageData?.thumbnailUrl,
         imageMetadata: imageData?.metadata
       };
 

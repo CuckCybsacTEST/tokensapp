@@ -7,6 +7,7 @@ interface ImageUploadProps {
   onImageUploaded: (imageData: {
     imageUrl: string;
     originalImageUrl: string;
+    thumbnailUrl: string;
     filename: string;
     metadata: any;
   }) => void;

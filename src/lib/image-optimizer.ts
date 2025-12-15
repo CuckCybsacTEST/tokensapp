@@ -40,6 +40,7 @@ export class ImageOptimizer {
   private static readonly STORAGE_FOLDERS = {
     ORIGINAL: 'original',
     OPTIMIZED: 'optimized',
+    THUMBNAIL: 'thumbnail',
     TEMP: 'temp'
   };
 
@@ -123,7 +124,7 @@ export class ImageOptimizer {
   static async saveImage(
     buffer: Buffer,
     filename: string,
-    type: 'original' | 'optimized' = 'optimized'
+    type: 'original' | 'optimized' | 'thumbnail' = 'optimized'
   ): Promise<string> {
     const supabaseAdmin = await getSupabaseAdmin();
     const folder = type === 'original' ? this.STORAGE_FOLDERS.ORIGINAL : this.STORAGE_FOLDERS.OPTIMIZED;
@@ -203,6 +204,29 @@ export class ImageOptimizer {
     }
 
     return { valid: true };
+  }
+
+  static async createThumbnail(
+    buffer: Buffer,
+    maxWidth: number = 200
+  ): Promise<Buffer> {
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
+
+    // Calcular altura manteniendo aspect ratio
+    const aspectRatio = metadata.width! / metadata.height!;
+    const height = Math.round(maxWidth / aspectRatio);
+
+    // Crear thumbnail
+    const thumbnailBuffer = await image
+      .resize(maxWidth, height, {
+        withoutEnlargement: true,
+        fit: 'inside'
+      })
+      .webp({ quality: 80, effort: 4 }) // WebP para thumbnails, calidad 80%
+      .toBuffer();
+
+    return thumbnailBuffer;
   }
 
   static async cleanupTempFiles(): Promise<void> {

@@ -62,11 +62,17 @@ export async function POST(req: NextRequest) {
     // Guardar imagen optimizada
     const optimizedUrl = await ImageOptimizer.saveImage(optimizedBuffer, filename.replace(/\.[^.]+$/, '.webp'), 'optimized');
 
+    // Generar y guardar thumbnail
+    const thumbnailBuffer = await ImageOptimizer.createThumbnail(buffer, 200);
+    const thumbnailFilename = filename.replace(/\.[^.]+$/, '_thumb.webp');
+    const thumbnailUrl = await ImageOptimizer.saveImage(thumbnailBuffer, thumbnailFilename, 'thumbnail');
+
     // Retornar resultado
     return NextResponse.json({
       success: true,
       imageUrl: optimizedUrl,
       originalImageUrl: originalUrl,
+      thumbnailUrl: thumbnailUrl,
       filename: filename,
       metadata: {
         ...metadata,

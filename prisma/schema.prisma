@@ -1135,6 +1135,7 @@ model CustomQr {
   imageMetadata    String?
   imageUrl         String?
   originalImageUrl String?
+  thumbnailUrl     String?
   customerDni      String?
   batch            CustomQrBatch? @relation(fields: [batchId], references: [id])
 

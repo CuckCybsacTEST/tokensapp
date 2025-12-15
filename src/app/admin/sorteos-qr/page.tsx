@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { QR_THEMES } from "@/lib/qr-custom";
 import QRCode from 'qrcode';
@@ -16,6 +16,7 @@ interface CustomQr {
   theme: string;
   imageUrl: string | null;
   originalImageUrl: string | null;
+  thumbnailUrl: string | null;
   imageMetadata: any | null;
   isActive: boolean;
   expiresAt: string | null;
@@ -101,6 +102,9 @@ export default function CustomQrsAdminPage() {
   const [qrs, setQrs] = useState<CustomQr[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState<'all' | 'active' | 'redeemed' | 'expired'>('all');
   const [search, setSearch] = useState('');
   const [selectedQrs, setSelectedQrs] = useState<Set<string>>(new Set());
@@ -109,6 +113,24 @@ export default function CustomQrsAdminPage() {
   const [showPolicyManager, setShowPolicyManager] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
   const [policies, setPolicies] = useState<any[]>([]);
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore]);
 
   useEffect(() => {
     // Check URL parameters to show specific sections
@@ -126,8 +148,9 @@ export default function CustomQrsAdminPage() {
 
   const loadData = async () => {
     try {
+      setLoading(true);
       const [qrsResponse, statsResponse, batchesResponse, policiesResponse] = await Promise.all([
-        fetch('/api/admin/custom-qrs'),
+        fetch('/api/admin/custom-qrs?page=1&limit=30'),
         fetch('/api/admin/custom-qrs/stats'),
         fetch('/api/admin/custom-qrs/batch'),
         fetch('/api/admin/custom-qrs/policy')
@@ -136,6 +159,8 @@ export default function CustomQrsAdminPage() {
       if (qrsResponse.ok) {
         const qrsData = await qrsResponse.json();
         setQrs(qrsData.qrs || []);
+        setHasMore(qrsData.pagination.totalPages > 1);
+        setCurrentPage(1);
       }
 
       if (statsResponse.ok) {
@@ -156,6 +181,27 @@ export default function CustomQrsAdminPage() {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = currentPage + 1;
+      const response = await fetch(`/api/admin/custom-qrs?page=${nextPage}&limit=30`);
+
+      if (response.ok) {
+        const qrsData = await response.json();
+        setQrs(prev => [...prev, ...qrsData.qrs]);
+        setHasMore(nextPage < qrsData.pagination.totalPages);
+        setCurrentPage(nextPage);
+      }
+    } catch (error) {
+      console.error('Error loading more QRs:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -461,79 +507,30 @@ export default function CustomQrsAdminPage() {
         </div>
       </div>
 
-      {/* Lista de Lotes y QR */}
-      <div className="space-y-6">
-        {/* QR sin lote asignado */}
-        {qrsByBatch.withoutBatch.length > 0 && (
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">📄</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold">QR Sin Lote Asignado</h3>
-                  <p className="text-sm text-slate-500">{qrsByBatch.withoutBatch.length} QR</p>
-                </div>
-              </div>
-              <button
-                onClick={() => toggleBatchExpansion('unassigned')}
-                className="btn-secondary text-sm"
-              >
-                {expandedBatches.has('unassigned') ? '🔽 Ocultar' : '▶️ Mostrar'} {qrsByBatch.withoutBatch.length}
-              </button>
-            </div>
+      {/* Lista de QR */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">QR Personalizados ({filteredQrs.length})</h3>
+        </div>
 
-            {expandedBatches.has('unassigned') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t pt-4">
-                {qrsByBatch.withoutBatch.map(qr => (
-                  <QrCard key={qr.id} qr={qr} batches={batches} selectedQrs={selectedQrs} setSelectedQrs={setSelectedQrs} onRedeem={handleRedeem} />
-                ))}
-              </div>
-            )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredQrs.map((qr, index) => (
+            <div key={qr.id} ref={index === filteredQrs.length - 1 ? observerRef : null}>
+              <QrCard qr={qr} batches={batches} selectedQrs={selectedQrs} setSelectedQrs={setSelectedQrs} onRedeem={handleRedeem} />
+            </div>
+          ))}
+        </div>
+
+        {loadingMore && (
+          <div className="text-center py-4">
+            <div className="inline-block w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+            <span className="ml-2 text-sm text-slate-500">Cargando más...</span>
           </div>
         )}
 
-        {/* Lotes con QR */}
-        {Object.entries(qrsByBatch.grouped).map(([batchId, batchQrs]) => {
-          const batch = batches.find(b => b.id === batchId);
-          return (
-            <div key={batchId} className="card">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span className="text-lg">📦</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{batch?.name || `Lote ${batchId.slice(0, 8)}`}</h3>
-                    <p className="text-sm text-slate-500">
-                      {batchQrs.length} QR
-                      {batch?.description && ` • ${batch.description}`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => toggleBatchExpansion(batchId)}
-                  className="btn-secondary text-sm"
-                >
-                  {expandedBatches.has(batchId) ? '🔽 Ocultar' : '▶️ Mostrar'} {batchQrs.length}
-                </button>
-              </div>
-
-              {expandedBatches.has(batchId) && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 border-t pt-4">
-                  {batchQrs.map(qr => (
-                    <QrCard key={qr.id} qr={qr} batches={batches} selectedQrs={selectedQrs} setSelectedQrs={setSelectedQrs} onRedeem={handleRedeem} />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {filteredQrs.length === 0 && (
-          <div className="text-center py-8 text-slate-500">
-            No se encontraron QR personalizados
+        {!hasMore && filteredQrs.length > 0 && (
+          <div className="text-center py-4 text-sm text-slate-500">
+            No hay más QR para cargar
           </div>
         )}
       </div>
@@ -626,9 +623,10 @@ function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
           <div className="flex justify-center">
             <div className="relative w-12 h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
               <img
-                src={qr.imageUrl.startsWith('/uploads/') ? qr.imageUrl.replace('/uploads/', '/api/images/') : qr.imageUrl}
+                src={(qr.thumbnailUrl || qr.imageUrl).startsWith('/uploads/') ? (qr.thumbnailUrl || qr.imageUrl).replace('/uploads/', '/api/images/') : (qr.thumbnailUrl || qr.imageUrl)}
                 alt="Imagen subida"
                 className="w-full h-full object-cover"
+                loading="lazy"
                 onError={(e) => {
                   const img = e.currentTarget as HTMLImageElement;
                   console.error('Image load error for QR:', qr.id, 'URL:', img.src, 'Original URL:', qr.imageUrl);
