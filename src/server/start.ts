@@ -18,6 +18,8 @@ import { startScheduler } from '@/lib/scheduler';
 const SCHEDULER_STARTED_KEY = Symbol.for('golounge-scheduler-started');
 const globalSymbols = globalThis as any;
 
+console.log('[server/start] Module loaded, checking scheduler initialization...');
+
 if (!globalSymbols[SCHEDULER_STARTED_KEY]) {
   globalSymbols[SCHEDULER_STARTED_KEY] = true;
   
@@ -30,6 +32,15 @@ if (!globalSymbols[SCHEDULER_STARTED_KEY]) {
   const ENABLED_FLAG = String(process.env.ENABLE_TOKENS_SCHEDULER || '').trim() === '1';
   const SHOULD_START = process.env.NODE_ENV === 'production' && !IS_BUILD && !IS_EXPORT && ENABLED_FLAG;
 
+  console.log('[server/start] Environment check:', {
+    NODE_ENV: process.env.NODE_ENV,
+    PHASE,
+    IS_BUILD,
+    IS_EXPORT,
+    ENABLED_FLAG,
+    SHOULD_START
+  });
+
   if (SHOULD_START) {
     try {
       startScheduler();
@@ -38,9 +49,10 @@ if (!globalSymbols[SCHEDULER_STARTED_KEY]) {
       console.error('[server/start] failed to start scheduler', e);
     }
   } else {
-    // Helpful during builds / when flag disabled to reduce log noise
-    // console.log('[server/start] scheduler not started (build/export phase or flag disabled)');
+    console.log('[server/start] scheduler not started (build/export phase or flag disabled)');
   }
+} else {
+  console.log('[server/start] Scheduler already started, skipping...');
 }
 
 export default {};

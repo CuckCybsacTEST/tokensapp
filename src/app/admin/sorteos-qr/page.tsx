@@ -177,7 +177,8 @@ export default function CustomQrsAdminPage() {
         setHasMore(qrsData.pagination.hasMore);
         setCurrentPage(1);
       } else {
-        console.error('❌ QRs fetch failed:', qrsResponse.status, await qrsResponse.text());
+        const errorText = await qrsResponse.text().catch(() => 'No response body');
+        console.error('❌ QRs fetch failed:', qrsResponse.status, errorText);
         hasError = true;
       }
 
