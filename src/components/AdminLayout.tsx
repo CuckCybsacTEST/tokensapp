@@ -52,30 +52,35 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
 
   // Get user info for mobile header
   useEffect(() => {
-    const getUserInfo = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+    // TEMPORALMENTE DESACTIVADO PARA DEBUG CRASH LOOP
+    // const getUserInfo = async () => {
+    //   try {
+    //     console.log('[AdminLayout] Fetching user info...');
+    //     const response = await fetch('/api/auth/me', {
+    //       method: 'GET',
+    //       headers: {
+    //         'Content-Type': 'application/json',
+    //       },
+    //     });
 
-        if (response.ok) {
-          const data = await response.json();
-          setUserInfo(data);
-        } else {
-          setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-        }
-      } catch (error) {
-        console.error('Error obteniendo información del usuario:', error);
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-      }
-    };
+    //     if (response.ok) {
+    //       const data = await response.json();
+    //       console.log('[AdminLayout] User info fetched:', data);
+    //       setUserInfo(data);
+    //     } else {
+    //       console.log('[AdminLayout] Failed to fetch user info, status:', response.status);
+    //       setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+    //     }
+    //   } catch (error) {
+    //     console.error('[AdminLayout] Error obteniendo información del usuario:', error);
+    //     setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
+    //   }
+    // };
 
-    if (hasSession) {
-      getUserInfo();
-    }
+    // if (hasSession) {
+    //   getUserInfo();
+    // }
+    setUserInfo({ role: 'ADMIN', displayName: 'Test User' }); // Hardcodeado para test
   }, [hasSession]);
 
   // Use default collapsed state during SSR to prevent hydration mismatch
