@@ -4,9 +4,11 @@ import { isBirthdaysEnabledPublic } from "@/lib/featureFlags";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  console.log('[middleware] Request to:', pathname);
 
   // Redirect root to marketing
   if (pathname === "/") {
+    console.log('[middleware] Redirecting root to marketing');
     return NextResponse.redirect(new URL("/marketing", req.url));
   }
 
@@ -21,26 +23,32 @@ export async function middleware(req: NextRequest) {
   ];
 
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+    console.log('[middleware] Public route, allowing');
     return NextResponse.next();
   }
 
   // Get user session (unified authentication system)
   const userCookie = getUserSessionCookieFromRequest(req);
+  console.log('[middleware] User cookie present:', !!userCookie);
   const userSession = userCookie ? await verifyUserSessionCookie(userCookie) : null;
+  console.log('[middleware] User session valid:', !!userSession);
 
   // Collaborator area (/u/*) - requires any valid user session
   if (pathname.startsWith("/u/") || pathname === "/u") {
     if (!userSession) {
+      console.log('[middleware] No session for /u, redirecting to login');
       const loginUrl = new URL('/u/login', req.nextUrl.origin);
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
+    console.log('[middleware] Allowing /u access');
     return NextResponse.next();
   }
 
   // Admin panel (/admin/*) - requires ADMIN or STAFF (limited routes)
   if (pathname.startsWith("/admin/")) {
     if (!userSession) {
+      console.log('[middleware] No session for /admin, redirecting to login');
       const loginUrl = new URL('/u/login', req.nextUrl.origin);
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
