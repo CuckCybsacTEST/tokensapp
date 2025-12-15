@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { apiError } from '@/lib/apiError';
+import { DateTime } from 'luxon';
 
 export async function POST(req: Request) {
   try {
@@ -12,18 +13,22 @@ export async function POST(req: Request) {
     const roleCheck = requireRole(session, ['ADMIN']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const { qrIds, days, reason } = await req.json();
+    const { qrIds, expiryDate, reason } = await req.json();
 
     if (!qrIds || !Array.isArray(qrIds) || qrIds.length === 0) {
       return apiError('BAD_REQUEST', 'Se requieren IDs de QR válidos', undefined, 400);
     }
 
-    if (!days || days < 1 || days > 365) {
-      return apiError('BAD_REQUEST', 'Los días deben estar entre 1 y 365', undefined, 400);
+    if (!expiryDate) {
+      return apiError('BAD_REQUEST', 'Se requiere una fecha de expiración', undefined, 400);
     }
 
-    const now = new Date();
-    const extensionDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    const extensionDate = DateTime.fromISO(expiryDate, { zone: 'America/Lima' }).toJSDate();
+    const now = DateTime.now().setZone('America/Lima').toJSDate();
+
+    if (extensionDate <= now) {
+      return apiError('BAD_REQUEST', 'La fecha de expiración debe ser futura', undefined, 400);
+    }
 
     // Obtener QR existentes para actualizar metadata
     const existingQrs = await (prisma as any).customQr.findMany({
@@ -46,8 +51,8 @@ export async function POST(req: Request) {
       
       extensionHistory.push({
         date: now.toISOString(),
-        days: days,
-        reason: reason || 'Extensión administrativa',
+        newExpiryDate: expiryDate,
+        reason: reason || 'Cambio de fecha de expiración administrativa',
         admin: session.userId
       });
 
@@ -70,7 +75,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       updated: results.length,
-      message: `Se extendieron ${results.length} QR(s) por ${days} días`
+      message: `Se cambió la fecha de expiración de ${results.length} QR(s) a ${extensionDate.toLocaleDateString('es-PE')}`
     });
 
   } catch (error: any) {

@@ -68,8 +68,38 @@ export async function safeDeleteFile(filePath: string): Promise<void> {
   }
 }
 
-// Upload file from temp directory to Supabase and clean up
-export async function uploadFromTempAndCleanup(
+// Upload buffer directly to Supabase storage
+export async function uploadBufferToSupabase(
+  buffer: Buffer,
+  storageKey: string,
+  contentType: string = 'image/png',
+  bucket: string = STORAGE_BUCKET
+): Promise<string> {
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(storageKey, buffer, {
+        contentType,
+        upsert: true
+      })
+
+    if (error) {
+      throw new Error(`Supabase upload failed: ${error.message}`)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from(bucket)
+      .getPublicUrl(storageKey)
+
+    return urlData.publicUrl
+  } catch (error) {
+    throw error
+  }
+}
+
+// Upload file from temp path to Supabase storage
+export async function uploadFileToSupabase(
   tempFilePath: string,
   storageKey: string,
   bucket: string = STORAGE_BUCKET

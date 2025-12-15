@@ -3,6 +3,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import fs from 'fs';
 import path from 'path';
 import { apiError, apiOk } from '@/lib/apiError';
+import { uploadBufferToSupabase } from '@/lib/supabase';
 
 let prisma: any = null;
 try {
@@ -80,23 +81,36 @@ export async function POST(req: Request) {
     }
 
     const filename = `template_${Date.now()}.png`;
-    const outDir = path.resolve(process.cwd(), 'public', 'templates');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-    const outPath = path.join(outDir, filename);
-  fs.writeFileSync(outPath, new Uint8Array(outBuf));
+    const supabasePath = `print-templates/${filename}`;
+
+    // Subir a Supabase Storage
+    const uploadResult = await uploadBufferToSupabase(outBuf, supabasePath, 'image/png');
 
     // create DB record if prisma available
     let created: any = null;
     if (prisma) {
       try {
-        created = await prisma.printTemplate.create({ data: { name: filename, filePath: `public/templates/${filename}`, meta: metaStr } });
+        created = await prisma.printTemplate.create({
+          data: {
+            name: filename,
+            filePath: uploadResult, // Guardar la URL de Supabase
+            meta: metaStr,
+            storageProvider: 'supabase',
+            storageUrl: uploadResult
+          }
+        });
       } catch (e) {
         // ignore DB error but report
         console.error('print template create failed', e);
       }
     }
 
-    return apiOk({ ok: true, templateId: created?.id ?? filename, filePath: `public/templates/${filename}` });
+    return apiOk({
+      ok: true,
+      templateId: created?.id ?? filename,
+      filePath: uploadResult,
+      url: uploadResult
+    });
   } catch (e: any) {
     console.error('upload template error', e);
     return apiError('UPLOAD_FAILED','Fallo al subir plantilla',{ message: e?.message },500);

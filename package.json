@@ -70,6 +70,7 @@
     "bcryptjs": "^3.0.2",
     "culqi-node": "^2.1.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.1.4",
     "framer-motion": "^12.23.12",
     "jsqr": "^1.4.0",

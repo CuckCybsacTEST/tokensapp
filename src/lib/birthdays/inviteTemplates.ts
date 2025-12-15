@@ -1,9 +1,10 @@
 // Template definitions for birthday invite QR composition
 // Using proportional ratios so we can adapt if we later change resolution.
+// Now using Supabase Storage URLs instead of local filesystem paths
 export const inviteTemplates = {
   host: {
     // celebrant
-    path: 'public/birthdays/templates/celebrant-base.webp',
+    path: 'https://upmqzhfnigsihpcclsao.supabase.co/storage/v1/object/public/qr-images/birthday-templates/celebrant-base.webp',
     width: 1080,
     height: 1920,
     area: { leftRatio: 0.2116, topRatio: 0.1260, sizeRatio: 0.5768 },
@@ -11,7 +12,7 @@ export const inviteTemplates = {
     nameBar: { leftRatio: 144.2/1080, widthRatio: 791.6/1080, topRatio: 1364/1920, heightRatio: 90/1920 },
   },
   guest: {
-    path: 'public/birthdays/templates/guest-base.webp',
+    path: 'https://upmqzhfnigsihpcclsao.supabase.co/storage/v1/object/public/qr-images/birthday-templates/guest-base.webp',
     width: 1080,
     height: 1920,
     area: { leftRatio: 0.2116, topRatio: 0.1260, sizeRatio: 0.5768 },

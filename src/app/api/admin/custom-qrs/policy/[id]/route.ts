@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { apiError } from '@/lib/apiError';
+import { DateTime } from 'luxon';
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -15,9 +16,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const {
       name,
       description,
-      defaultExpiryDays,
+      defaultExpiryDate,
       maxExtensions,
-      extensionDays,
+      extensionExpiryDate,
       allowCustomData,
       allowCustomPhrase,
       allowCustomColors,
@@ -76,9 +77,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       data: {
         name: name.trim(),
         description: description?.trim(),
-        defaultExpiryDays,
+        defaultExpiryDate: defaultExpiryDate ? DateTime.fromISO(defaultExpiryDate, { zone: 'America/Lima' }).toJSDate() : null,
         maxExtensions: maxExtensions || 1,
-        extensionDays: extensionDays || 30,
+        extensionExpiryDate: extensionExpiryDate ? DateTime.fromISO(extensionExpiryDate, { zone: 'America/Lima' }).toJSDate() : null,
         allowCustomData: allowCustomData ?? true,
         allowCustomPhrase: allowCustomPhrase ?? true,
         allowCustomColors: allowCustomColors ?? true,

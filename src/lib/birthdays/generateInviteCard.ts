@@ -27,14 +27,20 @@ export async function generateInviteCard(
   reservationDateISO?: string,
 ) {
   const tpl = inviteTemplates[kind];
-  const absPath = path.join(process.cwd(), tpl.path);
   let templateInput: Buffer | null = null;
+
   try {
-    templateInput = await fs.readFile(absPath);
+    // Descargar plantilla desde Supabase Storage
+    const response = await fetch(tpl.path);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    templateInput = Buffer.from(arrayBuffer);
   } catch (e: any) {
     if (!process.env.SILENCE_INVITE_CARD_LOGS) {
       // eslint-disable-next-line no-console
-      console.warn('[inviteCard] no se pudo leer plantilla, usando fondo plano', { path: absPath, error: e?.message });
+      console.warn('[inviteCard] no se pudo descargar plantilla desde Supabase, usando fondo plano', { path: tpl.path, error: e?.message });
     }
     templateInput = await sharp({ create: { width: tpl.width, height: tpl.height, channels: 4, background: { r: 12, g: 12, b: 12, alpha: 1 } } })
       .png()

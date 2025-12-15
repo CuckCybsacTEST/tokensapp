@@ -43,6 +43,7 @@ public/templates/
 public/qr-images/
 public/invite-cards/
 public/uploads/  # If uploads are now in Supabase
+temp-images/  # Temporary images for QR token processing
 
 # Next.js build/trace cache (avoid backup locking)
 .next/cache/

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { QR_THEMES } from "@/lib/qr-custom";
 import QRCode from 'qrcode';
+import { DateTime } from 'luxon';
 
 interface CustomQr {
   id: string;
@@ -195,9 +196,10 @@ export default function CustomQrsAdminPage() {
     }
   };
 
-  const handleExtendExpiry = async (days: number, reason?: string) => {
+  const handleExtendExpiry = async (expiryDate: string, reason?: string) => {
     if (selectedQrs.size === 0) return;
-    if (!confirm(`¿Extender ${selectedQrs.size} QR(s) por ${days} días?`)) return;
+    const date = DateTime.fromISO(expiryDate, { zone: 'America/Lima' });
+    if (!confirm(`¿Cambiar fecha de expiración de ${selectedQrs.size} QR(s) a ${date.toLocaleString(DateTime.DATE_SHORT)}?`)) return;
 
     try {
       const response = await fetch('/api/admin/custom-qrs/extend-expiry', {
@@ -205,8 +207,8 @@ export default function CustomQrsAdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qrIds: Array.from(selectedQrs),
-          days,
-          reason: reason || 'Extensión administrativa'
+          expiryDate: expiryDate,
+          reason: reason || 'Cambio de fecha de expiración administrativa'
         })
       });
 
@@ -216,11 +218,11 @@ export default function CustomQrsAdminPage() {
         setSelectedQrs(new Set());
         await loadData();
       } else {
-        alert('Error al extender expiración');
+        alert('Error al cambiar fecha de expiración');
       }
     } catch (error) {
       console.error('Error extending expiry:', error);
-      alert('Error al extender expiración');
+      alert('Error al cambiar fecha de expiración');
     }
   };
 
@@ -423,18 +425,25 @@ export default function CustomQrsAdminPage() {
               >
                 ✅ Redimir {selectedQrs.size}
               </button>
-              <button
-                onClick={() => handleExtendExpiry(30)}
-                className="btn-secondary"
-              >
-                ⏰ Extender 30 días
-              </button>
-              <button
-                onClick={() => handleExtendExpiry(7)}
-                className="btn-secondary"
-              >
-                ⏰ Extender 7 días
-              </button>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  id="extend-date"
+                  className="input text-sm"
+                  defaultValue={DateTime.now().setZone('America/Lima').plus({ days: 30 }).toFormat('yyyy-MM-dd')}
+                />
+                <button
+                  onClick={() => {
+                    const dateInput = document.getElementById('extend-date') as HTMLInputElement;
+                    if (dateInput.value) {
+                      handleExtendExpiry(dateInput.value);
+                    }
+                  }}
+                  className="btn-secondary text-sm"
+                >
+                  📅 Cambiar fecha
+                </button>
+              </div>
               <button
                 onClick={() => {
                   const reason = prompt('Razón para revocar:');
@@ -914,7 +923,7 @@ function PolicyManager({ policies, batches, onClose, onRefresh }: { policies: an
             </div>
             {policy.description && <p className="text-sm text-slate-500 mt-1">{policy.description}</p>}
             <div className="text-xs text-slate-400 mt-2">
-              Expira en {policy.defaultExpiryDays || 0} días • Máx {policy.maxExtensions} extensiones
+              Expira el {policy.defaultExpiryDate ? DateTime.fromJSDate(new Date(policy.defaultExpiryDate)).setZone('America/Lima').toLocaleString(DateTime.DATE_SHORT) : 'Sin fecha'} • Máx {policy.maxExtensions} extensiones
             </div>
           </div>
         ))}
@@ -990,9 +999,9 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
-    defaultExpiryDays: initialData?.defaultExpiryDays || 30,
+    defaultExpiryDate: initialData?.defaultExpiryDate ? DateTime.fromJSDate(new Date(initialData.defaultExpiryDate)).setZone('America/Lima').toFormat('yyyy-MM-dd') : '',
     maxExtensions: initialData?.maxExtensions || 1,
-    extensionDays: initialData?.extensionDays || 30,
+    extensionExpiryDate: initialData?.extensionExpiryDate ? DateTime.fromJSDate(new Date(initialData.extensionExpiryDate)).setZone('America/Lima').toFormat('yyyy-MM-dd') : '',
     allowCustomData: initialData?.allowCustomData ?? true,
     allowCustomPhrase: initialData?.allowCustomPhrase ?? true,
     allowCustomColors: initialData?.allowCustomColors ?? true,
@@ -1040,13 +1049,13 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Días de expiración por defecto</label>
+          <label className="block text-sm font-medium mb-1">Fecha de expiración por defecto *</label>
           <input
-            type="number"
-            value={formData.defaultExpiryDays}
-            onChange={(e) => setFormData({...formData, defaultExpiryDays: Number(e.target.value)})}
+            type="date"
+            value={formData.defaultExpiryDate}
+            onChange={(e) => setFormData({...formData, defaultExpiryDate: e.target.value})}
             className="input"
-            min="1"
+            required
           />
         </div>
       </div>
@@ -1063,13 +1072,12 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Días por extensión</label>
+          <label className="block text-sm font-medium mb-1">Nueva fecha de expiración al extender</label>
           <input
-            type="number"
-            value={formData.extensionDays}
-            onChange={(e) => setFormData({...formData, extensionDays: Number(e.target.value)})}
+            type="date"
+            value={formData.extensionExpiryDate}
+            onChange={(e) => setFormData({...formData, extensionExpiryDate: e.target.value})}
             className="input"
-            min="1"
           />
         </div>
         <div>

@@ -138,7 +138,9 @@ export async function POST(req: NextRequest) {
     const signature = generateSignature(code, qrData);
 
     // Calcular expiración basada en la política
-    const expiresAt = calculateExpiryDate(activePolicy.defaultExpiryDays || 30);
+    const expiresAt = activePolicy.defaultExpiryDate
+      ? new Date(activePolicy.defaultExpiryDate)
+      : calculateExpiryDate(30);
 
     // Crear QR en base de datos
     const customQr = await (prisma as any).customQr.create({

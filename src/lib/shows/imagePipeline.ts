@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharpModule from 'sharp';
+import { uploadBufferToSupabase } from '@/lib/supabase';
 
 interface PipelineResult {
   reused: boolean;
@@ -35,8 +36,6 @@ function mimeFromBuffer(buf: Buffer): string | null {
   return null;
 }
 
-async function ensureDir(dir: string) { await fs.mkdir(dir, { recursive: true }); }
-
 async function computeHash(buf: Buffer): Promise<string> {
   // Cast as Uint8Array to satisfy BinaryLike under current TS lib definitions
   return createHash('sha256').update(new Uint8Array(buf)).digest('hex');
@@ -46,15 +45,6 @@ async function generateBlur(sharp: typeof sharpModule, buf: Buffer): Promise<str
   const tiny = await sharp(buf).resize(32, 32, { fit: 'inside', withoutEnlargement: true }).blur(10).toBuffer();
   const b64 = tiny.toString('base64');
   return `data:image/png;base64,${b64}`;
-}
-
-function pickStorageRoot(): string {
-  // Reusar carpeta public/shows
-  return path.join(process.cwd(), 'public', 'shows');
-}
-
-async function fileExists(p: string): Promise<boolean> {
-  try { await fs.access(p); return true; } catch { return false; }
 }
 
 export async function processShowImage(showId: string, file: File | Blob, opts?: { actorRole?: string }): Promise<PipelineResult> {
@@ -75,16 +65,11 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
   // Buscar otro show con mismo hash (usando imageOriginalPath convencionado con hash) -> necesitamos convención.
   // Asumimos nombre de archivo original: hash + ext; almacenamos hash en imageOriginalPath para dedupe.
 
-  const storageRoot = pickStorageRoot();
-  await ensureDir(storageRoot);
-
   const ext = mime === 'image/png' ? '.png' : mime === 'image/webp' ? '.webp' : '.jpg';
   const baseName = `${hash}`; // hash SHA256 asegura unicidad contenido
   const originalFileName = `${baseName}${ext}`;
-  const originalPath = path.join(storageRoot, originalFileName);
   // optimizedFileName se define tras conocer dimensiones reales
   let optimizedFileName = '';
-  let webpPath = '';
   let reused = false;
   let width: number; let height: number; let optimizedBuf: Buffer; let degraded = false; let blurData: string;
 
@@ -94,7 +79,6 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
   width = meta.width; height = meta.height;
   const dimToken = `${Math.min(9999, width)}x${Math.min(9999, height)}`;
   optimizedFileName = `${baseName}-${dimToken}.webp`;
-  webpPath = path.join(storageRoot, optimizedFileName);
 
   // Redimensionar si excede ancho
   let working = buf;
@@ -117,8 +101,12 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
 
   blurData = await generateBlur(sharp, working);
 
-  // Reuse detection: si archivos ya existen y otro show ya usa ese hash (comparamos ruta) => reused=true
-  const existingShowWithSameHash = await prisma.show.findFirst({ where: { imageOriginalPath: originalFileName } });
+  // Reuse detection: buscar shows que ya tengan una imagen con el mismo hash
+  const existingShowWithSameHash = await prisma.show.findFirst({
+    where: {
+      imageOriginalPath: { contains: originalFileName } // Buscar por nombre de archivo en la URL
+    }
+  });
   if (existingShowWithSameHash) {
     reused = true;
   }
@@ -126,21 +114,24 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
   const bytesOriginal = buf.length;
   const bytesOptimized = optimizedBuf.length;
 
-  const newFiles: string[] = [];
+  let originalUrl: string;
+  let webpUrl: string;
+
   try {
     if (!reused) {
-      if (!(await fileExists(originalPath))) {
-  await fs.writeFile(originalPath, new Uint8Array(working)); newFiles.push(originalPath);
-      }
-      if (!(await fileExists(webpPath))) {
-  await fs.writeFile(webpPath, new Uint8Array(optimizedBuf)); newFiles.push(webpPath);
-      }
+      // Subir imágenes originales y optimizadas a Supabase
+      originalUrl = await uploadBufferToSupabase(working, `show-images/${originalFileName}`, 'image/jpeg');
+      webpUrl = await uploadBufferToSupabase(optimizedBuf, `show-images/${optimizedFileName}`, 'image/webp');
+    } else {
+      // Si se reutiliza, obtener URLs del show existente
+      originalUrl = existingShowWithSameHash!.imageOriginalPath;
+      webpUrl = existingShowWithSameHash!.imageWebpPath;
     }
 
-    // Actualizar show (si reused sólo cambiamos meta si no tenía todavía algo válido o si es distinto hash)
+    // Actualizar show con URLs de Supabase
     const updateData = {
-      imageOriginalPath: originalFileName,
-  imageWebpPath: optimizedFileName,
+      imageOriginalPath: originalUrl,
+      imageWebpPath: webpUrl,
       imageBlurData: blurData,
       width,
       height,
@@ -152,9 +143,9 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
       await tx.show.update({ where: { id: showId }, data: updateData });
     });
 
-  const result = { reused, degraded, width, height, bytesOriginal, bytesOptimized, hash, originalPath: originalFileName, webpPath: optimizedFileName, blurData };
+    const result = { reused, degraded, width, height, bytesOriginal, bytesOptimized, hash, originalPath: originalUrl, webpPath: webpUrl, blurData };
     try {
-  const { logShowEvent } = await import('@/lib/shows/audit');
+      const { logShowEvent } = await import('@/lib/shows/audit');
       logShowEvent('show.image.process', showId, {
         actorRole: opts?.actorRole,
         bytesOptimized,
@@ -166,8 +157,7 @@ export async function processShowImage(showId: string, file: File | Blob, opts?:
     } catch {}
     return result;
   } catch (e) {
-    // Rollback de archivos recién creados
-    await Promise.all(newFiles.map(f => fs.unlink(f).catch(()=>{})));
+    // No hay archivos locales para rollback en Supabase
     throw e;
   }
 }

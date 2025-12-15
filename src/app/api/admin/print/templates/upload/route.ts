@@ -5,7 +5,7 @@ import path from 'path';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { apiError, apiOk } from '@/lib/apiError';
-import { uploadFromTempAndCleanup, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase';
+import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase';
 
 // Helper para sanitizar nombres de archivo
 function sanitizeFileName(name: string): string {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     console.log('Archivo temporal creado:', tempFilePath);
 
     // Subir a Supabase
-    const { url, storageKey: finalStorageKey } = await uploadFromTempAndCleanup(
+    const { url, storageKey: finalStorageKey } = await uploadFileToSupabase(
       tempFilePath,
       storageKey
     );
