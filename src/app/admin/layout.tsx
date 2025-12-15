@@ -1,8 +1,6 @@
 import React from "react";
 import { verifyUserSessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
-// Garantizar arranque del scheduler también al renderizar el layout de admin
-import "@/server/start";
 import { AdminLayout } from "@/components/AdminLayout";
 
 export const metadata = {

@@ -3,8 +3,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import { DynamicTitle } from "@/components/seo/DynamicTitle";
-// Inicia servicios de servidor (scheduler de tokens) al cargar el layout en el servidor
-import "@/server/start";
 
 // Nota: Este es un layout de respaldo, ahora cada sección tiene su propio layout
 // Este layout no debería usarse normalmente ya que tenemos layouts específicos para:

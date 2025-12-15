@@ -1,4 +1,6 @@
 import { initSocketIO } from "./lib/socket";
+// Import server initialization (scheduler, etc.)
+import "./src/server/start";
 
 export async function register() {
   // Esta función se ejecuta al iniciar el servidor

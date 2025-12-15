@@ -18,46 +18,57 @@ export async function GET(req: Request) {
     const offset = (page - 1) * limit;
 
     // Obtener QR con paginación
-    const [qrs, total] = await Promise.all([
-      (prisma as any).customQr.findMany({
-        orderBy: { createdAt: 'desc' },
-        skip: offset,
-        take: limit,
-        select: {
-          id: true,
-          code: true,
-          customerName: true,
-          customerWhatsapp: true,
-          customerDni: true,
-          customerPhrase: true,
-          customData: true,
-          theme: true,
-          imageUrl: true,
-          originalImageUrl: true,
-          thumbnailUrl: true,
-          imageMetadata: true,
-          isActive: true,
-          expiresAt: true,
-          redeemedAt: true,
-          redeemedBy: true,
-          createdAt: true,
-          extendedCount: true,
-          lastExtendedAt: true,
-          revokedAt: true,
-          revokedBy: true,
-          revokeReason: true,
-          campaignName: true,
-          batchId: true,
-          batch: {
-            select: {
-              id: true,
-              name: true
-            }
+    const qrsQuery = prisma.customQr.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit,
+      select: {
+        id: true,
+        code: true,
+        customerName: true,
+        customerWhatsapp: true,
+        customerDni: true,
+        customerPhrase: true,
+        customData: true,
+        theme: true,
+        imageUrl: true,
+        originalImageUrl: true,
+        thumbnailUrl: true,
+        imageMetadata: true,
+        isActive: true,
+        expiresAt: true,
+        redeemedAt: true,
+        redeemedBy: true,
+        createdAt: true,
+        extendedCount: true,
+        lastExtendedAt: true,
+        revokedAt: true,
+        revokedBy: true,
+        revokeReason: true,
+        campaignName: true,
+        batchId: true,
+        batch: {
+          select: {
+            id: true,
+            name: true
           }
         }
-      }),
-      (prisma as any).customQr.count()
-    ]);
+      }
+    });
+
+    // Solo hacer count si es la primera página para evitar queries pesadas
+    let total = 0;
+    let qrs;
+    
+    if (page === 1) {
+      [qrs, total] = await Promise.all([
+        qrsQuery,
+        prisma.customQr.count()
+      ]);
+    } else {
+      qrs = await qrsQuery;
+      total = 0; // No necesitamos total para páginas > 1
+    }
 
     return NextResponse.json({
       qrs: qrs.map((qr: any) => ({
@@ -69,8 +80,8 @@ export async function GET(req: Request) {
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: total || null, // null para páginas > 1
+        hasMore: qrs.length === limit
       }
     });
 

@@ -150,7 +150,7 @@ export default function CustomQrsAdminPage() {
     try {
       setLoading(true);
       const [qrsResponse, statsResponse, batchesResponse, policiesResponse] = await Promise.all([
-        fetch('/api/admin/custom-qrs?page=1&limit=30'),
+        fetch('/api/admin/custom-qrs?page=1&limit=10'),
         fetch('/api/admin/custom-qrs/stats'),
         fetch('/api/admin/custom-qrs/batch'),
         fetch('/api/admin/custom-qrs/policy')
@@ -159,7 +159,7 @@ export default function CustomQrsAdminPage() {
       if (qrsResponse.ok) {
         const qrsData = await qrsResponse.json();
         setQrs(qrsData.qrs || []);
-        setHasMore(qrsData.pagination.totalPages > 1);
+        setHasMore(qrsData.pagination.hasMore);
         setCurrentPage(1);
       }
 
@@ -190,12 +190,12 @@ export default function CustomQrsAdminPage() {
     try {
       setLoadingMore(true);
       const nextPage = currentPage + 1;
-      const response = await fetch(`/api/admin/custom-qrs?page=${nextPage}&limit=30`);
+      const response = await fetch(`/api/admin/custom-qrs?page=${nextPage}&limit=10`);
 
       if (response.ok) {
         const qrsData = await response.json();
         setQrs(prev => [...prev, ...qrsData.qrs]);
-        setHasMore(nextPage < qrsData.pagination.totalPages);
+        setHasMore(qrsData.pagination.hasMore);
         setCurrentPage(nextPage);
       }
     } catch (error) {
