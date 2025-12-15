@@ -579,9 +579,21 @@ export default function CustomQrsAdminPage() {
           </div>
         )}
 
+        {hasMore && !loadingMore && (
+          <div className="text-center py-4">
+            <button
+              onClick={loadMore}
+              className="btn-secondary"
+              disabled={loadingMore}
+            >
+              📄 Cargar más QR
+            </button>
+          </div>
+        )}
+
         {!hasMore && filteredQrs.length > 0 && (
           <div className="text-center py-4 text-sm text-slate-500">
-            No hay más QR para cargar
+            ✅ Todos los QR cargados ({filteredQrs.length} total)
           </div>
         )}
       </div>
