@@ -113,6 +113,7 @@ export default function CustomQrsAdminPage() {
   const [showPolicyManager, setShowPolicyManager] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
   const [policies, setPolicies] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const observerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -142,13 +143,17 @@ export default function CustomQrsAdminPage() {
     } else if (tab === 'policies') {
       setShowPolicyManager(true);
     }
-    
-    loadData();
   }, [searchParams]);
 
+  useEffect(() => {
+    loadData();
+  }, []); // Solo cargar una vez al montar
+
   const loadData = async () => {
+    console.log('🔄 Starting loadData...');
     try {
       setLoading(true);
+      setError(null);
       const [qrsResponse, statsResponse, batchesResponse, policiesResponse] = await Promise.all([
         fetch('/api/admin/custom-qrs?page=1&limit=10'),
         fetch('/api/admin/custom-qrs/stats'),
@@ -156,31 +161,56 @@ export default function CustomQrsAdminPage() {
         fetch('/api/admin/custom-qrs/policy')
       ]);
 
+      console.log('📡 API responses:', {
+        qrs: qrsResponse.status,
+        stats: statsResponse.status,
+        batches: batchesResponse.status,
+        policies: policiesResponse.status
+      });
+
+      let hasError = false;
+
       if (qrsResponse.ok) {
         const qrsData = await qrsResponse.json();
+        console.log('✅ QRs loaded:', qrsData.qrs?.length || 0);
         setQrs(qrsData.qrs || []);
         setHasMore(qrsData.pagination.hasMore);
         setCurrentPage(1);
+      } else {
+        console.error('❌ QRs fetch failed:', qrsResponse.status, await qrsResponse.text());
+        hasError = true;
       }
 
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData);
+      } else {
+        console.error('❌ Stats fetch failed:', statsResponse.status);
       }
 
       if (batchesResponse.ok) {
         const batchesData = await batchesResponse.json();
         setBatches(batchesData);
+      } else {
+        console.error('❌ Batches fetch failed:', batchesResponse.status);
       }
 
       if (policiesResponse.ok) {
         const policiesData = await policiesResponse.json();
         setPolicies(policiesData);
+      } else {
+        console.error('❌ Policies fetch failed:', policiesResponse.status);
+      }
+
+      if (hasError) {
+        setError('Error al cargar los datos. Verifica tu conexión y permisos.');
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('💥 Error in loadData:', error);
+      setError('Error de conexión. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
+      console.log('🏁 loadData finished');
     }
   };
 
@@ -371,6 +401,26 @@ export default function CustomQrsAdminPage() {
       <div className="p-8 text-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--color-accent)]"></div>
         <p className="mt-4 text-sm text-slate-500">Cargando QR personalizados...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <div className="text-red-500 mb-4">
+          <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <p className="text-lg font-medium">Error al cargar datos</p>
+          <p className="text-sm">{error}</p>
+        </div>
+        <button
+          onClick={loadData}
+          className="btn"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }
