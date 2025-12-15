@@ -199,7 +199,7 @@ export default function CustomQrsAdminPage() {
   const handleExtendExpiry = async (expiryDate: string, reason?: string) => {
     if (selectedQrs.size === 0) return;
     const date = DateTime.fromISO(expiryDate, { zone: 'America/Lima' });
-    if (!confirm(`¿Cambiar fecha de expiración de ${selectedQrs.size} QR(s) a ${date.toLocaleString(DateTime.DATE_SHORT)}?`)) return;
+    if (!confirm(`¿Cambiar fecha de expiración de ${selectedQrs.size} QR(s) a ${date.toLocaleString({ month: 'short', day: 'numeric', year: 'numeric' })}?`)) return;
 
     try {
       const response = await fetch('/api/admin/custom-qrs/extend-expiry', {
@@ -430,7 +430,10 @@ export default function CustomQrsAdminPage() {
                   type="date"
                   id="extend-date"
                   className="input text-sm"
-                  defaultValue={DateTime.now().setZone('America/Lima').plus({ days: 30 }).toFormat('yyyy-MM-dd')}
+                  defaultValue={(() => {
+                    const futureDate = DateTime.now().setZone('America/Lima').plus({ days: 30 });
+                    return futureDate.toISO()?.split('T')[0] || '';
+                  })()}
                 />
                 <button
                   onClick={() => {
@@ -923,7 +926,7 @@ function PolicyManager({ policies, batches, onClose, onRefresh }: { policies: an
             </div>
             {policy.description && <p className="text-sm text-slate-500 mt-1">{policy.description}</p>}
             <div className="text-xs text-slate-400 mt-2">
-              Expira el {policy.defaultExpiryDate ? DateTime.fromJSDate(new Date(policy.defaultExpiryDate)).setZone('America/Lima').toLocaleString(DateTime.DATE_SHORT) : 'Sin fecha'} • Máx {policy.maxExtensions} extensiones
+              Expira el {policy.defaultExpiryDate ? DateTime.fromJSDate(new Date(policy.defaultExpiryDate)).setZone('America/Lima').toLocaleString({ month: 'short', day: 'numeric', year: 'numeric' }) : 'Sin fecha'} • Máx {policy.maxExtensions} extensiones
             </div>
           </div>
         ))}
@@ -999,9 +1002,9 @@ function PolicyForm({ batches, initialData, onSubmit, onCancel }: { batches: any
   const [formData, setFormData] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
-    defaultExpiryDate: initialData?.defaultExpiryDate ? DateTime.fromJSDate(new Date(initialData.defaultExpiryDate)).setZone('America/Lima').toFormat('yyyy-MM-dd') : '',
+    defaultExpiryDate: initialData?.defaultExpiryDate ? new Date(initialData.defaultExpiryDate).toISOString().split('T')[0] : '',
     maxExtensions: initialData?.maxExtensions || 1,
-    extensionExpiryDate: initialData?.extensionExpiryDate ? DateTime.fromJSDate(new Date(initialData.extensionExpiryDate)).setZone('America/Lima').toFormat('yyyy-MM-dd') : '',
+    extensionExpiryDate: initialData?.extensionExpiryDate ? new Date(initialData.extensionExpiryDate).toISOString().split('T')[0] : '',
     allowCustomData: initialData?.allowCustomData ?? true,
     allowCustomPhrase: initialData?.allowCustomPhrase ?? true,
     allowCustomColors: initialData?.allowCustomColors ?? true,
