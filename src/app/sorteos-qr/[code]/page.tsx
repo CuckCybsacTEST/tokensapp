@@ -297,7 +297,7 @@ export default function CustomQrPage({ params }: QrPageProps) {
                 </div>
                 <div className="text-lg sm:text-xl font-bold text-white mt-1 bg-gradient-to-r from-yellow-400 to-red-400 bg-clip-text text-transparent">
                   {qrData.expiresAt
-                    ? new Date(qrData.expiresAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    ? new Date(qrData.expiresAt).toLocaleDateString('es-ES', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })
                     : 'Por definir'
                   }
                 </div>
