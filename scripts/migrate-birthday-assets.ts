@@ -3,6 +3,9 @@
  * Run this once after deploying the code changes.
  */
 
+import { config } from 'dotenv';
+config({ path: '.env.local' }); // Load local env vars
+
 import { createClient } from '@supabase/supabase-js';
 
 // Use service role key for admin access
