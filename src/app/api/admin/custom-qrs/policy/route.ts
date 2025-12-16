@@ -15,7 +15,8 @@ export async function GET(req: Request) {
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const policies = await (prisma as any).customQrPolicy.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 50 // Limitar a 50 políticas más recientes
     });
 
     console.log(`[api/custom-qrs/policy] Returning ${policies.length} policies`);

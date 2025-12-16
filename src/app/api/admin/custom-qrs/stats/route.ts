@@ -79,7 +79,8 @@ export async function GET(req: Request) {
     const themeStats = await (prisma as any).customQr.groupBy({
       by: ['theme'],
       _count: { id: true },
-      orderBy: { _count: { id: 'desc' } }
+      orderBy: { _count: { id: 'desc' } },
+      take: 20 // Limitar a top 20 temas
     });
 
     const byTheme = themeStats.reduce((acc: Record<string, number>, stat: any) => {
@@ -92,7 +93,8 @@ export async function GET(req: Request) {
       by: ['campaignName'],
       _count: { id: true },
       where: { campaignName: { not: null } },
-      orderBy: { _count: { id: 'desc' } }
+      orderBy: { _count: { id: 'desc' } },
+      take: 20 // Limitar a top 20 campañas
     });
 
     const byCampaign = campaignStats.reduce((acc: Record<string, number>, stat: any) => {

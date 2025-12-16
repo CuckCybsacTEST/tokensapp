@@ -15,6 +15,7 @@ export async function GET(req: Request) {
 
     const batches = await (prisma as any).customQrBatch.findMany({
       orderBy: { createdAt: 'desc' },
+      take: 100, // Limitar a 100 lotes más recientes
       include: {
         _count: {
           select: { qrs: true }
