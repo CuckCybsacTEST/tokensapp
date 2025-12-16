@@ -22,6 +22,7 @@ export async function GET(req: Request) {
       }
     });
 
+    console.log(`[api/custom-qrs/batch] Returning ${batches.length} batches`);
     return NextResponse.json(batches);
 
   } catch (error: any) {

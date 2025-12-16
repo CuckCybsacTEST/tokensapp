@@ -102,6 +102,7 @@ export async function GET(req: Request) {
       return acc;
     }, {} as Record<string, number>);
 
+    console.log('[api/custom-qrs/stats] Returning stats');
     return NextResponse.json({
       totalCreated,
       totalRedeemed,

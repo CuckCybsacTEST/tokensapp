@@ -71,6 +71,7 @@ export async function GET(req: Request) {
       total = 0; // No necesitamos total para páginas > 1
     }
 
+    console.log(`[api/custom-qrs] Returning ${qrs.length} QRs for page ${page}`);
     return NextResponse.json({
       qrs: qrs.map((qr: any) => ({
         ...qr,
@@ -87,7 +88,7 @@ export async function GET(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('[API] Error obteniendo QR personalizados:', error);
+    console.error('[api/custom-qrs] Error obteniendo QR personalizados:', error);
     return apiError('INTERNAL_ERROR', 'Error interno del servidor', undefined, 500);
   }
 }

@@ -18,6 +18,7 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
+    console.log(`[api/custom-qrs/policy] Returning ${policies.length} policies`);
     return NextResponse.json(policies);
 
   } catch (error: any) {
