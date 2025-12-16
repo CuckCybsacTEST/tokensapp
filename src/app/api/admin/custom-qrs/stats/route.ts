@@ -27,7 +27,7 @@ export async function GET(req: Request) {
         COUNT(CASE WHEN "expiresAt" < ${now} THEN 1 END) as total_expired,
         COUNT(CASE WHEN DATE("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') = DATE(${today} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') THEN 1 END) as created_today,
         COUNT(CASE WHEN DATE("redeemedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') = DATE(${today} AT TIME ZONE 'UTC' AT TIME ZONE 'America/Lima') THEN 1 END) as redeemed_today
-      FROM "customQr"
+      FROM "custom_qr"
     ` as any;
 
     const {
