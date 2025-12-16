@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { generateInviteCard } from '@/lib/birthdays/generateInviteCard';
 import { generateInviteTokens } from '@/lib/birthdays/service';
-import { uploadFileToSupabase, safeDeleteFile, getTempFilePath } from '@/lib/supabase';
+import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, BIRTHDAY_CARDS_BUCKET } from '@/lib/supabase';
 
 // Shadow type until prisma generate creates the official InviteTokenCard delegate
 type InviteTokenCardRow = { id: string; inviteTokenId: string; kind: 'host' | 'guest'; filePath: string; storageProvider?: string; storageKey?: string; storageUrl?: string; createdAt: Date };
@@ -80,17 +80,18 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
     await fs.promises.writeFile(tempFilePath, buf as unknown as Uint8Array);
 
     // Upload to Supabase
-    const storageKey = `birthday-cards/${reservationId}/${kind}.png`;
+    const storageKey = `${reservationId}/${kind}.png`;
     const { url: storageUrl, storageKey: finalStorageKey } = await uploadFileToSupabase(
       tempFilePath,
-      storageKey
+      storageKey,
+      BIRTHDAY_CARDS_BUCKET
     );
 
     // Save to database
     try {
       await prisma.$executeRawUnsafe(
         'INSERT INTO "InviteTokenCard" (id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7, NOW()) ON CONFLICT ("inviteTokenId") DO NOTHING',
-        crypto.randomUUID(), tokenId, kind, `birthday-cards/${reservationId}/${kind}.png`, 'supabase', finalStorageKey, storageUrl
+        crypto.randomUUID(), tokenId, kind, `${reservationId}/${kind}.png`, 'supabase', finalStorageKey, storageUrl
       );
     } catch (e) {
       // ignore until migration is applied

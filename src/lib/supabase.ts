@@ -41,16 +41,17 @@ export const supabaseAdmin = new Proxy({} as any, {
   }
 })
 
-// Storage bucket name
+// Storage bucket names
 export const STORAGE_BUCKET = 'qr-images'
+export const BIRTHDAY_CARDS_BUCKET = 'birthday-cards'
+export const BIRTHDAY_TEMPLATES_BUCKET = 'birthday-templates'
 
-// Storage folders
+// Storage folders (for qr-images bucket)
 export const STORAGE_FOLDERS = {
   ORIGINAL: 'original',
   OPTIMIZED: 'optimized',
   TEMP: 'temp',
   TEMPLATES: 'templates',
-  BIRTHDAY_CARDS: 'birthday-cards',
   INVITE_CARDS: 'invite-cards'
 } as const
 
