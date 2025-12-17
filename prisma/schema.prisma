@@ -299,6 +299,8 @@ model Task {
   TaskComment    TaskComment[]
 
   @@index([area])
+  @@index([startDay])
+  @@index([endDay])
 }
 
 model PersonTaskStatus {
@@ -318,6 +320,7 @@ model PersonTaskStatus {
   @@index([personId])
   @@index([taskId])
   @@index([day])
+  @@index([day, done])
 }
 
 model BirthdayPack {

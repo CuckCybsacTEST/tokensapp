@@ -419,6 +419,10 @@ export function AdminTasksPage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>(() => DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd'));
+  
+  // Keep a ref to selectedDay to use in socket listener without re-connecting
+  const selectedDayRef = useRef(selectedDay);
+  useEffect(() => { selectedDayRef.current = selectedDay; }, [selectedDay]);
 
   const load = useMemo(() => async () => {
     setLoading(true); setError(null);
@@ -435,6 +439,10 @@ export function AdminTasksPage() {
     }
   }, [selectedDay]);
 
+  // Keep a ref to load to call it from stable socket listener
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
+
   useEffect(() => { load(); }, [load]);
 
   // WebSocket connection for real-time updates
@@ -449,13 +457,18 @@ export function AdminTasksPage() {
       console.log('Joined admin-tasks room');
     });
 
+    let debounceTimer: NodeJS.Timeout | null = null;
+
     socketInstance.on('task-status-updated', (data: any) => {
       console.log('Task status updated:', data);
       // If no day is specified (global update) or day matches current view
-      if (!data.day || data.day === selectedDay) {
+      if (!data.day || data.day === selectedDayRef.current) {
         setLastUpdate(new Date());
-        // Refresh the tasks data
-        load();
+        // Debounce reload to avoid storm
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          loadRef.current();
+        }, 500);
       }
     });
 
@@ -466,9 +479,10 @@ export function AdminTasksPage() {
     setSocket(socketInstance);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       socketInstance.disconnect();
     };
-  }, [load]);
+  }, []); // Empty dependency array = stable connection
 
   // Initialize area from URL (?area=) and keep it in sync
   useEffect(() => {
