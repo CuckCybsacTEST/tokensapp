@@ -5,6 +5,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { randomBytes } from 'node:crypto';
 import { isValidArea } from '@/lib/areas';
 import { apiError, apiOk } from '@/lib/apiError';
+import { DateTime } from 'luxon';
 
 // Evitar prerender en build/export: depende de DB
 export const dynamic = 'force-dynamic';
@@ -43,16 +44,20 @@ export async function GET(req: Request) {
   const dayParam = url.searchParams.get('day');
   const re = /^\d{4}-\d{2}-\d{2}$/;
   const todayLocal = () => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dd}`;
+    return DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd');
   };
   const day = (dayParam && re.test(dayParam)) ? dayParam : todayLocal();
 
   // Leer tareas vía Prisma (compatible Postgres)
+  // Filtrar por rango de fechas si startDay/endDay están definidos
   const rows = await prisma.task.findMany({
+    where: {
+      active: true,
+      AND: [
+        { OR: [{ startDay: null }, { startDay: { lte: day } }] },
+        { OR: [{ endDay: null }, { endDay: { gte: day } }] },
+      ]
+    },
     orderBy: [
       { sortOrder: 'asc' },
       { label: 'asc' },

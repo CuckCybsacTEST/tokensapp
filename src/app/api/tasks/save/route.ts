@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
         value: typeof ch.value === 'number' ? ch.value : undefined,
         personId: String(user.personId),
         source: 'user',
+        day: day!,
       });
     }
   }

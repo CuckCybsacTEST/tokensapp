@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "scripts": {
     "ci:guard": "node scripts/ci/check-legacy-errors.cjs",
-    "dev": "next dev",
-    "dev:custom": "node server.js",
+    "dev": "tsx server.js",
+    "dev:custom": "tsx server.js",
     "build": "next build",
     "start": "next start",
     "start:standalone": "node .next/standalone/server.js",

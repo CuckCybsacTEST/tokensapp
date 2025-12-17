@@ -5,6 +5,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import "../../globals.css";
+import { DateTime } from 'luxon';
 
 type UserMe = { ok: true; user: { id: string; username: string; role: string; personCode: string; personName: string } } | { ok: false; code: string };
 type TasksList = {
@@ -39,7 +40,7 @@ function isValidDay(day: string | null): day is string {
 }
 
 function ymdUtc(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return DateTime.fromJSDate(date).setZone('America/Lima').toFormat('yyyy-MM-dd');
 }
 
 // TaskCommentBox component defined once below
@@ -613,7 +614,7 @@ function ChecklistPageInner() {
                       {!measurable ? (
                         <div className="text-xs sm:text-sm space-y-1">
                           <label className="inline-flex items-center gap-1 sm:gap-2 mr-2 sm:mr-3 cursor-pointer">
-                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id) || done} className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span className="text-xs sm:text-sm">Pendiente</span>
                           </label>
                           <label className="inline-flex items-center gap-1 sm:gap-2 cursor-pointer">

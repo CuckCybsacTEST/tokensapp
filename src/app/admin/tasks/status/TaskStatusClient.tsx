@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ALLOWED_AREAS } from '@/lib/areas';
+import { DateTime } from 'luxon';
 
 type TaskStatus = {
   taskId: string;
@@ -40,8 +41,7 @@ export function TaskStatusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => {
-    const today = new Date();
-    return today.toISOString().slice(0, 10);
+    return DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd');
   });
   const [selectedArea, setSelectedArea] = useState('');
 

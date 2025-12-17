@@ -4,6 +4,8 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ALLOWED_AREAS } from '@/lib/areas';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
+import { DateTime } from 'luxon';
 
 type Task = { id: string; label: string; completed?: boolean; sortOrder: number; priority?: number; startDay?: string | null; endDay?: string | null; area?: string | null; completedToday?: number; sumValueToday?: number; measureEnabled?: boolean; targetValue?: number | null; unitLabel?: string | null };
 type TaskComment = { id: string; text: string; createdAt: string; username?: string; personCode?: string; personName?: string };
@@ -15,17 +17,27 @@ function AreaSection(props: {
   onUpdateTask: (id: string, patch: Partial<Task>) => Promise<void>;
   onDeleteTask: (id: string) => Promise<void>;
   onCreateTaskInArea: (areaKey: string, refsKey: string) => Promise<void>;
-  createRefs: React.MutableRefObject<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null }>>;
+  createRefs: React.MutableRefObject<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null; onlyDate: HTMLInputElement | null }>>;
   creatingRef: React.MutableRefObject<Set<string>>;
   todayYmd: () => string;
   load: () => Promise<void>;
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
 }) {
   const { areaKey, allTasks, statusFilter, onUpdateTask: updateTask, onDeleteTask: deleteTask, onCreateTaskInArea: createTaskInArea, createRefs, creatingRef, todayYmd, load, setTasks } = props;
-  let groupTasks = allTasks.filter(t => (t.area || '') === areaKey);
-  if (statusFilter === 'pending') groupTasks = groupTasks.filter(t => !t.completed);
-  else if (statusFilter === 'completed') groupTasks = groupTasks.filter(t => !!t.completed);
-  const label = areaKey === '' ? 'Todos' : areaKey;
+  
+  // If areaKey is empty ('Todos'), show ALL tasks. Otherwise filter by area.
+  let groupTasks = areaKey === '' ? allTasks : allTasks.filter(t => (t.area || '') === areaKey);
+  
+  // Filter logic:
+  // Pending: Active tasks (not archived) that have NOT been done today
+  // Completed: Tasks that have been done today OR are archived
+  if (statusFilter === 'pending') {
+    groupTasks = groupTasks.filter(t => !t.completed && (!t.completedToday || t.completedToday === 0));
+  } else if (statusFilter === 'completed') {
+    groupTasks = groupTasks.filter(t => !!t.completed || (t.completedToday && t.completedToday > 0));
+  }
+  
+  const label = areaKey === '' ? 'General' : areaKey;
   const canDrag = statusFilter === '__ALL';
 
   const dragItemId = useRef<string | null>(null);
@@ -169,6 +181,14 @@ function AreaSection(props: {
                   </div>
                 )}
                 <div className="mb-2">
+                  {/* Show area badge if in 'Todos' view and task has area */}
+                  {areaKey === '' && t.area && (
+                    <div className="mb-1">
+                      <span className="text-[10px] uppercase font-bold text-white bg-slate-400 px-1.5 py-0.5 rounded">
+                        {t.area}
+                      </span>
+                    </div>
+                  )}
                   <input className="input-sm w-full" defaultValue={t.label} onBlur={(e)=>{
                     const v = e.target.value.trim(); if (v && v !== t.label) updateTask(t.id, { label: v });
                   }} />
@@ -176,11 +196,11 @@ function AreaSection(props: {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4 text-xs text-soft">
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name={`status-${t.id}`} checked={!t.completed} onChange={() => updateTask(t.id, { completed: false } as any)} />
+                      <input type="radio" name={`status-${t.id}`} checked={!(t.completed || t.completedToday > 0)} onChange={() => updateTask(t.id, { completed: false } as any)} />
                       <span>Pendiente</span>
                     </label>
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name={`status-${t.id}`} checked={!!t.completed} onChange={() => updateTask(t.id, { completed: true } as any)} />
+                      <input type="radio" name={`status-${t.id}`} checked={!!(t.completed || t.completedToday > 0)} onChange={() => updateTask(t.id, { completed: true } as any)} />
                       <span>Completada</span>
                     </label>
                   </div>
@@ -322,7 +342,7 @@ function AreaSection(props: {
         {/* Create card */}
         {(() => {
           const refsKey = `${areaKey}-new`;
-          if (!createRefs.current[refsKey]) createRefs.current[refsKey] = { label: null, priority: null, start: null, end: null, measureEnabled: null, targetValue: null, unitLabel: null };
+          if (!createRefs.current[refsKey]) createRefs.current[refsKey] = { label: null, priority: null, start: null, end: null, measureEnabled: null, targetValue: null, unitLabel: null, onlyDate: null };
           return (
             <div key={`new-${areaKey}`} className="card border-dashed p-3">
               <div className="mb-2 font-medium text-soft/60">Nueva tarea</div>
@@ -341,6 +361,12 @@ function AreaSection(props: {
               <div className="mb-2 grid grid-cols-2 gap-2">
                 <input ref={el => (createRefs.current[refsKey].start = el)} className="input-sm w-full" type="date" defaultValue={todayYmd()} />
                 <input ref={el => (createRefs.current[refsKey].end = el)} className="input-sm w-full" type="date" />
+              </div>
+              <div className="mb-2 flex items-center gap-2">
+                <label className="inline-flex items-center gap-1 text-xs text-soft">
+                  <input ref={el => (createRefs.current[refsKey].onlyDate = el)} type="checkbox" />
+                  <span>Solo esta fecha</span>
+                </label>
               </div>
               {/* Medición (opcional al crear) */}
               <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-soft">
@@ -390,13 +416,15 @@ export function AdminTasksPage() {
   // Area filter: "" = Todos (global), or a specific area value from ALLOWED_AREAS
   const [areaFilter, setAreaFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("pending"); // pending | completed | __ALL
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string>(() => DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd'));
 
   const load = useMemo(() => async () => {
     setLoading(true); setError(null);
     try {
-      // Use UTC day to keep consistency with /u/checklist saves
-      const ymd = new Date().toISOString().slice(0,10);
-      const r = await fetch(`/api/admin/tasks?day=${encodeURIComponent(ymd)}`, { cache: 'no-store' });
+      // Use selectedDay
+      const r = await fetch(`/api/admin/tasks?day=${encodeURIComponent(selectedDay)}`, { cache: 'no-store' });
       const j = await r.json();
       if (!j?.ok) throw new Error(j?.error || 'Error cargando tareas');
       setTasks(j.tasks || []);
@@ -405,9 +433,42 @@ export function AdminTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedDay]);
 
   useEffect(() => { load(); }, [load]);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const socketInstance = io({
+      transports: ['websocket', 'polling'],
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('Connected to WebSocket for tasks');
+      socketInstance.emit('join-admin-tasks');
+      console.log('Joined admin-tasks room');
+    });
+
+    socketInstance.on('task-status-updated', (data: any) => {
+      console.log('Task status updated:', data);
+      // If no day is specified (global update) or day matches current view
+      if (!data.day || data.day === selectedDay) {
+        setLastUpdate(new Date());
+        // Refresh the tasks data
+        load();
+      }
+    });
+
+    socketInstance.on('disconnect', () => {
+      console.log('Disconnected from WebSocket');
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, [load]);
 
   // Initialize area from URL (?area=) and keep it in sync
   useEffect(() => {
@@ -426,74 +487,17 @@ export function AdminTasksPage() {
     router.replace(`/admin/tasks${qs ? `?${qs}` : ''}`);
   };
 
-  // Live updates via SSE
-  useEffect(() => {
-    let closed = false;
-    let es: EventSource | null = null;
-    let t: any = null;
-    const perTaskTimers = new Map<string, any>();
-
-    const todayYmd = () => new Date().toISOString().slice(0,10);
-
-    const refreshOneTask = async (taskId: string) => {
-      try {
-        const r = await fetch(`/api/admin/tasks?day=${encodeURIComponent(todayYmd())}`, { cache: 'no-store' });
-        const j = await r.json();
-        const list = Array.isArray(j?.tasks) ? j.tasks : [];
-        const found = list.find((x: any) => String(x.id) === String(taskId));
-        if (!found) return;
-        const upd: Partial<Task> = {
-          completedToday: Number(found.completedToday || 0),
-          sumValueToday: Number(found.sumValueToday || 0),
-        };
-        // Merge only aggregates to avoid perceptible full rerender
-        // Keep label/order/other fields intact
-        setTasks(prev => prev.map(tk => tk.id === String(taskId) ? { ...tk, ...upd } : tk));
-      } catch {
-        // ignore on failure, fallback debounce full reload still exists
-      }
-    };
-
-    const schedulePartial = (taskId: string) => {
-      const key = String(taskId);
-      const prevTimer = perTaskTimers.get(key);
-      if (prevTimer) clearTimeout(prevTimer);
-      const h = setTimeout(() => { if (!closed) refreshOneTask(key); }, 300);
-      perTaskTimers.set(key, h);
-    };
-    try {
-      es = new EventSource('/api/events/tasks');
-      const debouncedReload = () => {
-        if (t) clearTimeout(t);
-        t = setTimeout(() => { if (!closed) load(); }, 400);
-      };
-      es.onmessage = (ev) => {
-        try {
-          const data = JSON.parse(ev.data || '{}');
-          if (data && data.type === 'task-updated') {
-            if (data.taskId) schedulePartial(String(data.taskId));
-            else debouncedReload();
-          }
-        } catch {}
-      };
-      es.onerror = () => { /* ignore */ };
-    } catch {}
-    return () => {
-      closed = true;
-      if (t) { clearTimeout(t); t = null; }
-      perTaskTimers.forEach((h) => clearTimeout(h));
-      if (es) es.close();
-    };
-  }, [load]);
+  // Live updates now handled via WebSockets above
 
   // Helper for today in YYYY-MM-DD
-  const todayYmd = () => new Date().toISOString().slice(0,10);
+  const todayYmd = () => selectedDay;
 
   async function createTaskInArea(areaKey: string, refsKey: string) {
     const labelEl = createRefs.current[refsKey]?.label;
     const prioEl = createRefs.current[refsKey]?.priority;
     const startEl = createRefs.current[refsKey]?.start;
     const endEl = createRefs.current[refsKey]?.end;
+    const onlyDateEl = createRefs.current[refsKey]?.onlyDate;
     const measureChk = createRefs.current[refsKey]?.measureEnabled;
     const targetEl = createRefs.current[refsKey]?.targetValue;
     const unitEl = createRefs.current[refsKey]?.unitLabel;
@@ -504,7 +508,13 @@ export function AdminTasksPage() {
     const prioVal = prioEl?.value ?? '';
     if (prioVal !== '') payload.priority = Number(prioVal);
     const startVal = startEl?.value?.trim(); if (startVal) payload.startDay = startVal;
-    const endVal = endEl?.value?.trim(); if (endVal) payload.endDay = endVal;
+    
+    if (onlyDateEl?.checked && startVal) {
+      payload.endDay = startVal;
+    } else {
+      const endVal = endEl?.value?.trim(); if (endVal) payload.endDay = endVal;
+    }
+    
     // Measurement fields
     const isMeasurable = !!measureChk?.checked;
     payload.measureEnabled = isMeasurable;
@@ -582,6 +592,11 @@ export function AdminTasksPage() {
   return (
     <div className="max-w-3xl mx-auto p-4">
   <h1 className="text-2xl font-semibold mb-4">Tareas (Checklist)</h1>
+  {lastUpdate && (
+    <div className="text-xs text-soft mb-2">
+      Última actualización: {lastUpdate.toLocaleTimeString('es-ES')}
+    </div>
+  )}
 
       {/* Tabs: Todos + cada área */}
       <div className="mb-3 overflow-x-auto">
@@ -604,7 +619,14 @@ export function AdminTasksPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-4">
-        <label className="text-sm text-soft">Estado:</label>
+        <label className="text-sm text-soft">Fecha:</label>
+        <input 
+          type="date" 
+          className="input-sm" 
+          value={selectedDay} 
+          onChange={(e) => setSelectedDay(e.target.value)} 
+        />
+        <label className="text-sm text-soft ml-2">Estado:</label>
         <select
           className="input-sm w-48"
           value={statusFilter}
