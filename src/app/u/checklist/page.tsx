@@ -606,20 +606,20 @@ function ChecklistPageInner() {
                 const adminSum = adminSums.get(t.id) ?? 0;
                 return (
                     <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className={"inline-block h-2 w-2 rounded-full " + prioColor} />
                         <div className="font-medium text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-tight">{t.label}</div>
                       </div>
                       {!measurable ? (
-                        <div className="text-xs sm:text-sm space-y-1">
-                          <label className="inline-flex items-center gap-1 sm:gap-2 mr-2 sm:mr-3 cursor-pointer">
-                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id) || done} className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="text-xs sm:text-sm">Pendiente</span>
+                        <div className="flex bg-slate-100 dark:bg-slate-700/50 rounded-lg p-1 gap-1">
+                          <label className={`relative flex items-center justify-center px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium cursor-pointer transition-all select-none ${!done ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-slate-100 ring-1 ring-black/5' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'}`}>
+                            <input type="radio" name={`st-${t.id}`} checked={!done} onChange={() => setCheckedValue(t.id, false)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id) || done} className="sr-only" />
+                            Pendiente
                           </label>
-                          <label className="inline-flex items-center gap-1 sm:gap-2 cursor-pointer">
-                            <input type="radio" name={`st-${t.id}`} checked={done} onChange={() => setCheckedValue(t.id, true)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="text-xs sm:text-sm">Completada</span>
+                          <label className={`relative flex items-center justify-center px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium cursor-pointer transition-all select-none ${done ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-black/5' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'}`}>
+                            <input type="radio" name={`st-${t.id}`} checked={done} onChange={() => setCheckedValue(t.id, true)} disabled={saving || !canEdit || lockedAfterOut || pendingLockedIds.has(t.id)} className="sr-only" />
+                            Completada
                           </label>
                         </div>
                       ) : (
