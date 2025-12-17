@@ -196,11 +196,11 @@ function AreaSection(props: {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-4 text-xs text-soft">
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name={`status-${t.id}`} checked={!(t.completed || t.completedToday > 0)} onChange={() => updateTask(t.id, { completed: false } as any)} />
+                      <input type="radio" name={`status-${t.id}`} checked={!(t.completed || (t.completedToday || 0) > 0)} onChange={() => updateTask(t.id, { completed: false } as any)} />
                       <span>Pendiente</span>
                     </label>
                     <label className="inline-flex items-center gap-1">
-                      <input type="radio" name={`status-${t.id}`} checked={!!(t.completed || t.completedToday > 0)} onChange={() => updateTask(t.id, { completed: true } as any)} />
+                      <input type="radio" name={`status-${t.id}`} checked={!!(t.completed || (t.completedToday || 0) > 0)} onChange={() => updateTask(t.id, { completed: true } as any)} />
                       <span>Completada</span>
                     </label>
                   </div>
@@ -418,7 +418,7 @@ export function AdminTasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("pending"); // pending | completed | __ALL
   const [socket, setSocket] = useState<Socket | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string>(() => DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd'));
+  const [selectedDay, setSelectedDay] = useState<string>(() => (DateTime.now().setZone('America/Lima') as any).toFormat('yyyy-MM-dd'));
   
   // Keep a ref to selectedDay to use in socket listener without re-connecting
   const selectedDayRef = useRef(selectedDay);
@@ -584,7 +584,7 @@ export function AdminTasksPage() {
   }
 
   // Refs per-slot for create inputs
-  const createRefs = useRef<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null }>>({});
+  const createRefs = useRef<Record<string, { label: HTMLInputElement | null; priority: HTMLSelectElement | null; start: HTMLInputElement | null; end: HTMLInputElement | null; measureEnabled: HTMLInputElement | null; targetValue: HTMLInputElement | null; unitLabel: HTMLInputElement | null; onlyDate: HTMLInputElement | null }>>({});
 
   const renderAreaSection = (areaKey: string) => (
     <AreaSection
