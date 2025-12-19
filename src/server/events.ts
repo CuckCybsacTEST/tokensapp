@@ -1,6 +1,6 @@
 // Simple Node EventEmitter singleton to broadcast server-side events
 import { EventEmitter } from 'events'
-import { globalIo, emitSocketEvent } from '@/lib/socket'
+import { emitSocketEvent } from '@/lib/socket'
 import { DateTime } from 'luxon'
 
 // Ensure single instance across HMR in Next dev by attaching to global

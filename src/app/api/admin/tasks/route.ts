@@ -44,7 +44,7 @@ export async function GET(req: Request) {
   const dayParam = url.searchParams.get('day');
   const re = /^\d{4}-\d{2}-\d{2}$/;
   const todayLocal = () => {
-    return DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd');
+    return (DateTime.now().setZone('America/Lima') as any).toFormat('yyyy-MM-dd');
   };
   const day = (dayParam && re.test(dayParam)) ? dayParam : todayLocal();
 

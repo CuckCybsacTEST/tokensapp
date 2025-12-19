@@ -40,7 +40,7 @@ function isValidDay(day: string | null): day is string {
 }
 
 function ymdUtc(date: Date): string {
-  return DateTime.fromJSDate(date).setZone('America/Lima').toFormat('yyyy-MM-dd');
+  return (DateTime.fromJSDate(date).setZone('America/Lima') as any).toFormat('yyyy-MM-dd');
 }
 
 // TaskCommentBox component defined once below
