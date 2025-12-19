@@ -102,20 +102,24 @@ export function startScheduler() {
   // 18:00 -> FORZAR ON
   const job18 = cron.schedule('0 18 * * *', async () => {
     try {
-  await setTokensEnabled(true);
-  if (shouldLog('info')) logInfo('scheduler.enforce.on', 'boundary 18:00 enforce ON');
+      console.log('[scheduler] Enforcing ON at 18:00 Lima');
+      await setTokensEnabled(true);
+      if (shouldLog('info')) logInfo('scheduler.enforce.on', 'boundary 18:00 enforce ON');
     } catch (e) {
-  if (shouldLog('error')) logError('scheduler.enforce.on.error', 'boundary 18:00 enforce failed', { error: String(e) });
+      console.error('[scheduler] Error enforcing ON:', e);
+      if (shouldLog('error')) logError('scheduler.enforce.on.error', 'boundary 18:00 enforce failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   // 00:00 -> FORZAR OFF
   const job00 = cron.schedule('0 0 * * *', async () => {
     try {
-  await setTokensEnabled(false);
-  if (shouldLog('info')) logInfo('scheduler.enforce.off', 'boundary 00:00 enforce OFF');
+      console.log('[scheduler] Enforcing OFF at 00:00 Lima');
+      await setTokensEnabled(false);
+      if (shouldLog('info')) logInfo('scheduler.enforce.off', 'boundary 00:00 enforce OFF');
     } catch (e) {
-  if (shouldLog('error')) logError('scheduler.enforce.off.error', 'boundary 00:00 enforce failed', { error: String(e) });
+      console.error('[scheduler] Error enforcing OFF:', e);
+      if (shouldLog('error')) logError('scheduler.enforce.off.error', 'boundary 00:00 enforce failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 

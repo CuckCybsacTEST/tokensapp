@@ -109,7 +109,7 @@ export async function middleware(req: NextRequest) {
   // System APIs (/api/system/*) - requires ADMIN or STAFF
   if (pathname.startsWith("/api/system/")) {
     // Cron bypass for scheduled operations
-    if (pathname === '/api/system/tokens/enable-scheduled') {
+    if (pathname === '/api/system/tokens/enable-scheduled' || pathname === '/api/system/tokens/toggle') {
       const cronSecret = req.headers.get('x-cron-secret') || '';
       if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
         return NextResponse.next();

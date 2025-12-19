@@ -41,7 +41,7 @@ export function TaskStatusPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => {
-    return (DateTime.now().setZone('America/Lima') as any).toFormat('yyyy-MM-dd');
+    return DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd');
   });
   const [selectedArea, setSelectedArea] = useState('');
 

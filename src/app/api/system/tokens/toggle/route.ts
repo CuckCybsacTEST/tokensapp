@@ -42,6 +42,13 @@ export async function POST(req: Request) {
       }
     }
 
+    // Path C: Cron secret bypass
+    const cronSecret = req.headers.get('x-cron-secret') || '';
+    if (!allowed && cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
+      allowed = true;
+      actor = { kind: 'admin' }; // Treat cron as admin
+    }
+
     if (!allowed) return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));

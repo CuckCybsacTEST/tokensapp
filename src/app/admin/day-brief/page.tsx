@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
 function todayYmd() {
-  return (DateTime.now().setZone('America/Lima') as any).toFormat('yyyy-MM-dd');
+  return DateTime.now().setZone('America/Lima').toFormat('yyyy-MM-dd');
 }
 
 export default function AdminDayBriefPage() {
