@@ -669,47 +669,52 @@ model birthdaypack {
 }
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  icon        String?
-  order       Int       @default(0)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
+  id               String    @id @default(cuid())
+  name             String
+  description      String?
+  icon             String?
+  image            String?
+  imageStorageKey  String?
+  storageProvider  String?   @default("supabase")
+  order            Int       @default(0)
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  products         Product[]
 
   @@index([order])
   @@index([active])
 }
 
 model Product {
-  id              String           @id @default(cuid())
-  name            String
-  description     String?
-  price           Float
-  basePrice       Float?
-  image           String?
-  categoryId      String
-  available       Boolean          @default(true)
-  featured        Boolean          @default(false)
-  order           Int              @default(0)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  sku             String?
-  barcode         String?
-  taxRate         Float            @default(0.12)
-  costPrice       Float?
-  minStock        Int              @default(0)
-  maxStock        Int?
-  unitOfMeasureId String?
-  allergens       String?
-  nutritionalInfo String?
-  inventoryItems  InventoryItem[]
-  orderItems      OrderItem[]
-  category        Category         @relation(fields: [categoryId], references: [id])
-  unitOfMeasure   UnitOfMeasure?   @relation(fields: [unitOfMeasureId], references: [id])
-  variants        ProductVariant[]
+  id               String           @id @default(cuid())
+  name             String
+  description      String?
+  price            Float
+  basePrice        Float?
+  image            String?
+  imageStorageKey  String?
+  storageProvider  String?          @default("supabase")
+  categoryId       String
+  available        Boolean          @default(true)
+  featured         Boolean          @default(false)
+  order            Int              @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  sku              String?
+  barcode          String?
+  taxRate          Float            @default(0.12)
+  costPrice        Float?
+  minStock         Int              @default(0)
+  maxStock         Int?
+  unitOfMeasureId  String?
+  allergens        String?
+  nutritionalInfo  String?
+  inventoryItems   InventoryItem[]
+  orderItems       OrderItem[]
+  category         Category         @relation(fields: [categoryId], references: [id])
+  unitOfMeasure    UnitOfMeasure?   @relation(fields: [unitOfMeasureId], references: [id])
+  variants         ProductVariant[]
 
   @@index([categoryId])
   @@index([available])

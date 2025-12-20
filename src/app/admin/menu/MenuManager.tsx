@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Button, ActionButton, QuickActionButton } from "../../../components";
+import { MenuImageUpload } from "../../../components/admin/MenuImageUpload";
+import { MENU_FOLDERS } from "../../../lib/supabase";
 
 interface Category {
   id: string;
   name: string;
   description: string | null;
   icon: string | null;
+  image: string | null;
+  imageStorageKey: string | null;
+  storageProvider: string | null;
   order: number;
   active: boolean;
 }
@@ -19,6 +24,8 @@ interface Product {
   price: number;
   basePrice: number | null;
   image: string | null;
+  imageStorageKey: string | null;
+  storageProvider: string | null;
   categoryId: string;
   featured: boolean;
   order: number;
@@ -66,6 +73,8 @@ export default function MenuManager() {
     description: "",
     icon: "",
     order: "0",
+    image: "",
+    imageStorageKey: "",
   });
 
   const [productForm, setProductForm] = useState({
@@ -73,6 +82,7 @@ export default function MenuManager() {
     description: "",
     price: "",
     image: "",
+    imageStorageKey: "",
     categoryId: "",
     featured: false,
     order: "0",
@@ -163,6 +173,8 @@ export default function MenuManager() {
       description: category.description || "",
       icon: category.icon || "",
       order: category.order.toString(),
+      image: (category as any).image || "",
+      imageStorageKey: (category as any).imageStorageKey || "",
     });
     setShowCategoryForm(true);
   };
@@ -241,6 +253,7 @@ export default function MenuManager() {
       description: product.description || "",
       price: product.price.toString(),
       image: product.image || "",
+      imageStorageKey: (product as any).imageStorageKey || "",
       categoryId: product.categoryId,
       featured: product.featured,
       order: product.order.toString(),
@@ -279,6 +292,8 @@ export default function MenuManager() {
       description: "",
       icon: "",
       order: "0",
+      image: "",
+      imageStorageKey: "",
     });
   };
 
@@ -288,6 +303,7 @@ export default function MenuManager() {
       description: "",
       price: "",
       image: "",
+      imageStorageKey: "",
       categoryId: "",
       featured: false,
       order: "0",
@@ -418,6 +434,39 @@ export default function MenuManager() {
     resetVariantForm();
   };
 
+  // Image upload handlers
+  const handleCategoryImageUploaded = (url: string, storageKey: string) => {
+    setCategoryForm(prev => ({
+      ...prev,
+      image: url,
+      imageStorageKey: storageKey
+    }));
+  };
+
+  const handleCategoryImageRemoved = () => {
+    setCategoryForm(prev => ({
+      ...prev,
+      image: "",
+      imageStorageKey: ""
+    }));
+  };
+
+  const handleProductImageUploaded = (url: string, storageKey: string) => {
+    setProductForm(prev => ({
+      ...prev,
+      image: url,
+      imageStorageKey: storageKey
+    }));
+  };
+
+  const handleProductImageRemoved = () => {
+    setProductForm(prev => ({
+      ...prev,
+      image: "",
+      imageStorageKey: ""
+    }));
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
@@ -532,6 +581,16 @@ export default function MenuManager() {
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
                   />
                 </div>
+
+                <MenuImageUpload
+                  onImageUploaded={handleCategoryImageUploaded}
+                  onImageRemoved={handleCategoryImageRemoved}
+                  currentImage={categoryForm.image}
+                  currentStorageKey={categoryForm.imageStorageKey}
+                  folder={MENU_FOLDERS.CATEGORIES}
+                  itemId={editingCategory?.id || `temp-${Date.now()}`}
+                  label="Imagen de la categoría (opcional)"
+                />
 
                 <div className="flex gap-2">
                   <ActionButton
@@ -773,18 +832,15 @@ export default function MenuManager() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Imagen (opcional)
-                  </label>
-                  <input
-                    type="url"
-                    value={productForm.image}
-                    onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                    placeholder="URL de la imagen"
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700"
-                  />
-                </div>
+                <MenuImageUpload
+                  onImageUploaded={handleProductImageUploaded}
+                  onImageRemoved={handleProductImageRemoved}
+                  currentImage={productForm.image}
+                  currentStorageKey={productForm.imageStorageKey}
+                  folder={MENU_FOLDERS.PRODUCTS}
+                  itemId={editingProduct?.id || `temp-${Date.now()}`}
+                  label="Imagen del producto (opcional)"
+                />
 
                 <div className="flex items-center">
                   <input

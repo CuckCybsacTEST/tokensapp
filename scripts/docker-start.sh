@@ -54,25 +54,15 @@ fi
 # Auto-migrate schema based on DATABASE_URL (optional). Default disabled unless ALLOW_MIGRATIONS=1
 if [ -n "$DATABASE_URL" ] && [ "$ALLOW_MIGRATIONS" = "1" ]; then
   if echo "$DATABASE_URL" | grep -qi "^file:"; then
-    echo "[entrypoint] Detected SQLite DATABASE_URL ($DATABASE_URL). Running prisma migrate deploy..."
-    npx prisma migrate deploy --skip-generate || echo "[entrypoint] migrate deploy failed (will still attempt db push)"
-    echo "[entrypoint] Ensuring schema with prisma db push (SQLite)..."
-    # db push guarantees schema exists even when there are no migrations in fresh DBs
+    echo "[entrypoint] Detected SQLite DATABASE_URL ($DATABASE_URL). Running prisma db push..."
     npx prisma db push --skip-generate || {
       echo "[entrypoint] prisma db push failed. Continuing to start app, but database may be unusable.";
     }
   elif echo "$DATABASE_URL" | grep -Eqi "^postgres(|ql)://"; then
-    echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma migrate deploy (baseline expected)."
-    # Nota: Se eliminó el fallback automático a 'prisma db push' para evitar divergencia de historial.
-    # Si se necesitara reactivarlo temporalmente (p.ej. entorno efímero sin aplicar baseline),
-    # podría condicionarse a una variable como POSTGRES_ALLOW_DB_PUSH_FALLBACK=1 (no implementada).
-    if npx prisma migrate deploy; then
-      echo "[entrypoint] Migrations applied successfully.";
-    else
-      echo "[entrypoint] ERROR: prisma migrate deploy failed. No fallback automático (intencional).";
-      echo "[entrypoint] Revisa si la base está vacía y la migración baseline existe. Si es un entorno efímero puedes ejecutar manualmente: npx prisma db push (bajo tu responsabilidad).";
-      exit 1
-    fi
+    echo "[entrypoint] Detected Postgres DATABASE_URL. Running prisma db push..."
+    npx prisma db push --skip-generate || {
+      echo "[entrypoint] prisma db push failed. Continuing to start app, but database may be unusable.";
+    }
   else
     echo "[entrypoint] Unknown DATABASE_URL scheme. Skipping prisma migrations."
   fi

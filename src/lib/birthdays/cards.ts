@@ -4,7 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { generateInviteCard } from '@/lib/birthdays/generateInviteCard';
 import { generateInviteTokens } from '@/lib/birthdays/service';
-import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, BIRTHDAY_CARDS_BUCKET } from '@/lib/supabase';
+import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, BIRTHDAY_CARDS_BUCKET } from '@/lib/supabase-server';
 
 // Shadow type until prisma generate creates the official InviteTokenCard delegate
 type InviteTokenCardRow = { id: string; inviteTokenId: string; kind: 'host' | 'guest'; filePath: string; storageProvider?: string; storageKey?: string; storageUrl?: string; createdAt: Date };

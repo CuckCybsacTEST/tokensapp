@@ -13,6 +13,9 @@ export async function GET() {
         name: true,
         description: true,
         icon: true,
+        image: true,
+        imageStorageKey: true,
+        storageProvider: true,
         order: true,
         active: true,
       },
@@ -31,13 +34,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, icon, order } = body;
+    const { name, description, icon, image, imageStorageKey, storageProvider, order } = body;
 
     const category = await prisma.category.create({
       data: {
         name,
         description,
         icon,
+        image,
+        imageStorageKey,
+        storageProvider: storageProvider || "supabase",
         order: order || 0,
       },
     });
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, description, icon, order } = body;
+    const { id, name, description, icon, image, imageStorageKey, storageProvider, order } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID de categoría requerido" }, { status: 400 });
@@ -67,6 +73,9 @@ export async function PUT(request: NextRequest) {
         name,
         description,
         icon,
+        image,
+        imageStorageKey,
+        storageProvider: storageProvider || "supabase",
         order: order || 0,
       },
     });

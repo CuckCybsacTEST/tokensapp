@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import sharpModule from 'sharp';
-import { uploadBufferToSupabase } from '@/lib/supabase';
+import { uploadBufferToSupabase } from '@/lib/supabase-server';
 
 interface PipelineResult {
   reused: boolean;

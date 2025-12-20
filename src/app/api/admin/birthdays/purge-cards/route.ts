@@ -4,7 +4,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
-import { deleteFromSupabase, safeDeleteFile } from '@/lib/supabase';
+import { deleteFromSupabase, safeDeleteFile } from '@/lib/supabase-server';
 
 export async function POST(req: NextRequest) {
   const cookie = getSessionCookieFromRequest(req as unknown as Request);

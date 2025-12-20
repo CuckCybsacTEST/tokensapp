@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 import { apiError, apiOk } from '@/lib/apiError';
-import { safeDeleteFile, deleteFromSupabase } from '@/lib/supabase';
+import { safeDeleteFile, deleteFromSupabase } from '@/lib/supabase-server';
 
 export async function DELETE(request: Request) {
   try {

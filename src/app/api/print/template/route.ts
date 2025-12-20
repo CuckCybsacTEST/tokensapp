@@ -3,7 +3,7 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import fs from 'fs';
 import path from 'path';
 import { apiError, apiOk } from '@/lib/apiError';
-import { uploadBufferToSupabase } from '@/lib/supabase';
+import { uploadBufferToSupabase } from '@/lib/supabase-server';
 
 let prisma: any = null;
 try {

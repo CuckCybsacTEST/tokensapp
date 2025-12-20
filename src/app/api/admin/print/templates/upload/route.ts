@@ -5,7 +5,7 @@ import path from 'path';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { apiError, apiOk } from '@/lib/apiError';
-import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase';
+import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase-server';
 
 // Helper para sanitizar nombres de archivo
 function sanitizeFileName(name: string): string {
