@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { motion } from "framer-motion";
-import { ShoppingCart, Plus, Minus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingCart, Plus, Minus, Sparkles, Zap, Crown, Star } from "lucide-react";
 import SuccessModal from "@/components/SuccessModal";
 import { useTableSocket } from "../../hooks/useSocket";
 import { useSearchParams } from "next/navigation";
@@ -51,6 +51,168 @@ interface CartItem {
   notes?: string;
 }
 
+// Estilos visuales para categorías
+const categoryStyles: Record<string, {
+  icon: string;
+  color: string;
+  bgColor: string;
+  textColor: string;
+  glowColor: string;
+  emoji: string;
+}> = {
+  'WHISKY': {
+    icon: '🥃',
+    color: 'from-amber-500 to-orange-600',
+    bgColor: 'bg-gradient-to-br from-amber-500/20 to-orange-600/20',
+    textColor: 'text-amber-100',
+    glowColor: 'shadow-amber-500/30',
+    emoji: '🥃'
+  },
+  '🍾 GIN': {
+    icon: '🍾',
+    color: 'from-blue-400 to-cyan-500',
+    bgColor: 'bg-gradient-to-br from-blue-400/20 to-cyan-500/20',
+    textColor: 'text-blue-100',
+    glowColor: 'shadow-blue-400/30',
+    emoji: '🍾'
+  },
+  '🍷 VINO': {
+    icon: '🍷',
+    color: 'from-purple-500 to-pink-600',
+    bgColor: 'bg-gradient-to-br from-purple-500/20 to-pink-600/20',
+    textColor: 'text-purple-100',
+    glowColor: 'shadow-purple-500/30',
+    emoji: '🍷'
+  },
+  '🍸 VODKA': {
+    icon: '🍸',
+    color: 'from-indigo-400 to-purple-500',
+    bgColor: 'bg-gradient-to-br from-indigo-400/20 to-purple-500/20',
+    textColor: 'text-indigo-100',
+    glowColor: 'shadow-indigo-400/30',
+    emoji: '🍸'
+  },
+  '🥃 LICOR': {
+    icon: '🥃',
+    color: 'from-red-500 to-pink-500',
+    bgColor: 'bg-gradient-to-br from-red-500/20 to-pink-500/20',
+    textColor: 'text-red-100',
+    glowColor: 'shadow-red-500/30',
+    emoji: '🥃'
+  },
+  '🍶 PISCO': {
+    icon: '🍶',
+    color: 'from-yellow-400 to-orange-500',
+    bgColor: 'bg-gradient-to-br from-yellow-400/20 to-orange-500/20',
+    textColor: 'text-yellow-100',
+    glowColor: 'shadow-yellow-400/30',
+    emoji: '🍶'
+  },
+  '🥃 RON': {
+    icon: '🥃',
+    color: 'from-amber-600 to-red-600',
+    bgColor: 'bg-gradient-to-br from-amber-600/20 to-red-600/20',
+    textColor: 'text-amber-100',
+    glowColor: 'shadow-amber-600/30',
+    emoji: '🥃'
+  },
+  '🥃 TEQUILA': {
+    icon: '🥃',
+    color: 'from-lime-400 to-green-500',
+    bgColor: 'bg-gradient-to-br from-lime-400/20 to-green-500/20',
+    textColor: 'text-lime-100',
+    glowColor: 'shadow-lime-400/30',
+    emoji: '🥃'
+  },
+  '🍺 CERVEZAS PERSONALES': {
+    icon: '🍺',
+    color: 'from-yellow-300 to-amber-400',
+    bgColor: 'bg-gradient-to-br from-yellow-300/20 to-amber-400/20',
+    textColor: 'text-yellow-100',
+    glowColor: 'shadow-yellow-300/30',
+    emoji: '🍺'
+  },
+  '🥤 BEBIDAS': {
+    icon: '🥤',
+    color: 'from-cyan-400 to-blue-500',
+    bgColor: 'bg-gradient-to-br from-cyan-400/20 to-blue-500/20',
+    textColor: 'text-cyan-100',
+    glowColor: 'shadow-cyan-400/30',
+    emoji: '🥤'
+  },
+  'ESPECIALES KTDral': {
+    icon: '✨',
+    color: 'from-pink-500 to-rose-600',
+    bgColor: 'bg-gradient-to-br from-pink-500/20 to-rose-600/20',
+    textColor: 'text-pink-100',
+    glowColor: 'shadow-pink-500/30',
+    emoji: '✨'
+  },
+  'JARRITAS DE CASA': {
+    icon: '🏠',
+    color: 'from-green-400 to-emerald-500',
+    bgColor: 'bg-gradient-to-br from-green-400/20 to-emerald-500/20',
+    textColor: 'text-green-100',
+    glowColor: 'shadow-green-400/30',
+    emoji: '🏠'
+  },
+  'CÓCTELES - DULCES': {
+    icon: '🍭',
+    color: 'from-pink-400 to-rose-500',
+    bgColor: 'bg-gradient-to-br from-pink-400/20 to-rose-500/20',
+    textColor: 'text-pink-100',
+    glowColor: 'shadow-pink-400/30',
+    emoji: '🍭'
+  },
+  'CÓCTELES - Tropicales': {
+    icon: '🏝️',
+    color: 'from-orange-400 to-yellow-500',
+    bgColor: 'bg-gradient-to-br from-orange-400/20 to-yellow-500/20',
+    textColor: 'text-orange-100',
+    glowColor: 'shadow-orange-400/30',
+    emoji: '🏝️'
+  },
+  'CÓCTELES - EXÓTICOS': {
+    icon: '🌟',
+    color: 'from-violet-400 to-purple-500',
+    bgColor: 'bg-gradient-to-br from-violet-400/20 to-purple-500/20',
+    textColor: 'text-violet-100',
+    glowColor: 'shadow-violet-400/30',
+    emoji: '🌟'
+  },
+  'CÓCTELES - SECOS': {
+    icon: '🧊',
+    color: 'from-slate-400 to-gray-500',
+    bgColor: 'bg-gradient-to-br from-slate-400/20 to-gray-500/20',
+    textColor: 'text-slate-100',
+    glowColor: 'shadow-slate-400/30',
+    emoji: '🧊'
+  }
+};
+
+const defaultCategoryStyle = {
+  icon: '🍹',
+  color: 'from-gray-400 to-gray-500',
+  bgColor: 'bg-gradient-to-br from-gray-400/20 to-gray-500/20',
+  textColor: 'text-gray-100',
+  glowColor: 'shadow-gray-400/30',
+  emoji: '🍹'
+};
+
+// Función para parsear precios de la descripción
+const parsePrices = (description: string) => {
+  const bottleMatch = description.match(/botella[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+  const cupMatch = description.match(/copa[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+
+  if (bottleMatch && cupMatch) {
+    return {
+      bottlePrice: parseFloat(bottleMatch[1]),
+      cupPrice: parseFloat(cupMatch[1])
+    };
+  }
+  return null;
+};
+
 function MenuPageContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -68,6 +230,21 @@ function MenuPageContent() {
   const [showCustomerNameModal, setShowCustomerNameModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string>("");
+  const [partyMode, setPartyMode] = useState(false);
+
+  // Estadísticas de optimización (solo en desarrollo)
+  const getImageStats = () => {
+    const totalProducts = products.length;
+    const productsWithImages = products.filter((p: Product) => p.featured && p.image).length;
+    const featuredProducts = products.filter((p: Product) => p.featured).length;
+
+    return {
+      totalProducts,
+      productsWithImages,
+      featuredProducts,
+      imageRatio: totalProducts > 0 ? (productsWithImages / totalProducts * 100).toFixed(1) : '0'
+    };
+  };
 
   const searchParams = useSearchParams();
 
@@ -103,24 +280,6 @@ function MenuPageContent() {
     }
   }, [locationId, tableId]);
 
-  const loadLocationData = async () => {
-    if (!locationId) return;
-
-    try {
-      // Cargar mesas de la ubicación
-      const locationRes = await fetch(`/api/admin/service-points?locationId=${encodeURIComponent(locationId)}`);
-
-      if (locationRes.ok) {
-        const tablesData = await locationRes.json();
-        setTables(tablesData.filter((table: any) => table.active));
-      } else {
-        console.error("Error loading location data:", locationRes.status);
-      }
-    } catch (error) {
-      console.error("Error loading location data:", error);
-    }
-  };
-
   useEffect(() => {
     if (socket) {
       socket.on("order-status-update", (orderData) => {
@@ -144,6 +303,24 @@ function MenuPageContent() {
     };
   }, [socket]);
 
+  const loadLocationData = async () => {
+    if (!locationId) return;
+
+    try {
+      // Cargar mesas de la ubicación
+      const locationRes = await fetch(`/api/admin/service-points?locationId=${encodeURIComponent(locationId)}`);
+
+      if (locationRes.ok) {
+        const tablesData = await locationRes.json();
+        setTables(tablesData.filter((table: any) => table.active));
+      } else {
+        console.error("Error loading location data:", locationRes.status);
+      }
+    } catch (error) {
+      console.error("Error loading location data:", error);
+    }
+  };
+
   const loadMenuData = async () => {
     try {
       // Cargar categorías y productos desde la API (públicos)
@@ -156,7 +333,13 @@ function MenuPageContent() {
         const categoriesData = await categoriesRes.json();
         const productsData = await productsRes.json();
 
-        setCategories(categoriesData);
+        // Agregar información de productos destacados a las categorías para el indicador visual
+        const categoriesWithProducts = categoriesData.map((category: Category) => ({
+          ...category,
+          products: productsData.filter((product: Product) => product.categoryId === category.id)
+        }));
+
+        setCategories(categoriesWithProducts);
         setProducts(productsData);
 
         // Seleccionar primera categoría activa
@@ -200,77 +383,81 @@ function MenuPageContent() {
     }
   };
 
+  const filteredProducts = products.filter(product =>
+    product.categoryId === selectedCategory && product.available
+  );
+
   const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
-      if (existing) {
-        return prev.map(item =>
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.product.id === product.id);
+      if (existingItem) {
+        return prevCart.map(item =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
-        return [...prev, { product, quantity: 1 }];
+        return [...prevCart, { product, quantity: 1 }];
       }
     });
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setCart(prev => prev.filter(item => item.product.id !== productId));
+  const updateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      setCart(prevCart => prevCart.filter(item => item.product.id !== productId));
     } else {
-      setCart(prev => prev.map(item =>
-        item.product.id === productId
-          ? { ...item, quantity }
-          : item
-      ));
+      setCart(prevCart =>
+        prevCart.map(item =>
+          item.product.id === productId
+            ? { ...item, quantity: newQuantity }
+            : item
+        )
+      );
     }
   };
 
-  const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
-  const getTotalPrice = () => cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const getTotalItems = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
 
-  const filteredProducts = products.filter(product =>
-    product.categoryId === selectedCategory && product.available
-  );
-  const submitOrder = async () => {
-    if (cart.length === 0) {
-      alert("El carrito está vacío");
-      return;
-    }
+  const getTotalPrice = () => {
+    return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+  };
 
-    // Si no hay mesa seleccionada, mostrar modal para seleccionar
-    if (!tableId) {
-      setOrderSuccess(true);
-      return;
-    }
-
-    // Si viene desde QR (tiene tableId) y no hay nombre de cliente, mostrar modal para pedir nombre
-    if (tableId && !customerName.trim()) {
+  const sendOrder = async () => {
+    if (!customerName.trim()) {
       setShowCustomerNameModal(true);
       return;
     }
 
-    await sendOrder();
+    setOrderSuccess(true);
   };
 
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    setLastOrderId("");
-  };
+  const submitOrder = async () => {
+    if (!tableId) {
+      alert("❌ Selecciona una mesa/zona primero");
+      return;
+    }
 
-  const sendOrder = async () => {
+    if (cart.length === 0) {
+      alert("❌ Agrega productos al carrito primero");
+      return;
+    }
+
     setIsSubmitting(true);
+
     try {
       const orderData = {
-        servicePointId: tableId,
+        tableId,
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          notes: item.notes,
+          notes: item.notes || "",
+          price: item.product.price
         })),
-        notes: orderNotes.trim() || undefined,
-        customerName: customerName.trim() || undefined,
+        total: getTotalPrice(),
+        notes: orderNotes,
+        customerName: customerName.trim()
       };
 
       const response = await fetch("/api/orders", {
@@ -283,20 +470,12 @@ function MenuPageContent() {
 
       if (response.ok) {
         const result = await response.json();
-        
-        // Guardar el ID del pedido y mostrar modal de éxito
         setLastOrderId(result.order.id);
-        setShowSuccessModal(true);
-        
-        // Limpiar carrito y datos del cliente
-        setCart([]);
-        setOrderNotes("");
-        setCustomerName("");
-        
-        // Emitir evento de Socket.IO
+
+        // Emitir evento de nuevo pedido via socket
         if (socket) {
-          const selectedTable = tables.find(t => t.id === tableId);
           let locationName = "";
+          const selectedTable = tables.find(t => t.id === tableId);
           if (selectedTable) {
             locationName = selectedTable.name || `${selectedTable.type} ${selectedTable.number}`;
           }
@@ -311,6 +490,12 @@ function MenuPageContent() {
             timestamp: new Date().toISOString(),
           });
         }
+
+        // Limpiar carrito y mostrar modal de éxito
+        setCart([]);
+        setOrderNotes("");
+        setOrderSuccess(false);
+        setShowSuccessModal(true);
       } else {
         const error = await response.json();
         alert(`❌ Error: ${error.error}`);
@@ -325,347 +510,772 @@ function MenuPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Cargando carta...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-[#FF4D2E] border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <div className="text-white text-xl font-bold">Cargando carta...</div>
+          <div className="text-gray-400 text-sm mt-2">Preparando la fiesta 🎉</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden">
+      {/* Efectos de fondo para modo fiesta */}
+      <AnimatePresence>
+        {partyMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 pointer-events-none z-0"
+          >
+            {/* Luces de discoteca animadas */}
+            <div className="absolute top-10 left-10 w-4 h-4 bg-[#FF4D2E] rounded-full animate-ping opacity-60" />
+            <div className="absolute top-20 right-20 w-3 h-3 bg-cyan-400 rounded-full animate-pulse opacity-60" />
+            <div className="absolute bottom-32 left-1/4 w-2 h-2 bg-purple-400 rounded-full animate-bounce opacity-60" />
+            <div className="absolute top-1/3 right-10 w-5 h-5 bg-pink-400 rounded-full animate-pulse opacity-40" />
+            <div className="absolute bottom-20 right-1/3 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-50" />
+
+            {/* Partículas flotantes */}
+            <div className="absolute inset-0">
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-white rounded-full opacity-20"
+                  animate={{
+                    y: [0, -100, 0],
+                    x: [0, Math.random() * 100 - 50, 0],
+                    opacity: [0.2, 0.8, 0.2],
+                  }}
+                  transition={{
+                    duration: Math.random() * 3 + 2,
+                    repeat: Infinity,
+                    delay: Math.random() * 2,
+                  }}
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                  }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {locationId && !tableId ? (
         /* Table Selection for Location */
-        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center p-4 relative z-10">
           <div className="max-w-4xl w-full">
-            <h1 className="text-3xl font-bold text-center mb-8 text-[#FF4D2E]">Selecciona tu Mesa</h1>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A] bg-clip-text text-transparent mb-2">
+                Selecciona tu Mesa
+              </h1>
+              <p className="text-gray-400">Elige tu zona para comenzar la fiesta 🎭</p>
+            </motion.div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {tables.map((table) => (
-                <button
+              {tables.map((table, index) => (
+                <motion.button
                   key={table.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setTableId(table.id)}
-                  className="bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl p-6 transition-colors"
+                  className="group relative bg-gradient-to-br from-gray-800/50 to-gray-900/50
+                           hover:from-gray-700/50 hover:to-gray-800/50 border border-white/10
+                           hover:border-[#FF4D2E]/50 rounded-2xl p-6 transition-all duration-300
+                           backdrop-blur-sm overflow-hidden"
                 >
-                  <div className="text-center">
-                    <div className="text-2xl mb-2">
+                  {/* Efecto de luz */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
+                                translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+
+                  <div className="relative text-center">
+                    <div className="text-4xl mb-4">
                       {table.type === 'TABLE' ? '🍽️' : table.type === 'BOX' ? '🏠' : '📍'}
                     </div>
-                    <h3 className="text-xl font-semibold mb-1">
+                    <h3 className="text-xl font-bold mb-2 group-hover:text-[#FF4D2E] transition-colors">
                       {table.name || `${table.type} ${table.number}`}
                     </h3>
-                    <p className="text-gray-300">
+                    <p className="text-gray-400 text-sm mb-3">
                       Capacidad: {table.capacity} personas
                     </p>
                     {table.location && (
-                      <p className="text-sm text-gray-400">
-                        {table.location.name}
-                      </p>
+                      <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-3 py-1">
+                        <span className="text-xs text-gray-300">{table.location.name}</span>
+                      </div>
                     )}
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
+
             {tables.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-400">No hay mesas disponibles en esta ubicación</p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-12"
+              >
+                <div className="text-6xl mb-4">🎭</div>
+                <p className="text-gray-400 text-lg">No hay mesas disponibles en esta ubicación</p>
+                <p className="text-gray-500 text-sm mt-2">Vuelve más tarde para la fiesta</p>
+              </motion.div>
             )}
           </div>
         </div>
       ) : (
         /* Main Menu */
-        <div>
-          <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-[#FF4D2E]">El Lounge</h1>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <ShoppingCart className="w-6 h-6" />
-                {getTotalItems() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#FF4D2E] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {getTotalItems()}
-                  </span>
-                )}
+        <div className="relative z-10">
+          {/* Header Mejorado */}
+          <div className="sticky top-0 z-50 bg-gradient-to-r from-black via-gray-900 to-black
+                          backdrop-blur-md border-b border-white/10 shadow-2xl">
+            {/* Efectos de luz animados */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#FF4D2E] to-transparent animate-pulse" />
+
+            <div className="container mx-auto px-4 py-4 relative">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                    className="w-12 h-12 bg-gradient-to-br from-[#FF4D2E] to-[#FF6B4A]
+                               rounded-2xl flex items-center justify-center shadow-lg shadow-[#FF4D2E]/30"
+                  >
+                    <span className="text-2xl">🎭</span>
+                  </motion.div>
+                  <div>
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                      El Lounge
+                    </h1>
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <Zap className="w-3 h-3" />
+                      Discoteca & Bar
+                    </p>
+                  </div>
+                </div>
+
+                {/* Controles del header */}
+                <div className="flex items-center gap-4">
+                  {/* Botón modo fiesta */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setPartyMode(!partyMode)}
+                    className={`p-2 rounded-xl transition-all duration-300 ${
+                      partyMode
+                        ? 'bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A] shadow-lg shadow-[#FF4D2E]/30'
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    <Sparkles className={`w-5 h-5 ${partyMode ? 'text-white' : 'text-gray-400'}`} />
+                  </motion.button>
+
+                  {/* Carrito mejorado */}
+                  <div className="relative group">
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      <ShoppingCart className="w-6 h-6" />
+                      <AnimatePresence>
+                        {getTotalItems() > 0 && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            className="absolute -top-1 -right-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
+                                     text-white text-xs rounded-full w-6 h-6 flex items-center justify-center
+                                     font-bold shadow-lg animate-bounce"
+                          >
+                            {getTotalItems()}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="text-right hidden sm:block">
+                    <div className="text-lg font-bold text-[#FF4D2E]">S/ {getTotalPrice().toFixed(2)}</div>
+                    <div className="text-xs text-gray-400">{getTotalItems()} items</div>
+                    {/* Estadísticas de optimización (solo desarrollo) */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        📸 {getImageStats().productsWithImages}/{getImageStats().totalProducts} imgs
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <span className="text-lg font-semibold">
-                S/ {getTotalPrice().toFixed(2)}
-              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Categories */}
-      <div className="sticky top-20 z-40 bg-black/90 backdrop-blur-md border-b border-white/10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {categories
-              .filter(cat => cat.active)
-              .sort((a, b) => a.order - b.order)
-              .map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
-                    selectedCategory === category.id
-                      ? "bg-[#FF4D2E] text-white"
-                      : "bg-white/10 text-white/70 hover:bg-white/20"
-                  }`}
-                >
-                  {category.icon && <span className="mr-2">{category.icon}</span>}
-                  {category.name}
-                </button>
-              ))}
+          {/* Categories Mejoradas */}
+          <div className="sticky top-20 z-40 bg-black/95 backdrop-blur-md border-b border-white/10 py-4">
+            <div className="container mx-auto px-4">
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                {categories
+                  .filter(cat => cat.active)
+                  .sort((a, b) => a.order - b.order)
+                  .map((category, index) => {
+                    const style = categoryStyles[category.name] || defaultCategoryStyle;
+                    const isSelected = selectedCategory === category.id;
+
+                    return (
+                      <motion.button
+                        key={category.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setSelectedCategory(category.id)}
+                        className={`relative flex-shrink-0 px-6 py-4 rounded-2xl transition-all duration-300
+                                 border backdrop-blur-sm overflow-hidden ${
+                          isSelected
+                            ? `bg-gradient-to-r ${style.color} shadow-2xl ${style.glowColor} border-white/20`
+                            : `bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20`
+                        }`}
+                      >
+                        {/* Efecto de selección */}
+                        {isSelected && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute inset-0 bg-white/20 rounded-2xl"
+                          />
+                        )}
+
+                        {/* Efecto de luz */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
+                                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+
+                        <div className="relative flex flex-col items-center gap-2">
+                          <motion.span
+                            className="text-3xl"
+                            animate={isSelected ? { rotate: [0, 10, -10, 0] } : {}}
+                            transition={{ duration: 0.5 }}
+                          >
+                            {style.emoji}
+                          </motion.span>
+                          <span className={`font-bold text-sm text-center leading-tight ${
+                            isSelected ? 'text-white' : 'text-gray-300'
+                          }`}>
+                            {category.name.replace('CÓCTELES - ', '').replace('🍾 ', '').replace('🍷 ', '').replace('🍸 ', '').replace('🥃 ', '').replace('🍶 ', '').replace('🍺 ', '').replace('🥤 ', '')}
+                          </span>
+
+                          {/* Indicador de productos destacados con imagen */}
+                          {products.some((p: Product) => p.categoryId === category.id && p.featured && p.image) && (
+                            <motion.div
+                              className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-yellow-400 to-orange-500
+                                         rounded-full flex items-center justify-center shadow-lg"
+                              animate={{ scale: [1, 1.2, 1] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              <Sparkles className="w-2 h-2 text-white" />
+                            </motion.div>
+                          )}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Products */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts
-            .sort((a, b) => a.order - b.order)
-            .map((product) => {
-              const cartItem = cart.find(item => item.product.id === product.id);
+          {/* Products Grid Mejorado */}
+          <div className="container mx-auto px-4 py-6">
+            <motion.div
+              layout
+              className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+            >
+              <AnimatePresence mode="popLayout">
+                {filteredProducts
+                  .sort((a, b) => a.order - b.order)
+                  .map((product, index) => {
+                    const cartItem = cart.find(item => item.product.id === product.id);
+                    const prices = parsePrices(product.description || '');
 
-              return (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white/5 rounded-xl overflow-hidden border border-white/10"
-                >
-                  {product.image && (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
+                    return (
+                      <motion.div
+                        key={product.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="group relative bg-gradient-to-br from-gray-900/80 to-black/80
+                                 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden
+                                 hover:border-[#FF4D2E]/50 hover:shadow-2xl hover:shadow-[#FF4D2E]/20
+                                 transition-all duration-300 transform hover:scale-[1.02]"
+                      >
+                        {/* Efecto de luz animado */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
+                                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
 
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-semibold">{product.name}</h3>
-                      <span className="text-[#FF4D2E] font-bold text-lg">
-                        S/ {product.price.toFixed(2)}
-                      </span>
+                        {/* Imagen con overlay - Solo para productos destacados */}
+                        {product.featured && product.image ? (
+                          <div className="relative h-32 overflow-hidden">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+                            {/* Badge de precio destacado */}
+                            <div className="absolute top-3 right-3 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
+                                          text-white px-2 py-1 rounded-full text-sm font-bold shadow-lg">
+                              S/ {product.price.toFixed(2)}
+                            </div>
+
+                            {/* Badge VIP */}
+                            <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500
+                                          text-black px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                              <Crown className="w-3 h-3" />
+                              VIP
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative h-32 overflow-hidden">
+                            {/* Placeholder atractivo con gradiente y emoji */}
+                            <div className={`w-full h-full bg-gradient-to-br ${
+                              product.featured
+                                ? 'from-yellow-400/20 via-orange-500/20 to-red-500/20'
+                                : 'from-gray-700/50 to-gray-800/50'
+                            } flex items-center justify-center relative overflow-hidden`}>
+                              {/* Patrón de fondo sutil */}
+                              <div className="absolute inset-0 opacity-10">
+                                <div className="absolute top-2 left-2 w-8 h-8 border border-white/20 rounded-full"></div>
+                                <div className="absolute bottom-4 right-4 w-6 h-6 border border-white/20 rounded-full"></div>
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 border border-white/10 rounded-full"></div>
+                              </div>
+
+                              {/* Emoji grande y atractivo */}
+                              <motion.span
+                                className={`text-5xl ${product.featured ? 'filter drop-shadow-lg' : 'opacity-60'}`}
+                                animate={product.featured ? {
+                                  scale: [1, 1.1, 1],
+                                  rotate: [0, 5, -5, 0]
+                                } : {}}
+                                transition={{
+                                  duration: 3,
+                                  repeat: Infinity,
+                                  ease: "easeInOut"
+                                }}
+                              >
+                                {product.featured ? '✨' : '🍹'}
+                              </motion.span>
+
+                              {/* Efecto de brillo para destacados */}
+                              {product.featured && (
+                                <motion.div
+                                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                                  animate={{
+                                    x: ['-100%', '100%']
+                                  }}
+                                  transition={{
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    repeatDelay: 3,
+                                    ease: "easeInOut"
+                                  }}
+                                />
+                              )}
+
+                              {/* Badge de precio para no destacados */}
+                              {!product.featured && (
+                                <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm
+                                              text-white px-2 py-1 rounded-full text-sm font-bold">
+                                  S/ {product.price.toFixed(2)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Contenido */}
+                        <div className="p-4">
+                          <h3 className="text-white font-bold text-lg mb-2 line-clamp-2 group-hover:text-[#FF4D2E] transition-colors">
+                            {product.name}
+                          </h3>
+
+                          {/* Precios adicionales si existen */}
+                          {prices && (
+                            <div className="flex gap-2 mb-3">
+                              <div className="flex-1 bg-white/10 rounded-lg px-2 py-1 text-center">
+                                <div className="text-xs text-gray-400">Botella</div>
+                                <div className="text-sm font-bold text-[#FF4D2E]">S/ {prices.bottlePrice}</div>
+                              </div>
+                              <div className="flex-1 bg-white/10 rounded-lg px-2 py-1 text-center">
+                                <div className="text-xs text-gray-400">Copa</div>
+                                <div className="text-sm font-bold text-[#FF4D2E]">S/ {prices.cupPrice}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Controles de cantidad */}
+                          <div className="flex items-center justify-between">
+                            {cartItem ? (
+                              <div className="flex items-center gap-2 bg-white/10 rounded-xl p-2 flex-1">
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center
+                                           hover:bg-white/30 transition-colors"
+                                >
+                                  <Minus className="w-4 h-4" />
+                                </motion.button>
+                                <motion.span
+                                  key={cartItem.quantity}
+                                  initial={{ scale: 0.8 }}
+                                  animate={{ scale: 1 }}
+                                  className="w-8 text-center font-bold"
+                                >
+                                  {cartItem.quantity}
+                                </motion.span>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center
+                                           hover:bg-white/30 transition-colors"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </motion.button>
+                              </div>
+                            ) : (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => addToCart(product)}
+                                className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
+                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-3 px-4
+                                         rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl
+                                         transform hover:scale-105"
+                              >
+                                Agregar
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+              </AnimatePresence>
+            </motion.div>
+
+            {filteredProducts.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <div className="text-6xl mb-4">🍹</div>
+                <h3 className="text-xl font-bold text-gray-400 mb-2">No hay productos disponibles</h3>
+                <p className="text-gray-500">Selecciona otra categoría para continuar la fiesta</p>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Cart Summary Mejorado */}
+          <AnimatePresence>
+            {cart.length > 0 && (
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-gray-900 to-transparent
+                          backdrop-blur-md border-t border-white/10 p-4 shadow-2xl z-50"
+              >
+                <div className="container mx-auto">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-left">
+                        <p className="text-white/70 text-sm">{getTotalItems()} productos</p>
+                        <p className="text-xl font-bold text-[#FF4D2E]">Total: S/ {getTotalPrice().toFixed(2)}</p>
+                      </div>
                     </div>
 
-                    {product.description && (
-                      <p className="text-white/70 text-sm mb-4">{product.description}</p>
-                    )}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={sendOrder}
+                      disabled={isSubmitting}
+                      className="bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A] hover:from-[#FF6B4A] hover:to-[#FF8A6A]
+                               disabled:opacity-50 text-white px-8 py-4 rounded-2xl font-bold transition-all
+                               duration-200 shadow-lg hover:shadow-xl transform hover:scale-105
+                               flex items-center gap-2"
+                    >
+                      <span>Hacer Pedido</span>
+                      <motion.div
+                        animate={{ rotate: isSubmitting ? 360 : 0 }}
+                        transition={{ duration: 1, repeat: isSubmitting ? Infinity : 0, ease: "linear" }}
+                      >
+                        🎉
+                      </motion.div>
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                    <div className="flex items-center justify-between">
-                      {cartItem ? (
-                        <div className="flex items-center gap-2">
+          {/* Order Modal Mejorado */}
+          <AnimatePresence>
+            {orderSuccess && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              >
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-gradient-to-br from-gray-900 to-black border border-white/20 rounded-3xl p-6 max-w-md w-full shadow-2xl"
+                >
+                  <div className="text-center mb-6">
+                    <motion.div
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 0.5, repeat: 2 }}
+                      className="text-6xl mb-4"
+                    >
+                      🎭
+                    </motion.div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Confirmar Pedido</h3>
+                    <p className="text-gray-400">¡Último paso para la fiesta!</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Seleccionar Mesa/Zona
+                      </label>
+                      <select
+                        value={tableId}
+                        onChange={(e) => setTableId(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white
+                                 placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent
+                                 transition-all duration-200"
+                        required
+                      >
+                        <option value="">Seleccionar mesa/zona...</option>
+                        {tables.map((table) => (
+                          <option key={table.id} value={table.id} className="bg-gray-800">
+                            {table.type === 'TABLE' ? 'Mesa' :
+                             table.type === 'BOX' ? 'Box' : 'Zona'} {table.number}
+                            {table.name && ` - ${table.name}`}
+                            {table.location && ` (${table.location.name})`}
+                            {` - ${table.capacity} personas`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Notas adicionales (opcional)
+                      </label>
+                      <textarea
+                        value={orderNotes}
+                        onChange={(e) => setOrderNotes(e.target.value)}
+                        placeholder="Ej: Sin cebolla, extra queso..."
+                        rows={3}
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white
+                                 placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent
+                                 transition-all duration-200 resize-none"
+                      />
+                    </div>
+
+                    {/* Customer Information */}
+                    {customerName.trim() && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30
+                                 rounded-xl p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-sm font-bold">
+                                {customerName.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-100">Cliente: {customerName}</p>
+                            </div>
+                          </div>
                           <button
-                            onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                            onClick={() => setCustomerName("")}
+                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
                           >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className="w-8 text-center">{cartItem.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
-                          >
-                            <Plus className="w-4 h-4" />
+                            Cambiar
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => addToCart(product)}
-                          className="flex-1 bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                        >
-                          Agregar
-                        </button>
-                      )}
+                      </motion.div>
+                    )}
+
+                    <div className="border-t border-white/10 pt-4">
+                      <div className="flex justify-between text-sm text-gray-400 mb-4">
+                        <span>{getTotalItems()} productos</span>
+                        <span className="font-semibold text-[#FF4D2E]">S/ {getTotalPrice().toFixed(2)}</span>
+                      </div>
                     </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setOrderSuccess(false)}
+                      className="flex-1 px-4 py-3 text-gray-300 border border-gray-600 rounded-xl
+                               hover:bg-gray-800 transition-all duration-200 font-semibold"
+                    >
+                      Cancelar
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={submitOrder}
+                      disabled={isSubmitting || !tableId}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A] text-white
+                               rounded-xl hover:from-[#FF6B4A] hover:to-[#FF8A6A] disabled:opacity-50
+                               disabled:cursor-not-allowed transition-all duration-200 font-bold
+                               shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                          />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <span>Confirmar Pedido</span>
+                          <span>🎉</span>
+                        </>
+                      )}
+                    </motion.button>
                   </div>
                 </motion.div>
-              );
-            })}
-        </div>
-      </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* Cart Summary */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-white/10 p-4">
-          <div className="container mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/70">{getTotalItems()} productos</p>
-                <p className="text-xl font-bold">Total: S/ {getTotalPrice().toFixed(2)}</p>
-              </div>
-              <button
-                onClick={submitOrder}
-                disabled={isSubmitting}
-                className="bg-[#FF4D2E] hover:bg-[#FF4D2E]/80 disabled:opacity-50 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+          {/* Customer Name Modal Mejorado */}
+          <AnimatePresence>
+            {showCustomerNameModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
               >
-                {isSubmitting ? "Enviando..." : "Hacer Pedido"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Order Modal */}
-      {orderSuccess && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Confirmar Pedido</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seleccionar Mesa/Zona
-                </label>
-                <select
-                  value={tableId}
-                  onChange={(e) => setTableId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
-                  required
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-gradient-to-br from-gray-900 to-black border border-white/20 rounded-3xl p-6 max-w-md w-full shadow-2xl"
                 >
-                  <option value="">Seleccionar mesa/zona...</option>
-                  
-                  {/* Puntos de servicio (mesas, boxes, zonas) */}
-                  {tables.map((table) => (
-                    <option key={table.id} value={table.id}>
-                      {table.type === 'TABLE' ? 'Mesa' : 
-                       table.type === 'BOX' ? 'Box' : 'Zona'} {table.number}
-                      {table.name && ` - ${table.name}`}
-                      {table.location && ` (${table.location.name})`}
-                      {` - ${table.capacity} personas`}
-                    </option>
-                  ))}
-                </select>
-                
-                {/* Mostrar información de la selección actual */}
-                {tableId && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Zona de servicio seleccionada
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notas adicionales (opcional)
-                </label>
-                <textarea
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="Ej: Sin cebolla, extra queso..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
-                />
-              </div>
-
-              {/* Customer Information */}
-              {customerName.trim() && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">Cliente: {customerName}</p>
-                    </div>
-                    <button
-                      onClick={() => setCustomerName("")}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
+                  <div className="text-center mb-6">
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                      className="text-6xl mb-4"
                     >
-                      Cambiar
-                    </button>
+                      🎭
+                    </motion.div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Ingresa tu nombre</h3>
+                    <p className="text-gray-400">Para identificarte cuando llegue tu pedido</p>
                   </div>
-                </div>
-              )}
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>{getTotalItems()} productos</span>
-                  <span className="font-semibold">S/ {getTotalPrice().toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Tu nombre *
+                      </label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Ej: Juan Pérez"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white
+                                 placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent
+                                 transition-all duration-200"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                  </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setOrderSuccess(false)}
-                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={submitOrder}
-                disabled={isSubmitting || !tableId}
-                className="flex-1 px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
-              >
-                {isSubmitting ? "Enviando..." : "Confirmar Pedido"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                  <div className="flex gap-3 mt-6">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowCustomerNameModal(false)}
+                      className="flex-1 px-4 py-2 text-gray-300 border border-gray-600 rounded-xl
+                               hover:bg-gray-800 transition-all duration-200 font-semibold"
+                    >
+                      Cancelar
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        if (customerName.trim()) {
+                          setShowCustomerNameModal(false);
+                          sendOrder();
+                        } else {
+                          alert("Por favor ingresa tu nombre");
+                        }
+                      }}
+                      disabled={!customerName.trim()}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A] text-white
+                               rounded-xl hover:from-[#FF6B4A] hover:to-[#FF8A6A] disabled:opacity-50
+                               disabled:cursor-not-allowed transition-all duration-200 font-bold
+                               shadow-lg hover:shadow-xl"
+                    >
+                      Continuar
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* Customer Name Modal */}
-      {showCustomerNameModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-black/90 border border-white/20 rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-white mb-4">Ingresa tu nombre</h3>
-            <p className="text-gray-300 mb-4 text-sm">
-              Para identificarte cuando llegue tu pedido
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-white mb-1">
-                  Tu nombre *
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ej: Juan Pérez"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FF4D2E] focus:border-transparent"
-                  autoFocus
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowCustomerNameModal(false)}
-                className="flex-1 px-4 py-2 text-gray-300 border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  if (customerName.trim()) {
-                    setShowCustomerNameModal(false);
-                    sendOrder();
-                  } else {
-                    alert("Por favor ingresa tu nombre");
-                  }
-                }}
-                disabled={!customerName.trim()}
-                className="flex-1 px-4 py-2 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold"
-              >
-                Continuar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={handleSuccessModalClose}
-        title="¡Pedido enviado!"
-        message="Tu pedido ha sido registrado exitosamente. Te notificaremos cuando esté listo."
-        orderId={lastOrderId}
-        autoCloseDelay={8000}
-      />
+          {/* Success Modal */}
+          <SuccessModal
+            isOpen={showSuccessModal}
+            onClose={() => {
+              setShowSuccessModal(false);
+              setCustomerName("");
+            }}
+            title="¡Pedido enviado!"
+            message="Tu pedido ha sido registrado exitosamente. Te notificaremos cuando esté listo."
+            orderId={lastOrderId}
+            autoCloseDelay={8000}
+          />
         </div>
       )}
     </div>
@@ -674,7 +1284,18 @@ function MenuPageContent() {
 
 export default function MenuPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Cargando menú...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-[#FF4D2E] border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <div className="text-white text-xl font-bold">Cargando menú...</div>
+        </div>
+      </div>
+    }>
       <MenuPageContent />
     </Suspense>
   );
