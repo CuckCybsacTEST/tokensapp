@@ -296,6 +296,22 @@ function MenuPageContent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<string>("");
   const [partyMode, setPartyMode] = useState(false);
+  const [numColumns, setNumColumns] = useState(2);
+  const [mounted, setMounted] = useState(false);
+
+  // Efecto para manejar la responsividad del Masonry
+  useEffect(() => {
+    setMounted(true);
+    const updateColumns = () => {
+      if (window.innerWidth >= 1280) setNumColumns(5);
+      else if (window.innerWidth >= 1024) setNumColumns(4);
+      else if (window.innerWidth >= 768) setNumColumns(3);
+      else setNumColumns(2);
+    };
+    updateColumns();
+    window.addEventListener('resize', updateColumns);
+    return () => window.removeEventListener('resize', updateColumns);
+  }, []);
 
   // Estadísticas de optimización (solo en desarrollo)
   const getImageStats = () => {
@@ -488,23 +504,18 @@ function MenuPageContent() {
       .sort((a, b) => a.order - b.order)
   );
 
-  // Dividir productos en columnas para efecto Masonry en móvil (balanceado por altura estimada)
-  const leftColumn: Product[] = [];
-  const rightColumn: Product[] = [];
-  let leftHeight = 0;
-  let rightHeight = 0;
+  // Dividir productos en columnas para efecto Masonry (balanceado por altura estimada)
+  const columns: Product[][] = Array.from({ length: numColumns }, () => []);
+  const columnHeights = Array.from({ length: numColumns }, () => 0);
 
   filteredProducts.forEach(product => {
     // Altura estimada: Destacado con imagen ~350, Normal ~150
     const estimatedHeight = (product.featured && product.image) ? 350 : 150;
     
-    if (leftHeight <= rightHeight) {
-      leftColumn.push(product);
-      leftHeight += estimatedHeight;
-    } else {
-      rightColumn.push(product);
-      rightHeight += estimatedHeight;
-    }
+    // Encontrar la columna más corta
+    const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
+    columns[shortestColumnIndex].push(product);
+    columnHeights[shortestColumnIndex] += estimatedHeight;
   });
 
   const addToCart = (product: Product) => {
@@ -846,7 +857,7 @@ function MenuPageContent() {
           {/* Categories Mejoradas */}
           <div className="sticky top-20 z-40 bg-black/95 backdrop-blur-md border-b border-white/10 py-4">
             <div className="container mx-auto px-4">
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 md:justify-center">
                 {categories
                   .filter(cat => cat.active)
                   .sort((a, b) => a.order - b.order)
@@ -909,296 +920,155 @@ function MenuPageContent() {
             </div>
           </div>
 
-          {/* Products Grid Mejorado - Masonry para móviles */}
+          {/* Products Grid Mejorado - Masonry Dinámico y Responsivo */}
           <div className="container mx-auto px-3 py-4">
             <div className="flex gap-3">
-              {/* Columna Izquierda */}
-              <div className="flex-1 flex flex-col gap-3">
-                <AnimatePresence mode="popLayout">
-                  {leftColumn.map((product, index) => {
-                    const cartItem = cart.find(item => item.product.id === product.id);
-                    const prices = parsePrices(product.description || '', product.price);
+              {mounted && columns.map((column, colIndex) => (
+                <div key={colIndex} className="flex-1 flex flex-col gap-3">
+                  <AnimatePresence mode="popLayout">
+                    {column.map((product, index) => {
+                      const cartItem = cart.find(item => item.product.id === product.id);
+                      const prices = parsePrices(product.description || '', product.price);
 
-                    return (
-                      <motion.div
-                        key={product.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="group relative bg-gradient-to-br from-gray-900/80 to-black/80
-                                 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden
-                                 hover:border-[#FF4D2E]/50 hover:shadow-2xl hover:shadow-[#FF4D2E]/20
-                                 transition-all duration-300 transform hover:scale-[1.02]"
-                      >
-                        {/* Efecto de luz animado */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
-                                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                      return (
+                        <motion.div
+                          key={product.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ delay: index * 0.05 + colIndex * 0.02 }}
+                          className="group relative bg-gradient-to-br from-gray-900/80 to-black/80
+                                   backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden
+                                   hover:border-[#FF4D2E]/50 hover:shadow-2xl hover:shadow-[#FF4D2E]/20
+                                   transition-all duration-300 transform hover:scale-[1.02]"
+                        >
+                          {/* Efecto de luz animado */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
+                                        translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
 
-                        {/* Imagen con overlay - Solo para destacados con imagen */}
-                        {product.featured && product.image ? (
-                          <div className="relative aspect-[4/5] overflow-hidden">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                          {/* Imagen con overlay - Solo para destacados con imagen */}
+                          {product.featured && product.image ? (
+                            <div className="relative aspect-[4/5] overflow-hidden">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                            {/* Badge de precio destacado - Solo si no hay precios múltiples */}
-                            {!prices && (
-                              <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-md border border-white/20
-                                            text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg">
-                                S/ {product.price.toFixed(2)}
+                              {/* Badge de precio destacado - Solo si no hay precios múltiples */}
+                              {!prices && (
+                                <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-md border border-white/20
+                                              text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg">
+                                  S/ {product.price.toFixed(2)}
+                                </div>
+                              )}
+
+                              {/* Icono de Destacado (Sparkle) */}
+                              <div className="absolute top-2 left-2 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+                                <Sparkles className="w-4 h-4" />
                               </div>
-                            )}
-
-                            {/* Icono de Destacado (Sparkle) */}
-                            <div className="absolute top-2 left-2 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-                              <Sparkles className="w-4 h-4" />
                             </div>
-                          </div>
-                        ) : (
-                          /* Si no es destacado o no tiene imagen, mostramos un indicador sutil si es destacado */
-                          product.featured && (
-                            <div className="absolute top-2 right-2 text-yellow-400/50">
-                              <Sparkles className="w-3 h-3" />
-                            </div>
-                          )
-                        )}
+                          ) : (
+                            /* Si no es destacado o no tiene imagen, mostramos un indicador sutil si es destacado */
+                            product.featured && (
+                              <div className="absolute top-2 right-2 text-yellow-400/50">
+                                <Sparkles className="w-3 h-3" />
+                              </div>
+                            )
+                          )}
 
-                        {/* Contenido */}
-                        <div className="p-3">
-                          <div className="flex justify-between items-start gap-2 mb-3">
-                            <h3 className="text-white font-bold text-xs line-clamp-2 group-hover:text-[#FF4D2E] transition-colors leading-tight">
-                              {product.name}
+                          {/* Contenido */}
+                          <div className="p-3">
+                          <div className="flex flex-col gap-1 mb-3">
+                            <h3 className="text-white font-bold text-[11px] leading-[1.2] group-hover:text-[#FF4D2E] transition-colors min-h-[2.4em] flex items-center">
+                              <span>
+                                {product.name}
+                              </span>
                             </h3>
                             {/* Precio para productos sin imagen visual y sin precios múltiples */}
                             {!(product.featured && product.image) && !prices && product.price > 0 && (
-                              <span className="text-[#FF4D2E] font-black text-xs whitespace-nowrap">
+                              <span className="text-[#FF4D2E] font-black text-xs">
                                 S/ {product.price.toFixed(2)}
                               </span>
                             )}
                           </div>
 
-                          {/* Precios adicionales si existen - Estilo Referencia */}
-                          {prices && (
-                            <div className="flex gap-1.5 mb-3">
-                              <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
-                                <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.primaryLabel}</div>
-                                <div className="text-[11px] font-black text-[#FF4D2E]">
-                                  <span className="text-[9px] mr-0.5">S/</span>
-                                  {prices.primaryPrice.toFixed(2)}
-                                </div>
-                              </div>
-                              {prices.secondaryPrice !== null && (
+                            {/* Precios adicionales si existen - Estilo Referencia */}
+                            {prices && (
+                              <div className="flex gap-1.5 mb-3">
                                 <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
-                                  <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.secondaryLabel}</div>
+                                  <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.primaryLabel}</div>
                                   <div className="text-[11px] font-black text-[#FF4D2E]">
                                     <span className="text-[9px] mr-0.5">S/</span>
-                                    {prices.secondaryPrice.toFixed(2)}
+                                    {prices.primaryPrice.toFixed(2)}
                                   </div>
                                 </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Controles de cantidad */}
-                          <div className="flex items-center justify-between">
-                            {cartItem ? (
-                              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 flex-1 border border-white/10">
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
-                                           hover:bg-white/20 transition-colors"
-                                >
-                                  <Minus className="w-3.5 h-3.5" />
-                                </motion.button>
-                                <motion.span
-                                  key={cartItem.quantity}
-                                  initial={{ scale: 0.8 }}
-                                  animate={{ scale: 1 }}
-                                  className="flex-1 text-center font-bold text-xs"
-                                >
-                                  {cartItem.quantity}
-                                </motion.span>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
-                                           hover:bg-white/20 transition-colors"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </motion.button>
-                              </div>
-                            ) : (
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => addToCart(product)}
-                                className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
-                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-2 px-3
-                                         rounded-xl transition-all duration-200 shadow-lg text-xs uppercase tracking-wider"
-                              >
-                                Agregar
-                              </motion.button>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-
-              {/* Columna Derecha */}
-              <div className="flex-1 flex flex-col gap-3">
-                <AnimatePresence mode="popLayout">
-                  {rightColumn.map((product, index) => {
-                    const cartItem = cart.find(item => item.product.id === product.id);
-                    const prices = parsePrices(product.description || '', product.price);
-
-                    return (
-                      <motion.div
-                        key={product.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ delay: index * 0.05 + 0.02 }}
-                        className="group relative bg-gradient-to-br from-gray-900/80 to-black/80
-                                 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden
-                                 hover:border-[#FF4D2E]/50 hover:shadow-2xl hover:shadow-[#FF4D2E]/20
-                                 transition-all duration-300 transform hover:scale-[1.02]"
-                      >
-                        {/* Efecto de luz animado */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
-                                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-
-                        {/* Imagen con overlay - Solo para destacados con imagen */}
-                        {product.featured && product.image ? (
-                          <div className="relative aspect-[4/5] overflow-hidden">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-                            {/* Badge de precio destacado - Solo si no hay precios múltiples */}
-                            {!prices && (
-                              <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-md border border-white/20
-                                            text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg">
-                                S/ {product.price.toFixed(2)}
-                              </div>
-                            )}
-
-                            {/* Icono de Destacado (Sparkle) */}
-                            <div className="absolute top-2 left-2 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-                              <Sparkles className="w-4 h-4" />
-                            </div>
-                          </div>
-                        ) : (
-                          /* Si no es destacado o no tiene imagen, mostramos un indicador sutil si es destacado */
-                          product.featured && (
-                            <div className="absolute top-2 right-2 text-yellow-400/50">
-                              <Sparkles className="w-3 h-3" />
-                            </div>
-                          )
-                        )}
-
-                        {/* Contenido */}
-                        <div className="p-3">
-                          <div className="flex justify-between items-start gap-2 mb-3">
-                            <h3 className="text-white font-bold text-xs line-clamp-2 group-hover:text-[#FF4D2E] transition-colors leading-tight">
-                              {product.name}
-                            </h3>
-                            {/* Precio para productos sin imagen visual y sin precios múltiples */}
-                            {!(product.featured && product.image) && !prices && product.price > 0 && (
-                              <span className="text-[#FF4D2E] font-black text-xs whitespace-nowrap">
-                                S/ {product.price.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Precios adicionales si existen - Estilo Referencia */}
-                          {prices && (
-                            <div className="flex gap-1.5 mb-3">
-                              <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
-                                <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.primaryLabel}</div>
-                                <div className="text-[11px] font-black text-[#FF4D2E]">
-                                  <span className="text-[9px] mr-0.5">S/</span>
-                                  {prices.primaryPrice.toFixed(2)}
-                                </div>
-                              </div>
-                              {prices.secondaryPrice !== null && (
-                                <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
-                                  <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.secondaryLabel}</div>
-                                  <div className="text-[11px] font-black text-[#FF4D2E]">
-                                    <span className="text-[9px] mr-0.5">S/</span>
-                                    {prices.secondaryPrice.toFixed(2)}
+                                {prices.secondaryPrice !== null && (
+                                  <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
+                                    <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.secondaryLabel}</div>
+                                    <div className="text-[11px] font-black text-[#FF4D2E]">
+                                      <span className="text-[9px] mr-0.5">S/</span>
+                                      {prices.secondaryPrice.toFixed(2)}
+                                    </div>
                                   </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Controles de cantidad */}
+                            <div className="flex items-center justify-between">
+                              {cartItem ? (
+                                <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 flex-1 border border-white/10">
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                                    className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                             hover:bg-white/20 transition-colors"
+                                  >
+                                    <Minus className="w-3.5 h-3.5" />
+                                  </motion.button>
+                                  <motion.span
+                                    key={cartItem.quantity}
+                                    initial={{ scale: 0.8 }}
+                                    animate={{ scale: 1 }}
+                                    className="flex-1 text-center font-bold text-xs"
+                                  >
+                                    {cartItem.quantity}
+                                  </motion.span>
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                                    className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                             hover:bg-white/20 transition-colors"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                  </motion.button>
                                 </div>
+                              ) : (
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => addToCart(product)}
+                                  className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
+                                           hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-2 px-3
+                                           rounded-xl transition-all duration-200 shadow-lg text-xs uppercase tracking-wider"
+                                >
+                                  Agregar
+                                </motion.button>
                               )}
                             </div>
-                          )}
-
-                          {/* Controles de cantidad */}
-                          <div className="flex items-center justify-between">
-                            {cartItem ? (
-                              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 flex-1 border border-white/10">
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
-                                           hover:bg-white/20 transition-colors"
-                                >
-                                  <Minus className="w-3.5 h-3.5" />
-                                </motion.button>
-                                <motion.span
-                                  key={cartItem.quantity}
-                                  initial={{ scale: 0.8 }}
-                                  animate={{ scale: 1 }}
-                                  className="flex-1 text-center font-bold text-xs"
-                                >
-                                  {cartItem.quantity}
-                                </motion.span>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
-                                           hover:bg-white/20 transition-colors"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </motion.button>
-                              </div>
-                            ) : (
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => addToCart(product)}
-                                className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
-                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-2 px-3
-                                         rounded-xl transition-all duration-200 shadow-lg text-xs uppercase tracking-wider"
-                              >
-                                Agregar
-                              </motion.button>
-                            )}
                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              ))}
             </div>
 
             {filteredProducts.length === 0 && (
