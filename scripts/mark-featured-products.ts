@@ -9,25 +9,26 @@ async function markFeaturedProducts() {
   const featuredProducts = [
     // Whisky - destacar los más premium
     { name: 'Jack Daniel\'s', categoryName: 'WHISKY' },
-    { name: 'Chivas Regal 12', categoryName: 'WHISKY' },
+    { name: 'Chivas Regal 12 años', categoryName: 'WHISKY' },
+    { name: 'JW Blue Label', categoryName: 'WHISKY' },
 
     // Vinos - destacar los más vendidos
-    { name: 'Casillero del Diablo', categoryName: '🍷 VINO' },
+    { name: 'Tabernero Borgoña', categoryName: '🍷 VINO' },
 
     // Cervezas - destacar las premium
-    { name: 'Corona', categoryName: '🍺 CERVEZAS PERSONALES' },
+    { name: 'Corona 350 ml', categoryName: '🍺 CERVEZAS PERSONALES' },
+    { name: 'Cusqueña Trigo', categoryName: '🍺 CERVEZAS PERSONALES' },
 
     // Cocteles - destacar los más populares
-    { name: 'Mojito', categoryName: 'CÓCTELES - Tropicales' },
-    { name: 'Margarita', categoryName: 'CÓCTELES - Tropicales' },
     { name: 'Piña Colada', categoryName: 'CÓCTELES - Tropicales' },
+    { name: 'Laguna Azul', categoryName: 'CÓCTELES - Tropicales' },
 
     // Especiales - destacar todos
-    { name: 'Especial KTDral', categoryName: 'ESPECIALES KTDral' },
+    { name: 'Cóctel KTDral', categoryName: 'ESPECIALES KTDral' },
 
-    // Jarras - destacar las más grandes
-    { name: 'Jarra Mediana', categoryName: 'JARRITAS DE CASA' },
-    { name: 'Jarra Grande', categoryName: 'JARRITAS DE CASA' },
+    // Jarras - destacar las más populares
+    { name: 'Super Caliente Antigripal', categoryName: 'JARRITAS DE CASA' },
+    { name: 'Apple Green', categoryName: 'JARRITAS DE CASA' },
   ];
 
   let updatedCount = 0;

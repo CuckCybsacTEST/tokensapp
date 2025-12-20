@@ -19,16 +19,16 @@ const menuData: CategoryData[] = [
     name: 'WHISKY',
     products: [
       { name: 'JW Blue Label', price: 1200.00 },
-      { name: 'JW Green Label', price: 250.00, description: 'Copa: S/ 30.00' },
-      { name: 'JW Gold Label', price: 240.00, description: 'Copa: S/ 30.00' },
-      { name: 'Jack Daniel\'s Fire', price: 200.00, description: 'Copa: S/ 30.00' },
-      { name: 'Jack Daniel\'s Apple', price: 180.00, description: 'Copa: S/ 25.00' },
-      { name: 'Jack Daniel\'s Honey', price: 180.00, description: 'Copa: S/ 25.00' },
-      { name: 'Jack Daniel\'s', price: 180.00, description: 'Copa: S/ 25.00' },
-      { name: 'Chivas Regal 12 años', price: 160.00, description: 'Copa: S/ 25.00' },
-      { name: 'JW Double Black', price: 160.00, description: 'Copa: S/ 25.00' },
-      { name: 'JW Black Label', price: 140.00, description: 'Copa: S/ 20.00' },
-      { name: 'Ballantine\'s', price: 120.00, description: 'Copa: S/ 20.00' },
+      { name: 'JW Green Label', price: 250.00, description: 'S/ 250.00 / 30.00' },
+      { name: 'JW Gold Label', price: 240.00, description: 'S/ 240.00 / 30.00' },
+      { name: 'Jack Daniel\'s Fire', price: 200.00, description: 'S/ 200.00 / 30.00' },
+      { name: 'Jack Daniel\'s Apple', price: 180.00, description: 'S/ 180.00 / 25.00' },
+      { name: 'Jack Daniel\'s Honey', price: 180.00, description: 'S/ 180.00 / 25.00' },
+      { name: 'Jack Daniel\'s', price: 180.00, description: 'S/ 180.00 / 25.00' },
+      { name: 'Chivas Regal 12 años', price: 160.00, description: 'S/ 160.00 / 25.00' },
+      { name: 'JW Double Black', price: 160.00, description: 'S/ 160.00 / 25.00' },
+      { name: 'JW Black Label', price: 140.00, description: 'S/ 140.00 / 20.00' },
+      { name: 'Ballantine\'s', price: 120.00, description: 'S/ 120.00 / 20.00' },
       { name: 'JW Red Label', price: 100.00 },
     ],
   },
@@ -143,9 +143,9 @@ const menuData: CategoryData[] = [
   {
     name: 'ESPECIALES KTDral',
     products: [
-      { name: 'Cóctel KTDral', price: 19.00, description: '1 Lt: S/ 38.00' },
-      { name: 'Sour KTDral', price: 19.00, description: '1 Lt: S/ 40.00' },
-      { name: 'Crema de Cerveza KTDral', price: 18.00, description: '1 Lt: S/ 38.00' },
+      { name: 'Cóctel KTDral', price: 19.00, description: 'Copa: S/ 19.00 1 Lt: S/ 38.00' },
+      { name: 'Sour KTDral', price: 19.00, description: 'Copa: S/ 19.00 1 Lt: S/ 40.00' },
+      { name: 'Crema de Cerveza KTDral', price: 18.00, description: 'Copa: S/ 18.00 1 Lt: S/ 38.00' },
     ],
   },
   {
@@ -205,6 +205,12 @@ const menuData: CategoryData[] = [
 ];
 
 async function seedMenu() {
+  console.log('Cleaning up existing menu data...');
+  // Delete products first due to foreign key constraints
+  await prisma.product.deleteMany({});
+  await prisma.category.deleteMany({});
+  
+  console.log('Seeding menu data...');
   for (const categoryData of menuData) {
     let category = await prisma.category.findFirst({
       where: { name: categoryData.name },

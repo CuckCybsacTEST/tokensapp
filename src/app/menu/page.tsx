@@ -200,16 +200,81 @@ const defaultCategoryStyle = {
 };
 
 // Función para parsear precios de la descripción
-const parsePrices = (description: string) => {
-  const bottleMatch = description.match(/botella[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
-  const cupMatch = description.match(/copa[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+const parsePrices = (description: string, basePrice: number) => {
+  if (!description) return null;
+  let prices: { price1: number; label1: string; price2: number; label2: string } | null = null;
 
-  if (bottleMatch && cupMatch) {
-    return {
-      bottlePrice: parseFloat(bottleMatch[1]),
-      cupPrice: parseFloat(cupMatch[1])
+  // Formato 1: "S/ 250.00 / 30.00" (botella / copa)
+  const slashMatch = description.match(/s\/\s*(\d+(?:\.\d{2})?)\s*\/\s*(\d+(?:\.\d{2})?)/i);
+  if (slashMatch) {
+    prices = {
+      price1: parseFloat(slashMatch[1]),
+      label1: 'Botella',
+      price2: parseFloat(slashMatch[2]),
+      label2: 'Copa'
     };
   }
+
+  // Formato 2: "Copa: S/ 19.00 1 Lt: S/ 38.00" (copa / litro)
+  const copaLitroMatch = description.match(/copa[:\s]*s\/\s*(\d+(?:\.\d{2})?)[\s\S]*?1\s*lt[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+  if (copaLitroMatch) {
+    prices = {
+      price1: parseFloat(copaLitroMatch[2]),
+      label1: 'Jarra 1Lt',
+      price2: parseFloat(copaLitroMatch[1]),
+      label2: 'Copa'
+    };
+  }
+
+  // Formato 3: "Copa: S/ 20.00 1 Lt: S/ 42.00" (copa / litro - orden diferente)
+  const litCopaMatch = description.match(/1\s*lt[:\s]*s\/\s*(\d+(?:\.\d{2})?)[\s\S]*?copa[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+  if (litCopaMatch) {
+    prices = {
+      price1: parseFloat(litCopaMatch[1]),
+      label1: 'Jarra 1Lt',
+      price2: parseFloat(litCopaMatch[2]),
+      label2: 'Copa'
+    };
+  }
+
+  // Formato 4: "Botella: S/ 180.00 Copa: S/ 25.00"
+  const bottleCupMatch = description.match(/botella[:\s]*s\/\s*(\d+(?:\.\d{2})?)[\s\S]*?copa[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+  if (bottleCupMatch) {
+    prices = {
+      price1: parseFloat(bottleCupMatch[1]),
+      label1: 'Botella',
+      price2: parseFloat(bottleCupMatch[2]),
+      label2: 'Copa'
+    };
+  }
+
+  // Formato 5: "Shot: S/ 12.00" o similar (solo un precio adicional)
+  const singleMatch = description.match(/(shot|copa|1\s*lt|jarra)[:\s]*s\/\s*(\d+(?:\.\d{2})?)/i);
+  if (singleMatch && !prices) {
+    const label = singleMatch[1].toLowerCase().includes('lt') || singleMatch[1].toLowerCase().includes('jarra') ? 'Jarra' : singleMatch[1];
+    prices = {
+      price1: basePrice,
+      label1: basePrice > parseFloat(singleMatch[2]) ? 'Botella' : 'Unidad',
+      price2: parseFloat(singleMatch[2]),
+      label2: label.charAt(0).toUpperCase() + label.slice(1)
+    };
+  }
+
+  // Si encontramos precios, ordenarlos por precio (menor primero)
+  if (prices) {
+    const sortedPrices = [prices.price1, prices.price2].sort((a, b) => a - b);
+    const sortedLabels = sortedPrices[0] === prices.price1
+      ? [prices.label1, prices.label2]
+      : [prices.label2, prices.label1];
+
+    return {
+      primaryPrice: sortedPrices[0],
+      primaryLabel: sortedLabels[0],
+      secondaryPrice: sortedPrices[1],
+      secondaryLabel: sortedLabels[1]
+    };
+  }
+
   return null;
 };
 
@@ -383,9 +448,64 @@ function MenuPageContent() {
     }
   };
 
-  const filteredProducts = products.filter(product =>
-    product.categoryId === selectedCategory && product.available
+  // Función para dispersar productos destacados con imagen
+  const disperseFeatured = (items: Product[]) => {
+    const featured = items.filter(p => p.featured && p.image);
+    const others = items.filter(p => !(p.featured && p.image));
+    
+    if (featured.length === 0) return others;
+    if (others.length === 0) return featured;
+
+    const result: Product[] = [];
+    // Calculamos cuántos productos normales poner entre cada destacado
+    const step = Math.max(1, Math.floor(others.length / featured.length));
+    
+    let fIdx = 0;
+    let oIdx = 0;
+
+    while (oIdx < others.length || fIdx < featured.length) {
+      // Agregar un bloque de productos normales
+      for (let i = 0; i < step && oIdx < others.length; i++) {
+        result.push(others[oIdx++]);
+      }
+      // Insertar un destacado
+      if (fIdx < featured.length) {
+        result.push(featured[fIdx++]);
+      }
+      // Si ya no hay más normales, agregar el resto de destacados (aunque queden juntos al final)
+      if (oIdx >= others.length && fIdx < featured.length) {
+        result.push(...featured.slice(fIdx));
+        break;
+      }
+    }
+    
+    return result;
+  };
+
+  const filteredProducts = disperseFeatured(
+    products
+      .filter(product => product.categoryId === selectedCategory && product.available)
+      .sort((a, b) => a.order - b.order)
   );
+
+  // Dividir productos en columnas para efecto Masonry en móvil (balanceado por altura estimada)
+  const leftColumn: Product[] = [];
+  const rightColumn: Product[] = [];
+  let leftHeight = 0;
+  let rightHeight = 0;
+
+  filteredProducts.forEach(product => {
+    // Altura estimada: Destacado con imagen ~350, Normal ~150
+    const estimatedHeight = (product.featured && product.image) ? 350 : 150;
+    
+    if (leftHeight <= rightHeight) {
+      leftColumn.push(product);
+      leftHeight += estimatedHeight;
+    } else {
+      rightColumn.push(product);
+      rightHeight += estimatedHeight;
+    }
+  });
 
   const addToCart = (product: Product) => {
     setCart(prevCart => {
@@ -743,7 +863,7 @@ function MenuPageContent() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedCategory(category.id)}
-                        className={`relative flex-shrink-0 px-6 py-4 rounded-2xl transition-all duration-300
+                        className={`relative flex-shrink-0 px-4 py-3 rounded-xl transition-all duration-300
                                  border backdrop-blur-sm overflow-hidden ${
                           isSelected
                             ? `bg-gradient-to-r ${style.color} shadow-2xl ${style.glowColor} border-white/20`
@@ -763,16 +883,9 @@ function MenuPageContent() {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
                                       translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
 
-                        <div className="relative flex flex-col items-center gap-2">
-                          <motion.span
-                            className="text-3xl"
-                            animate={isSelected ? { rotate: [0, 10, -10, 0] } : {}}
-                            transition={{ duration: 0.5 }}
-                          >
-                            {style.emoji}
-                          </motion.span>
-                          <span className={`font-bold text-sm text-center leading-tight ${
-                            isSelected ? 'text-white' : 'text-gray-300'
+                        <div className="relative flex flex-col items-center gap-1">
+                          <span className={`font-black text-xs text-center uppercase tracking-widest ${
+                            isSelected ? 'text-white' : 'text-gray-400'
                           }`}>
                             {category.name.replace('CÓCTELES - ', '').replace('🍾 ', '').replace('🍷 ', '').replace('🍸 ', '').replace('🥃 ', '').replace('🍶 ', '').replace('🍺 ', '').replace('🥤 ', '')}
                           </span>
@@ -796,18 +909,15 @@ function MenuPageContent() {
             </div>
           </div>
 
-          {/* Products Grid Mejorado */}
-          <div className="container mx-auto px-4 py-6">
-            <motion.div
-              layout
-              className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-            >
-              <AnimatePresence mode="popLayout">
-                {filteredProducts
-                  .sort((a, b) => a.order - b.order)
-                  .map((product, index) => {
+          {/* Products Grid Mejorado - Masonry para móviles */}
+          <div className="container mx-auto px-3 py-4">
+            <div className="flex gap-3">
+              {/* Columna Izquierda */}
+              <div className="flex-1 flex flex-col gap-3">
+                <AnimatePresence mode="popLayout">
+                  {leftColumn.map((product, index) => {
                     const cartItem = cart.find(item => item.product.id === product.id);
-                    const prices = parsePrices(product.description || '');
+                    const prices = parsePrices(product.description || '', product.price);
 
                     return (
                       <motion.div
@@ -826,126 +936,93 @@ function MenuPageContent() {
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
                                       translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
 
-                        {/* Imagen con overlay - Solo para productos destacados */}
+                        {/* Imagen con overlay - Solo para destacados con imagen */}
                         {product.featured && product.image ? (
-                          <div className="relative h-32 overflow-hidden">
+                          <div className="relative aspect-[4/5] overflow-hidden">
                             <img
                               src={product.image}
                               alt={product.name}
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                               loading="lazy"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                            {/* Badge de precio destacado */}
-                            <div className="absolute top-3 right-3 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
-                                          text-white px-2 py-1 rounded-full text-sm font-bold shadow-lg">
-                              S/ {product.price.toFixed(2)}
-                            </div>
+                            {/* Badge de precio destacado - Solo si no hay precios múltiples */}
+                            {!prices && (
+                              <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-md border border-white/20
+                                            text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg">
+                                S/ {product.price.toFixed(2)}
+                              </div>
+                            )}
 
-                            {/* Badge VIP */}
-                            <div className="absolute top-3 left-3 bg-gradient-to-r from-yellow-400 to-orange-500
-                                          text-black px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                              <Crown className="w-3 h-3" />
-                              VIP
+                            {/* Icono de Destacado (Sparkle) */}
+                            <div className="absolute top-2 left-2 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+                              <Sparkles className="w-4 h-4" />
                             </div>
                           </div>
                         ) : (
-                          <div className="relative h-32 overflow-hidden">
-                            {/* Placeholder atractivo con gradiente y emoji */}
-                            <div className={`w-full h-full bg-gradient-to-br ${
-                              product.featured
-                                ? 'from-yellow-400/20 via-orange-500/20 to-red-500/20'
-                                : 'from-gray-700/50 to-gray-800/50'
-                            } flex items-center justify-center relative overflow-hidden`}>
-                              {/* Patrón de fondo sutil */}
-                              <div className="absolute inset-0 opacity-10">
-                                <div className="absolute top-2 left-2 w-8 h-8 border border-white/20 rounded-full"></div>
-                                <div className="absolute bottom-4 right-4 w-6 h-6 border border-white/20 rounded-full"></div>
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 border border-white/10 rounded-full"></div>
-                              </div>
-
-                              {/* Emoji grande y atractivo */}
-                              <motion.span
-                                className={`text-5xl ${product.featured ? 'filter drop-shadow-lg' : 'opacity-60'}`}
-                                animate={product.featured ? {
-                                  scale: [1, 1.1, 1],
-                                  rotate: [0, 5, -5, 0]
-                                } : {}}
-                                transition={{
-                                  duration: 3,
-                                  repeat: Infinity,
-                                  ease: "easeInOut"
-                                }}
-                              >
-                                {product.featured ? '✨' : '🍹'}
-                              </motion.span>
-
-                              {/* Efecto de brillo para destacados */}
-                              {product.featured && (
-                                <motion.div
-                                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                                  animate={{
-                                    x: ['-100%', '100%']
-                                  }}
-                                  transition={{
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    repeatDelay: 3,
-                                    ease: "easeInOut"
-                                  }}
-                                />
-                              )}
-
-                              {/* Badge de precio para no destacados */}
-                              {!product.featured && (
-                                <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm
-                                              text-white px-2 py-1 rounded-full text-sm font-bold">
-                                  S/ {product.price.toFixed(2)}
-                                </div>
-                              )}
+                          /* Si no es destacado o no tiene imagen, mostramos un indicador sutil si es destacado */
+                          product.featured && (
+                            <div className="absolute top-2 right-2 text-yellow-400/50">
+                              <Sparkles className="w-3 h-3" />
                             </div>
-                          </div>
+                          )
                         )}
 
                         {/* Contenido */}
-                        <div className="p-4">
-                          <h3 className="text-white font-bold text-lg mb-2 line-clamp-2 group-hover:text-[#FF4D2E] transition-colors">
-                            {product.name}
-                          </h3>
+                        <div className="p-3">
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <h3 className="text-white font-bold text-xs line-clamp-2 group-hover:text-[#FF4D2E] transition-colors leading-tight">
+                              {product.name}
+                            </h3>
+                            {/* Precio para productos sin imagen visual y sin precios múltiples */}
+                            {!(product.featured && product.image) && !prices && product.price > 0 && (
+                              <span className="text-[#FF4D2E] font-black text-xs whitespace-nowrap">
+                                S/ {product.price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
 
-                          {/* Precios adicionales si existen */}
+                          {/* Precios adicionales si existen - Estilo Referencia */}
                           {prices && (
-                            <div className="flex gap-2 mb-3">
-                              <div className="flex-1 bg-white/10 rounded-lg px-2 py-1 text-center">
-                                <div className="text-xs text-gray-400">Botella</div>
-                                <div className="text-sm font-bold text-[#FF4D2E]">S/ {prices.bottlePrice}</div>
+                            <div className="flex gap-1.5 mb-3">
+                              <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
+                                <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.primaryLabel}</div>
+                                <div className="text-[11px] font-black text-[#FF4D2E]">
+                                  <span className="text-[9px] mr-0.5">S/</span>
+                                  {prices.primaryPrice.toFixed(2)}
+                                </div>
                               </div>
-                              <div className="flex-1 bg-white/10 rounded-lg px-2 py-1 text-center">
-                                <div className="text-xs text-gray-400">Copa</div>
-                                <div className="text-sm font-bold text-[#FF4D2E]">S/ {prices.cupPrice}</div>
-                              </div>
+                              {prices.secondaryPrice !== null && (
+                                <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
+                                  <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.secondaryLabel}</div>
+                                  <div className="text-[11px] font-black text-[#FF4D2E]">
+                                    <span className="text-[9px] mr-0.5">S/</span>
+                                    {prices.secondaryPrice.toFixed(2)}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
 
                           {/* Controles de cantidad */}
                           <div className="flex items-center justify-between">
                             {cartItem ? (
-                              <div className="flex items-center gap-2 bg-white/10 rounded-xl p-2 flex-1">
+                              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 flex-1 border border-white/10">
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
-                                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center
-                                           hover:bg-white/30 transition-colors"
+                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                           hover:bg-white/20 transition-colors"
                                 >
-                                  <Minus className="w-4 h-4" />
+                                  <Minus className="w-3.5 h-3.5" />
                                 </motion.button>
                                 <motion.span
                                   key={cartItem.quantity}
                                   initial={{ scale: 0.8 }}
                                   animate={{ scale: 1 }}
-                                  className="w-8 text-center font-bold"
+                                  className="flex-1 text-center font-bold text-xs"
                                 >
                                   {cartItem.quantity}
                                 </motion.span>
@@ -953,21 +1030,20 @@ function MenuPageContent() {
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
-                                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center
-                                           hover:bg-white/30 transition-colors"
+                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                           hover:bg-white/20 transition-colors"
                                 >
-                                  <Plus className="w-4 h-4" />
+                                  <Plus className="w-3.5 h-3.5" />
                                 </motion.button>
                               </div>
                             ) : (
                               <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => addToCart(product)}
                                 className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
-                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-3 px-4
-                                         rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl
-                                         transform hover:scale-105"
+                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-2 px-3
+                                         rounded-xl transition-all duration-200 shadow-lg text-xs uppercase tracking-wider"
                               >
                                 Agregar
                               </motion.button>
@@ -977,8 +1053,153 @@ function MenuPageContent() {
                       </motion.div>
                     );
                   })}
-              </AnimatePresence>
-            </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Columna Derecha */}
+              <div className="flex-1 flex flex-col gap-3">
+                <AnimatePresence mode="popLayout">
+                  {rightColumn.map((product, index) => {
+                    const cartItem = cart.find(item => item.product.id === product.id);
+                    const prices = parsePrices(product.description || '', product.price);
+
+                    return (
+                      <motion.div
+                        key={product.id}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ delay: index * 0.05 + 0.02 }}
+                        className="group relative bg-gradient-to-br from-gray-900/80 to-black/80
+                                 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden
+                                 hover:border-[#FF4D2E]/50 hover:shadow-2xl hover:shadow-[#FF4D2E]/20
+                                 transition-all duration-300 transform hover:scale-[1.02]"
+                      >
+                        {/* Efecto de luz animado */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent
+                                      translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+
+                        {/* Imagen con overlay - Solo para destacados con imagen */}
+                        {product.featured && product.image ? (
+                          <div className="relative aspect-[4/5] overflow-hidden">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                            {/* Badge de precio destacado - Solo si no hay precios múltiples */}
+                            {!prices && (
+                              <div className="absolute top-2 right-2 bg-black/40 backdrop-blur-md border border-white/20
+                                            text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-lg">
+                                S/ {product.price.toFixed(2)}
+                              </div>
+                            )}
+
+                            {/* Icono de Destacado (Sparkle) */}
+                            <div className="absolute top-2 left-2 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                          </div>
+                        ) : (
+                          /* Si no es destacado o no tiene imagen, mostramos un indicador sutil si es destacado */
+                          product.featured && (
+                            <div className="absolute top-2 right-2 text-yellow-400/50">
+                              <Sparkles className="w-3 h-3" />
+                            </div>
+                          )
+                        )}
+
+                        {/* Contenido */}
+                        <div className="p-3">
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <h3 className="text-white font-bold text-xs line-clamp-2 group-hover:text-[#FF4D2E] transition-colors leading-tight">
+                              {product.name}
+                            </h3>
+                            {/* Precio para productos sin imagen visual y sin precios múltiples */}
+                            {!(product.featured && product.image) && !prices && product.price > 0 && (
+                              <span className="text-[#FF4D2E] font-black text-xs whitespace-nowrap">
+                                S/ {product.price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Precios adicionales si existen - Estilo Referencia */}
+                          {prices && (
+                            <div className="flex gap-1.5 mb-3">
+                              <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
+                                <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.primaryLabel}</div>
+                                <div className="text-[11px] font-black text-[#FF4D2E]">
+                                  <span className="text-[9px] mr-0.5">S/</span>
+                                  {prices.primaryPrice.toFixed(2)}
+                                </div>
+                              </div>
+                              {prices.secondaryPrice !== null && (
+                                <div className="flex-1 bg-white/5 rounded-xl px-1 py-2 text-center border border-white/10 backdrop-blur-sm">
+                                  <div className="text-[8px] uppercase tracking-tighter text-gray-400 font-bold mb-0.5">{prices.secondaryLabel}</div>
+                                  <div className="text-[11px] font-black text-[#FF4D2E]">
+                                    <span className="text-[9px] mr-0.5">S/</span>
+                                    {prices.secondaryPrice.toFixed(2)}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Controles de cantidad */}
+                          <div className="flex items-center justify-between">
+                            {cartItem ? (
+                              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 flex-1 border border-white/10">
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => updateQuantity(product.id, cartItem.quantity - 1)}
+                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                           hover:bg-white/20 transition-colors"
+                                >
+                                  <Minus className="w-3.5 h-3.5" />
+                                </motion.button>
+                                <motion.span
+                                  key={cartItem.quantity}
+                                  initial={{ scale: 0.8 }}
+                                  animate={{ scale: 1 }}
+                                  className="flex-1 text-center font-bold text-xs"
+                                >
+                                  {cartItem.quantity}
+                                </motion.span>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => updateQuantity(product.id, cartItem.quantity + 1)}
+                                  className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center
+                                           hover:bg-white/20 transition-colors"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </motion.button>
+                              </div>
+                            ) : (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => addToCart(product)}
+                                className="flex-1 bg-gradient-to-r from-[#FF4D2E] to-[#FF6B4A]
+                                         hover:from-[#FF6B4A] hover:to-[#FF8A6A] text-white font-bold py-2 px-3
+                                         rounded-xl transition-all duration-200 shadow-lg text-xs uppercase tracking-wider"
+                              >
+                                Agregar
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </div>
 
             {filteredProducts.length === 0 && (
               <motion.div
