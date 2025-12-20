@@ -65,7 +65,7 @@ ENV PUBLIC_BASE_URL=http://localhost:3000
 # Ensure runtime has permissions over app dirs that may require writes
 RUN chown -R node:node /app/.next /app/public /app/prisma || true
 
-# Start command via entrypoint script (auto prisma db push for SQLite)
-RUN chmod +x /app/docker-start.sh
+# Fix Windows line endings and ensure execution permissions
+RUN sed -i 's/\r$//' /app/docker-start.sh && chmod +x /app/docker-start.sh
 USER node
 CMD ["/bin/sh", "/app/docker-start.sh"]
