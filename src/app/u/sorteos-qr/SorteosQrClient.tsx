@@ -86,11 +86,11 @@ function QrDisplay({ code, size = 64 }: { code: string; size?: number }) {
 // Componente para mostrar un QR individual (solo lectura)
 function QrCard({ qr }: { qr: CustomQr }) {
   return (
-    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-800 hover:shadow-md transition-shadow">
-      <div className="flex flex-col space-y-3">
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-2 sm:p-3 bg-white dark:bg-slate-800 hover:shadow-md transition-shadow max-w-full overflow-hidden">
+      <div className="flex flex-col space-y-2 sm:space-y-3">
         {/* Header con estado */}
         <div className="flex items-center justify-between">
-          <span className={`text-xs px-2 py-1 rounded-full ${
+          <span className={`text-xs px-1 sm:px-2 py-1 rounded-full ${
             qr.redeemedAt
               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
               : qr.isActive && (!qr.expiresAt || new Date(qr.expiresAt) > new Date())
@@ -103,15 +103,15 @@ function QrCard({ qr }: { qr: CustomQr }) {
 
         {/* QR Code */}
         <div className="flex justify-center">
-          <QrDisplay code={qr.code} size={80} />
+          <QrDisplay code={qr.code} size={64} />
         </div>
 
         {/* Información del cliente */}
         <div className="text-center space-y-1">
-          <div className="font-medium text-sm truncate" title={qr.customerName}>
+          <div className="font-medium text-xs sm:text-sm truncate max-w-full" title={qr.customerName}>
             {qr.customerName}
           </div>
-          <div className="text-xs text-slate-500 truncate" title={qr.customerWhatsapp}>
+          <div className="text-xs text-slate-500 truncate max-w-full" title={qr.customerWhatsapp}>
             {qr.customerWhatsapp}
           </div>
           {qr.customerDni && (
@@ -119,7 +119,7 @@ function QrCard({ qr }: { qr: CustomQr }) {
               DNI: {qr.customerDni}
             </div>
           )}
-          <div className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+          <div className="text-xs font-mono bg-slate-100 dark:bg-slate-700 px-1 sm:px-2 py-1 rounded max-w-full truncate" title={qr.code}>
             {qr.code}
           </div>
         </div>
@@ -127,7 +127,7 @@ function QrCard({ qr }: { qr: CustomQr }) {
         {/* Miniatura de imagen si existe */}
         {qr.imageUrl && (
           <div className="flex flex-col items-center gap-1">
-            <div className="relative w-12 h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
               <img
                 src={(qr.thumbnailUrl || qr.imageUrl).startsWith('/uploads/') ? (qr.thumbnailUrl || qr.imageUrl).replace('/uploads/', '/api/images/') : (qr.thumbnailUrl || qr.imageUrl)}
                 alt="Imagen subida"
@@ -294,7 +294,7 @@ export default function SorteosQrClient() {
           <h3 className="font-semibold">Tokens QR ({qrs.length})</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {qrs.map((qr) => (
             <QrCard key={qr.id} qr={qr} />
           ))}
