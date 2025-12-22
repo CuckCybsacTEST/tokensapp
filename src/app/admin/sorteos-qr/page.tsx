@@ -431,29 +431,29 @@ export default function CustomQrsAdminPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">QR Personalizados por Lotes</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">QR Personalizados por Lotes</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Gestiona códigos QR organizados por lotes y campañas
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowStats(!showStats)}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             📊 {showStats ? 'Ocultar' : 'Mostrar'} Estadísticas
           </button>
           <button
             onClick={() => setShowBatchManager(!showBatchManager)}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             📦 Lotes
           </button>
           <button
             onClick={() => setShowPolicyManager(!showPolicyManager)}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             ⚙️ Políticas
           </button>
@@ -465,7 +465,7 @@ export default function CustomQrsAdminPage() {
           </a>
           <button
             onClick={handleExportCsv}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             📥 Exportar CSV
           </button>
@@ -685,7 +685,7 @@ function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
 
         {/* Miniatura de imagen si existe */}
         {qr.imageUrl && (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1">
             <div className="relative w-12 h-12 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
               <img
                 src={(qr.thumbnailUrl || qr.imageUrl).startsWith('/uploads/') ? (qr.thumbnailUrl || qr.imageUrl).replace('/uploads/', '/api/images/') : (qr.thumbnailUrl || qr.imageUrl)}
@@ -721,6 +721,20 @@ function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
                 }}
               />
             </div>
+            <button
+              onClick={() => {
+                const imageToShow = qr.originalImageUrl || qr.imageUrl;
+                if (!imageToShow) return;
+                const originalUrl = imageToShow.startsWith('/uploads/') 
+                  ? imageToShow.replace('/uploads/', '/api/images/') 
+                  : imageToShow;
+                window.open(originalUrl, '_blank');
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+              title="Ver imagen original"
+            >
+              Ver original
+            </button>
           </div>
         )}
 
@@ -873,30 +887,30 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
   };
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-4">
+    <div className="card max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold">Gestión de Lotes</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             ➕ Nuevo Lote
           </button>
-          <button onClick={onClose} className="btn-secondary">✕ Cerrar</button>
+          <button onClick={onClose} className="btn-secondary text-sm px-3 py-2">✕ Cerrar</button>
         </div>
       </div>
 
       {/* Sección de impresión */}
       <div className="mb-6 p-4 border rounded-lg bg-slate-50 dark:bg-slate-800">
         <h4 className="font-medium mb-3">Imprimir QR Codes</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium mb-1">Lote</label>
             <select
               value={printFilters.batchId}
               onChange={(e) => setPrintFilters(prev => ({ ...prev, batchId: e.target.value }))}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded text-sm"
             >
               <option value="">Seleccionar lote...</option>
               {batches.map(batch => (
@@ -908,8 +922,8 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Estados a incluir</label>
-            <div className="space-y-2">
-              <label className="flex items-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
+              <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
                   checked={printFilters.includeActive}
@@ -918,7 +932,7 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
                 />
                 Activos
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
                   checked={printFilters.includeRedeemed}
@@ -927,7 +941,7 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
                 />
                 Redimidos
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
                   checked={printFilters.includeRevoked}
@@ -936,7 +950,7 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
                 />
                 Revocados
               </label>
-              <label className="flex items-center">
+              <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
                   checked={printFilters.includeExpired}
@@ -951,7 +965,7 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
         <button
           onClick={handlePrintQrs}
           disabled={isPrinting || !printFilters.batchId}
-          className="btn-primary disabled:opacity-50"
+          className="btn-primary disabled:opacity-50 text-sm px-4 py-2 w-full sm:w-auto"
         >
           {isPrinting ? 'Generando PDF...' : '🖨️ Imprimir QR Codes'}
         </button>
@@ -974,22 +988,22 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
 
       <div className="space-y-2">
         {batches.map(batch => (
-          <div key={batch.id} className="flex items-center justify-between p-3 border rounded">
-            <div>
-              <span className="font-medium">{batch.name}</span>
-              <span className="text-sm text-slate-500 ml-2">({batch._count?.qrs || 0} QR)</span>
-              {batch.description && <p className="text-sm text-slate-500">{batch.description}</p>}
+          <div key={batch.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 border rounded bg-white dark:bg-slate-800">
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-sm sm:text-base">{batch.name}</span>
+              <span className="text-xs sm:text-sm text-slate-500 ml-2">({batch._count?.qrs || 0} QR)</span>
+              {batch.description && <p className="text-xs sm:text-sm text-slate-500 mt-1">{batch.description}</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setEditingBatch(batch)}
-                className="btn-secondary text-sm"
+                className="btn-secondary text-xs sm:text-sm px-2 py-1"
               >
                 ✏️ Editar
               </button>
               <button
                 onClick={() => handleDeleteBatch(batch.id)}
-                className="btn-danger text-sm"
+                className="btn-danger text-xs sm:text-sm px-2 py-1"
               >
                 🗑️ Eliminar
               </button>
@@ -1049,17 +1063,17 @@ function PolicyManager({ policies, batches, onClose, onRefresh }: { policies: an
   };
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-4">
+    <div className="card max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold">Gestión de Políticas</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowCreateForm(true)}
-            className="btn-secondary"
+            className="btn-secondary text-sm px-3 py-2"
           >
             ➕ Nueva Política
           </button>
-          <button onClick={onClose} className="btn-secondary">✕ Cerrar</button>
+          <button onClick={onClose} className="btn-secondary text-sm px-3 py-2">✕ Cerrar</button>
         </div>
       </div>
 
