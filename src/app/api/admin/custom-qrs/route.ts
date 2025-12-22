@@ -1,34 +1,17 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getSessionCookieFromRequest, verifySessionCookie, requireRole, getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
+import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { apiError } from '@/lib/apiError';
 
 export async function GET(req: Request) {
   console.log('[api/custom-qrs] GET request received');
   try {
-    // Try admin session first
-    let session = null;
-    const adminRaw = getSessionCookieFromRequest(req);
-    if (adminRaw) {
-      session = await verifySessionCookie(adminRaw);
-    }
-
-    // If no admin session, try user session
-    if (!session) {
-      const userRaw = getUserSessionCookieFromRequest(req);
-      const userSession = await verifyUserSessionCookie(userRaw);
-      if (userSession && userSession.role && ['ADMIN', 'STAFF'].includes(userSession.role)) {
-        session = userSession;
-      }
-    }
-
+    const raw = getSessionCookieFromRequest(req);
+    const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-
-    // For user sessions, only allow STAFF and ADMIN
-    if (session.role && !['ADMIN', 'STAFF'].includes(session.role)) {
-      return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
-    }
+    const roleCheck = requireRole(session, ['ADMIN', 'STAFF', 'COLLAB']);
+    if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const url = new URL(req.url);
     const page = Math.max(1, Number(url.searchParams.get('page') || '1'));

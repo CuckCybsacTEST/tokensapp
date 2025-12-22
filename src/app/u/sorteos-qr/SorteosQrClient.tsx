@@ -216,7 +216,7 @@ export default function SorteosQrClient() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/admin/custom-qrs?page=${page}&limit=20`);
+      const response = await fetch(`/api/user/custom-qrs?page=${page}&limit=20`, { credentials: 'include' });
 
       if (response.ok) {
         const data = await response.json();
