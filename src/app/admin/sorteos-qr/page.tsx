@@ -756,6 +756,62 @@ function QrCard({ qr, batches, selectedQrs, setSelectedQrs, onRedeem }: {
 function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose: () => void, onRefresh: () => void }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingBatch, setEditingBatch] = useState<any>(null);
+  const [printFilters, setPrintFilters] = useState({
+    batchId: '',
+    includeActive: true,
+    includeRedeemed: false,
+    includeRevoked: false,
+    includeExpired: false
+  });
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const handlePrintQrs = async () => {
+    if (!printFilters.batchId) {
+      alert('Selecciona un lote para imprimir');
+      return;
+    }
+
+    const selectedStates = [];
+    if (printFilters.includeActive) selectedStates.push('active');
+    if (printFilters.includeRedeemed) selectedStates.push('redeemed');
+    if (printFilters.includeRevoked) selectedStates.push('revoked');
+    if (printFilters.includeExpired) selectedStates.push('expired');
+
+    if (selectedStates.length === 0) {
+      alert('Selecciona al menos un estado para imprimir');
+      return;
+    }
+
+    setIsPrinting(true);
+    try {
+      const params = new URLSearchParams({
+        batchId: printFilters.batchId,
+        states: selectedStates.join(',')
+      });
+
+      const response = await fetch(`/api/admin/custom-qrs/print-batch?${params}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `qr-batch-${printFilters.batchId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message || 'Error al generar PDF'}`);
+      }
+    } catch (error) {
+      console.error('Error printing QRs:', error);
+      alert('Error al imprimir QR codes');
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const handleCreateBatch = async (data: any) => {
     try {
@@ -829,6 +885,76 @@ function BatchManager({ batches, onClose, onRefresh }: { batches: any[], onClose
           </button>
           <button onClick={onClose} className="btn-secondary">✕ Cerrar</button>
         </div>
+      </div>
+
+      {/* Sección de impresión */}
+      <div className="mb-6 p-4 border rounded-lg bg-slate-50 dark:bg-slate-800">
+        <h4 className="font-medium mb-3">Imprimir QR Codes</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Lote</label>
+            <select
+              value={printFilters.batchId}
+              onChange={(e) => setPrintFilters(prev => ({ ...prev, batchId: e.target.value }))}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Seleccionar lote...</option>
+              {batches.map(batch => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.name} ({batch._count?.qrs || 0} QR)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Estados a incluir</label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={printFilters.includeActive}
+                  onChange={(e) => setPrintFilters(prev => ({ ...prev, includeActive: e.target.checked }))}
+                  className="mr-2"
+                />
+                Activos
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={printFilters.includeRedeemed}
+                  onChange={(e) => setPrintFilters(prev => ({ ...prev, includeRedeemed: e.target.checked }))}
+                  className="mr-2"
+                />
+                Redimidos
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={printFilters.includeRevoked}
+                  onChange={(e) => setPrintFilters(prev => ({ ...prev, includeRevoked: e.target.checked }))}
+                  className="mr-2"
+                />
+                Revocados
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={printFilters.includeExpired}
+                  onChange={(e) => setPrintFilters(prev => ({ ...prev, includeExpired: e.target.checked }))}
+                  className="mr-2"
+                />
+                Expirados
+              </label>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handlePrintQrs}
+          disabled={isPrinting || !printFilters.batchId}
+          className="btn-primary disabled:opacity-50"
+        >
+          {isPrinting ? 'Generando PDF...' : '🖨️ Imprimir QR Codes'}
+        </button>
       </div>
 
       {showCreateForm && (
