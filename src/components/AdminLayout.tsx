@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import AdminMobilePanel from "@/components/AdminMobilePanel";
 import { AdminMobileHeader } from "@/components/AdminMobileHeader";
+import { useUser } from "@/components/UserProvider";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -27,15 +28,8 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // User info state for mobile header
-  const [userInfo, setUserInfo] = useState<{
-    role: string;
-    displayName: string;
-    dni?: string | null;
-    area?: string | null;
-    jobTitle?: string | null;
-    code?: string | null;
-  } | null>(null);
+  // Get user info from context
+  const { userInfo } = useUser();
 
   // Update sidebar state when window resizes and after hydration
   useEffect(() => {
@@ -49,38 +43,6 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Get user info for mobile header
-  useEffect(() => {
-    console.log('[AdminLayout] useEffect triggered, hasSession:', hasSession);
-    const getUserInfo = async () => {
-      try {
-        console.log('[AdminLayout] Fetching user info...');
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[AdminLayout] User info fetched:', data);
-          setUserInfo(data);
-        } else {
-          console.log('[AdminLayout] Failed to fetch user info, status:', response.status);
-          setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-        }
-      } catch (error) {
-        console.error('[AdminLayout] Error obteniendo información del usuario:', error);
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-      }
-    };
-
-    if (hasSession) {
-      getUserInfo();
-    }
-  }, [hasSession]);
 
   // Use default collapsed state during SSR to prevent hydration mismatch
   const currentSidebarCollapsed = isHydrated ? sidebarCollapsed : false;
@@ -164,7 +126,7 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
   if (isAdminRoot && isMobileView) {
     return (
       <div className="block md:hidden">
-        <AdminMobilePanel basePath={basePath} />
+        <AdminMobilePanel basePath={basePath} userInfo={userInfo} />
       </div>
     );
   }
@@ -178,6 +140,7 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
           isCollapsed={currentSidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!currentSidebarCollapsed)}
           basePath={basePath}
+          userInfo={userInfo}
         />
       </div>
 

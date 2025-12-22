@@ -61,6 +61,11 @@ export async function GET(req: Request) {
         personWhereConds.push(`p."code" = '${esc(person)}'`);
       }
     }
+    // Exclude admins/system users
+    personWhereConds.push(`p."name" NOT ILIKE '%Deivis Contreras%'`);
+    personWhereConds.push(`p."name" NOT ILIKE '%Gabriela Mayhua%'`);
+    personWhereConds.push(`p."name" NOT ILIKE '%Administrador%'`);
+
     const personWhereCond = personWhereConds.join(' AND ');
 
     // Aggregate per person/day rows
@@ -164,15 +169,23 @@ export async function GET(req: Request) {
       const firstIn = r.firstIn ? (r.firstIn instanceof Date ? r.firstIn.toISOString() : String(r.firstIn)) : null;
       const lastOut = r.lastOut ? (r.lastOut instanceof Date ? r.lastOut.toISOString() : String(r.lastOut)) : null;
       const day = String(r.day);
-      // Jornada incompleta: hubo entrada pero no salida y el día ya pasó (estrictamente menor al business day actual)
-      const incomplete = !!firstIn && !lastOut && day < todayBusinessDay;
+      
+      // Modificado: Marcar como incompleto si falta salida, sin importar si el día ya pasó.
+      // El usuario solicitó que "todos los que no tienen salida se marquen con rojo".
+      const missingOut = !!firstIn && !lastOut;
+      const isPast = day < todayBusinessDay;
+      
+      // Mantenemos la propiedad 'incomplete' para compatibilidad con el frontend (que lo pinta rojo)
+      const incomplete = missingOut; 
+
       let status: string;
       if (incomplete) {
-        status = 'Incompleta';
+        status = isPast ? 'Incompleta' : 'En curso';
       } else if (firstIn && lastOut) {
         status = completionPct >= 100 ? 'Completa' : 'Con faltantes';
       } else {
-        // Día actual en curso o sin OUT todavía
+        // Día actual en curso o sin OUT todavía (pero sin IN tampoco? No, si no hay IN no entra aquí o firstIn es null)
+        // Si firstIn es null, incomplete es false.
         status = completionPct >= 100 ? 'Con faltantes' : 'Con faltantes';
       }
       return {
@@ -188,6 +201,7 @@ export async function GET(req: Request) {
         completionPct,
         status,
         incomplete,
+        isPast, // Enviamos flag extra por si el front lo necesita
       };
     });
 

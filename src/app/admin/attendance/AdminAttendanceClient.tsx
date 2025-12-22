@@ -19,9 +19,27 @@ type TableRow = {
   completionPct: number;
   status: string;
   incomplete?: boolean;
+  isPast?: boolean;
 };
 
 type TableResp = { ok: boolean; rows: TableRow[]; page: number; pageSize: number; total: number; totalPages: number };
+
+type MetricsResp = {
+  ok: boolean;
+  summary: {
+    totalShifts: number;
+    completeShifts: number;
+    incompleteShifts: number;
+    completionRate: number;
+    avgDurationMin: number;
+    totalUniquePeople: number;
+    totalBusinessDays: number;
+  };
+  topAbsences: { personCode: string; personName: string; daysAttended: number; daysMissed: number }[];
+  topIncomplete: { personCode: string; personName: string; incompleteCount: number }[];
+  topComplete: { personCode: string; personName: string; completeCount: number }[];
+  topDuration: { personCode: string; personName: string; totalDurationMin: number; avgDurationMin: number }[];
+};
 
 // (Componentes de gráficos eliminados con métricas)
 
@@ -50,6 +68,7 @@ export function AdminAttendancePage() {
   const [table, setTable] = useState<TableResp | null>(null);
   const [area, setArea] = useState<string>("");
   const [person, setPerson] = useState<string>("");
+  const [metricsData, setMetricsData] = useState<MetricsResp | null>(null);
   // (Lista IN/OUT eliminada)
 
   const query = useMemo(() => {
@@ -64,7 +83,20 @@ export function AdminAttendancePage() {
     return p.toString();
   }, [period, startDate, endDate, area, person]);
 
-  // Eliminado fetch de métricas.
+  // Fetch metrics
+  useEffect(() => {
+    const p = new URLSearchParams();
+    p.set('period', period);
+    if (period === 'custom') {
+      if (startDate) p.set('startDate', startDate);
+      if (endDate) p.set('endDate', endDate);
+    }
+    fetch(`/api/admin/attendance/metrics?${p.toString()}`)
+      .then(r => r.json())
+      .then(j => { if (j?.ok) setMetricsData(j as MetricsResp); })
+      .catch(console.error);
+  }, [period, startDate, endDate, tick]);
+
   useEffect(() => { setLoading(false); }, [query, tick]);
 
   // Load table
@@ -136,77 +168,8 @@ export function AdminAttendancePage() {
   };
 
   // ================== Métricas derivadas (cliente) ==================
-  const metrics = useMemo(() => {
-    const rows = table?.rows || [];
-    if (!rows.length) return null;
-    // Convertir a minutos del día en zona horaria Lima para reflejar horario local real
-    const tz = 'America/Lima';
-    const toMinutesOfDayLocal = (iso: string): number | null => {
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return null;
-      try {
-        const parts = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).formatToParts(d);
-        const hh = Number(parts.find(p=>p.type==='hour')?.value || '0');
-        const mm = Number(parts.find(p=>p.type==='minute')?.value || '0');
-        return hh*60 + mm;
-      } catch {
-        // Fallback simple estimando offset local del runtime (menos preciso si server en otra TZ)
-        return d.getHours()*60 + d.getMinutes();
-      }
-    };
-  let sumFirstIn = 0, countFirstIn = 0; // mean (retained if needed)
-  let sumLastOut = 0, countLastOut = 0;
-  const firstInMinutesArr: number[] = [];
-  const lastOutMinutesArr: number[] = [];
-    let sumDuration = 0, countDuration = 0;
-    let incompleteCount = 0;
-    let totalEntradas = 0; // número de jornadas con al menos una entrada
-    let totalSalidas = 0;  // número de jornadas con al menos una salida
-    for (const r of rows) {
-      if (r.firstIn) {
-        const m = toMinutesOfDayLocal(r.firstIn);
-        if (m != null) { sumFirstIn += m; countFirstIn++; firstInMinutesArr.push(m); }
-        totalEntradas++;
-      }
-      if (r.lastOut) {
-        const m2 = toMinutesOfDayLocal(r.lastOut);
-        if (m2 != null) { sumLastOut += m2; countLastOut++; lastOutMinutesArr.push(m2); }
-        totalSalidas++;
-      }
-      if (typeof r.durationMin === 'number') { sumDuration += r.durationMin; countDuration++; }
-      if (r.incomplete) incompleteCount++;
-    }
-    const avgArrMin = countFirstIn ? sumFirstIn / countFirstIn : null;
-    const avgOutMin = countLastOut ? sumLastOut / countLastOut : null;
-    const median = (arr: number[]): number | null => {
-      if (!arr.length) return null; const s = [...arr].sort((a,b)=>a-b); const mid = Math.floor(s.length/2); return s.length % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
-    };
-    const medianFirstIn = median(firstInMinutesArr);
-    const medianLastOut = median(lastOutMinutesArr);
-    const avgDur = countDuration ? sumDuration / countDuration : null;
-    const formatAvgClock = (minutesOfDay: number | null) => {
-      if (minutesOfDay == null) return '-';
-      // Redondeamos a minuto más cercano y manejamos rollover (mm == 60)
-      let total = Math.round(minutesOfDay);
-      let hh = Math.floor(total / 60);
-      let mm = total - hh * 60;
-      if (mm === 60) { hh += 1; mm = 0; }
-      if (hh >= 24) hh = hh % 24; // seguridad por si promedio cruza medianoche
-      return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-    };
-    return {
-      totalRows: rows.length,
-      incompleteCount,
-      incompletePct: rows.length ? (100*incompleteCount)/rows.length : 0,
-      avgFirstIn: formatAvgClock(avgArrMin),
-      avgLastOut: formatAvgClock(avgOutMin),
-      medianFirstIn: formatAvgClock(medianFirstIn),
-      medianLastOut: formatAvgClock(medianLastOut),
-      avgDurationMin: avgDur,
-      totalEntradas,
-      totalSalidas,
-    };
-  }, [table]);
+  // Reemplazado por métricas de servidor
+  const metrics = null; 
 
   const DurationCard = ({ label, value }: { label: string; value: number | null | undefined }) => (
     <div className="p-4 rounded-lg border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 flex flex-col gap-1">
@@ -288,21 +251,96 @@ export function AdminAttendancePage() {
         <div className="alert-danger">Error: {error}</div>
       )}
 
-      {/* MÉTRICAS (derivadas en cliente) */}
-      {metrics && !loading && !error && (
-        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 space-y-5">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-700 dark:text-slate-200">Métricas (medianas para robustez)</h2>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">{metrics.totalRows} fila{metrics.totalRows===1?'':'s'} · {metrics.incompleteCount} incompletas</div>
+      {/* MÉTRICAS (servidor) */}
+      {metricsData && !loading && !error && (
+        <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid gap-3 grid-cols-1 xs:grid-cols-2 sm:grid-cols-4">
+            <SimpleCard label="Total Asistencias" value={metricsData.summary.totalShifts} suffix={` / ${metricsData.summary.totalBusinessDays} días hábiles`} />
+            <SimpleCard label="Tasa Completitud" value={metricsData.summary.completionRate.toFixed(1)} suffix="%" color={metricsData.summary.completionRate < 90 ? 'text-warning' : 'text-success'} />
+            <SimpleCard label="Faltas de Salida" value={metricsData.summary.incompleteShifts} color="text-danger" />
+            <DurationCard label="Promedio Horas" value={metricsData.summary.avgDurationMin} />
           </div>
-          <div className="grid gap-3 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <SimpleCard label="Entradas" value={metrics.totalEntradas} />
-            <SimpleCard label="Salidas" value={metrics.totalSalidas} />
-            <SimpleCard label="Med. Llegada" value={metrics.medianFirstIn} />
-            <SimpleCard label="Med. Salida" value={metrics.medianLastOut} />
-            <SimpleCard label="Prom. Llegada" value={metrics.avgFirstIn} />
-            <SimpleCard label="Prom. Salida" value={metrics.avgLastOut} />
-            <DurationCard label="Prom. Duración" value={metrics.avgDurationMin ?? null} />
+
+          {/* Rankings */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            {/* Top Absences */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <h3 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-200">Top Ausencias (Días faltados)</h3>
+              <div className="space-y-2">
+                {metricsData.topAbsences.length === 0 ? <div className="text-xs text-soft">Sin datos</div> : 
+                  metricsData.topAbsences.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">{p.personName}</div>
+                        <div className="text-xs text-soft">{p.personCode}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-danger">{p.daysMissed} días</div>
+                        <div className="text-xs text-soft">Asistió {p.daysAttended}</div>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+
+            {/* Top Incomplete */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <h3 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-200">Top Sin Marcar Salida</h3>
+              <div className="space-y-2">
+                {metricsData.topIncomplete.length === 0 ? <div className="text-xs text-soft">Nadie olvidó marcar salida</div> : 
+                  metricsData.topIncomplete.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">{p.personName}</div>
+                        <div className="text-xs text-soft">{p.personCode}</div>
+                      </div>
+                      <div className="font-bold text-warning">{p.incompleteCount} veces</div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+
+            {/* Top Complete */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <h3 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-200">Top Marcado Salida</h3>
+              <div className="space-y-2">
+                {metricsData.topComplete.length === 0 ? <div className="text-xs text-soft">Sin datos</div> : 
+                  metricsData.topComplete.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">{p.personName}</div>
+                        <div className="text-xs text-soft">{p.personCode}</div>
+                      </div>
+                      <div className="font-bold text-success">{p.completeCount} veces</div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+
+            {/* Top Duration */}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <h3 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-200">Más Horas Trabajadas</h3>
+              <div className="space-y-2">
+                {metricsData.topDuration.length === 0 ? <div className="text-xs text-soft">Sin datos</div> : 
+                  metricsData.topDuration.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-b border-slate-100 dark:border-slate-700 pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">{p.personName}</div>
+                        <div className="text-xs text-soft">{p.personCode}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-success">{formatMinutes(p.totalDurationMin)}</div>
+                        <div className="text-xs text-soft">Prom: {formatMinutes(p.avgDurationMin)}</div>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -346,8 +384,8 @@ export function AdminAttendancePage() {
                       <td className="py-2 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
                         {r.incomplete ? (
-                          <span title="Jornada no completada (sin salida registrada)" className="badge-warning inline-flex items-center gap-1">
-                            <span className="font-bold">!</span> Falta salida
+                          <span title={r.isPast === false ? "Jornada en curso (sin salida aún)" : "Jornada no completada (sin salida registrada)"} className="badge-warning inline-flex items-center gap-1">
+                            <span className="font-bold">!</span> {r.isPast === false ? "En curso" : "Falta salida"}
                           </span>
                         ) : (
                           <span className="text-soft text-xs">-</span>
@@ -406,7 +444,7 @@ export function AdminAttendancePage() {
                 </div>
                 <div>
                   {r.incomplete ? (
-                    <span className="badge-warning text-xs px-2 py-1">Falta salida</span>
+                    <span className="badge-warning text-xs px-2 py-1">{r.isPast === false ? "En curso" : "Falta salida"}</span>
                   ) : (
                     <span className="badge-success text-xs px-2 py-1">OK</span>
                   )}

@@ -2,6 +2,7 @@ import React from "react";
 import { verifyUserSessionCookie } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { AdminLayout } from "@/components/AdminLayout";
+import { UserProvider } from "@/components/UserProvider";
 
 export const metadata = {
   title: {
@@ -17,8 +18,10 @@ export default async function AdminRootLayout({ children }: { children: React.Re
   const session = await verifyUserSessionCookie(raw);
   const role = session?.role || null;
   return (
-    <AdminLayout basePath="admin" hasSession={!!session}>
-      {children}
-    </AdminLayout>
+    <UserProvider hasSession={!!session}>
+      <AdminLayout basePath="admin" hasSession={!!session}>
+        {children}
+      </AdminLayout>
+    </UserProvider>
   );
 }

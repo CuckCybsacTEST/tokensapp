@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QrCode, CheckCircle, XCircle, Clock, AlertTriangle, User, Phone, Mail, Calendar, DollarSign, Package, ArrowLeft } from 'lucide-react';
 import { DateTime } from 'luxon';
 import Link from 'next/link';
+import { useUser } from "@/components/UserProvider";
 
 interface QRValidationResult {
   valid: boolean;
@@ -53,9 +54,11 @@ export default function ValidateQROffersPage() {
   const [result, setResult] = useState<QRValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [delivering, setDelivering] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  
+  const { userInfo } = useUser();
+  const userRole = userInfo?.role || null;
 
-  // Check for scanned QR data on component mount and get user role
+  // Check for scanned QR data on component mount
   useEffect(() => {
     const scannedData = sessionStorage.getItem('scannedQRData');
     if (scannedData) {
@@ -63,22 +66,7 @@ export default function ValidateQROffersPage() {
       // Auto-validate if we have scanned data
       setTimeout(() => validateQRFromData(scannedData), 100);
     }
-
-    // Get user role
-    fetchUserRole();
   }, []);
-
-  const fetchUserRole = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const data = await response.json();
-        setUserRole(data.role);
-      }
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-    }
-  };
 
   const validateQRFromData = async (data: string) => {
     setLoading(true);

@@ -125,49 +125,21 @@ interface AdminSidebarProps {
   isCollapsed?: boolean;
   onToggle?: () => void;
   basePath?: 'admin' | 'u';
+  userInfo?: {
+    role: string;
+    displayName: string;
+    dni?: string | null;
+    area?: string | null;
+    jobTitle?: string | null;
+    code?: string | null;
+  } | null;
 }
 
-export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin' }: AdminSidebarProps) {
+export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin', userInfo }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["TOKENS RULETA"]));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [userInfo, setUserInfo] = useState<{ 
-    role: string; 
-    displayName: string;
-    dni: string | null;
-    area: string | null;
-    jobTitle: string | null;
-    code: string | null;
-  } | null>(null);
-
-  // Función para obtener información del usuario desde las cookies
-  const getUserInfo = async () => {
-    try {
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserInfo(data);
-      } else {
-        // Si no hay sesión, mostrar como invitado
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
-      }
-    } catch (error) {
-      console.error('Error obteniendo información del usuario:', error);
-      setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
-    }
-  };
-
-  // Obtener información del usuario al montar el componente
-  useEffect(() => {
-    getUserInfo();
-  }, []);
 
   // Configuración dinámica basada en basePath
   const getSidebarGroups = (basePath: 'admin' | 'u'): SidebarGroup[] => {
@@ -342,19 +314,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     try {
       const res = await fetch('/api/auth/logout', { method: "POST" });
       if (res.ok) {
-        // Clear user info immediately after successful logout
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
         // Use window.location for full page reload to re-evaluate server-side layout
         window.location.href = '/u/login';
       } else {
-        // Clear user info even on logout failure to be safe
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
         window.location.href = '/u/login';
       }
     } catch {
-      // Clear user info on error as well
-  setUserInfo({ role: 'GUEST', displayName: 'Invitado', dni: null, area: null, jobTitle: null, code: null });
-  window.location.href = '/u/login';
+      window.location.href = '/u/login';
     } finally {
       setIsLoggingOut(false);
     }

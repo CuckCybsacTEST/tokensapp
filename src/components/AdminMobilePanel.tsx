@@ -140,9 +140,17 @@ interface SidebarGroup {
 
 interface AdminMobilePanelProps {
   basePath?: 'admin' | 'u';
+  userInfo?: {
+    role: string;
+    displayName: string;
+    dni?: string | null;
+    area?: string | null;
+    jobTitle?: string | null;
+    code?: string | null;
+  } | null;
 }
 
-export default function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePanelProps) {
+export default function AdminMobilePanel({ basePath = 'admin', userInfo }: AdminMobilePanelProps) {
   const pathname = usePathname();
 
   const [attendanceState, setAttendanceState] = useState<{
@@ -155,39 +163,8 @@ export default function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePane
     dayClosed: false
   });
 
-  const [userInfo, setUserInfo] = useState<{
-    role: string;
-    displayName: string;
-    dni?: string | null;
-    area?: string | null;
-    jobTitle?: string | null;
-    code?: string | null;
-  } | null>(null);
-
   const [activeTab, setActiveTab] = useState<'herramientas' | 'upgrade' | 'purge'>('herramientas');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-
-  // Función para obtener información del usuario
-  const getUserInfo = async () => {
-    try {
-      const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserInfo(data);
-      } else {
-        setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-      }
-    } catch (error) {
-      console.error('Error obteniendo información del usuario:', error);
-      setUserInfo({ role: 'GUEST', displayName: 'Invitado' });
-    }
-  };
 
   // Función para actualizar el estado de asistencia
   const updateAttendanceState = async () => {
@@ -214,11 +191,6 @@ export default function AdminMobilePanel({ basePath = 'admin' }: AdminMobilePane
   // Actualizar estado de asistencia al montar
   useEffect(() => {
     updateAttendanceState();
-  }, []);
-
-  // Obtener información del usuario al montar
-  useEffect(() => {
-    getUserInfo();
   }, []);
 
   const toggleGroup = (title: string) => {
