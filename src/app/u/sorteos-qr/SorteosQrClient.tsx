@@ -283,7 +283,7 @@ export default function SorteosQrClient() {
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">QR Personalizados</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Vista de tokens QR organizados por lotes
+            Vista de sorteos QR organizados por lotes
           </p>
         </div>
       </div>
@@ -291,7 +291,7 @@ export default function SorteosQrClient() {
       {/* Lista de QR */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">Tokens QR ({qrs.length})</h3>
+          <h3 className="font-semibold">Sorteos QR ({qrs.length})</h3>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
