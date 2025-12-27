@@ -2,6 +2,16 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Mantenemos standalone para imágenes más ligeras en Docker
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'upmqzhfnigsihpcclsao.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
   eslint: {
     // Permitir build aunque existan errores de lint (para smoke tests rápidos)
     ignoreDuringBuilds: true,

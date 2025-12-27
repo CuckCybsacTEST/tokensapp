@@ -67,6 +67,7 @@ export default function MenuManager() {
   const [submittingCategory, setSubmittingCategory] = useState(false);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submittingVariant, setSubmittingVariant] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -753,6 +754,17 @@ export default function MenuManager() {
             </ActionButton>
           </div>
 
+          {/* Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar productos..."
+              value={productSearchTerm}
+              onChange={(e) => setProductSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
           {showProductForm && (
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
               <h3 className="text-lg font-semibold mb-4">
@@ -776,7 +788,7 @@ export default function MenuManager() {
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Precio *
+                      Precio (S/.) *
                     </label>
                     <input
                       type="number"
@@ -899,7 +911,13 @@ export default function MenuManager() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                  {products.map((product) => (
+                  {products
+                    .filter((product) =>
+                      product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                      product.category.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                      (product.description && product.description.toLowerCase().includes(productSearchTerm.toLowerCase()))
+                    )
+                    .map((product) => (
                     <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {product.name}
@@ -908,7 +926,7 @@ export default function MenuManager() {
                         {product.category.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        ${product.price.toFixed(2)}
+                        S/. {product.price.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {product.featured && (
@@ -952,7 +970,13 @@ export default function MenuManager() {
             {/* Mobile Card View */}
             <div className="md:hidden">
               <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                {products.map((product) => (
+                {products
+                  .filter((product) =>
+                    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                    product.category.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                    (product.description && product.description.toLowerCase().includes(productSearchTerm.toLowerCase()))
+                  )
+                  .map((product) => (
                   <div key={product.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white">
@@ -975,7 +999,7 @@ export default function MenuManager() {
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 mb-4">
                       <p><span className="font-medium">Categoría:</span> {product.category.name}</p>
-                      <p><span className="font-medium">Precio:</span> ${product.price.toFixed(2)}</p>
+                      <p><span className="font-medium">Precio:</span> S/. {product.price.toFixed(2)}</p>
                       {product.description && (
                         <p><span className="font-medium">Descripción:</span> {product.description}</p>
                       )}
