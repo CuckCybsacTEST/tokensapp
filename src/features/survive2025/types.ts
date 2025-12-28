@@ -1,12 +1,12 @@
 export interface Run {
   id: string;
-  created_at: string;
-  event_id: string;
-  display_name: string;
-  best_ms: number;
+  createdAt: string;
+  eventId: string;
+  displayName: string;
+  bestMs: number;
   score: number;
-  device_hash?: string;
-  session_id?: string;
+  deviceHash?: string;
+  sessionId?: string;
   meta?: Record<string, any>;
 }
 

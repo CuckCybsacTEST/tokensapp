@@ -1,93 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { supabaseAdmin } from '@/lib/supabase';
-import { EVENT_ID, MIN_SURVIVE_MS, MAX_SURVIVE_MS, RATE_LIMIT_SUBMITS, RATE_LIMIT_WINDOW_MS } from '@/features/survive2025/constants';
+import { prisma } from '@/lib/prisma';
+import { RATE_LIMIT_SUBMITS, RATE_LIMIT_WINDOW_MS } from '@/features/survive2025/constants';
 
-// Rate limiting: simple in-memory map (for dev; use Redis in prod)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get('eventId');
+  const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-const submitSchema = z.object({
-  eventId: z.string().min(1),
-  displayName: z.string().min(2).max(16).regex(/^[a-zA-Z0-9 áéíóúÁÉÍÓÚñÑ_-]+$/),
-  bestMs: z.number().int().min(MIN_SURVIVE_MS).max(MAX_SURVIVE_MS),
-  score: z.number().int().min(0),
-  sessionId: z.string().optional(),
-  deviceHash: z.string().optional(),
-});
-
-function checkRateLimit(deviceHash: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(deviceHash);
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(deviceHash, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return true;
+  if (!eventId) {
+    return NextResponse.json({ error: 'Missing eventId' }, { status: 400 });
   }
-  if (entry.count >= RATE_LIMIT_SUBMITS) {
-    return false;
+
+  try {
+    const runs = await prisma.survive2025Run.findMany({
+      where: { eventId },
+      orderBy: [
+        { score: 'desc' },
+        { bestMs: 'desc' }
+      ],
+      take: limit,
+    });
+
+    return NextResponse.json({ runs });
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-  entry.count++;
-  return true;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const parsed = submitSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid input', details: parsed.error.issues }, { status: 400 });
+    const body = await req.json();
+    const { eventId, displayName, bestMs, score, sessionId, deviceHash } = body;
+
+    if (!eventId || !displayName || typeof bestMs !== 'number' || typeof score !== 'number') {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const { eventId, displayName, bestMs, score, sessionId, deviceHash } = parsed.data;
+    // Rate limiting check
+    if (deviceHash) {
+        const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+        const recentCount = await prisma.survive2025Run.count({
+            where: {
+                deviceHash,
+                createdAt: {
+                    gte: windowStart
+                }
+            }
+        });
 
-    if (deviceHash && !checkRateLimit(deviceHash)) {
-      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+        if (recentCount >= RATE_LIMIT_SUBMITS) {
+             return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+        }
     }
 
-    const { error } = await supabaseAdmin
-      .from('survive2025_runs')
-      .insert({
-        event_id: eventId,
-        display_name: displayName.trim(),
-        best_ms: bestMs,
+    const run = await prisma.survive2025Run.create({
+      data: {
+        eventId,
+        displayName: displayName.slice(0, 20), // Enforce max length
+        bestMs,
         score,
-        session_id: sessionId,
-        device_hash: deviceHash,
-      });
+        sessionId,
+        deviceHash,
+      },
+    });
 
-    if (error) {
-      console.error('Supabase insert error:', error);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, run });
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const eventId = searchParams.get('eventId') || EVENT_ID;
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
-
-    const { data, error } = await supabaseAdmin
-      .from('survive2025_runs')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('best_ms', { ascending: false })
-      .order('created_at', { ascending: true })
-      .limit(limit);
-
-    if (error) {
-      console.error('Supabase select error:', error);
-      return NextResponse.json({ runs: [] }, { status: 500 });
-    }
-
-    return NextResponse.json({ runs: data || [] });
-  } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json({ runs: [] }, { status: 500 });
+    console.error('Error submitting run:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

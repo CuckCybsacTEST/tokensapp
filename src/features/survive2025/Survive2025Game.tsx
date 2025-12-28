@@ -3,8 +3,6 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { Trophy, Play, RotateCcw, ArrowLeft, ChevronRight, Save } from 'lucide-react';
 import {
-  CANVAS_WIDTH,
-  CANVAS_HEIGHT,
   DIFFICULTY_START,
   DIFFICULTY_INCREMENT,
   DIFFICULTY_CAP,
@@ -56,18 +54,18 @@ interface BackgroundParticle {
 
 const STORY_SLIDES = [
   {
-    title: 'EL CAOS DEL 2025',
-    text: 'El año ha comenzado con una lluvia de problemas. Deudas, botellas y fragmentos de tiempo caen del cielo.',
-    icon: '🌧️'
+    title: '¡EL 2025 VIENE CON TODO!',
+    text: 'El año nuevo ataca sin piedad: Deudas 💸, Prisas ⏰ y Tentaciones 🥃 caen del cielo. ¿Podrás esquivarlas?',
+    icon: '🔥'
   },
   {
-    title: 'TU MISIÓN',
-    text: 'Esquiva los obstáculos deslizando tu dedo o mouse. Si te tocan, perderás una vida.',
-    icon: '🏃'
+    title: 'TU MISIÓN: RESISTIR',
+    text: 'Desliza para esquivar los problemas. Si te tocan, perderás energía. ¡Mantente ágil!',
+    icon: '🏃⚡'
   },
   {
-    title: 'AYUDAS',
-    text: 'Recoge ❤️ para recuperar vidas y 🍺 para ralentizar el tiempo. ¡Sobrevive tanto como puedas!',
+    title: 'TUS VENTAJAS',
+    text: 'Atrapa ❤️ para sanar, 🍺 para congelar el estrés y Medallas 🥇 para la gloria. ¡Demuestra de qué estás hecho!',
     icon: '🛡️'
   }
 ];
@@ -79,6 +77,10 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   const lastSpawnRef = useRef<number>(0);
   const lastDifficultyUpdateRef = useRef<number>(0);
   const slowEndTimeRef = useRef<number>(0);
+
+  // Dimensions State & Ref
+  const [dimensions, setDimensions] = useState({ width: 420, height: 720 });
+  const dimensionsRef = useRef({ width: 420, height: 720 });
 
   // Game State
   const [screen, setScreen] = useState<Screen>('intro');
@@ -94,7 +96,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   const [submitted, setSubmitted] = useState(false);
 
   // Refs for game loop
-  const playerRef = useRef<Player>({ x: CANVAS_WIDTH / 2 - 15, y: CANVAS_HEIGHT - 60, width: 30, height: 30, lives: 1, slowUntil: 0 });
+  const playerRef = useRef<Player>({ x: 200, y: 600, width: 30, height: 30, lives: 1, slowUntil: 0 });
   const obstaclesRef = useRef<Obstacle[]>([]);
   const powerupsRef = useRef<Powerup[]>([]);
   const scoreRef = useRef<number>(0);
@@ -105,6 +107,26 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   const toastsRef = useRef<Toast[]>([]);
   const bgParticlesRef = useRef<BackgroundParticle[]>([]);
   const bgSpotlightsRef = useRef<{x: number, y: number, vx: number, vy: number, color: string, size: number}[]>([]);
+
+  // Handle Resize
+  useEffect(() => {
+    const handleResize = () => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        setDimensions({ width, height });
+        dimensionsRef.current = { width, height };
+        
+        // Reposition player if out of bounds
+        if (playerRef.current.x > width) playerRef.current.x = width - 30;
+        if (playerRef.current.y > height) playerRef.current.y = height - 60;
+    };
+    
+    // Initial set
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize
   useEffect(() => {
@@ -119,8 +141,8 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     const particles = [];
     for(let i=0; i<40; i++) {
         particles.push({
-            x: Math.random() * CANVAS_WIDTH,
-            y: Math.random() * CANVAS_HEIGHT,
+            x: Math.random() * dimensionsRef.current.width,
+            y: Math.random() * dimensionsRef.current.height,
             size: Math.random() * 4 + 2,
             color: colors[Math.floor(Math.random() * colors.length)],
             vx: (Math.random() - 0.5) * 20,
@@ -136,8 +158,9 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   }, []);
 
   const startGame = () => {
+    const { width, height } = dimensionsRef.current;
     // Reset game state
-    playerRef.current = { x: CANVAS_WIDTH / 2 - 15, y: CANVAS_HEIGHT - 60, width: 30, height: 30, lives: 1, slowUntil: 0 };
+    playerRef.current = { x: width / 2 - 15, y: height - 60, width: 30, height: 30, lives: 1, slowUntil: 0 };
     obstaclesRef.current = [];
     powerupsRef.current = [];
     toastsRef.current = [];
@@ -204,9 +227,10 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   const getExtraChance = () => clamp(EXTRA_CHANCE_BASE + (difficultyRef.current - DIFFICULTY_START) * EXTRA_CHANCE_MULTIPLIER, EXTRA_CHANCE_MIN, EXTRA_CHANCE_MAX);
 
   const spawnObstacle = () => {
+    const { width: W, height: H } = dimensionsRef.current;
     const width = 30;
     const height = 30;
-    const x = Math.random() * (CANVAS_WIDTH - width);
+    const x = Math.random() * (W - width);
     const y = -height;
 
     const difficultyMultiplier = 0.78 + difficultyRef.current * 0.24;
@@ -224,6 +248,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
   };
 
   const spawnPowerup = (elapsed: number) => {
+    const { width: W } = dimensionsRef.current;
     const heartOnScreen = powerupsRef.current.some(p => p.type === 'heart');
     let heartChance = 0;
     const seconds = elapsed / 1000;
@@ -253,7 +278,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
       }
     }
 
-    const x = Math.random() * (CANVAS_WIDTH - 20);
+    const x = Math.random() * (W - 20);
     const y = -20;
     powerupsRef.current.push({ type, x, y });
   };
@@ -271,6 +296,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
 
   const update = useCallback((timestamp: number) => {
     if (!isRunningRef.current) return;
+    const { width: W, height: H } = dimensionsRef.current;
 
     const elapsed = timestamp - startTimeRef.current;
     const deltaTime = 16; // ~60fps
@@ -302,16 +328,16 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     bgParticlesRef.current.forEach(p => {
         p.y += p.vy * dt;
         p.x += p.vx * dt;
-        if (p.y > CANVAS_HEIGHT) p.y = -10;
-        if (p.x > CANVAS_WIDTH) p.x = 0;
-        if (p.x < 0) p.x = CANVAS_WIDTH;
+        if (p.y > H) p.y = -10;
+        if (p.x > W) p.x = 0;
+        if (p.x < 0) p.x = W;
     });
 
     bgSpotlightsRef.current.forEach(s => {
         s.x += s.vx * dt;
         s.y += s.vy * dt;
-        if (s.x < 0 || s.x > CANVAS_WIDTH) s.vx *= -1;
-        if (s.y < 0 || s.y > CANVAS_HEIGHT) s.vy *= -1;
+        if (s.x < 0 || s.x > W) s.vx *= -1;
+        if (s.y < 0 || s.y > H) s.vy *= -1;
     });
 
     // Update Toasts
@@ -327,18 +353,18 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
       obs.y += obs.vy * dt * timeScale;
 
       // Bounce logic
-      if (obs.x < 0 || obs.x > CANVAS_WIDTH - obs.width) {
+      if (obs.x < 0 || obs.x > W - obs.width) {
         obs.vx *= -0.8;
-        obs.x = Math.max(0, Math.min(CANVAS_WIDTH - obs.width, obs.x));
+        obs.x = Math.max(0, Math.min(W - obs.width, obs.x));
       }
 
-      return obs.y < CANVAS_HEIGHT;
+      return obs.y < H;
     });
 
     // Update powerups
     powerupsRef.current = powerupsRef.current.filter(pow => {
       pow.y += 80 * timeScale * dt;
-      return pow.y < CANVAS_HEIGHT;
+      return pow.y < H;
     });
 
     // Collision detection
@@ -357,7 +383,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
             player.lives -= 1;
             player.slowUntil = timestamp + 700; // 0.7s invulnerability
             obstaclesRef.current = obstaclesRef.current.filter(o => o !== obs);
-            addToast("💥 -1 Vida", player.x + 15, player.y);
+            addToast("💥 ¡Auch!", player.x + 15, player.y);
           } else {
             handleGameOver(elapsed, scoreRef.current);
             return;
@@ -380,11 +406,11 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
         switch (pow.type) {
           case 'beer':
             slowEndTimeRef.current = timestamp + POWERUP_SLOW_DURATION;
-            addToast("🍻 Slow 3s", tx, ty);
+            addToast("🍻 Relax...", tx, ty);
             break;
           case 'heart':
             player.lives = Math.min(player.lives + 1, POWERUP_HEART_MAX);
-            addToast("❤️ +1 Vida", tx, ty);
+            addToast("❤️ ¡Respiro!", tx, ty);
             break;
           case 'copper':
             scoreRef.current += POWERUP_COPPER_POINTS;
@@ -411,11 +437,11 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     if (!ctx) return;
 
     // 1. Background Gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
     grad.addColorStop(0, '#0a0a1a');
     grad.addColorStop(1, '#1a0b2e');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillRect(0, 0, W, H);
 
     // 2. Spotlights
     ctx.globalCompositeOperation = 'screen';
@@ -435,10 +461,10 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     ctx.lineWidth = 2;
     const timeOffset = timestamp * 0.05;
     for(let i=0; i<5; i++) {
-        const x = (timeOffset + i * 100) % (CANVAS_WIDTH + 200) - 100;
+        const x = (timeOffset + i * 100) % (W + 200) - 100;
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x - 200, CANVAS_HEIGHT);
+        ctx.lineTo(x - 200, H);
         ctx.stroke();
     }
 
@@ -499,14 +525,24 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
       const cx = pow.x + 10;
       const cy = pow.y + 10;
       
-      // Green Glow
-      const g = ctx.createRadialGradient(cx, cy, 5, cx, cy, 25);
-      g.addColorStop(0, 'rgba(0, 255, 127, 0.6)'); // SpringGreen
+      // Pulsing Green Glow
+      const pulse = 1 + 0.15 * Math.sin(timestamp * 0.008);
+      const g = ctx.createRadialGradient(cx, cy, 12 * pulse, cx, cy, 35 * pulse);
+      g.addColorStop(0, 'rgba(50, 255, 150, 0.9)'); 
       g.addColorStop(1, 'rgba(0, 255, 127, 0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(cx, cy, 25, 0, Math.PI*2);
+      ctx.arc(cx, cy, 35 * pulse, 0, Math.PI*2);
       ctx.fill();
+
+      // High contrast background circle
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.strokeStyle = '#00FF7F';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
       
       let emoji = '❓';
       switch(pow.type) {
@@ -519,7 +555,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
       
       ctx.fillStyle = 'white';
       ctx.font = '20px Arial';
-      ctx.fillText(emoji, cx, cy);
+      ctx.fillText(emoji, cx, cy + 2);
     });
 
     // Draw Toasts
@@ -550,7 +586,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     // Top Right Status
     ctx.textAlign = 'right';
     ctx.fillStyle = '#88CCFF';
-    ctx.fillText('🛡️ SIGUES EN PIE', CANVAS_WIDTH - 10, 10);
+    ctx.fillText('🔥 SOBREVIVIENDO', W - 10, 10);
 
     animationRef.current = requestAnimationFrame(update);
   }, []);
@@ -559,13 +595,15 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     if (screen !== 'play') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const { width: W, height: H } = dimensionsRef.current;
+    
     const rect = canvas.getBoundingClientRect();
-    const scaleX = CANVAS_WIDTH / rect.width;
-    const scaleY = CANVAS_HEIGHT / rect.height;
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
-    playerRef.current.x = Math.max(0, Math.min(CANVAS_WIDTH - playerRef.current.width, x - playerRef.current.width / 2));
-    playerRef.current.y = Math.max(0, Math.min(CANVAS_HEIGHT - playerRef.current.height, y - playerRef.current.height / 2));
+    playerRef.current.x = Math.max(0, Math.min(W - playerRef.current.width, x - playerRef.current.width / 2));
+    playerRef.current.y = Math.max(0, Math.min(H - playerRef.current.height, y - playerRef.current.height / 2));
   }, [screen]);
 
   useEffect(() => {
@@ -599,9 +637,10 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
     <div className="fixed inset-0 bg-zinc-950 flex items-center justify-center overflow-hidden">
       <canvas
         ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className="max-w-full max-h-full object-contain"
+        width={dimensions.width}
+        height={dimensions.height}
+        className="block touch-none"
+        style={{ width: '100%', height: '100%' }}
       />
 
       {screen === 'story' && (
@@ -659,7 +698,7 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
             </div>
             <div>
               <h1 className="text-3xl font-black text-white mb-2">SOBREVIVIR AL 2025</h1>
-              <p className="text-zinc-400">¿Cuánto tiempo podrás aguantar?</p>
+              <p className="text-zinc-400">El reto definitivo de Año Nuevo.</p>
             </div>
             <div className="flex flex-col w-full gap-3">
               <button
@@ -696,9 +735,9 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
           <div className="flex flex-col items-center gap-6">
             <div className="text-6xl">💀</div>
             <div>
-              <h2 className="text-4xl font-black text-white mb-2">CAÍSTE</h2>
+              <h2 className="text-4xl font-black text-white mb-2">EL 2025 TE ATRAPÓ</h2>
               <p className="text-zinc-400">Aguantaste <span className="text-white font-bold">{(finalStats.time / 1000).toFixed(2)}s</span></p>
-              <p className="text-zinc-500 text-sm mt-2">No todos llegaron tan lejos.</p>
+              <p className="text-zinc-500 text-sm mt-2">La cuesta de enero fue dura.</p>
             </div>
 
             {!submitted ? (
@@ -773,11 +812,11 @@ export default function Survive2025Game({ onGameOver }: Survive2025GameProps) {
                     {leaderboard.map((run, i) => (
                       <tr key={run.id} className="text-zinc-300">
                         <td className="p-3 text-center font-mono text-zinc-500">{i + 1}</td>
-                        <td className="p-3 font-medium text-white truncate max-w-[120px]">
-                          {run.display_name}
+                        <td className="p-3 font-medium text-white">
+                          {run.displayName}
                         </td>
                         <td className="p-3 text-right font-mono text-emerald-400">
-                          {(run.best_ms / 1000).toFixed(2)}s
+                          {(run.bestMs / 1000).toFixed(2)}s
                         </td>
                       </tr>
                     ))}

@@ -87,8 +87,8 @@ export default function Overlays({
           <div className="space-y-2 mb-8">
             {leaderboard.slice(0, 10).map((run, i) => (
               <div key={run.id} className="flex justify-between bg-gray-800 p-2 rounded">
-                <span>{i + 1}. {run.display_name}</span>
-                <span>{(run.best_ms / 1000).toFixed(1)}s</span>
+                <span>{i + 1}. {run.displayName}</span>
+                <span>{(run.bestMs / 1000).toFixed(1)}s</span>
               </div>
             ))}
           </div>

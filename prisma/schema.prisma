@@ -1275,3 +1275,18 @@ enum OfferPurchaseStatus {
   REFUNDED
   EXPIRED
 }
+
+model Survive2025Run {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now()) @map("created_at")
+  eventId      String   @map("event_id")
+  displayName  String   @map("display_name")
+  bestMs       Int      @map("best_ms")
+  score        Int
+  deviceHash   String?  @map("device_hash")
+  sessionId    String?  @map("session_id")
+  meta         Json?
+
+  @@index([eventId, score(sort: Desc), bestMs(sort: Desc)])
+  @@map("survive2025_runs")
+}
