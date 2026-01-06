@@ -147,6 +147,13 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
         const lightFill = themeConfig?.roulette?.frame?.lightColors
           ? themeConfig.roulette.frame.lightColors[index % 2]
           : undefined;
+        
+        // Efecto "chase" constante:
+        // Duración del ciclo completo: 1.2s
+        // Delay escalonado para crear la ola.
+        // Opacidad varía de encendido (1) a apagado (0.3).
+        const animationDuration = spinning ? "0.6s" : "1.2s"; 
+        
         return (
           <circle
             key={`frame-light-${index}`}
@@ -154,24 +161,30 @@ const RouletteFrame: React.FC<RouletteFrameProps> = ({
             cy={light.cy}
             r={lightSize}
             fill={lightFill || 'url(#lightGradient)'}
-            style={{ opacity: !spinning ? 0.6 : lowMotion ? 0.85 : 1 }}
+            // Eliminamos la opacidad estática en style para que la animación controle
+            style={{ }}
           >
-            {spinning && !lowMotion && (
+            {!lowMotion && (
               <>
+                 {/* Animación de Opacidad (Encender/Apagar) - Siempre activa */}
                 <animate
                   attributeName="opacity"
-                  values="1;0.1;1"
-                  dur="0.7s"
+                  values="1;0.4;1"
+                  dur={animationDuration}
                   repeatCount="indefinite"
                   begin={`${light.delay}s`}
                 />
-                <animate
-                  attributeName="r"
-                  values={`${lightSize};${lightSize * 1.6};${lightSize}`}
-                  dur="0.5s"
-                  repeatCount="indefinite"
-                  begin={`${light.delay}s`}
-                />
+                
+                {/* Animación de Tamaño (Pulsar) - Solo cuando gira para más intensidad */}
+                {spinning && (
+                  <animate
+                    attributeName="r"
+                    values={`${lightSize};${lightSize * 1.5};${lightSize}`}
+                    dur={animationDuration}
+                    repeatCount="indefinite"
+                    begin={`${light.delay}s`}
+                  />
+                )}
               </>
             )}
           </circle>

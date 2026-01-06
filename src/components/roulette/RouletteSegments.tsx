@@ -11,99 +11,123 @@ interface RouletteSegmentsProps {
   theme?: ThemeName;
 }
 
-// Heurística para dividir texto en líneas equilibradas (hasta 3 líneas para textos largos)
+// Helper para dividir texto en líneas balanceadas (soporta hasta 5 líneas)
+function splitTextBalanced(text: string, maxLines: number = 2): string[] {
+    const words = text.split(' ');
+    if (words.length <= 1) return [text];
+    
+    // Si pedimos más líneas de las que hay en palabras, devolvemos palabras
+    if (maxLines >= words.length) return words;
+
+    // Algoritmo de balanceo por longitud de caracteres
+    const totalLen = text.length;
+    const targetLen = totalLen / maxLines;
+    
+    const lines: string[] = [];
+    let currentLine: string[] = [];
+    let currentLen = 0;
+    
+    // Formar las primeras (maxLines - 1) líneas
+    let wordIdx = 0;
+    while (lines.length < maxLines - 1 && wordIdx < words.length) {
+        const word = words[wordIdx];
+        const nextLen = currentLen + (currentLine.length > 0 ? 1 : 0) + word.length;
+        
+        // Decidir si agregar la palabra o saltar de línea
+        // Si ya tenemos contenido y agregar la palabra se pasa mucho del target...
+        if (currentLine.length > 0 && Math.abs(nextLen - targetLen) > Math.abs(currentLen - targetLen)) {
+            // Mejor cerrar la línea aquí
+            lines.push(currentLine.join(' '));
+            currentLine = [];
+            currentLen = 0;
+            // No incrementamos wordIdx para procesarla en la siguiente línea
+        } else {
+            currentLine.push(word);
+            currentLen += (currentLine.length > 0 ? 1 : 0) + word.length;
+            wordIdx++;
+        }
+    }
+    
+    // El resto va a la última línea
+    const rest = words.slice(wordIdx).join(' ');
+    if (currentLine.length > 0 && rest) {
+         // Si quedó algo en buffer, unirl y meter a rest (caso borde) - Simplificación:
+         // Simplemente lo metemos como línea separada si el buffer tenía cosas?
+         // No, el loop de arriba vacía a `lines`.
+         // Si currentLine tiene cosas pero no se pushearon:
+         // Deberíamos consolidar. 
+         // En estrategia simple: push currentLineJoin + rest
+         if (rest) {
+             if (currentLine.length > 0) lines.push(currentLine.join(' ')); 
+             lines.push(rest);
+         } else {
+             if (currentLine.length > 0) lines.push(currentLine.join(' '));
+         }
+    } else if (rest) {
+        lines.push(rest);
+    } else if (currentLine.length > 0) {
+        lines.push(currentLine.join(' '));
+    }
+
+    // Unir si resultaron más líneas de las pedidas (por edge cases en loop)
+    while (lines.length > maxLines) {
+        // Unir las dos más cortas consecutivas? Simplificado: unir ultimas dos
+        const last = lines.pop();
+        const prev = lines.pop();
+        if (prev && last) lines.push(prev + ' ' + last);
+    }
+
+    return lines;
+}
+
+// Heurística para dividir texto en líneas equilibradas
 function splitLabel(label: string): string[] {
   const clean = label.trim().replace(/\s+/g, ' ');
-  if (clean.length <= 8) return [clean];
-  // Si hay precio en soles, separa la parte de precio
+  if (clean.length <= 10) return [clean];
+
+  // Si hay precio en soles, separa la parte de precio de forma inteligente
   const solMatch = clean.match(/(.*?)(\s+S\/.*)/);
   if (solMatch) {
-    // Agrupar conectores con la palabra siguiente
-    const beforePrice = solMatch[1].trim();
+    let beforePrice = solMatch[1].trim();
     const price = solMatch[2].trim();
-    const connectorWordRegex = /\s+(\+|&|\*|\/|,)\s+/g;
-    let parts = [];
-    let lastIndex = 0;
-    let match;
-    const regex = /\s+(\+|&|\*|\/|,)\s+/g;
-    while ((match = regex.exec(beforePrice)) !== null) {
-      const prev = beforePrice.slice(lastIndex, match.index).trim();
-      const connector = match[1];
-      lastIndex = regex.lastIndex;
-      const nextSpace = beforePrice.indexOf(' ', lastIndex);
-      let nextWord;
-      if (nextSpace === -1) {
-        nextWord = beforePrice.slice(lastIndex).trim();
-        lastIndex = beforePrice.length;
-      } else {
-        nextWord = beforePrice.slice(lastIndex, nextSpace).trim();
-        lastIndex = nextSpace;
-      }
-      if (prev) parts.push(prev);
-      parts.push(connector + ' ' + nextWord);
+    
+    // Si la parte anterior es larga, dividirla
+    if (beforePrice.length > 35) { // Muy largo
+       return [...splitTextBalanced(beforePrice, 3), price];
     }
-    if (lastIndex < beforePrice.length) {
-      const rest = beforePrice.slice(lastIndex).trim();
-      if (rest) parts.push(rest);
+    if (beforePrice.length > 15) {
+       return [...splitTextBalanced(beforePrice, 2), price];
     }
-    return [...parts, price];
+    return [beforePrice, price];
   }
-  // Agrupar conectores con la palabra siguiente
-  const connectorWordRegex = /\s+(\+|&|\*|\/|,)\s+/g;
-  let parts = [];
-  let lastIndex = 0;
-  let match;
-  const regex = /\s+(\+|&|\*|\/|,)\s+/g;
-  while ((match = regex.exec(clean)) !== null) {
-    const prev = clean.slice(lastIndex, match.index).trim();
-    const connector = match[1];
-    lastIndex = regex.lastIndex;
-    const nextSpace = clean.indexOf(' ', lastIndex);
-    let nextWord;
-    if (nextSpace === -1) {
-      nextWord = clean.slice(lastIndex).trim();
-      lastIndex = clean.length;
-    } else {
-      nextWord = clean.slice(lastIndex, nextSpace).trim();
-      lastIndex = nextSpace;
-    }
-    if (prev) parts.push(prev);
-    parts.push(connector + ' ' + nextWord);
+  
+  // Detectar conectores explícitos (+)
+  if (clean.includes('+')) {
+      const parts = clean.split('+').map(p => p.trim());
+      // Si alguna parte es muy larga, subdividir
+      const finalLines: string[] = [];
+      parts.forEach((p, idx) => {
+          const prefix = idx > 0 ? '+ ' : '';
+          const pWithPrefix = prefix + p;
+          if (pWithPrefix.length > 18) {
+              finalLines.push(...splitTextBalanced(pWithPrefix, 2));
+          } else {
+              finalLines.push(pWithPrefix);
+          }
+      });
+      return finalLines;
   }
-  if (lastIndex < clean.length) {
-    const rest = clean.slice(lastIndex).trim();
-    if (rest) parts.push(rest);
+
+  // Fallback a división por longitud
+  if (clean.length > 45) {
+      return splitTextBalanced(clean, 4); // Hasta 4 líneas para textos muy largos
+  } else if (clean.length > 30) {
+      return splitTextBalanced(clean, 3);
+  } else if (clean.length > 12) {
+      return splitTextBalanced(clean, 2);
   }
-  // Si hay al menos 3 partes, forzar 3 líneas
-  if (parts.length >= 3) {
-    return parts;
-  }
-  // Si el texto es muy largo, dividir en 3 líneas aunque tenga pocas palabras
-  if (clean.length > 22) {
-    if (parts.length >= 2) {
-      const third = Math.ceil(parts.length / 3);
-      const l1 = parts.slice(0, third).join(' ');
-      const l2 = parts.slice(third, 2 * third).join(' ');
-      const l3 = parts.slice(2 * third).join(' ');
-      return [l1, l2, l3];
-    } else {
-      const mid1 = Math.floor(clean.length / 3);
-      const mid2 = Math.floor(2 * clean.length / 3);
-      return [clean.slice(0, mid1), clean.slice(mid1, mid2), clean.slice(mid2)];
-    }
-  }
-  // De lo contrario, 2 líneas como antes
-  let best: { lines: string[]; score: number } | null = null;
-  const wordParts = clean.split(' ');
-  for (let i = 1; i < wordParts.length; i++) {
-    const l1 = wordParts.slice(0, i).join(' ');
-    const l2 = wordParts.slice(i).join(' ');
-    const diff = Math.abs(l1.length - l2.length);
-    const longest = Math.max(l1.length, l2.length);
-    const score = diff + longest * 0.15;
-    if (!best || score < best.score) best = { lines: [l1, l2], score };
-  }
-  return best ? best.lines : [clean];
+
+  return [clean];
 }
 
 const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme: propTheme }: RouletteSegmentsProps) => {
@@ -166,6 +190,20 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme: prop
           <stop offset="50%" stopColor="#F0B825" />
           <stop offset="100%" stopColor="#B47C00" />
         </linearGradient>
+
+        {/* Custom Gradients from Theme */}
+        {themeConfig?.roulette?.segments?.customGradients?.map((grad) => (
+          <linearGradient 
+            key={grad.id} 
+            id={grad.id} 
+            x1="0" y1="0" x2="1" y2="1" 
+            gradientTransform={grad.rotate ? `rotate(${grad.rotate})` : undefined}
+          >
+            {grad.stops.map((stop, idx) => (
+              <stop key={idx} offset={stop.offset} stopColor={stop.color} />
+            ))}
+          </linearGradient>
+        ))}
       </defs>
 
       {/* Dibuja los segmentos */}
@@ -199,124 +237,100 @@ const RouletteSegmentsComp = ({ elements, radius, center, scale = 1, theme: prop
         })
       )}
       
-      {/* Luego dibuja todas las etiquetas encima de los segmentos, usando un método mejorado */}
-      <defs>
-        {elements.map((_, i) => {
-          const angle = i * arcAngle + arcAngle / 2;
-          // Radio para el path del texto, ajustado para que quede en el medio del segmento
-          const pathRadius = radius * 0.75; // ya proporcional al radio
-          
-          // Calculamos un arco más grande para acomodar mejor el texto
-          const segmentSpan = Math.min(25, arcAngle * 0.75); // Aumentamos el span para textos más largos
-          const startAngle = angle - segmentSpan;
-          const endAngle = angle + segmentSpan;
-          
-          const startPoint = polarToCartesian(center, center, pathRadius, startAngle);
-          const endPoint = polarToCartesian(center, center, pathRadius, endAngle);
-          
-          // Crear un path curvo para el texto
-          const pathId = `textPath-${i}`;
-          
-          // Para textos en la parte superior de la ruleta (entre 90° y 270°)
-          // invertimos la dirección para que se lean correctamente
-          const needsFlip = angle > 90 && angle < 270;
-          
-          // Creamos un arco más suave
-          const largeArcFlag = 0; // Siempre usar arco pequeño
-          const sweepFlag = needsFlip ? 0 : 1; // Cambiar dirección según posición
-          
-          return (
-            <path
-              key={pathId}
-              id={pathId}
-              d={`M ${needsFlip ? endPoint.x : startPoint.x} ${needsFlip ? endPoint.y : startPoint.y} 
-                 A ${pathRadius} ${pathRadius} 0 ${largeArcFlag} ${sweepFlag} ${needsFlip ? startPoint.x : endPoint.x} ${needsFlip ? startPoint.y : endPoint.y}`}
-              fill="none"
-            />
-          );
-        })}
-      </defs>
-      
-      {/* Dibujar los textos siguiendo los paths curvos */}
+      {/* Dibujar los textos en orientación radial (rectos) */}
       {elements.map((element, i) => {
         const angle = i * arcAngle + arcAngle / 2;
-        const pathId = `textPath-${i}`;
-        
-        // Para textos en la parte superior, invertimos la orientación
-        const needsFlip = angle > 90 && angle < 270;
-        
-        // Siempre centrar el texto en el path
-        const startOffset = "50%";
+        // Text position at proportional radius
+        // Center button is roughly 30%. Outer edge 100%. Safe zone 35-95%. Center ~65%.
+        const r = radius * 0.65; 
+        const { x, y } = polarToCartesian(center, center, r, angle);
+
+        // Logic to rotate text to be radial
+        // Angle 0 is Up.
+        // Right side (0-180): Read center->out. Rotate = angle - 90.
+        // Left side (180-360): Read out->center. Rotate = angle + 90.
+        const normalizedAngle = angle % 360;
+        const isRightSide = normalizedAngle >= 0 && normalizedAngle < 180;
+        const rotate = isRightSide ? normalizedAngle - 90 : normalizedAngle + 90;
+
         const rawLabel = element.label || '';
-        // Usar labelLines del backend si está disponible, sino dividir localmente
+        
+        // Usar lógica de split o datos del backend
         let lines: string[];
         if (element.labelLines && element.labelLines.length > 0) {
           lines = element.labelLines;
         } else {
           lines = splitLabel(rawLabel.toUpperCase());
         }
-        // Font-size dinámico: base 12 * scale, pero reforzado para móviles (scale<0.8)
-  const baseFs = 13 * scale; // aumentado de 12 a 13 para mejor legibilidad
-        const fontSize = baseFs < 11 ? 11 : baseFs; // mínimo
-        // Reducir fontSize para más líneas para encajar mejor
-        let lineFs;
-        if (lines.length === 4 || lines.length === 3) {
-          lineFs = fontSize * 0.75;
-        } else if (lines.length === 2) {
-          lineFs = fontSize * 0.9;
-        } else {
-          lineFs = fontSize;
-        }
-  // Espaciado más generoso para 3 líneas
-  const lineSpacing = lines.length > 2 ? lineFs * 1.15 : lineFs * 0.95;
+
+        const baseFs = 13 * scale; 
+        const fontSize = baseFs < 11 ? 11 : baseFs; 
         
+        // Ajustamos tamaño de fuente según número de líneas y longitud
+        // En modo radial, el ancho angular es limitante para la altura (stacking lines)
+        // Y el radio es limitante para la longitud de cada línea.
+        let lineFs = fontSize;
+        const maxLineLength = Math.max(...lines.map(l => l.length));
+
+        // Si es muy largo (>15 chars) y no se ha dividido suficiente, reducir fuente
+        if (maxLineLength > 15) {
+           lineFs = fontSize * 0.85;
+        }
+        if (maxLineLength > 20) {
+           lineFs = fontSize * 0.75;
+        }
+
+        // Si hay muchas líneas, también reducir para que no invadan angularmente a los vecinos
+        if (lines.length === 3) {
+           lineFs = Math.min(lineFs, fontSize * 0.85);
+        }
+        if (lines.length >= 4) {
+           lineFs = Math.min(lineFs, fontSize * 0.70);
+        }
+
+        const lineSpacing = lineFs * 1.1;
+
         return (
           <text
             key={`label-${i}`}
+            x={x}
+            y={y}
             fill="white"
             fontSize={lineFs}
-            fontWeight="900"
-            letterSpacing="0.2"
+            fontWeight="bold"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            transform={`rotate(${rotate}, ${x}, ${y})`}
             style={{
               pointerEvents: "none",
               textTransform: "uppercase",
-              textShadow: "0 0 2px rgba(0,0,0,0.65)",
+              textShadow: "0 0 3px rgba(0,0,0,0.8)", 
             }}
           >
             {lines.map((ln, idx) => {
-              let dyValue: string;
-              if (lines.length === 1) {
-                dyValue = '0';
-              } else if (lines.length === 2) {
-                dyValue = idx === 0 ? `-${lineSpacing * 0.4}` : `${lineSpacing * 0.8}`;
-              } else if (lines.length === 4) {
-                if (idx === 0) dyValue = `-${lineSpacing * 0.3}`;
-                else if (idx === 1) dyValue = `${lineSpacing * 1.0}`;
-                else if (idx === 2) dyValue = `${lineSpacing * 2.0}`;
-                else dyValue = `${lineSpacing * 3.0}`;
-              } else { // 3 líneas
-                if (idx === 0) dyValue = `-${lineSpacing * 0.55}`;
-                else if (idx === 1) dyValue = `${lineSpacing * 0.7}`;
-                else dyValue = `${lineSpacing * 1.8}`;
-              }
+               // Cálculo de posición vertical (dy) para centrado perfecto de bloque multilínea
+               let dyValue: string | number = 0;
+               
+               if (idx === 0) {
+                 if (lines.length === 1) {
+                     dyValue = "0.35em"; // Ajuste óptico para 1 línea sola
+                 } else {
+                     // Calcular offset inicial para que el bloque de texto quede centrado en el punto (x,y)
+                     const totalH = (lines.length - 1) * lineSpacing;
+                     // Subimos la mitad de la altura total desde el centro
+                     // Ajuste fino 0.3em para compensar la baseline
+                     dyValue = -(totalH / 2) + (lineFs * 0.3);
+                 }
+               } else {
+                 dyValue = lineSpacing;
+               }
+
               return (
-                <textPath
+                <tspan
                   key={idx}
-                  href={`#${pathId}`}
-                  startOffset={startOffset}
-                  textAnchor="middle"
-                  style={{
-                    dominantBaseline: 'middle',
-                    transform: needsFlip ? 'rotate(180deg)' : 'none',
-                    transformOrigin: 'center',
-                    transformBox: 'fill-box'
-                  }}
-                >
-                  <tspan
-                    x="0"
-                    dy={dyValue}
-                  >{ln}</tspan>
-                </textPath>
+                  x={x}
+                  dy={dyValue}
+                >{ln}</tspan>
               );
             })}
           </text>

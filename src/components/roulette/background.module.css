@@ -9,10 +9,10 @@
   z-index: 1;
   overflow: hidden;
   pointer-events: none;
-  opacity: 0.9; /* Ajustamos la opacidad para que no interfiera con otros elementos */
+  opacity: 1;
 }
 
-/* Rayos de luz */
+/* Rayos de luz - Ajustado a Naranja/Dorado */
 .lightRays::before {
   content: '';
   position: absolute;
@@ -23,28 +23,28 @@
   background-image: conic-gradient(
     from 0deg,
     transparent 0deg,
-    rgba(46, 134, 222, 0.1) 20deg,
+    rgba(255, 85, 0, 0.03) 20deg,
     transparent 40deg,
-    rgba(46, 134, 222, 0.05) 60deg,
+    rgba(255, 215, 0, 0.02) 60deg,
     transparent 80deg,
-    rgba(255, 215, 0, 0.1) 100deg,
+    rgba(255, 85, 0, 0.03) 100deg,
     transparent 120deg,
-    rgba(255, 215, 0, 0.05) 140deg,
+    rgba(255, 215, 0, 0.02) 140deg,
     transparent 160deg,
-    rgba(46, 134, 222, 0.1) 180deg,
+    rgba(255, 85, 0, 0.03) 180deg,
     transparent 200deg,
-    rgba(255, 215, 0, 0.05) 220deg,
+    rgba(255, 215, 0, 0.02) 220deg,
     transparent 240deg,
-    rgba(46, 134, 222, 0.05) 260deg,
+    rgba(255, 85, 0, 0.03) 260deg,
     transparent 280deg,
-    rgba(255, 215, 0, 0.1) 300deg,
+    rgba(255, 215, 0, 0.02) 300deg,
     transparent 320deg,
-    rgba(46, 134, 222, 0.1) 340deg,
+    rgba(255, 85, 0, 0.03) 340deg,
     transparent 360deg
   );
   transform: translate(-50%, -50%);
-  opacity: 0.8;
-  animation: rotateRays 60s linear infinite;
+  opacity: 0.6;
+  animation: rotateRays 40s linear infinite;
 }
 
 @keyframes rotateRays {
@@ -62,17 +62,88 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(46, 134, 222, 0.3) 0%, rgba(46, 134, 222, 0) 70%);
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 85, 0, 0.1) 0%, transparent 70%);
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
-  opacity: 0.6; /* Reducimos la opacidad para que no interfiera con otros elementos */
+  opacity: 0.8;
   animation: pulseGlow 4s ease-in-out infinite alternate;
 }
 
 @keyframes pulseGlow {
   0% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.9); }
   100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Spotlights Dinámicos */
+.spotlight {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.6;
+  pointer-events: none;
+  mix-blend-mode: screen; /* Mezcla de colores vibrante */
+  will-change: transform, opacity;
+}
+
+.spotlight1 {
+  top: 10%;
+  left: 10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(255, 85, 0, 0.6) 0%, transparent 70%);
+  animation: float1 15s ease-in-out infinite alternate;
+}
+
+.spotlight2 {
+  bottom: 10%;
+  right: 10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+  animation: float2 18s ease-in-out infinite alternate-reverse;
+}
+
+.spotlight3 {
+  top: 40%;
+  left: 60%;
+  width: 40vw;
+  height: 40vw;
+  background: radial-gradient(circle, rgba(255, 68, 0, 0.5) 0%, transparent 70%);
+  animation: float3 20s ease-in-out infinite alternate;
+}
+
+.spotlight4 {
+  bottom: 30%;
+  left: 20%;
+  width: 45vw;
+  height: 45vw;
+  background: radial-gradient(circle, rgba(255, 140, 0, 0.4) 0%, transparent 70%);
+  animation: float4 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes float1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10%, 15%) scale(1.1); }
+  100% { transform: translate(-5%, 5%) scale(0.9); }
+}
+
+@keyframes float2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-15%, -10%) scale(1.2); }
+  100% { transform: translate(5%, -5%) scale(0.95); }
+}
+
+@keyframes float3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(-20%, 10%) scale(1.1); opacity: 0.7; }
+  100% { transform: translate(10%, -10%) scale(0.9); opacity: 0.5; }
+}
+
+@keyframes float4 {
+  0% { transform: translate(0, 0) scale(0.9); }
+  50% { transform: translate(20%, -15%) scale(1.1); }
+  100% { transform: translate(-10%, 10%) scale(1); }
 }

@@ -27,6 +27,12 @@ export interface RouletteThemeConfig {
     palette: string[];
     textColor: string;
     borderColor: string;
+    textOrientation?: 'radial' | 'curved'; // Orientación del texto: radial (recto) o curvo
+    customGradients?: {
+      id: string;
+      stops: { offset: string; color: string }[];
+      rotate?: number; // Rotación opcional del gradiente
+    }[];
   };
   pointer: {
     offset: number;

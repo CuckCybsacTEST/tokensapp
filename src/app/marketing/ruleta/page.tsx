@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./rouletteLayout.module.css";
 import { Metadata } from "next";
 import RouletteClientPage from "./RouletteClientPage";
+import RouletteBackground from "@/components/roulette/RouletteBackground";
 import FooterGate from "./FooterGate";
 import { RouletteThemeProvider } from "@/components/theme/RouletteThemeProvider";
 import { ThemeWrapper } from "@/components/theme/ThemeWrapper";
@@ -20,8 +21,8 @@ interface RuletaSearchParams {
 
 export default function RuletaPage({ searchParams }: { searchParams: RuletaSearchParams }) {
   const tokenId = searchParams.tokenId || "";
-  // Usar tema de parámetros o por defecto 'christmas' para mantener compatibilidad
-  const theme = (searchParams.theme as ThemeName) || "christmas";
+  // Usar tema de parámetros o por defecto 'default' (antes 'christmas')
+  const theme = (searchParams.theme as ThemeName) || "default";
 
   return (
     <RouletteThemeProvider initialTheme={theme}>
@@ -38,6 +39,7 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
         */}
         <div className="relative h-screen flex flex-col px-0 pt-0 pb-0 roulette-theme-container">
           {/* Fondo compuesto reutilizable intacto: degradado base + efectos */}
+          <RouletteBackground />
           <FooterGate />
           <div
             className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}

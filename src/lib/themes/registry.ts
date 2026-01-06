@@ -4,71 +4,110 @@ import { ThemeConfig, ThemeName } from './types';
 export const themeRegistry: Record<ThemeName, ThemeConfig> = {
   default: {
     name: 'default',
-    displayName: 'Por Defecto',
+    displayName: 'Golounge Dark',
     colors: {
-      primary: '#F0B825',
-      secondary: '#B47C00',
-      accent: '#8C5C00',
-      background: '#0F172A',
-      text: '#F8FAFC',
-      success: '#10B981',
-      warning: '#F59E0B',
-      error: '#EF4444',
+      primary: '#FF5500', // Intense Orange
+      secondary: '#1A0804', // Very Dark Brown
+      accent: '#FFD700', // Gold
+      background: '#040201', // Deepest Coffee
+      text: '#FFFFFF',
+      success: '#00FA9A',
+      warning: '#FF8800',
+      error: '#FF2222',
     },
     roulette: {
       frame: {
-        goldGradient: ['#F0B825', '#B47C00', '#8C5C00'],
-        innerGlow: ['#FFFFE0', '#F0B825'],
-        texturePattern: '#B47C00',
-        borderGlow: '#FFF2AE',
-        innerBorderColor: '#FFF2AE',
-        outerBorderColor: '#4A3000',
-        markLinesColor: '#4A3000',
+        // Dark Copper/Gold
+        goldGradient: ['#E6B87D', '#C48A48', '#8B5A2B'], // Coppery Gold
+        innerGlow: ['#FFEEDD', '#C48A48'],
+        texturePattern: '#1A0804', // Dark brown pattern
+        borderGlow: '#FF5500', // Orange glow
+        innerBorderColor: '#FFD700',
+        outerBorderColor: '#000000',
+        markLinesColor: '#E6B87D',
       },
       segments: {
-        palette: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'],
+        palette: [
+          'url(#grad-gl-orange)',
+          'url(#grad-gl-dark)',
+          'url(#grad-gl-orange-2)',
+          'url(#grad-gl-dark-2)',
+          'url(#grad-gl-orange-3)',
+          'url(#grad-gl-dark)',
+        ],
         textColor: '#FFFFFF',
-        borderColor: '#FFFFFF',
+        borderColor: '#E6B87D', // Gold borders
+        textOrientation: 'radial',
+        customGradients: [
+          {
+            id: 'grad-gl-orange',
+            stops: [{ offset: '0%', color: '#FF7700' }, { offset: '100%', color: '#FF4400' }] // Vibrant Orange
+          },
+          {
+            id: 'grad-gl-dark',
+            stops: [{ offset: '0%', color: '#2B110A' }, { offset: '100%', color: '#160805' }] // Deep Chocolate
+          },
+          {
+            id: 'grad-gl-orange-2',
+            stops: [{ offset: '0%', color: '#FFAA00' }, { offset: '100%', color: '#FF6600' }] // Gold-Orange
+          },
+          {
+            id: 'grad-gl-dark-2',
+            stops: [{ offset: '0%', color: '#3E1C12' }, { offset: '100%', color: '#1F0B06' }] // Lighter Chocolate
+          },
+          {
+             id: 'grad-gl-orange-3',
+             stops: [{ offset: '0%', color: '#FFCC00' }, { offset: '100%', color: '#FF8800' }] // Bright Gold
+          }
+        ]
       },
       pointer: {
         offset: 0,
-        color: '#F0B825',
+        color: '#FFFFFF', // White pointer
       },
       spinButton: {
         glossyStart: '#FFFFFF',
-        glossyEnd: '#F0B825',
-        goldTop: '#F0B825',
-        goldMid: '#F0B825',
-        goldBottom: '#B47C00',
-        arrowMid: '#FFD700',
-        arrowEnd: '#F0B825',
-        outerStroke: '#A66F00',
-        innerStroke: '#800000',
-        glowFlood: '#FFDD00',
+        glossyEnd: '#FF5500', 
+        goldTop: '#E6B87D',
+        goldMid: '#C48A48',
+        goldBottom: '#8B5A2B',
+        arrowMid: '#FFFFFF',
+        arrowEnd: '#FFD700',
+        outerStroke: '#000000',
+        innerStroke: '#FFFFFF',
+        glowFlood: '#FF5500',
       },
     },
     global: {
       background: {
-        gradients: [],
+        gradients: [
+          // Texture layer (very subtle grid/diagonal)
+          'repeating-linear-gradient(45deg, rgba(255, 85, 0, 0.05) 0px, rgba(255, 85, 0, 0.05) 1px, transparent 1px, transparent 15px)',
+          
+          // Base Background (Deep Coffee/Black)
+          'radial-gradient(circle at center, #2B110A 0%, #040201 100%)' 
+        ],
         overlays: [],
+        confettiColors: ['#FF5500', '#FF8800', '#FFFFFF', '#C48A48']
       },
       text: {
-        primary: '#F8FAFC',
-        secondary: '#CBD5E1',
+        primary: '#FFFFFF',
+        secondary: '#E6B87D',
       },
       buttons: {
-        primary: 'bg-gradient-to-r from-[#F0B825] to-[#B47C00] hover:from-[#D4A020] hover:to-[#9A6600] text-white',
+        primary: 'bg-gradient-to-r from-[#FF7700] to-[#FF4400] hover:from-[#FF9900] hover:to-[#FF5500] text-white shadow-[0_4px_15px_rgba(255,85,0,0.4)]',
       },
       modal: {
-        background: 'linear-gradient(180deg, #0E0606, #07070C)',
-        boxShadow: '0 12px 32px -10px rgba(240, 184, 37, 0.6)',
-        accentGradient: 'bg-gradient-to-r from-[#F0B825] to-[#B47C00]',
+        background: 'linear-gradient(145deg, #1A0804 0%, #080302 100%)', // Dark Brown Modal
+        boxShadow: '0 10px 40px -10px rgba(255, 85, 0, 0.3)',
+        accentGradient: 'bg-gradient-to-r from-[#FF7700] to-[#FF4400]',
       },
       layout: {
         paddingAdjustments: {
-          container: '',
-          viewport: '',
+          container: 'pt-2',
+          viewport: 'pt-0',
         },
+        themeClass: 'theme-golounge',
       },
     },
   },
