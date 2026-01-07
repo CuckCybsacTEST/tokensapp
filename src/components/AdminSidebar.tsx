@@ -146,6 +146,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     const pathPrefix = basePath === 'admin' ? '/admin' : '/u';
 
     return [
+      ...(basePath === 'admin' ? [{
+        title: "ESTADÍSTICAS GLOBALES",
+        icon: ICONS.chart,
+        items: [
+          { href: `${pathPrefix}/statics`, label: "Estadísticas Globales", icon: ICONS.chart }
+        ]
+      }] : []),
       {
         title: "TOKENS RULETA",
         icon: ICONS.roulette,

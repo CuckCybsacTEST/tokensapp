@@ -218,6 +218,13 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "ESTADÍSTICAS GLOBALES",
+        icon: ICONS.chart,
+        items: [
+          { href: `${pathPrefix}/statics`, label: "Estadísticas Globales", icon: ICONS.chart }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "ESCÁNER MULTI-USO",
         icon: ICONS.qr,
         items: [
@@ -231,7 +238,9 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart },
           { href: `${pathPrefix}/prizes`, label: "Premios", icon: ICONS.star },
           { href: `${pathPrefix}/roulettebatches`, label: "Lotes", icon: ICONS.box },
-          { href: `${pathPrefix}/printroulette`, label: "Imprimir Pulseras", icon: ICONS.check }
+          { href: `${pathPrefix}/printroulette`, label: "Imprimir Pulseras", icon: ICONS.check },
+          { href: `${pathPrefix}/themes`, label: "Temas", icon: ICONS.star },
+          { href: `${pathPrefix}/roulettebatches/purge`, label: "Purge", icon: ICONS.check }
         ] : [
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart }
         ]
@@ -250,6 +259,17 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         icon: ICONS.qr,
         items: [
           { href: `${pathPrefix}/reusable-tokens`, label: "Gestión de Tokens", icon: ICONS.qr }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "SORTEOS QR",
+        icon: ICONS.qr,
+        items: [
+          { href: `${pathPrefix}/sorteos-qr?tab=batches`, label: "Lotes", icon: ICONS.qr },
+          { href: `${pathPrefix}/sorteos-qr?tab=policies`, label: "Políticas", icon: ICONS.check },
+          { href: `${pathPrefix}/sorteos-qr/purge`, label: "Purge", icon: ICONS.box },
+          { href: `${pathPrefix}/sorteos-qr?tab=stats`, label: "Estadísticas", icon: ICONS.chart },
+          { href: "/qr-generator", label: "Generador Público", icon: ICONS.star }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -276,7 +296,8 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         items: [
           { href: `${pathPrefix}/day-brief`, label: "Brief del día", icon: ICONS.check },
           { href: `${pathPrefix}/tasks`, label: "Tareas", icon: ICONS.check },
-          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.users }
+          { href: `${pathPrefix}/tasks/status`, label: "Métricas por colaborador", icon: ICONS.users },
+          { href: `${pathPrefix}/tasks/metrics`, label: "Métricas de Tareas", icon: ICONS.chart }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -296,7 +317,8 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
           { href: `${pathPrefix}/birthdays`, label: "Reservas", icon: ICONS.cake },
           { href: `${pathPrefix}/birthdays/packs`, label: "Gestión de packs", icon: ICONS.box },
           { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.users },
-          { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart }
+          { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart },
+          { href: `${pathPrefix}/birthdays/purge`, label: "Purge", icon: ICONS.check }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -332,40 +354,16 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "PERSONALIZACIÓN APP UPGRADE",
+        title: "UPGRADE",
         icon: ICONS.star,
         items: [
-          { href: "#", label: "Tema y Branding", icon: ICONS.star }
+          { href: "#", label: "Personalización de la App", icon: ICONS.star },
+          { href: "#", label: "Gestión de Trivias", icon: ICONS.check },
+          { href: "#", label: "Pedidos Musicales", icon: ICONS.music },
+          { href: "#", label: "Gestión de Fidelidad", icon: ICONS.star },
+          { href: "#", label: "Gestión Wifi", icon: ICONS.qr }
         ]
       }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "DISPONIBLE CON UN UPGRADE",
-        icon: ICONS.star,
-        items: [
-          { href: "#", label: "Gestión de Trivias", icon: ICONS.check }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "PEDIDOS MUSICALES UPGRADE",
-        icon: ICONS.music,
-        items: [
-          { href: "#", label: "Sistema de Música", icon: ICONS.music }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "GESTIÓN DE FIDELIDAD UPGRADE",
-        icon: ICONS.star,
-        items: [
-          { href: "#", label: "Programa de Lealtad", icon: ICONS.star }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "GESTIÓN WIFI UPGRADE",
-        icon: ICONS.qr,
-        items: [
-          { href: "#", label: "Control de Red", icon: ICONS.qr }
-        ]
-      }] : [])
     ];
 
     return groups;
@@ -374,12 +372,12 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
   const allGroups = getSidebarGroups(basePath);
   const sidebarGroups = allGroups.filter(group => {
     if (activeTab === 'upgrade') {
-      return group.title.includes('PERSONALIZACIÓN APP UPGRADE') || group.title.includes('DISPONIBLE CON UN UPGRADE') || group.title.includes('PEDIDOS MUSICALES UPGRADE') || group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') || group.title.includes('GESTIÓN WIFI UPGRADE');
+      return group.title === 'UPGRADE';
     }
     if (activeTab === 'purge') {
       return group.items.some(item => item.href.includes('/purge'));
     }
-    return !group.title.includes('PERSONALIZACIÓN APP UPGRADE') && !group.title.includes('DISPONIBLE CON UN UPGRADE') && !group.title.includes('PEDIDOS MUSICALES UPGRADE') && !group.title.includes('GESTIÓN DE FIDELIDAD UPGRADE') && !group.title.includes('GESTIÓN WIFI UPGRADE');
+    return group.title !== 'UPGRADE';
   }).map(group => {
     if (activeTab === 'purge') {
       if (group.title === 'TOKENS RULETA') {
