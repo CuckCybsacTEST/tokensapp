@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { DateTime } from "luxon";
 import Link from 'next/link';
 
@@ -195,6 +195,11 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
     }
   }, [tokenId]);
 
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState(false);
+  const [autoRedeemAttempted, setAutoRedeemAttempted] = useState(false);
+
   async function handleMarkDelivered() {
     setMarkingDelivery(true);
     setDeliveryError(null);
@@ -214,6 +219,71 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
       setMarkingDelivery(false);
     }
   }
+
+  const handleRedeem = useCallback(async () => {
+    setRedeeming(true);
+    setRedeemError(null);
+    try {
+      const res = await fetch(`/api/reusable/${tokenId}/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al redimir token');
+      setRedeemSuccess(true);
+      // Recargar datos del token
+      const response = await fetch(`/api/reusable/${tokenId}`);
+      const newData = await response.json();
+      if (response.ok) {
+        setTokenData(newData.token);
+      }
+      // Limpiar URL
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch (err: any) {
+      setRedeemError(err.message || 'Error desconocido');
+    } finally {
+      setRedeeming(false);
+    }
+  }, [tokenId, setRedeeming, setRedeemError, setRedeemSuccess, setTokenData]);
+
+  // Calculations moved up to avoid hook ordering issues
+  const now = DateTime.now().setZone('America/Lima');
+  let isExpired = false;
+  let isDisabled = false;
+  let maxUses = 1;
+  let canRedeem = false;
+  let formattedExpiry = '';
+
+  if (tokenData) {
+    const expiryDate = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
+    const isExpiredByDate = expiryDate <= now;
+
+    let isOutsideTimeWindow = false;
+    if (tokenData.startTime && tokenData.endTime) {
+      // @ts-ignore - hour property exists in Luxon DateTime
+      const currentHour = now.hour;
+      const startHour = parseInt(tokenData.startTime.split(':')[0]);
+      const endHour = parseInt(tokenData.endTime.split(':')[0]);
+      isOutsideTimeWindow = currentHour < startHour || currentHour >= endHour;
+    }
+
+    isExpired = isExpiredByDate || isOutsideTimeWindow;
+    isDisabled = tokenData.disabled;
+    maxUses = tokenData.maxUses || 1;
+    canRedeem = !isExpired && !isDisabled && tokenData.usedCount < maxUses;
+    formattedExpiry = DateTime.fromJSDate(new Date(tokenData.expiresAt)).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
+  }
+
+  // Handle redeem query param
+  useEffect(() => {
+    if (!autoRedeemAttempted && searchParams.redeem === 'true' && tokenData && canRedeem && isLoggedIn && !isStaff) {
+      handleRedeem();
+      setAutoRedeemAttempted(true);
+    }
+  }, [searchParams.redeem, tokenData, canRedeem, isLoggedIn, isStaff, handleRedeem, autoRedeemAttempted]);
 
   if (loading) {
     return (
@@ -247,27 +317,6 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
     );
   }
 
-  // Check if token is expired (either by date or time window)
-  const now = DateTime.now().setZone('America/Lima');
-  const expiryDate = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
-  const isExpiredByDate = expiryDate <= now;
-
-  // Check time window if specified
-  let isOutsideTimeWindow = false;
-  if (tokenData.startTime && tokenData.endTime) {
-    // @ts-ignore - hour property exists in Luxon DateTime
-    const currentHour = now.hour;
-    const startHour = parseInt(tokenData.startTime.split(':')[0]);
-    const endHour = parseInt(tokenData.endTime.split(':')[0]);
-    isOutsideTimeWindow = currentHour < startHour || currentHour >= endHour;
-  }
-
-  const isExpired = isExpiredByDate || isOutsideTimeWindow;
-  const isDisabled = tokenData.disabled;
-  const maxUses = tokenData.maxUses || 1;
-  const canRedeem = !isExpired && !isDisabled && tokenData.usedCount < maxUses;
-  const formattedExpiry = DateTime.fromJSDate(new Date(tokenData.expiresAt)).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
-
   // Si el token está deshabilitado, mostrar UI especial
   if (tokenData.disabled) {
     return (
@@ -280,6 +329,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             <p className="text-white/60 mb-6 sm:mb-8 text-sm leading-relaxed">
                 Este token ha sido invalidado por la administración.
             </p>
+            <ExpirationCountdown expiresAt={tokenData.expiresAt} />
             <Link
               href={isAdmin ? "/admin" : isStaff ? "/u" : "/"}
               className="text-white/40 hover:text-white text-sm transition-colors flex items-center justify-center gap-2 w-full"
@@ -292,21 +342,22 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
     );
   }
 
-  // Si el token ya fue entregado, mostrar UI especial
-  if (tokenData.deliveredAt) {
+  // Si el token ya fue completamente usado (usedCount >= maxUses), mostrar UI especial
+  if (tokenData.usedCount >= maxUses) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#0E0606] text-white p-4 sm:p-6 relative overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-600/20 rounded-full blur-[100px]" />
 
         <div className="relative z-10 max-w-sm sm:max-w-md w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 text-center">
             <div className="text-4xl sm:text-6xl mb-4 sm:mb-6">✅</div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">¡Token Canjeado!</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2 text-white">¡Token Agotado!</h1>
             <p className="text-white/60 mb-4 sm:mb-6 text-sm leading-relaxed">
-                Este token ya fue canjeado y entregado exitosamente. ¡Que lo disfrutes!
+                Este token ha alcanzado el límite de usos disponibles. ¡Gracias por participar!
             </p>
             <div className="inline-block bg-green-500/10 border border-green-500/20 rounded-lg px-3 sm:px-4 py-2 text-xs text-green-400 mb-6 sm:mb-8">
-                Entregado el: {DateTime.fromISO(tokenData.deliveredAt).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}
+                Usos completados: {tokenData.usedCount}/{maxUses}
             </div>
+            <ExpirationCountdown expiresAt={tokenData.expiresAt} />
             <Link
               href={isAdmin ? "/admin" : isStaff ? "/u" : "/"}
               className="text-white/40 hover:text-white text-sm transition-colors flex items-center justify-center gap-2 w-full"
@@ -334,6 +385,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             <div className="inline-block bg-white/5 rounded-lg px-3 sm:px-4 py-2 text-xs text-white/40 mb-6 sm:mb-8">
                 Expiró el: {formattedExpiry}
             </div>
+            <ExpirationCountdown expiresAt={tokenData.expiresAt} />
             <Link
               href={isAdmin ? "/admin" : isStaff ? "/u" : "/"}
               className="text-white/40 hover:text-white text-sm transition-colors flex items-center justify-center gap-2 w-full"
@@ -467,13 +519,40 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             {/* Redeem Button - Only show if logged in and can redeem and not staff */}
             {canRedeem && isLoggedIn && !isStaff && (
                 <div className="w-full mt-3 sm:mt-4">
-                    <Link
-                        href={`?redeem=true`}
-                        className="w-full bg-[#FF4D2E] hover:bg-[#FF6542] text-white font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] text-sm sm:text-base"
+                    <button
+                        onClick={handleRedeem}
+                        disabled={redeeming}
+                        className={`w-full font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base ${
+                            redeeming
+                                ? 'bg-gray-600 cursor-not-allowed'
+                                : 'bg-[#FF4D2E] hover:bg-[#FF6542] active:scale-[0.98] text-white'
+                        }`}
                     >
-                        <span>🎁</span>
-                        <span>Canjear Premio</span>
-                    </Link>
+                        {redeeming ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Procesando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>🎁</span>
+                                <span>Canjear Premio</span>
+                            </>
+                        )}
+                    </button>
+                    {redeemError && (
+                        <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-xs text-left">
+                            ⚠️ {redeemError}
+                        </div>
+                    )}
+                    {redeemSuccess && (
+                        <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-200 text-xs text-left">
+                        🎉 ¡Premio canjeado! Usos restantes: {(tokenData.maxUses || 1) - tokenData.usedCount - 1}
+                        </div>
+                    )}
                 </div>
             )}
 

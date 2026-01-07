@@ -144,6 +144,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
         // A falta de conteo de giros centralizado en nuevo modelo, inicializamos sólo con base fija.
         const res = await fetch(`/api/admin/daily-tokens?day=${y}-${m}-${d}`, {
           cache: "no-store",
+          signal: AbortSignal.timeout(5000), // 5 second timeout for this non-critical call
         });
         if (!res.ok) {
           setSpinCounter(SPIN_BASE_OFFSET);
@@ -151,7 +152,9 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
         }
         // El endpoint diario todavía no expone spins; dejamos base sola.
         if (!abort) setSpinCounter(SPIN_BASE_OFFSET);
-      } catch {
+      } catch (dailyTokensError) {
+        // Silently fail for daily tokens - not critical for roulette functionality
+        console.warn("Failed to load daily tokens stats:", dailyTokensError);
         if (!abort) setSpinCounter(SPIN_BASE_OFFSET);
       }
     })();
@@ -298,7 +301,29 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
       } catch (err) {
         if (!abort) {
           console.error("Error cargando datos:", err);
-          if (!softSwitchRef.current) setError(err instanceof Error ? err.message : "Error desconocido");
+          // Check if it's a network/server error
+          const isServerError = err instanceof Error && (
+            err.message.includes('502') || 
+            err.message.includes('503') || 
+            err.message.includes('504') ||
+            err.message.includes('Application failed to respond') ||
+            err.message.includes('Tiempo de espera agotado')
+          );
+          
+          if (isServerError && !softSwitchRef.current) {
+            setError("Error de conexión con el servidor. Reintentando automáticamente...");
+            // Auto-retry after a short delay
+            setTimeout(() => {
+              if (!abort) {
+                setError(null);
+                setLoading(true);
+                // Trigger reload by updating activeTokenId
+                setActiveTokenId(prev => prev);
+              }
+            }, 3000);
+          } else if (!softSwitchRef.current) {
+            setError(err instanceof Error ? err.message : "Error desconocido");
+          }
         }
       } finally {
         await minPromise;

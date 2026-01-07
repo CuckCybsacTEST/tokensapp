@@ -4,6 +4,22 @@ import { computeBatchStats } from '@/lib/batchStats';
 
 export const dynamic = 'force-dynamic';
 
+// Helper function to retry database operations
+async function withRetry<T>(operation: () => Promise<T>, maxRetries = 2, delay = 100): Promise<T> {
+  let lastError: Error;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      if (i < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }
+  throw lastError!;
+}
+
 function error(code: string, message: string, status = 400) {
   return NextResponse.json({ ok: false, code, message }, { status });
 }
@@ -29,24 +45,24 @@ export async function GET(req: NextRequest) {
     // Batches cuyo functionalDate cae exactamente en el rango del día Lima
     // Usamos any para evitar problemas de tipado mientras el cliente se regenera
     const anyPrisma = prisma as any;
-    const batches = await anyPrisma.batch.findMany({
+    const batches: any[] = await withRetry(() => anyPrisma.batch.findMany({
       where: { functionalDate: { gte: functionalStart, lt: functionalEnd } },
       orderBy: { createdAt: 'asc' },
       include: { tokens: { include: { prize: true } } }
-    });
+    }));
 
     let basis: 'functionalDate' | 'createdAt-fallback' = 'functionalDate';
-    let effectiveBatches = batches;
+    let effectiveBatches: any[] = batches;
 
     if (effectiveBatches.length === 0) {
       // Fallback legacy: usar tokens creados ese día (createdAt dentro de la ventana local)
       // Para eso calculamos rango real de createdAt en UTC: local 00:00 -> UTC +5h, local fin -> UTC +5h
       const startCreated = functionalStart; // coincide con functionalStart
       const endCreated = functionalEnd; // coincide
-      const legacyTokens = await anyPrisma.token.findMany({
+      const legacyTokens: any[] = await withRetry(() => anyPrisma.token.findMany({
         where: { createdAt: { gte: startCreated, lt: endCreated }, batch: { functionalDate: null } },
         include: { prize: true, batch: true }
-      });
+      }));
       if (legacyTokens.length) {
         // Agrupar manualmente por batch
         const byBatch: Record<string, any> = {};

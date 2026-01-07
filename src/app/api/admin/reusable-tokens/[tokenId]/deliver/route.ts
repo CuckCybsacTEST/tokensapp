@@ -37,18 +37,19 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       return apiError('TOKEN_NOT_FOUND', 'Token no encontrado', undefined, 404);
     }
 
-    // Verificar que no esté ya entregado
-    if (token.deliveredAt) {
-      return apiError('ALREADY_DELIVERED', 'Token ya fue entregado', undefined, 409);
+    // Verificar que no esté ya agotado
+    if (token.usedCount >= token.maxUses) {
+      return apiError('ALREADY_DELIVERED', 'Token agotado', undefined, 409);
     }
 
-    // Marcar como entregado
+    // Marcar como entregado e incrementar contador
     const deliveredAt = new Date();
     await prisma.reusableToken.update({
       where: { id: tokenId },
       data: {
         deliveredAt,
-        deliveredByUserId: session.userId
+        deliveredByUserId: session.userId,
+        usedCount: { increment: 1 }
       }
     });
 
