@@ -180,7 +180,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         title: "TOKENS REUTILIZABLES",
         icon: ICONS.qr,
         items: [
-          { href: `${pathPrefix}/reusable-tokens`, label: "Gestión de Tokens", icon: ICONS.qr }
+          { href: `${pathPrefix}/reusable-tokens`, label: "Gestión de Tokens", icon: ICONS.qr },
+          { href: `${pathPrefix}/reusable-tokens/purge`, label: "Purge", icon: ICONS.check }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
