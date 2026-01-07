@@ -1290,3 +1290,15 @@ model Survive2025Run {
   @@index([eventId, score(sort: Desc), bestMs(sort: Desc)])
   @@map("survive2025_runs")
 }
+
+model GalleryImage {
+  id             String    @id @default(cuid())
+  src            String
+  alt            String?
+  width          Int
+  height         Int
+  blurDataUrl    String?
+  createdAt      DateTime  @default(now())
+
+  @@map("marketing_gallery")
+}

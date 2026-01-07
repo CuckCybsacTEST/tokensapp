@@ -12,13 +12,63 @@ interface GallerySectionProps {
   }[];
 }
 
-export function GallerySection({ gallery }: GallerySectionProps) {
+interface GalleryImage {
+  id: string;
+  src: string;
+  alt: string | null;
+  blurDataUrl?: string | null;
+}
+
+interface DisplayImage {
+  src: string;
+  alt: string;
+  blur?: string | null;
+}
+
+export function GallerySection({ gallery: initialGallery }: GallerySectionProps) {
+  const [dbImages, setDbImages] = useState<GalleryImage[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar imágenes dinámicas desde el API al montar
+  useEffect(() => {
+    async function loadImages() {
+      try {
+        const res = await fetch("/api/admin/gallery/upload");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.images && data.images.length > 0) {
+            setDbImages(data.images);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading gallery:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadImages();
+  }, []);
+
+  // Usar imágenes de DB si existen, sino usar las del prop (fallback/static)
+  // Normalizar tipo para incluir blur opcional
+  const displayImages: DisplayImage[] = dbImages.length > 0 
+    ? dbImages.map(img => ({ src: img.src, alt: img.alt || "Show Highlight", blur: img.blurDataUrl }))
+    : initialGallery.map(img => ({ ...img, blur: null }));
+
   // Normalizamos a mínimo 12 elementos (placeholder) para futuras expansiones.
   const padded = useMemo(() => {
-    const arr = [...gallery];
-    while (arr.length < 12) arr.push({ src: "#", alt: "Momento" });
+    const arr: DisplayImage[] = [...displayImages];
+    const filler: DisplayImage = { src: "#", alt: "Momento", blur: null }; 
+    // Rellenar hasta 12 solo si no hay data real suficiente o para completar grid
+    // Si tenemos > 8 imagenes reales, mejor mostrar solo reales o multiplo de 4
+    if (arr.length > 0) {
+       // Opcional: solo rellenar si son muy poquitas (< 4) para no romper layout
+       while (arr.length < 8) arr.push(filler);
+    } else {
+       while (arr.length < 12) arr.push(filler); 
+    }
     return arr;
-  }, [gallery]);
+  }, [displayImages]);
 
   const [tallMobile, setTallMobile] = useState(false);
   const [offsetMobile, setOffsetMobile] = useState(false);
@@ -106,11 +156,13 @@ export function GallerySection({ gallery }: GallerySectionProps) {
                 {item.src && item.src !== "#" ? (
                   <Image
                     src={item.src}
-                    alt={item.alt}
+                    alt={item.alt || "Show"}
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 280px"
-                    priority={false}
+                    priority={index < 4}
+                    placeholder={item.blur ? "blur" : "empty"}
+                    blurDataURL={item.blur || undefined}
                   />
                 ) : (
                   <div

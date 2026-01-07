@@ -308,6 +308,13 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "CONTENIDO VISUAL",
+        icon: ICONS.film,
+        items: [
+          { href: `${pathPrefix}/marketing/gallery`, label: "Galería de Fotos", icon: ICONS.film }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "VENTA DE TICKETS",
         icon: ICONS.check,
         items: [
