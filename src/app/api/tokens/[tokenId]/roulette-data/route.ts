@@ -93,7 +93,7 @@ export async function GET(
     const reservedAny = await withRetry(() => prisma.$queryRaw<Array<{ id: string }>>`
       SELECT t.id FROM "Token" t
       JOIN "Prize" p ON p.id = t."prizeId"
-      WHERE p.key = 'retry' AND t."pairedNextTokenId" = \${token.id} AND t."revealedAt" IS NULL
+      WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id} AND t."revealedAt" IS NULL
       LIMIT 1
     `);
     if ((reservedAny as any[]).length > 0 && !token.disabled) {
@@ -108,7 +108,7 @@ export async function GET(
         const rows = await withRetry(() => prisma.$queryRaw<Array<{ id: string }>>`
           SELECT t.id FROM "Token" t
           JOIN "Prize" p ON p.id = t."prizeId"
-          WHERE p.key = 'retry' AND t."pairedNextTokenId" = \${token.id} AND t."revealedAt" IS NOT NULL
+          WHERE p.key = 'retry' AND t."pairedNextTokenId" = ${token.id} AND t."revealedAt" IS NOT NULL
           LIMIT 1
         `);
         if (rows.length > 0) {
