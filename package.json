@@ -10,7 +10,7 @@
     "start": "next start",
     "start:standalone": "node .next/standalone/server.js",
     "prebuild": "node -e \"if(!process.env.TOKEN_SECRET){console.warn('[warn] TOKEN_SECRET no definido en build: se usará secreto efímero.');}\"",
-    "start:prod": "prisma migrate deploy && next start",
+    "start:prod": "npx prisma db push --accept-data-loss && next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
