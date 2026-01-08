@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import styles from "./rouletteLayout.module.css";
 import { Metadata } from "next";
 import RouletteClientPage from "./RouletteClientPage";
@@ -44,7 +44,9 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
           <div
             className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}
           >
-            <RouletteClientPage theme={theme} />
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center text-white/50">Cargando experiencia...</div>}>
+              <RouletteClientPage theme={theme} />
+            </Suspense>
           </div>
           <footer className="relative z-[1] pt-0 text-center text-white/50 text-xs roulette-footer">
             <p>© 2025 Go Lounge!</p>

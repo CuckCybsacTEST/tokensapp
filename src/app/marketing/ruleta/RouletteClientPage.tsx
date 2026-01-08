@@ -656,7 +656,9 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     );
   }
 
-  if (allowRestrictedScreens && new Date(token?.expiresAt || 0) < new Date()) {
+  const isExpired = isHydrated && token?.expiresAt && new Date(token.expiresAt) < new Date();
+
+  if (allowRestrictedScreens && isExpired) {
     return (
       <div className={`text-center py-16 max-w-md mx-auto ${getThemeClass(themeConfig)}`}>
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-6">
