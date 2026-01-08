@@ -5,10 +5,18 @@ import { createClient } from "@supabase/supabase-js";
 
 // Init Clients
 const prisma = new PrismaClient();
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service key for storage admin actions (delete/upload)
-);
+
+// Create Supabase client only when needed and with validation
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase configuration missing. NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be defined.");
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +35,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Clean Storage Bucket (Optional but recommended to save space)
     // We list all files in 'marketing-gallery' and delete them
+    const supabase = getSupabaseClient();
     const { data: existingFiles } = await supabase.storage.from("marketing-gallery").list();
     if (existingFiles && existingFiles.length > 0) {
       const paths = existingFiles.map((f) => f.name);
@@ -59,6 +68,7 @@ export async function POST(req: NextRequest) {
       const blurDataUrl = `data:image/webp;base64,${blurBuffer.toString("base64")}`;
 
       // Upload to Supabase
+      const supabase = getSupabaseClient();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("marketing-gallery")
