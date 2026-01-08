@@ -20,7 +20,7 @@ interface RuletaSearchParams {
 }
 
 export default function RuletaPage({ searchParams }: { searchParams: RuletaSearchParams }) {
-  const tokenId = searchParams.tokenId || "";
+  // const tokenId = searchParams.tokenId || "";
   // Usar tema de parámetros o por defecto 'default' (antes 'christmas')
   const theme = (searchParams.theme as ThemeName) || "default";
 
@@ -44,7 +44,7 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
           <div
             className={`relative z-[1] flex-1 w-full max-w-5xl mx-auto flex flex-col ${styles.rouletteViewport}`}
           >
-            <RouletteClientPage tokenId={tokenId} theme={theme} />
+            <RouletteClientPage theme={theme} />
           </div>
           <footer className="relative z-[1] pt-0 text-center text-white/50 text-xs roulette-footer">
             <p>© 2025 Go Lounge!</p>

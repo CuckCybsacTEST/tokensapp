@@ -13,6 +13,7 @@ import CanvasConfetti from "@/components/visual/CanvasConfetti";
 import { ThemeName } from "@/lib/themes/types";
 import { useRouletteTheme } from "@/lib/themes/useRouletteTheme";
 import { useRouletteSounds } from "@/hooks/useRouletteSounds";
+import { useSearchParams } from "next/navigation";
 
 // Confetti ahora usando canvas para menos costo en DOM
 const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowMotion?: boolean; colors?: string[] }) => (
@@ -44,11 +45,13 @@ interface TokenShape {
 }
 
 interface RouletteClientPageProps {
-  tokenId: string;
   theme?: ThemeName;
 }
 
-export default function RouletteClientPage({ tokenId, theme: propTheme = "default" }: RouletteClientPageProps) {
+export default function RouletteClientPage({ theme: propTheme = "default" }: RouletteClientPageProps) {
+  const searchParams = useSearchParams();
+  const [isHydrated, setIsHydrated] = useState(false);
+  const tokenId = isHydrated ? (searchParams?.get('tokenId') || "") : "";
   // Usar el hook de tema para obtener la configuración
   const { theme: contextTheme, config } = useRouletteTheme();
   const theme = propTheme || contextTheme;
@@ -60,6 +63,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
   // Mark initial mount
   useEffect(() => {
     perfMark("page_mount");
+    setIsHydrated(true);
   }, []);
   const [loading, setLoading] = useState(true);
   // Token activo en UI (permite cambiar sin navegación dura)
@@ -192,7 +196,7 @@ export default function RouletteClientPage({ tokenId, theme: propTheme = "defaul
         }
       }
     }
-  }, [token, elements, phase, suppressRevealed]);
+  }, [token, elements, suppressRevealed]);
 
   useEffect(() => {
     // Si el prop cambia (navegación externa), sincroniza estado base
