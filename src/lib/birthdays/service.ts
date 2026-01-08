@@ -616,8 +616,8 @@ export async function generateInviteTokens(
         code = generateCode(10);
       }
       const baseStatus = 'active';
-      // Usar expiración diferente según el tipo de token
-      const tokenExpiration = kind === 'host' ? hostExp : guestExp;
+      // Use guest expiration for the universal token
+      const tokenExpiration = guestExp;
       const token = await tx.inviteToken.create({
         data: {
           reservationId,
@@ -641,11 +641,10 @@ export async function generateInviteTokens(
       return updated;
     }
 
-    // detect if we already have host and guest tokens in any state
-    const hasHost = existing.find((e: any) => e.kind === 'host');
+    // detect if we already have guest token (now single token for both roles)
     const hasGuest = existing.find((e: any) => e.kind === 'guest');
 
-    if (!hasHost || opts?.force) await createToken('host', 1);
+    // Only create guest token (universal for host/guest roles)
     if (!hasGuest || opts?.force) await createToken('guest', Math.max(1, target));    // If forcing and tokensGeneratedAt was null, set it now
     if (opts?.force && !reservation.tokensGeneratedAt) {
       await tx.birthdayReservation.update({ where: { id: reservationId }, data: { tokensGeneratedAt: nowDt } });

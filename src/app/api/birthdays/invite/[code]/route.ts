@@ -209,114 +209,72 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
   const code = params.code;
   let body: any = {};
   try { const txt = await req.text(); body = txt ? JSON.parse(txt) : {}; } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400, cors); }
+  const role = body.role; // 'host' or 'guest'
+  if (!role || !['host', 'guest'].includes(role)) return apiError('INVALID_ROLE','Rol inválido: debe ser "host" o "guest"',undefined,400, cors);
   try {
     // Fetch existing token + reservation to know kind before redeem
   const tokenPre = await prisma.inviteToken.findUnique({ where: { code }, include: { reservation: true } });
     if (!tokenPre) return apiError('NOT_FOUND','Token no encontrado',undefined,404, cors);
     const resId = tokenPre.reservationId;
-    // Redeem (multi-use aware)
+    // Redeem based on role
     let redeemedResult = null as any;
-    if (tokenPre.kind === 'host') {
-      // Host token should be single-use logically; allow idempotent re-validation
-      if (tokenPre.status === 'redeemed' || tokenPre.status === 'exhausted') {
-        // Token already redeemed/exhausted - don't update hostArrivedAt, just ensure it's set
-        console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Token already redeemed/exhausted, checking hostArrivedAt', { 
-          resId, 
-          currentHostArrivedAt: ((tokenPre as any).reservation as any).hostArrivedAt 
-        });
-        
-        // If hostArrivedAt is not set (shouldn't happen but safety check), set it to reservation time
-        if (!((tokenPre as any).reservation as any).hostArrivedAt) {
-          const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
-          const reservationDate = (reservation as any).date;
-          const timeSlot = (reservation as any).timeSlot;
-          const [hours, minutes] = timeSlot.split(':').map(Number);
-          // Use Luxon for proper timezone handling
-          const reservationDateTime = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
-          const hostArrivalDateTime = reservationDateTime.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
-          const hostArrivalTime = hostArrivalDateTime.toJSDate();
-          
-          console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting missing hostArrivedAt to reservation time', { resId, hostArrivalTime: hostArrivalTime.toISOString() });
-          await prisma.birthdayReservation.update({ 
-            where: { id: resId }, 
-            data: ({ hostArrivedAt: hostArrivalTime } as any) 
-          });
-        }
-        
-        // REMOVED: No longer recalculate expirations when host arrives - expiration is fixed to reservation_time + 45min
-        
-        // Get last guest arrival time for response
-        const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
-          where: { 
-            reservationId: resId,
-            token: { kind: 'guest' }
-          },
-          orderBy: { redeemedAt: 'desc' },
-          select: { redeemedAt: true }
-        });
-        
-        const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
-        return apiOk({
-          idempotent: true,
-          token: { code: tokenPre.code, kind: tokenPre.kind, status: tokenPre.status, usedCount: (tokenPre as any).usedCount, maxUses: (tokenPre as any).maxUses },
-          arrival: { 
-            hostArrivedAt: (reservation as any)?.hostArrivedAt || null, 
-            guestArrivals: (reservation as any)?.guestArrivals ?? 0,
-            lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
-          }
-        }, 200, cors);
-      }
-      redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
-      // Set hostArrivedAt to reservation time (not current time)
+    if (role === 'host') {
+      // Check if host already arrived
       const reservation = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
-      const reservationDate = (reservation as any).date;
-      const timeSlot = (reservation as any).timeSlot; // e.g., "20:00"
-      
-      // Parse timeSlot and combine with reservation date using Luxon for proper timezone handling
+      if ((reservation as any).hostArrivedAt) {
+        return apiError('HOST_ALREADY_ARRIVED','El cumpleañero ya fue registrado',undefined,400, cors);
+      }
+      // For host, redeem the token (even if guest token, to mark as used if needed, but actually for host we don't consume use)
+      // Actually, for host, we don't redeem the token, just set hostArrivedAt
+      // But to keep consistency, perhaps redeem if it's the first time, but since single token, maybe not.
+      // For simplicity: don't redeem the token for host, just set hostArrivedAt
+      // For host, don't redeem token, just set hostArrivedAt to reservation time
+      const resForHost = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
+      const reservationDate = (resForHost as any).date;
+      const timeSlot = (resForHost as any).timeSlot;
       const [hours, minutes] = timeSlot.split(':').map(Number);
-      // Interpretar reservationDate como fecha en zona Lima y agregar la hora del timeSlot
       const reservationDateTime = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
       const hostArrivalDateTime = reservationDateTime.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
       const hostArrivalTime = hostArrivalDateTime.toJSDate();
       
-      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Setting hostArrivedAt to reservation time', { 
-        resId, 
-        reservationDate: reservationDate.toISOString(),
-        timeSlot,
-        hostArrivalDateTime: hostArrivalDateTime.toISO(),
-        hostArrivalTime: hostArrivalTime.toISOString()
-      });
-      
-      const firstUpdateResult = await prisma.birthdayReservation.update({ 
+      await prisma.birthdayReservation.update({ 
         where: { id: resId }, 
         data: ({ hostArrivedAt: hostArrivalTime } as any) 
       });
-      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: First update result', { firstUpdateResult });
       
       // Auto-complete the reservation when host arrives
       await prisma.birthdayReservation.update({
         where: { id: resId },
         data: { status: 'completed' }
       });
-      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Auto-completed reservation due to host arrival', { resId });
       
-      // REMOVED: No longer recalculate expirations when host arrives - expiration is fixed to reservation_time + 45min
+      // Return without redeeming token
+      const lastGuestRedemption = await prisma.tokenRedemption.findFirst({
+        where: { 
+          reservationId: resId,
+          token: { kind: 'guest' }
+        },
+        orderBy: { redeemedAt: 'desc' },
+        select: { redeemedAt: true }
+      });
+      
+      return apiOk({
+        token: { code: tokenPre.code, kind: tokenPre.kind, status: tokenPre.status, usedCount: (tokenPre as any).usedCount, maxUses: (tokenPre as any).maxUses },
+        arrival: { 
+          hostArrivedAt: hostArrivalTime.toISOString(), 
+          guestArrivals: (reservation as any)?.guestArrivals ?? 0,
+          lastGuestArrivalAt: lastGuestRedemption?.redeemedAt?.toISOString() || null
+        }
+      }, 200, cors);
     } else {
-      // guest token: redeem the token when staff validates it (this represents guest arrival)
-      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Redeeming guest token');
+      // guest role: redeem the token
       redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
-      // After redeem, recalculate total guestArrivals = sum of usedCount for all guest tokens in this reservation
+      // Recalculate total guestArrivals
       const allGuestTokens = await prisma.inviteToken.findMany({
         where: { reservationId: resId, kind: 'guest' },
         select: { usedCount: true, code: true }
       });
       const totalGuestArrivals = allGuestTokens.reduce((sum, token) => sum + (token.usedCount || 0), 0);
-      console.log('[BIRTHDAYS] POST /api/birthdays/invite/[code]: Recalculating guestArrivals after redeem', {
-        resId,
-        guestTokensCount: allGuestTokens.length,
-        guestTokens: allGuestTokens.map(t => ({ code: t.code, usedCount: t.usedCount })),
-        totalGuestArrivals
-      });
       await prisma.birthdayReservation.update({ where: { id: resId }, data: ({ guestArrivals: totalGuestArrivals } as any) });
     }
     

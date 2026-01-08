@@ -10,33 +10,31 @@ import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, BIRTHDAY_CARDS_B
 type InviteTokenCardRow = { id: string; inviteTokenId: string; kind: 'host' | 'guest'; filePath: string; storageProvider?: string; storageKey?: string; storageUrl?: string; createdAt: Date };
 
 export async function ensureBirthdayCards(reservationId: string, baseUrl: string) {
-  // Fetch tokens (host + guest) first
+  // Fetch tokens (only guest now)
   const tokens = await prisma.inviteToken.findMany({ where: { reservationId }, orderBy: { code: 'asc' } });
   if (!tokens.length) {
     // Generate tokens idempotently
     await generateInviteTokens(reservationId, { force: false });
   }
   const updatedTokens = tokens.length ? tokens : await prisma.inviteToken.findMany({ where: { reservationId }, orderBy: { code: 'asc' } });
-  const host = updatedTokens.find(t => t.kind === 'host');
   const guest = updatedTokens.find(t => t.kind === 'guest');
-  if (!host || !guest) {
-    throw new Error('MISSING_TOKENS');
+  if (!guest) {
+    throw new Error('MISSING_GUEST_TOKEN');
   }
 
-  // Check existing cards via raw query (delegate may not exist yet if migration pending)
+  // Check existing cards via raw query (only for guest)
   let existing: InviteTokenCardRow[] = [];
   try {
     existing = await prisma.$queryRawUnsafe<InviteTokenCardRow[]>(
-      'SELECT id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" IN ($1,$2)',
-      host.id, guest.id
+      'SELECT id, "inviteTokenId", kind, "filePath", "storageProvider", "storageKey", "storageUrl", "createdAt" FROM "InviteTokenCard" WHERE "inviteTokenId" = $1',
+      guest.id
     );
   } catch (e) {
     // Table may not exist yet; proceed with creation which will fail similarly until migration applied.
     existing = [];
   }
-  const hasHost = existing.some(c => c.inviteTokenId === host.id);
   const hasGuest = existing.some(c => c.inviteTokenId === guest.id);
-  if (hasHost && hasGuest) {
+  if (hasGuest) {
     return {
       already: true,
       paths: existing.reduce<Record<string,string>>((acc, c) => {
@@ -53,8 +51,7 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
   const absDir = path.resolve(process.cwd(), 'public', relDir);
   await fs.promises.mkdir(absDir, { recursive: true });
 
-  // Redeem URLs
-  const hostUrl = `${baseUrl}/b/${encodeURIComponent(host.code)}`;
+  // Redeem URL (single for universal token)
   const guestUrl = `${baseUrl}/b/${encodeURIComponent(guest.code)}`;
   // celebrant first name for personalization
   const reservation = await prisma.birthdayReservation.findUnique({ where: { id: reservationId } });
@@ -64,7 +61,7 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
 
   const createdPaths: Record<string, string> = {};
 
-  async function create(kind: 'host' | 'guest', tokenId: string, code: string, url: string) {
+  async function create(kind: 'guest', tokenId: string, code: string, url: string) {
     // If card exists skip
     const prior = existing.find(c => c.inviteTokenId === tokenId);
     if (prior) {
@@ -72,7 +69,7 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
       return;
     }
 
-    // Generate image
+    // Generate image (use 'guest' kind for the card, but it's universal)
     const buf = await generateInviteCard(kind, code, url, 'png', celebrantFirst, reservationDateISO);
 
     // Create temp file
@@ -101,7 +98,6 @@ export async function ensureBirthdayCards(reservationId: string, baseUrl: string
     createdPaths[kind] = storageUrl;
   }
 
-  if (!hasHost) await create('host', host.id, host.code, hostUrl);
   if (!hasGuest) await create('guest', guest.id, guest.code, guestUrl);
 
   return { already: false, paths: createdPaths };
