@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getTicketPurchasesForUser } from '@/lib/tickets/service';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -23,50 +23,30 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Obtener todas las compras del usuario con detalles del show y tipo de ticket
-    const purchases = await prisma.ticketPurchase.findMany({
-      where: {
-        userId: session.userId,
-        status: {
-          in: ['CONFIRMED', 'PENDING'] // Incluir confirmadas y pendientes
-        }
-      },
-      include: {
-        ticketType: {
-          include: {
-            show: {
-              select: {
-                id: true,
-                title: true,
-                startsAt: true,
-                imageWebpPath: true,
-                status: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        purchasedAt: 'desc'
-      }
-    });
+    // Obtener todas las compras del usuario con detalles del show y tipo de ticket usando Supabase
+    const purchases = await getTicketPurchasesForUser(session.userId);
+
+    // Filtrar solo confirmadas y pendientes
+    const filteredPurchases = purchases.filter(purchase =>
+      purchase.status === 'CONFIRMED' || purchase.status === 'PENDING'
+    );
 
     // Formatear la respuesta
-    const tickets = purchases.map(purchase => ({
+    const tickets = filteredPurchases.map(purchase => ({
       id: purchase.id,
       purchaseId: purchase.id,
-      showId: purchase.ticketType.show.id,
-      showTitle: purchase.ticketType.show.title,
-      showDate: purchase.ticketType.show.startsAt,
-      showPoster: purchase.ticketType.show.imageWebpPath,
-      showStatus: purchase.ticketType.show.status,
-      ticketType: purchase.ticketType.name,
+      showId: purchase.ticketType?.show?.id,
+      showTitle: purchase.ticketType?.show?.title,
+      showDate: purchase.ticketType?.show?.startsAt,
+      showPoster: purchase.ticketType?.show?.imageWebpPath,
+      showStatus: purchase.ticketType?.show?.status,
+      ticketType: purchase.ticketType?.name,
       quantity: purchase.quantity,
       totalAmount: purchase.totalAmount,
       status: purchase.status,
       purchasedAt: purchase.purchasedAt,
       // Calcular si el ticket es válido (show no ha pasado)
-      isValid: purchase.ticketType.show.startsAt > new Date()
+      isValid: purchase.ticketType?.show?.startsAt ? new Date(purchase.ticketType.show.startsAt) > new Date() : false
     }));
 
     return NextResponse.json({

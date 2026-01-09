@@ -39,6 +39,7 @@ export function AdminShowsPage() {
   const [shows, setShows] = useState<ShowRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [success, setSuccess] = useState<string|null>(null);
   const [form, setForm] = useState({ title: '', startsAt: dtLocal(new Date().toISOString()), endsAt: '', slot: '' });
@@ -114,6 +115,25 @@ export function AdminShowsPage() {
       if (r.ok && j.ok) { updateShowLocally(id, j.show); toastSuccess('Archivado'); }
       else toastError(j.code || 'Error archivando');
     } catch (e:any) { toastError('Fallo de red'); }
+  }
+
+  async function cleanupExpired() {
+    if (!confirm('¿Archivar todos los shows publicados expirados? Esta acción no se puede deshacer.')) return;
+    setCleaning(true);
+    try {
+      const r = await fetch('/api/admin/shows/cleanup', { method: 'POST' });
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        toastSuccess(`Archivados ${j.archivedCount} shows expirados`);
+        fetchShows(); // refresh
+      } else {
+        toastError(j.code || 'Error limpiando');
+      }
+    } catch (e:any) {
+      toastError('Fallo de red');
+    } finally {
+      setCleaning(false);
+    }
   }
 
   function triggerUpload(id: string) {
@@ -240,6 +260,13 @@ export function AdminShowsPage() {
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors"
           >
             Refrescar
+          </button>
+          <button
+            onClick={cleanupExpired}
+            disabled={cleaning}
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed"
+          >
+            {cleaning ? 'Limpiando...' : 'Limpiar Expirados'}
           </button>
           {loading && <span className="text-sm text-gray-500">Cargando…</span>}
         </div>

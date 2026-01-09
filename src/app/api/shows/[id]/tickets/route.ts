@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getTicketTypesForShow } from '@/lib/tickets/service';
+import { getById } from '@/lib/shows/service';
 
 export async function GET(
   req: NextRequest,
@@ -7,14 +8,16 @@ export async function GET(
 ) {
   try {
     const showId = params.id;
+    console.log('Getting ticket types for show:', showId);
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Not set');
+    console.log('Supabase Key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Not set');
 
     // Verificar que el show existe y está publicado
-    const show = await prisma.show.findUnique({
-      where: { id: showId },
-      select: { id: true, status: true, startsAt: true }
-    });
+    const show = await getById(showId);
+    console.log('Show found:', show);
 
     if (!show || show.status !== 'PUBLISHED') {
+      console.log('Show not found or not published');
       return NextResponse.json(
         { error: 'Show not found or not available' },
         { status: 404 }
@@ -22,31 +25,33 @@ export async function GET(
     }
 
     // Obtener tipos de tickets disponibles para este show
-    const ticketTypes = await prisma.ticketType.findMany({
-      where: {
-        showId,
-        // Solo tickets que están disponibles actualmente
-        OR: [
-          { availableFrom: null, availableTo: null },
-          { availableFrom: { lte: new Date() }, availableTo: null },
-          { availableFrom: null, availableTo: { gte: new Date() } },
-          { availableFrom: { lte: new Date() }, availableTo: { gte: new Date() } }
-        ]
-      },
-      orderBy: { createdAt: 'asc' }
+    console.log('Getting ticket types for show:', showId);
+    const ticketTypes = await getTicketTypesForShow(showId);
+    console.log('Ticket types found:', ticketTypes);
+
+    // Filtrar por disponibilidad de tiempo (esto debería hacerse en la query de Supabase)
+    const now = new Date();
+    const availableTicketTypes = ticketTypes.filter(ticket => {
+      const availableFrom = ticket.availableFrom ? new Date(ticket.availableFrom) : null;
+      const availableTo = ticket.availableTo ? new Date(ticket.availableTo) : null;
+
+      if (!availableFrom && !availableTo) return true;
+      if (availableFrom && availableFrom > now) return false;
+      if (availableTo && availableTo < now) return false;
+      return true;
     });
 
     // Calcular disponibilidad para cada tipo de ticket
-    const ticketTypesWithAvailability = ticketTypes.map(ticket => ({
+    const ticketTypesWithAvailability = availableTicketTypes.map(ticket => ({
       id: ticket.id,
       name: ticket.name,
       description: ticket.description,
-      price: Number(ticket.price), // Convertir Decimal a número
+      price: ticket.price,
       capacity: ticket.capacity,
       soldCount: ticket.soldCount,
       availableCount: Math.max(0, ticket.capacity - ticket.soldCount),
-      availableFrom: ticket.availableFrom?.toISOString(),
-      availableTo: ticket.availableTo?.toISOString(),
+      availableFrom: ticket.availableFrom,
+      availableTo: ticket.availableTo,
     }));
 
     return NextResponse.json({

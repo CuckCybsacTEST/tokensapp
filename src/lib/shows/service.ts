@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { Show, ShowStatus } from '@prisma/client';
+import { supabaseAdmin } from '@/lib/supabase';
+import { ShowStatus } from '@prisma/client'; // keep for types
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -87,8 +87,19 @@ async function ensureUniqueSlug(base: string): Promise<string> {
   let slug = baseCandidate;
   let i = 2;
   while (true) {
-    const existing = await prisma.show.findUnique({ where: { slug } });
-    if (!existing) return slug;
+    const { data: existing, error } = await supabaseAdmin
+      .from('Show')
+      .select('id')
+      .eq('slug', slug)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      // No existe
+      return slug;
+    }
+    if (error) throw buildError('DATABASE_ERROR', error.message);
+    if (!existing) return slug; // aunque single debería lanzar si no existe
+
     slug = `${baseCandidate}-${i}`;
     i++;
     if (i > 50) {
@@ -114,7 +125,7 @@ function buildError(code: string, message?: string, http = 400, details?: any): 
  * Crea un show en estado DRAFT. Campos de imagen se inicializan con placeholders porque
  * el modelo actual define columnas NOT NULL. TODO: considerar permitir NULL en migración futura.
  */
-export async function createDraft(input: CreateDraftInput, ctx?: { actorRole?: string }): Promise<Show> {
+export async function createDraft(input: CreateDraftInput, ctx?: { actorRole?: string }): Promise<any> {
   const title = normalizeTitle(input.title || '');
   if (!isValidTitle(title)) throw buildError('INVALID_TITLE', 'Title length must be 1..120');
 
@@ -140,13 +151,14 @@ export async function createDraft(input: CreateDraftInput, ctx?: { actorRole?: s
   const baseSlug = providedSlug || 'show';
   const slug = await ensureUniqueSlug(baseSlug);
 
-  const show = await prisma.show.create({
-    data: {
+  const { data: show, error } = await supabaseAdmin
+    .from('Show')
+    .insert({
       title,
       slug,
       status: 'DRAFT',
-      startsAt,
-      endsAt,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt ? endsAt.toISOString() : null,
       slot,
       // Placeholders (ver nota en doc):
       imageOriginalPath: '',
@@ -157,16 +169,27 @@ export async function createDraft(input: CreateDraftInput, ctx?: { actorRole?: s
       bytesOriginal: 0,
       bytesOptimized: 0,
       publishedAt: null,
-    },
-  });
+    })
+    .select()
+    .single();
+
+  if (error) throw buildError('DATABASE_ERROR', error.message);
+  if (!show) throw buildError('CREATE_FAILED', 'Failed to create show');
   try { (await import('@/lib/shows/audit')).logShowEvent('show.create_draft', show.id, { actorRole: ctx?.actorRole }); } catch {}
   return show;
 }
 
-/** Obtiene un show por id (o lanza NOT_FOUND) */
-export async function getById(id: string): Promise<Show> {
-  const show = await prisma.show.findUnique({ where: { id } });
-  if (!show) throw buildError('NOT_FOUND', 'Show not found', 404);
+export async function getById(id: string): Promise<any> {
+  const { data: show, error } = await supabaseAdmin
+    .from('Show')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') throw buildError('NOT_FOUND', 'Show not found', 404);
+    throw buildError('DATABASE_ERROR', error.message);
+  }
   return show;
 }
 
@@ -176,56 +199,57 @@ export async function listAdmin(_filters: ListAdminFilters) {
   const filters = _filters || {};
   const page = Math.max(1, filters.page || 1);
   const pageSize = Math.min(100, Math.max(1, filters.pageSize || 20));
-  const where: any = {};
-  if (filters.status && filters.status !== 'ANY') where.status = filters.status;
-  if (filters.slot != null) where.slot = filters.slot;
-  if (filters.hasImage === true) {
-    where.width = { gt: 0 };
-    where.height = { gt: 0 };
-    where.imageWebpPath = { not: '' };
-  } else if (filters.hasImage === false) {
-    where.OR = [
-      { width: 0 },
-      { height: 0 },
-      { imageWebpPath: '' },
-    ];
+
+  let query = supabaseAdmin.from('Show').select('*', { count: 'exact' });
+
+  // Filters
+  if (filters.status && filters.status !== 'ANY') {
+    query = query.eq('status', filters.status);
   }
-  if (filters.from || filters.to) {
-    where.startsAt = {};
-    if (filters.from) where.startsAt.gte = new Date(filters.from);
-    if (filters.to) where.startsAt.lte = new Date(filters.to);
+  if (filters.slot != null) {
+    query = query.eq('slot', filters.slot);
+  }
+  if (filters.hasImage === true) {
+    query = query.gt('width', 0).gt('height', 0).neq('imageWebpPath', '');
+  } else if (filters.hasImage === false) {
+    query = query.or('width.eq.0,height.eq.0,imageWebpPath.is.null');
+  }
+  if (filters.from) {
+    query = query.gte('startsAt', filters.from);
+  }
+  if (filters.to) {
+    query = query.lte('startsAt', filters.to);
   }
   if (filters.search) {
     const term = filters.search.trim();
     if (term) {
-      where.OR = (where.OR || []).concat([
-        { title: { contains: term, mode: 'insensitive' } },
-        { slug: { contains: term, mode: 'insensitive' } },
-      ]);
+      const searchTerm = `%${term}%`;
+      // Simple search on title only for now
+      query = query.ilike('title', searchTerm);
     }
   }
 
-  const orderBy = (() => {
-    switch (filters.order) {
-      case 'startsAt_asc': return { startsAt: 'asc' as const };
-      case 'createdAt_desc': return { createdAt: 'desc' as const };
-      case 'startsAt_desc':
-      default: return { startsAt: 'desc' as const };
-    }
-  })();
+  // Order
+  const orderCol = filters.order === 'createdAt_desc' ? 'createdAt' : 'startsAt';
+  const ascending = filters.order === 'startsAt_asc';
+  query = query.order(orderCol, { ascending });
 
-  const [total, items] = await Promise.all([
-    prisma.show.count({ where }),
-    prisma.show.findMany({ where, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
-  ]);
+  // Pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
 
-  return { page, pageSize, total, items };
+  const { data: items, error, count } = await query;
+
+  if (error) throw buildError('DATABASE_ERROR', error.message);
+
+  return { page, pageSize, total: count || 0, items: items || [] };
 }
 
 export async function updatePartial(_id: string, _patch: UpdatePartialInput) {
   const id = _id;
   const patch = _patch || {};
-  const existing = await prisma.show.findUnique({ where: { id } });
+  const existing = await getById(id);
   if (!existing) throw buildError('NOT_FOUND', 'Show not found', 404);
   if (existing.status === 'ARCHIVED') throw buildError('ARCHIVED_IMMUTABLE', 'Archived show cannot be modified', 409);
 
@@ -283,23 +307,23 @@ export async function updatePartial(_id: string, _patch: UpdatePartialInput) {
       throw buildError('INVALID_ACTIVE_WINDOW', 'Show already expired');
     }
     // Fetch other active published
-    const others = await prisma.show.findMany({
-      where: {
-        status: 'PUBLISHED',
-        id: { not: existing.id },
-        OR: [ { endsAt: null }, { endsAt: { gt: now } } ],
-      },
-      select: { id: true, slot: true, startsAt: true, endsAt: true },
-    });
+    const { data: others, error: othersError } = await supabaseAdmin
+      .from('Show')
+      .select('id, slot, startsAt, endsAt')
+      .eq('status', 'PUBLISHED')
+      .neq('id', existing.id)
+      .or(`endsAt.is.null,endsAt.gt.${now.toISOString()}`);
+
+    if (othersError) throw buildError('DATABASE_ERROR', othersError.message);
 
     if (slot != null) {
-      const conflict = others.find(o => o.slot === slot);
+      const conflict = others.find((o: any) => o.slot === slot);
       if (conflict) {
         throw buildError('SLOT_CONFLICT', `Slot ${slot} already in use`, 409, { conflictShowId: conflict.id, slot });
       }
     } else {
       // Non-slot overlap check (ignore slotted shows)
-      const overlap = others.some(o => {
+      const overlap = others.some((o: any) => {
         if (o.slot != null) return false;
         const oStart = o.startsAt as Date;
         const oEnd = o.endsAt as Date | null;
@@ -330,7 +354,14 @@ export async function updatePartial(_id: string, _patch: UpdatePartialInput) {
     return existing; // no-op
   }
 
-  const updated = await prisma.show.update({ where: { id: existing.id }, data });
+  const { data: updated, error } = await supabaseAdmin
+    .from('Show')
+    .update(data)
+    .eq('id', existing.id)
+    .select()
+    .single();
+
+  if (error) throw buildError('DATABASE_ERROR', error.message);
   return updated;
 }
 
@@ -340,7 +371,7 @@ export async function replaceImage(_id: string, _file: File | Blob) {
 
 export async function publish(_id: string, ctx?: { actorRole?: string }) {
   const id = _id;
-  const show = await prisma.show.findUnique({ where: { id } });
+  const show = await getById(id);
   if (!show) throw buildError('NOT_FOUND', 'Show not found', 404);
   if (show.status === 'ARCHIVED') throw buildError('ARCHIVED_IMMUTABLE', 'Archived show cannot be published', 409);
   if (show.status === 'PUBLISHED') return show; // idempotente
@@ -360,16 +391,16 @@ export async function publish(_id: string, ctx?: { actorRole?: string }) {
   }
 
   // Obtenemos publicados activos (excluyendo expirados)
-  const activePublished = await prisma.show.findMany({
-    where: {
-      status: 'PUBLISHED',
-      id: { not: show.id },
-      OR: [ { endsAt: null }, { endsAt: { gt: now } } ],
-    },
-    select: { id: true, slot: true, startsAt: true, endsAt: true },
-  });
-  if (activePublished.length >= 4) {
-    throw buildError('MAX_PUBLISHED_REACHED', 'Maximum 4 published shows reached', 409, { activeCount: activePublished.length });
+  const { data: activePublished, error: apError } = await supabaseAdmin
+    .from('Show')
+    .select('id, slot, startsAt, endsAt')
+    .eq('status', 'PUBLISHED')
+    .neq('id', show.id)
+    .or(`endsAt.is.null,endsAt.gt.${now.toISOString()}`);
+
+  if (apError) throw buildError('DATABASE_ERROR', apError.message);
+  if ((activePublished || []).length >= 4) {
+    throw buildError('MAX_PUBLISHED_REACHED', 'Maximum 4 published shows reached', 409, { activeCount: (activePublished || []).length });
   }
 
   if (show.slot != null) {
@@ -393,34 +424,53 @@ export async function publish(_id: string, ctx?: { actorRole?: string }) {
 
   // Pequeña ventana de carrera: otro publish simultáneo podría cruzar el límite.
   // Mitigación ligera: recontar justo antes del update y si excede cancelar.
-  return await prisma.$transaction(async tx => {
-    const recalc = await tx.show.count({
-      where: { status: 'PUBLISHED', OR: [ { endsAt: null }, { endsAt: { gt: now } } ] },
-    });
-    if (recalc >= 4) throw buildError('MAX_PUBLISHED_REACHED', 'Maximum 4 published shows reached', 409, { activeCount: recalc });
-    // Si slot existe, asegurarse nuevamente que no haya conflicto
-    if (show.slot != null) {
-      const slotConflict = await tx.show.findFirst({ where: { status: 'PUBLISHED', slot: show.slot } });
-      if (slotConflict) throw buildError('SLOT_CONFLICT', `Slot ${show.slot} already in use`, 409, { conflictShowId: slotConflict.id, slot: show.slot });
-    }
-    const updated = await tx.show.update({
-      where: { id: show.id },
-      data: { status: 'PUBLISHED', publishedAt: show.publishedAt ?? new Date() },
-    });
+  const { count: recalc, error: countError } = await supabaseAdmin
+    .from('Show')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'PUBLISHED')
+    .or(`endsAt.is.null,endsAt.gt.${now.toISOString()}`);
+
+  if (countError) throw buildError('DATABASE_ERROR', countError.message);
+  if ((recalc || 0) >= 4) throw buildError('MAX_PUBLISHED_REACHED', 'Maximum 4 published shows reached', 409, { activeCount: recalc });
+
+  // Si slot existe, asegurarse nuevamente que no haya conflicto
+  if (show.slot != null) {
+    const { data: slotConflict, error: slotError } = await supabaseAdmin
+      .from('Show')
+      .select('id')
+      .eq('status', 'PUBLISHED')
+      .eq('slot', show.slot)
+      .single();
+
+    if (slotError && slotError.code !== 'PGRST116') throw buildError('DATABASE_ERROR', slotError.message);
+    if (slotConflict) throw buildError('SLOT_CONFLICT', `Slot ${show.slot} already in use`, 409, { conflictShowId: slotConflict.id, slot: show.slot });
+  }
+
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('Show')
+    .update({ status: 'PUBLISHED', publishedAt: show.publishedAt ?? new Date().toISOString() })
+    .eq('id', show.id)
+    .select()
+    .single();
+
+  if (updateError) throw buildError('DATABASE_ERROR', updateError.message);
+
   try { (await import('@/lib/shows/audit')).logShowEvent('show.publish', updated.id, { actorRole: ctx?.actorRole, bytesOptimized: updated.bytesOptimized }); } catch {}
-    return updated;
-  });
+  return updated;
 }
 
 export async function archive(_id: string, ctx?: { actorRole?: string }) {
   const id = _id;
-  const show = await prisma.show.findUnique({ where: { id } });
-  if (!show) throw buildError('NOT_FOUND', 'Show not found', 404);
+  const show = await getById(id); // already throws if not found
   if (show.status === 'ARCHIVED') return show; // idempotente
-  const updated = await prisma.show.update({
-    where: { id: show.id },
-    data: { status: 'ARCHIVED' }, // publishedAt se conserva tal cual
-  });
+  const { data: updated, error } = await supabaseAdmin
+    .from('Show')
+    .update({ status: 'ARCHIVED' })
+    .eq('id', show.id)
+    .select()
+    .single();
+
+  if (error) throw buildError('DATABASE_ERROR', error.message);
   try { (await import('@/lib/shows/audit')).logShowEvent('show.archive', updated.id, { actorRole: ctx?.actorRole }); } catch {}
   return updated;
 }
@@ -430,35 +480,38 @@ export async function listPublic() {
   const graceMs = 24 * 60 * 60 * 1000; // 24h de tolerancia para que no desaparezca inmediatamente
   const endsAfter = new Date(now.getTime() - graceMs);
   // Traer publicados activos (o expirados muy recientemente?) – sólo activos (endsAt null o > now)
-  const shows = await prisma.show.findMany({
-    where: {
-      status: 'PUBLISHED',
-      // Incluir activos y los que terminaron recientemente (gracia 24h)
-      OR: [ { endsAt: null }, { endsAt: { gt: endsAfter } } ],
-    },
-    orderBy: [
-      // Primero los que tienen slot (para luego ordenar manual si necesario)
-      { slot: 'asc' },
-      { startsAt: 'desc' },
-    ],
-    take: 20, // luego filtramos a 4
-  });
+  const { data: shows, error: showsError } = await supabaseAdmin
+    .from('Show')
+    .select('*')
+    .eq('status', 'PUBLISHED')
+    .or(`endsAt.is.null,endsAt.gt.${endsAfter.toISOString()}`)
+    .order('slot', { ascending: true, nullsFirst: false })
+    .order('startsAt', { ascending: false })
+    .limit(20);
+
+  if (showsError) throw buildError('DATABASE_ERROR', showsError.message);
   // Reordenar: todos los slotted en orden 1..4 luego los no slotted por startsAt desc
-  const slotted = shows.filter(s => s.slot != null).sort((a,b)=> (a.slot! - b.slot!));
-  const unslotted = shows.filter(s => s.slot == null).sort((a,b)=> b.startsAt.getTime() - a.startsAt.getTime());
+  const slotted = shows.filter((s: any) => s.slot != null).sort((a: any, b: any) => (a.slot! - b.slot!));
+  const unslotted = shows.filter((s: any) => s.slot == null).sort((a: any, b: any) => b.startsAt.getTime() - a.startsAt.getTime());
   const primary = [...slotted, ...unslotted].slice(0,4);
 
   // Si hay menos de 4 activos+gracia, completar con los más recientes expirados publicados
   let final = primary;
   if (primary.length < 4) {
     const need = 4 - primary.length;
-    const expired = await prisma.show.findMany({
-      where: { status: 'PUBLISHED', endsAt: { lte: now } },
-      orderBy: [ { slot: 'asc' }, { endsAt: 'desc' }, { startsAt: 'desc' } ],
-      take: 12,
-    });
+    const { data: expired, error: expError } = await supabaseAdmin
+      .from('Show')
+      .select('*')
+      .eq('status', 'PUBLISHED')
+      .lte('endsAt', now.toISOString())
+      .order('slot', { ascending: true, nullsFirst: false })
+      .order('endsAt', { ascending: false })
+      .order('startsAt', { ascending: false })
+      .limit(12);
+
+    if (expError) throw buildError('DATABASE_ERROR', expError.message);
     const usedIds = new Set(primary.map(s => s.id));
-    const candidates = expired.filter(s => !usedIds.has(s.id));
+    const candidates = expired.filter((s: any) => !usedIds.has(s.id));
     final = [...primary, ...candidates.slice(0, need)];
   }
 
@@ -476,4 +529,34 @@ export async function listPublic() {
     updatedAt: s.updatedAt.toISOString(),
     isExpired: !!(s.endsAt && s.endsAt.getTime() <= now.getTime()),
   }));
+}
+
+export async function cleanupExpiredShows(ctx?: { actorRole?: string }) {
+  const now = new Date();
+  // Archive published shows that have ended
+  const { data: expiredPublished, error: epError } = await supabaseAdmin
+    .from('Show')
+    .select('id')
+    .eq('status', 'PUBLISHED')
+    .lte('endsAt', now.toISOString())
+    .not('endsAt', 'is', null);
+
+  if (epError) throw buildError('DATABASE_ERROR', epError.message);
+
+  const idsToArchive = (expiredPublished || []).map((s: any) => s.id);
+  if (idsToArchive.length > 0) {
+    const { error: updateError } = await supabaseAdmin
+      .from('Show')
+      .update({ status: 'ARCHIVED' })
+      .in('id', idsToArchive);
+
+    if (updateError) throw buildError('DATABASE_ERROR', updateError.message);
+
+    // Log audit
+    for (const id of idsToArchive) {
+      try { (await import('@/lib/shows/audit')).logShowEvent('show.auto_archive', id, { actorRole: ctx?.actorRole, reason: 'expired' }); } catch {}
+    }
+  }
+
+  return { archivedCount: idsToArchive.length };
 }

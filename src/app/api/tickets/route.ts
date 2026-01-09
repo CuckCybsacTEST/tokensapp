@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getTicketPurchasesForUser } from '@/lib/tickets/service';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -23,58 +23,40 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Obtener tickets del usuario
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        ticketPurchase: {
-          userId: userId
-        }
-      },
-      include: {
-        ticketPurchase: {
-          include: {
-            ticketType: {
-              include: {
-                show: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    // Obtener tickets del usuario usando Supabase
+    const ticketPurchases = await getTicketPurchasesForUser(userId);
 
     // Formatear respuesta
-    const formattedTickets = tickets.map(ticket => ({
-      id: ticket.id,
-      qrCode: ticket.qrCode,
-      qrDataUrl: ticket.qrDataUrl,
-      status: ticket.status,
-      customerName: ticket.customerName,
-      customerDni: ticket.customerDni,
-      customerPhone: ticket.customerPhone,
-      createdAt: ticket.createdAt,
-      usedAt: ticket.usedAt,
-      show: {
-        id: ticket.ticketPurchase.ticketType.show.id,
-        title: ticket.ticketPurchase.ticketType.show.title,
-        date: ticket.ticketPurchase.ticketType.show.startsAt,
-        slug: ticket.ticketPurchase.ticketType.show.slug
-      },
-      ticketType: {
-        id: ticket.ticketPurchase.ticketType.id,
-        name: ticket.ticketPurchase.ticketType.name,
-        price: ticket.ticketPurchase.ticketType.price
-      },
-      purchase: {
-        id: ticket.ticketPurchase.id,
-        totalAmount: ticket.ticketPurchase.totalAmount,
-        purchasedAt: ticket.ticketPurchase.purchasedAt,
-        paymentStatus: ticket.ticketPurchase.paymentStatus
-      }
-    }));
+    const formattedTickets = ticketPurchases.flatMap(purchase =>
+      (purchase.tickets || []).map((ticket: any) => ({
+        id: ticket.id,
+        qrCode: ticket.qrCode,
+        qrDataUrl: ticket.qrDataUrl,
+        status: ticket.status,
+        customerName: ticket.customerName,
+        customerDni: ticket.customerDni,
+        customerPhone: ticket.customerPhone,
+        createdAt: ticket.createdAt,
+        usedAt: ticket.usedAt,
+        show: {
+          id: purchase.ticketType?.show?.id,
+          title: purchase.ticketType?.show?.title,
+          date: purchase.ticketType?.show?.startsAt,
+          slug: purchase.ticketType?.show?.slug
+        },
+        ticketType: {
+          id: purchase.ticketType?.id,
+          name: purchase.ticketType?.name,
+          price: purchase.ticketType?.price
+        },
+        purchase: {
+          id: purchase.id,
+          totalAmount: purchase.totalAmount,
+          purchasedAt: purchase.purchasedAt,
+          paymentStatus: purchase.paymentStatus
+        }
+      }))
+    );
 
     return NextResponse.json({
       success: true,

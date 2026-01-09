@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getTicketByIdForUser } from "@/lib/tickets/service";
 import { verifyUserSessionCookie } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
@@ -27,34 +27,8 @@ export async function GET(
       );
     }
 
-    // Obtener el ticket con verificación de propiedad
-    const ticket = await prisma.ticket.findFirst({
-      where: {
-        id: params.id,
-        ticketPurchase: {
-          userId: session.userId
-        }
-      },
-      include: {
-        ticketPurchase: {
-          include: {
-            ticketType: {
-              include: {
-                show: {
-                  select: {
-                    id: true,
-                    title: true,
-                    startsAt: true,
-                    imageWebpPath: true,
-                    status: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
+    // Obtener el ticket con verificación de propiedad usando Supabase
+    const ticket = await getTicketByIdForUser(params.id, session.userId);
 
     if (!ticket) {
       return NextResponse.json(

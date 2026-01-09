@@ -669,52 +669,52 @@ model birthdaypack {
 }
 
 model Category {
-  id               String    @id @default(cuid())
-  name             String
-  description      String?
-  icon             String?
-  image            String?
-  imageStorageKey  String?
-  storageProvider  String?   @default("supabase")
-  order            Int       @default(0)
-  active           Boolean   @default(true)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  products         Product[]
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  icon            String?
+  order           Int       @default(0)
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  image           String?
+  imageStorageKey String?
+  storageProvider String?   @default("supabase")
+  products        Product[]
 
   @@index([order])
   @@index([active])
 }
 
 model Product {
-  id               String           @id @default(cuid())
-  name             String
-  description      String?
-  price            Float
-  basePrice        Float?
-  image            String?
-  imageStorageKey  String?
-  storageProvider  String?          @default("supabase")
-  categoryId       String
-  available        Boolean          @default(true)
-  featured         Boolean          @default(false)
-  order            Int              @default(0)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  sku              String?
-  barcode          String?
-  taxRate          Float            @default(0.12)
-  costPrice        Float?
-  minStock         Int              @default(0)
-  maxStock         Int?
-  unitOfMeasureId  String?
-  allergens        String?
-  nutritionalInfo  String?
-  inventoryItems   InventoryItem[]
-  orderItems       OrderItem[]
-  category         Category         @relation(fields: [categoryId], references: [id])
-  unitOfMeasure    UnitOfMeasure?   @relation(fields: [unitOfMeasureId], references: [id])
-  variants         ProductVariant[]
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  price           Float
+  basePrice       Float?
+  image           String?
+  categoryId      String
+  available       Boolean          @default(true)
+  featured        Boolean          @default(false)
+  order           Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sku             String?
+  barcode         String?
+  taxRate         Float            @default(0.12)
+  costPrice       Float?
+  minStock        Int              @default(0)
+  maxStock        Int?
+  unitOfMeasureId String?
+  allergens       String?
+  nutritionalInfo String?
+  imageStorageKey String?
+  storageProvider String?          @default("supabase")
+  inventoryItems  InventoryItem[]
+  orderItems      OrderItem[]
+  category        Category         @relation(fields: [categoryId], references: [id])
+  unitOfMeasure   UnitOfMeasure?   @relation(fields: [unitOfMeasureId], references: [id])
+  variants        ProductVariant[]
 
   @@index([categoryId])
   @@index([available])
@@ -1143,8 +1143,8 @@ model CustomQr {
   imageMetadata    String?
   imageUrl         String?
   originalImageUrl String?
-  thumbnailUrl     String?
   customerDni      String?
+  thumbnailUrl     String?
   batch            CustomQrBatch? @relation(fields: [batchId], references: [id])
 
   @@index([code])
@@ -1171,38 +1171,65 @@ model CustomQrBatch {
 }
 
 model CustomQrPolicy {
-  id                  String   @id @default(cuid())
+  id                  String    @id @default(cuid())
   name                String
   description         String?
-  defaultExpiryDate   DateTime?
-  maxExtensions       Int      @default(1)
-  extensionExpiryDate DateTime?
-  allowCustomData     Boolean  @default(true)
-  allowCustomPhrase   Boolean  @default(true)
-  allowCustomColors   Boolean  @default(true)
+  maxExtensions       Int       @default(1)
+  allowCustomData     Boolean   @default(true)
+  allowCustomPhrase   Boolean   @default(true)
+  allowCustomColors   Boolean   @default(true)
   rateLimitPerHour    Int?
   maxQrsPerUser       Int?
-  requireApproval     Boolean  @default(false)
-  isActive            Boolean  @default(true)
-  isDefault           Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  allowImageUpload    Boolean  @default(true)
-  allowedImageFormats String   @default("jpg,jpeg,png,webp")
-  imageQuality        Int      @default(80)
-  maxImageHeight      Int      @default(1200)
-  maxImageSize        Int      @default(5242880)
-  maxImageWidth       Int      @default(1200)
-  defaultTheme        String   @default("default")
-  allowDni            Boolean  @default(false)
+  requireApproval     Boolean   @default(false)
+  isActive            Boolean   @default(true)
+  isDefault           Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  allowImageUpload    Boolean   @default(true)
+  allowedImageFormats String    @default("jpg,jpeg,png,webp")
+  imageQuality        Int       @default(80)
+  maxImageHeight      Int       @default(1200)
+  maxImageSize        Int       @default(5242880)
+  maxImageWidth       Int       @default(1200)
+  defaultTheme        String    @default("default")
+  allowDni            Boolean   @default(false)
   defaultBatchId      String?
-  requireDni          Boolean  @default(false)
-  requireWhatsapp     Boolean  @default(true)
-  requireUniqueDni    Boolean  @default(false)
-  requireImageUpload  Boolean  @default(false)
+  requireDni          Boolean   @default(false)
+  requireWhatsapp     Boolean   @default(true)
+  requireUniqueDni    Boolean   @default(false)
+  requireImageUpload  Boolean   @default(false)
+  defaultExpiryDate   DateTime?
+  extensionExpiryDate DateTime?
 
   @@index([isActive])
   @@index([isDefault])
+}
+
+model Survive2025Run {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  eventId     String   @map("event_id")
+  displayName String   @map("display_name")
+  bestMs      Int      @map("best_ms")
+  score       Int
+  deviceHash  String?  @map("device_hash")
+  sessionId   String?  @map("session_id")
+  meta        Json?
+
+  @@index([eventId, score(sort: Desc), bestMs(sort: Desc)])
+  @@map("survive2025_runs")
+}
+
+model GalleryImage {
+  id          String   @id @default(cuid())
+  src         String
+  alt         String?
+  width       Int
+  height      Int
+  blurDataUrl String?
+  createdAt   DateTime @default(now())
+
+  @@map("marketing_gallery")
 }
 
 enum PurchaseStatus {
@@ -1274,31 +1301,4 @@ enum OfferPurchaseStatus {
   CANCELLED
   REFUNDED
   EXPIRED
-}
-
-model Survive2025Run {
-  id           String   @id @default(cuid())
-  createdAt    DateTime @default(now()) @map("created_at")
-  eventId      String   @map("event_id")
-  displayName  String   @map("display_name")
-  bestMs       Int      @map("best_ms")
-  score        Int
-  deviceHash   String?  @map("device_hash")
-  sessionId    String?  @map("session_id")
-  meta         Json?
-
-  @@index([eventId, score(sort: Desc), bestMs(sort: Desc)])
-  @@map("survive2025_runs")
-}
-
-model GalleryImage {
-  id             String    @id @default(cuid())
-  src            String
-  alt            String?
-  width          Int
-  height         Int
-  blurDataUrl    String?
-  createdAt      DateTime  @default(now())
-
-  @@map("marketing_gallery")
 }
