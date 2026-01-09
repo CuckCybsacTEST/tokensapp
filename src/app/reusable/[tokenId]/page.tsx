@@ -508,6 +508,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
               <span>Expira en: {(() => {
                 const now = DateTime.now().setZone('America/Lima');
                 const expiry = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
+                // @ts-ignore - diff method exists in Luxon DateTime
                 const diff = expiry.diff(now);
                 if (diff.as('milliseconds') <= 0) return 'Expirado';
                 const hours = Math.floor(diff.as('hours'));
