@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Generate QR URL
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
 
     return NextResponse.json({

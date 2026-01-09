@@ -20,11 +20,17 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
         return NextResponse.json({ error: 'Token not found' }, { status: 404 });
       }
 
-      // Get the base URL from the request headers
-      const headersList = headers();
-      const host = headersList.get('host') || 'localhost:3000';
-      const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-      const baseUrl = `${protocol}://${host}`;
+      // Use QR base URL if defined, otherwise construct from headers
+      const qrBaseUrl = process.env.NEXT_PUBLIC_QR_BASE_URL;
+      let baseUrl: string;
+      if (qrBaseUrl) {
+        baseUrl = qrBaseUrl;
+      } else {
+        const headersList = headers();
+        const host = headersList.get('host') || 'localhost:3000';
+        const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+        baseUrl = `${protocol}://${host}`;
+      }
 
       qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
     } else {
@@ -40,11 +46,17 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
         return NextResponse.json({ error: 'Token not found' }, { status: 404 });
       }
 
-      // Get the base URL from the request headers
-      const headersList = headers();
-      const host = headersList.get('host') || 'localhost:3000';
-      const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-      const baseUrl = `${protocol}://${host}`;
+      // Use QR base URL if defined, otherwise construct from headers
+      const qrBaseUrl = process.env.NEXT_PUBLIC_QR_BASE_URL;
+      let baseUrl: string;
+      if (qrBaseUrl) {
+        baseUrl = qrBaseUrl;
+      } else {
+        const headersList = headers();
+        const host = headersList.get('host') || 'localhost:3000';
+        const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+        baseUrl = `${protocol}://${host}`;
+      }
 
       qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
     }
