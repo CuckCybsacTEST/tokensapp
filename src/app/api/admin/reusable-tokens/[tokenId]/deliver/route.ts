@@ -37,20 +37,29 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       return apiError('TOKEN_NOT_FOUND', 'Token no encontrado', undefined, 404);
     }
 
-    // Verificar que no esté ya agotado
-    if (token.usedCount >= token.maxUses) {
-      return apiError('ALREADY_DELIVERED', 'Token agotado', undefined, 409);
+    // Para admin/staff, permitir marcar como entregado incluso si ya fue usado
+    // Esto es útil cuando se entrega físicamente después del canje digital
+    // Solo verificar que el token existe y no esté ya marcado como entregado
+    if (token.deliveredAt) {
+      return apiError('ALREADY_DELIVERED', 'Token ya marcado como entregado', undefined, 409);
     }
 
-    // Marcar como entregado e incrementar contador
+    // Marcar como entregado
     const deliveredAt = new Date();
+    const updateData: any = {
+      deliveredAt,
+      deliveredByUserId: session.userId
+    };
+
+    // Solo incrementar usedCount si el token no está agotado
+    // Para admin/staff, permitir marcar entrega física sin afectar el contador digital
+    if (token.usedCount < token.maxUses) {
+      updateData.usedCount = { increment: 1 };
+    }
+
     await prisma.reusableToken.update({
       where: { id: tokenId },
-      data: {
-        deliveredAt,
-        deliveredByUserId: session.userId,
-        usedCount: { increment: 1 }
-      }
+      data: updateData
     });
 
     return apiOk({

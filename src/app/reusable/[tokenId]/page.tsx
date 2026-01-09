@@ -566,8 +566,11 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             )}
 
             {/* Staff Actions */}
-            {isStaff && canRedeem && (
+            {isStaff && (
                 <div className="w-full mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
+                    <div className="mb-3 text-center">
+                        <p className="text-white/70 text-sm">Panel de Administración</p>
+                    </div>
                     <button
                     onClick={handleMarkDelivered}
                     disabled={markingDelivery}
