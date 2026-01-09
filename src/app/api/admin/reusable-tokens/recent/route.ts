@@ -12,21 +12,30 @@ export async function GET(req: NextRequest) {
       return apiError('UNAUTHORIZED', auth.error || 'No autorizado');
     }
 
-    // Obtener los últimos 10 tokens generados
-    const tokens = await prisma.reusableToken.findMany({
-      take: 10,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        prize: {
-          select: {
-            id: true,
-            label: true,
-            key: true,
-            color: true
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    // Obtener tokens con paginación
+    const [tokens, totalCount] = await Promise.all([
+      prisma.reusableToken.findMany({
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          prize: {
+            select: {
+              id: true,
+              label: true,
+              key: true,
+              color: true
+            }
           }
         }
-      }
-    });
+      }),
+      prisma.reusableToken.count()
+    ]);
 
     const formattedTokens = tokens.map(token => ({
       id: token.id,
@@ -46,7 +55,15 @@ export async function GET(req: NextRequest) {
       deliveryNote: token.deliveryNote
     }));
 
-    return NextResponse.json({ tokens: formattedTokens });
+    return NextResponse.json({
+      tokens: formattedTokens,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching recent tokens:', error);
     return NextResponse.json(

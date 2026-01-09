@@ -25,12 +25,22 @@ interface IndividualToken {
   deliveryNote?: string;
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export default function ReusableTokensAdmin() {
   const [prizes, setPrizes] = useState<ReusablePrize[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [individualToken, setIndividualToken] = useState<IndividualToken | null>(null);
   const [recentTokens, setRecentTokens] = useState<IndividualToken[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [prizesDropdownOpen, setPrizesDropdownOpen] = useState(false);
   const [prizeForm, setPrizeForm] = useState({
     label: '',
     key: '',
@@ -51,10 +61,28 @@ export default function ReusableTokensAdmin() {
 
   useEffect(() => {
     fetchPrizes();
-    fetchRecentTokens();
+    fetchRecentTokens(currentPage);
     // Limpiar localStorage ya que ahora usamos la API de tokens recientes
     localStorage.removeItem('lastGeneratedToken');
-  }, []);
+  }, [currentPage]);
+
+  // Cerrar desplegable de premios al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.prizes-dropdown')) {
+        setPrizesDropdownOpen(false);
+      }
+    };
+
+    if (prizesDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [prizesDropdownOpen]);
 
   const fetchPrizes = async () => {
     const res = await fetch('/api/admin/reusable-prizes');
@@ -65,12 +93,14 @@ export default function ReusableTokensAdmin() {
     setLoading(false);
   };
 
-  const fetchRecentTokens = async () => {
+  const fetchRecentTokens = async (page: number = 1) => {
     try {
-      const res = await fetch('/api/admin/reusable-tokens/recent');
+      const res = await fetch(`/api/admin/reusable-tokens/recent?page=${page}&limit=20`);
       if (res.ok) {
         const data = await res.json();
         setRecentTokens(data.tokens || []);
+        setPagination(data.pagination);
+        setCurrentPage(page);
       }
     } catch (error) {
       console.error('Error fetching recent tokens:', error);
@@ -217,7 +247,7 @@ export default function ReusableTokensAdmin() {
         const data = await res.json();
         setIndividualToken(data.token);
         // Recargar tokens recientes
-        fetchRecentTokens();
+        fetchRecentTokens(currentPage);
         alert('Token individual generado exitosamente');
       } else {
         const error = await res.json();
@@ -316,53 +346,86 @@ export default function ReusableTokensAdmin() {
 
           {/* Lista de premios */}
           <div className="mt-6">
-            <h3 className="text-md font-semibold mb-3">Premios Disponibles</h3>
-            {prizes.length === 0 ? (
-              <p className="text-slate-500 dark:text-slate-400">No hay premios creados aún</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {prizes.map(prize => (
-                  <div key={prize.id} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: prize.color || '#666' }}
-                        />
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{prize.label}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => editPrize(prize)}
-                          className="btn-sm bg-blue-600 hover:bg-blue-700 text-white"
-                          title="Editar premio"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => deletePrize(prize.id)}
-                          className="btn-sm bg-red-600 hover:bg-red-700 text-white"
-                          title="Eliminar premio"
-                        >
-                          🗑️
-                        </button>
-                      </div>
+            <div className="relative prizes-dropdown">
+              <button
+                onClick={() => setPrizesDropdownOpen(!prizesDropdownOpen)}
+                className="w-full flex items-center justify-between p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <span className="text-md font-semibold text-slate-900 dark:text-slate-100">
+                  Premios Disponibles ({prizes.length})
+                </span>
+                <svg
+                  className={`w-5 h-5 transition-transform ${prizesDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {prizesDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                  {prizes.length === 0 ? (
+                    <div className="p-4 text-slate-500 dark:text-slate-400 text-center">
+                      No hay premios creados aún
                     </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">
-                      Key: <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">{prize.key}</code>
+                  ) : (
+                    <div className="py-2">
+                      {prizes.map(prize => (
+                        <div key={prize.id} className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                              <div
+                                className="w-4 h-4 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: prize.color || '#666' }}
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-slate-900 dark:text-slate-100">{prize.label}</div>
+                                <div className="text-sm text-slate-600 dark:text-slate-400">
+                                  Key: <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{prize.key}</code>
+                                </div>
+                                {prize.description && (
+                                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{prize.description}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  editPrize(prize);
+                                  setPrizesDropdownOpen(false);
+                                }}
+                                className="btn-sm bg-blue-600 hover:bg-blue-700 text-white"
+                                title="Editar premio"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deletePrize(prize.id);
+                                }}
+                                className="btn-sm bg-red-600 hover:bg-red-700 text-white"
+                                title="Eliminar premio"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                            Estado: <span className={`font-medium ${prize.active ? 'text-green-600' : 'text-red-600'}`}>
+                              {prize.active ? 'Activo' : 'Inactivo'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    {prize.description && (
-                      <div className="text-sm text-slate-600 dark:text-slate-400">{prize.description}</div>
-                    )}
-                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                      Estado: <span className={`font-medium ${prize.active ? 'text-green-600' : 'text-red-600'}`}>
-                        {prize.active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -539,8 +602,8 @@ export default function ReusableTokensAdmin() {
                     </div>
                   </div>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                  <strong>Usos:</strong> {individualToken.usedCount || 0}/{individualToken.maxUses}
+                <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-2">
+                  Usos: {individualToken.usedCount || 0}/{individualToken.maxUses}
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                   <strong>Expira:</strong> {new Date(individualToken.expiresAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
@@ -589,11 +652,11 @@ export default function ReusableTokensAdmin() {
         </div>
       )}
 
-      {/* Tokens Recientes */}
+      {/* Todos los Tokens */}
       <div className="card">
         <div className="card-header">
-          <h2 className="text-lg font-semibold">Tokens Recientes</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Últimos tokens generados</p>
+          <h2 className="text-lg font-semibold">Todos los Tokens</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Lista completa de tokens generados con paginación</p>
         </div>
         <div className="card-body">
           {recentTokens.length === 0 ? (
@@ -623,7 +686,7 @@ export default function ReusableTokensAdmin() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">
                             Usos: {token.usedCount || 0}/{token.maxUses}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -672,6 +735,34 @@ export default function ReusableTokensAdmin() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                Mostrando {recentTokens.length} de {pagination.total} tokens
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchRecentTokens(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="btn-sm bg-slate-600 hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-slate-600 dark:text-slate-400 px-3">
+                  Página {currentPage} de {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => fetchRecentTokens(currentPage + 1)}
+                  disabled={currentPage >= pagination.totalPages}
+                  className="btn-sm bg-slate-600 hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white"
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
           )}
         </div>

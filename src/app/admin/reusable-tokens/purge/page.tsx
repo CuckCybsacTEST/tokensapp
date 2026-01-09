@@ -153,7 +153,7 @@ export default function ReusableTokensPurgeAdmin() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">
                             Usos: {token.usedCount || 0}/{token.maxUses}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">
