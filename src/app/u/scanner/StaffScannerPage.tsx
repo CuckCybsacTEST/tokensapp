@@ -281,21 +281,26 @@ export default function StaffScannerPage() {
       // Not a URL, continue with normal processing
     }
 
-    // 3.6) Detect STATIC TOKEN URL: redirect to static token page
-    // More flexible detection for static tokens
-    const staticTokenRegex = /(?:^|\/)static\/([^\/\s]{4,})/i;
-    const staticMatch = text.match(staticTokenRegex);
-    if (staticMatch) {
-      const tokenId = staticMatch[1];
-      console.log('Staff scanner detected static token, ID:', tokenId, 'from text:', text);
-      setBanner({ variant: "success", message: `🎫 Token estático detectado - Redirigiendo...` });
-      beep(880, 120, "sine");
-      vibrate(60);
-      setCooldownUntil(Date.now() + 2000);
-      // Redirect to static token page
-      window.location.href = `/static/${tokenId}`;
-      processingRef.current = false;
-      return;
+    // 3.7) Detect REUSABLE TOKEN URL: redirect to reusable token page
+    try {
+      const url = new URL(text);
+      if (url.pathname.startsWith('/reusable/')) {
+        // Extract tokenId from URL
+        const tokenId = url.pathname.split('/reusable/')[1];
+        if (tokenId) {
+          console.log('Staff scanner detected reusable token, ID:', tokenId, 'from text:', text);
+          setBanner({ variant: "success", message: `🎫 Token reutilizable detectado - Redirigiendo...` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 2000);
+          // Redirect to reusable token page
+          window.location.href = `/reusable/${tokenId}`;
+          processingRef.current = false;
+          return;
+        }
+      }
+    } catch {
+      // Not a URL, continue with normal processing
     }
 
     const payload = decodePersonPayloadFromQr(text);

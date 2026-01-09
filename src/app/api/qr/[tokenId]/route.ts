@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
       const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
       const baseUrl = `${protocol}://${host}`;
 
-      qrUrl = `${baseUrl}/reusable/${tokenId}`;
+      qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
     } else {
       // It's a regular token - check Token table
       const token = await prisma.token.findUnique({
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
       const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
       const baseUrl = `${protocol}://${host}`;
 
-      qrUrl = `${baseUrl}/reusable/${tokenId}`;
+      qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
     }
     const qrDataUrl = await generateQrPngDataUrl(qrUrl);
 
