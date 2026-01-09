@@ -543,11 +543,11 @@ export default function ReusableTokensAdmin() {
                   <strong>Usos:</strong> {individualToken.usedCount || 0}/{individualToken.maxUses}
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  <strong>Expira:</strong> {new Date(individualToken.expiresAt).toLocaleString('es-ES')}
+                  <strong>Expira:</strong> {new Date(individualToken.expiresAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
                 </div>
                 {individualToken.startTime && individualToken.endTime && (
                   <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    <strong>Horario válido:</strong> {individualToken.startTime.slice(0, 5)} - {individualToken.endTime.slice(0, 5)} (Lima)
+                    <strong>Horario válido:</strong> {new Date(individualToken.startTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })} - {new Date(individualToken.endTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })} (Lima)
                   </div>
                 )}
                 {individualToken.deliveryNote && (
@@ -627,11 +627,11 @@ export default function ReusableTokensAdmin() {
                             Usos: {token.usedCount || 0}/{token.maxUses}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Expira: {new Date(token.expiresAt).toLocaleDateString('es-ES')}
+                            Expira: {new Date(token.expiresAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
                           </div>
                           {token.startTime && token.endTime && (
                             <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Horario: {token.startTime.slice(0, 5)} - {token.endTime.slice(0, 5)}
+                              Horario: {new Date(token.startTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })} - {new Date(token.endTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })}
                             </div>
                           )}
                         </div>

@@ -439,7 +439,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                 <div className="h-1 w-12 sm:w-16 bg-[#FF4D2E] mx-auto rounded-full my-3 sm:my-4" />
                 <p className="text-white/80 text-xs sm:text-sm leading-relaxed px-2 sm:px-0">
                   {isStaff
-                    ? 'Token válido. Procede a marcar la entrega.'
+                    ? 'Token válido. El local abre a las 5:00 PM. Procede a marcar la entrega cuando llegue el cliente.'
                     : isLoggedIn
                     ? '¡Felicidades! Haz clic en Canjear Premio para obtener tu recompensa.'
                     : '¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.'}
@@ -458,6 +458,10 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                     style={{ width: `${(tokenData.usedCount / maxUses) * 100}%` }}
                   ></div>
                 </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-sm text-blue-400/80 bg-blue-400/10 px-3 py-2 rounded-full border border-blue-400/20 mb-4">
+              <span>Expira: {formattedExpiry}</span>
             </div>
 
             {/* QR Code Section */}
@@ -499,8 +503,18 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                 </div>
             )}
 
-            {/* Expiration countdown - shows when < 24 hours remain */}
-            <ExpirationCountdown expiresAt={tokenData.expiresAt} />
+            {/* Expiration Countdown */}
+            <div className="flex items-center justify-center gap-2 text-sm text-orange-400/80 bg-orange-400/10 px-3 py-2 rounded-full border border-orange-400/20 mb-4">
+              <span>Expira en: {(() => {
+                const now = DateTime.now().setZone('America/Lima');
+                const expiry = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
+                const diff = expiry.diff(now);
+                if (diff.as('milliseconds') <= 0) return 'Expirado';
+                const hours = Math.floor(diff.as('hours'));
+                const minutes = Math.floor(diff.as('minutes') % 60);
+                return `${hours}h ${minutes}m`;
+              })()}</span>
+            </div>
 
             {/* Time window info */}
             {tokenData.startTime && tokenData.endTime && (
@@ -509,12 +523,6 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                     <span>Válido: {tokenData.startTime.slice(0, 5)} - {tokenData.endTime.slice(0, 5)} (Lima)</span>
                 </div>
             )}
-
-            {/* Fallback expiration display */}
-            <div className="flex items-center gap-2 text-xs text-yellow-400/80 bg-yellow-400/10 px-3 py-1.5 rounded-full border border-yellow-400/20">
-                <span>⏰</span>
-                <span>Expira: {formattedExpiry}</span>
-            </div>
 
             {/* Redeem Button - Only show if logged in and can redeem and not staff */}
             {canRedeem && isLoggedIn && !isStaff && (

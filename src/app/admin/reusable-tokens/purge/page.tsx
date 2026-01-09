@@ -157,16 +157,16 @@ export default function ReusableTokensPurgeAdmin() {
                             Usos: {token.usedCount || 0}/{token.maxUses}
                           </div>
                           <div className="text-sm text-slate-600 dark:text-slate-400">
-                            Expira: {new Date(token.expiresAt).toLocaleDateString('es-ES')}
+                            Expira: {new Date(token.expiresAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
                           </div>
                           {token.startTime && token.endTime && (
                             <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Horario: {token.startTime.slice(0, 5)} - {token.endTime.slice(0, 5)}
+                              Horario: {new Date(token.startTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })} - {new Date(token.endTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })}
                             </div>
                           )}
                           {token.createdAt && (
                             <div className="text-sm text-slate-600 dark:text-slate-400">
-                              Creado: {new Date(token.createdAt).toLocaleDateString('es-ES')}
+                              Creado: {new Date(token.createdAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
                             </div>
                           )}
                         </div>
