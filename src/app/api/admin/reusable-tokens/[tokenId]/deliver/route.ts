@@ -71,21 +71,19 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
 
     // Para admin/staff, permitir marcar como entregado incluso si ya fue usado
     // Esto es útil cuando se entrega físicamente después del canje digital
-    // Solo verificar que el token existe y no esté ya marcado como entregado
-    if (token.deliveredAt) {
-      return apiError('ALREADY_DELIVERED', 'Token ya marcado como entregado', undefined, 409);
-    }
+    // O cuando se necesita re-entregar por correcciones
+    // Solo verificar que el token existe
 
-    // Marcar como entregado
+    // Marcar como entregado (permitir re-entregas)
     const deliveredAt = new Date();
     const updateData: any = {
       deliveredAt,
       deliveredByUserId: session.userId
     };
 
-    // Solo incrementar usedCount si el token no está agotado
-    // Para admin/staff, permitir marcar entrega física sin afectar el contador digital
-    if (token.usedCount < token.maxUses) {
+    // Solo incrementar usedCount si el token no está agotado Y no ha sido entregado antes
+    // Para re-entregas, no incrementamos el contador
+    if (token.usedCount < token.maxUses && !token.deliveredAt) {
       updateData.usedCount = { increment: 1 };
     }
 

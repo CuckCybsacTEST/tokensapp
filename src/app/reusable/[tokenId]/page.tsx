@@ -578,36 +578,41 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                     <div className="mb-3 text-center">
                         <p className="text-white/70 text-sm">Panel de Administración</p>
                     </div>
-                    {tokenData.deliveredAt ? (
-                        <div className="w-full py-3 sm:py-4 rounded-xl bg-green-600/20 border border-green-600/30 text-green-200 text-center font-medium text-sm sm:text-base">
-                            ✅ Ya marcado como entregado
+                    {tokenData.deliveredAt && (
+                        <div className="w-full mb-3 p-2 sm:p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-green-200 text-center font-medium text-sm">
+                            ✅ Entregado el {new Date(tokenData.deliveredAt).toLocaleString('es-ES', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
                         </div>
-                    ) : (
-                        <button
-                        onClick={handleMarkDelivered}
-                        disabled={markingDelivery}
-                        className={`w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-                            markingDelivery
-                            ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                            : 'bg-[#FF4D2E] hover:bg-[#FF6542] active:scale-[0.98] text-white'
-                        }`}
-                        >
-                        {markingDelivery ? (
-                            <>
-                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>Procesando...</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>✅</span>
-                                <span>Marcar como Entregado</span>
-                            </>
-                        )}
-                        </button>
                     )}
+                    <button
+                    onClick={handleMarkDelivered}
+                    disabled={markingDelivery}
+                    className={`w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                        markingDelivery
+                        ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                        : 'bg-[#FF4D2E] hover:bg-[#FF6542] active:scale-[0.98] text-white'
+                    }`}
+                    >
+                    {markingDelivery ? (
+                        <>
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Procesando...</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>✅</span>
+                            <span>Marcar como Entregado</span>
+                        </>
+                    )}
+                    </button>
                     {deliveryError && (
                         <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-xs text-left">
                             ⚠️ {deliveryError}
