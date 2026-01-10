@@ -575,20 +575,6 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             {/* Staff Actions */}
             {isStaff && (
                 <div className="w-full mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
-                    <div className="mb-3 text-center">
-                        <p className="text-white/70 text-sm">Panel de Administración</p>
-                    </div>
-                    {tokenData.deliveredAt && (
-                        <div className="w-full mb-3 p-2 sm:p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-green-200 text-center font-medium text-sm">
-                            ✅ Entregado el {new Date(tokenData.deliveredAt).toLocaleString('es-ES', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
-                        </div>
-                    )}
                     {tokenData.usedCount >= maxUses ? (
                         <div className="w-full py-3 sm:py-4 rounded-xl bg-gray-600/50 border border-gray-600/30 text-gray-300 text-center font-medium text-sm sm:text-base cursor-not-allowed">
                             🚫 Token completamente usado ({tokenData.usedCount}/{maxUses})
@@ -618,6 +604,17 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                             </>
                         )}
                         </button>
+                    )}
+                    {tokenData.deliveredAt && (
+                        <div className="w-full mt-3 p-2 bg-green-600/10 border border-green-600/20 rounded-lg text-green-300 text-center text-xs">
+                            Última entrega: {new Date(tokenData.deliveredAt).toLocaleString('es-ES', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </div>
                     )}
                     {deliveryError && (
                         <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-xs text-left">
