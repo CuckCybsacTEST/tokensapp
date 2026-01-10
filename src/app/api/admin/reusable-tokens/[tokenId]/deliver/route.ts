@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { mapAreaToStaffRole } from '@/lib/staff-roles';
+import { isValidArea } from '@/lib/areas';
 import { apiError, apiOk } from '@/lib/apiError';
 
 // POST /api/admin/reusable-tokens/[tokenId]/deliver
@@ -37,9 +38,11 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
         });
         if (user?.person?.area) {
           const area = user.person.area;
-          userRole = mapAreaToStaffRole(area);
-          if (userRole) {
-            session = userSession;
+          if (isValidArea(area)) {
+            userRole = mapAreaToStaffRole(area);
+            if (userRole) {
+              session = userSession;
+            }
           }
         }
       }
