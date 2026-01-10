@@ -81,11 +81,9 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       deliveredByUserId: session.userId
     };
 
-    // Solo incrementar usedCount si el token no está agotado Y no ha sido entregado antes
-    // Para re-entregas, no incrementamos el contador
-    if (token.usedCount < token.maxUses && !token.deliveredAt) {
-      updateData.usedCount = { increment: 1 };
-    }
+    // Incrementar usedCount cada vez que se marca como entregado
+    // Esto refleja el número real de entregas realizadas
+    updateData.usedCount = { increment: 1 };
 
     await prisma.reusableToken.update({
       where: { id: tokenId },
