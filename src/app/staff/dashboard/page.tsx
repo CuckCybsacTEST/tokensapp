@@ -206,9 +206,14 @@ export default function StaffDashboard() {
             });
           }
         }
+      } else {
+        // Mostrar error al usuario
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        alert(`Error al actualizar el estado: ${errorData.error || response.statusText}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      alert("Error de conexión al actualizar el estado del pedido");
     }
   };
 

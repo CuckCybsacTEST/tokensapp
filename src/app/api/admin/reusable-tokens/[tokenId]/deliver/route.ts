@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
+import { mapAreaToStaffRole } from '@/lib/staff-roles';
 import { apiError, apiOk } from '@/lib/apiError';
 
 // POST /api/admin/reusable-tokens/[tokenId]/deliver
@@ -13,16 +15,43 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       return apiError('TOKEN_ID_REQUIRED', 'tokenId requerido', undefined, 400);
     }
 
-    // Verificar autenticación - solo STAFF/ADMIN pueden marcar entregas
-    const raw = getSessionCookieFromRequest(req);
-    const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN', 'STAFF']);
-    if (!auth.ok) {
-      return apiError('UNAUTHORIZED', auth.error || 'No autorizado');
+    // Verificar autenticación - aceptar tanto admin_session como user_session para STAFF
+    let session = null;
+    let userRole = null;
+
+    // Primero intentar con admin_session
+    const adminRaw = getSessionCookieFromRequest(req);
+    const adminSession = await verifySessionCookie(adminRaw);
+    if (adminSession) {
+      session = adminSession;
+      userRole = 'ADMIN'; // Los admin tienen acceso completo
+    } else {
+      // Si no hay admin_session, intentar con user_session
+      const userRaw = getUserSessionCookieFromRequest(req);
+      const userSession = await verifyUserSessionCookie(userRaw);
+      if (userSession) {
+        // Verificar que el usuario tenga rol STAFF
+        const user = await prisma.user.findUnique({
+          where: { id: userSession.userId },
+          include: { person: true }
+        });
+        if (user?.person?.area) {
+          const area = user.person.area;
+          userRole = mapAreaToStaffRole(area);
+          if (userRole) {
+            session = userSession;
+          }
+        }
+      }
     }
 
-    if (!session) {
-      return apiError('UNAUTHORIZED', 'Sesión inválida');
+    if (!session || !userRole) {
+      return apiError('UNAUTHORIZED', 'No autorizado - se requiere sesión de STAFF o ADMIN');
+    }
+
+    // Verificar permisos - STAFF y ADMIN pueden marcar entregas
+    if (!['ADMIN', 'STAFF', 'WAITER', 'CASHIER', 'BARTENDER'].includes(userRole)) {
+      return apiError('UNAUTHORIZED', 'Rol insuficiente para marcar entregas');
     }
 
     // Verificar que el token existe y es reutilizable
