@@ -74,6 +74,11 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
     // O cuando se necesita re-entregar por correcciones
     // Solo verificar que el token existe
 
+    // No permitir marcar como entregado si ya está completamente usado
+    if (token.usedCount >= token.maxUses) {
+      return apiError('TOKEN_EXHAUSTED', `Token completamente usado (${token.usedCount}/${token.maxUses})`, undefined, 400);
+    }
+
     // Marcar como entregado (permitir re-entregas)
     const deliveredAt = new Date();
     const updateData: any = {
