@@ -154,7 +154,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
 
   const [markingDelivery, setMarkingDelivery] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string|null>(null);
-  const [deliverySuccess, setDeliverySuccess] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [qrSrc, setQrSrc] = useState('');
 
   useEffect(() => {
@@ -212,14 +212,20 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 409) {
-          // Token ya entregado, recargar para mostrar estado actualizado
-          window.location.reload();
+          // Token ya entregado, mostrar modal de confirmación
+          setShowDeliveryModal(true);
+          setTimeout(() => {
+            window.location.href = '/u';
+          }, 2000);
           return;
         }
         throw new Error(data.error || 'Error al marcar entrega');
       }
-      setDeliverySuccess(true);
-      window.location.reload();
+      // Entrega exitosa, mostrar modal de confirmación
+      setShowDeliveryModal(true);
+      setTimeout(() => {
+        window.location.href = '/u';
+      }, 2000);
     } catch (err: any) {
       setDeliveryError(err.message || 'Error desconocido');
     } finally {
@@ -621,11 +627,6 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                             ⚠️ {deliveryError}
                         </div>
                     )}
-                    {deliverySuccess && (
-                        <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-200 text-xs text-left">
-                            🎉 ¡Entrega registrada!
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -656,6 +657,26 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             <p className="text-[10px] sm:text-xs text-white/30">© 2025 Go Lounge Experience</p>
         </div>
       </div>
+
+      {/* Modal de confirmación de entrega */}
+      {showDeliveryModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="text-4xl sm:text-5xl mb-4">✅</div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">¡Entrega Registrada!</h2>
+            <p className="text-white/80 text-sm sm:text-base mb-4">
+              La entrega del token ha sido registrada exitosamente.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-white/60 text-sm">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Redirigiendo...</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
