@@ -5,6 +5,8 @@ import { apiError } from '@/lib/apiError';
 import { DateTime } from 'luxon';
 import { randomBytes } from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     // Auth check - require STAFF or ADMIN role
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
 
     // Generate QR URL
     const baseUrl = process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
+    const qrUrl = `${baseUrl}/reusable/${token.id}`;
 
     return NextResponse.json({
       success: true,

@@ -276,10 +276,14 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
 
     let isOutsideTimeWindow = false;
     if (tokenData.startTime && tokenData.endTime) {
-      // @ts-ignore - hour property exists in Luxon DateTime
+      const start = DateTime.fromISO(tokenData.startTime).setZone('America/Lima');
+      const end = DateTime.fromISO(tokenData.endTime).setZone('America/Lima');
+      // @ts-ignore
       const currentHour = now.hour;
-      const startHour = parseInt(tokenData.startTime.split(':')[0]);
-      const endHour = parseInt(tokenData.endTime.split(':')[0]);
+      // @ts-ignore
+      const startHour = start.hour;
+      // @ts-ignore
+      const endHour = end.hour;
       isOutsideTimeWindow = currentHour < startHour || currentHour >= endHour;
     }
 
@@ -534,7 +538,8 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             {tokenData.startTime && tokenData.endTime && (
                 <div className="flex items-center gap-2 text-xs text-blue-400/80 bg-blue-400/10 px-3 py-1.5 rounded-full border border-blue-400/20">
                     <span>🕐</span>
-                    <span>Válido: {tokenData.startTime.slice(0, 5)} - {tokenData.endTime.slice(0, 5)} (Lima)</span>
+                    {/* @ts-ignore */}
+                    <span>Válido: {DateTime.fromISO(tokenData.startTime).setZone('America/Lima').toFormat('HH:mm')} - {DateTime.fromISO(tokenData.endTime).setZone('America/Lima').toFormat('HH:mm')} (Lima)</span>
                 </div>
             )}
 

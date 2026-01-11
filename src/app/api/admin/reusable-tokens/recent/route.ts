@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { apiError } from '@/lib/apiError';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const sessionCookie = getSessionCookieFromRequest(req);
@@ -39,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const formattedTokens = tokens.map(token => ({
       id: token.id,
-      qrUrl: `${process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reusable/rt_B408598EF46E02FB`,
+      qrUrl: `${process.env.NEXT_PUBLIC_QR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reusable/${token.id}`,
       prize: {
         id: token.prize.id,
         label: token.prize.label,

@@ -642,7 +642,7 @@ export default function ReusableTokensAdmin() {
               </div>
               <div className="bg-white p-4 rounded-lg border-2 border-slate-200 dark:border-slate-600">
                 <img
-                  src={`/api/qr/${individualToken.id}`}
+                  src={`/api/qr/${individualToken.id}?t=${Date.now()}`}
                   alt={`QR para token ${individualToken.id}`}
                   className="w-32 h-32"
                 />
@@ -725,7 +725,7 @@ export default function ReusableTokensAdmin() {
                     <div className="flex-shrink-0">
                       <div className="bg-white p-2 rounded-lg border border-slate-200 dark:border-slate-600">
                         <img
-                          src={`/api/qr/${token.id}`}
+                          src={`/api/qr/${token.id}?t=${Date.now()}`}
                           alt={`QR para ${token.prize.label}`}
                           className="w-20 h-20 object-contain"
                           loading="lazy"

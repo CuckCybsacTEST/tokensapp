@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
 import { apiError } from '@/lib/apiError';
+import { DateTime } from 'luxon';
 
 // POST /api/reusable/[tokenId]/redeem
 // Redime un token reutilizable (incrementa usedCount)
@@ -37,17 +38,25 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       return apiError('TOKEN_DISABLED', 'Token deshabilitado', undefined, 403);
     }
 
-    // Verificar expiración
-    const now = new Date();
-    if (token.expiresAt <= now) {
+    // Verificar expiración usando Lima timezone
+    const now = DateTime.now().setZone('America/Lima');
+    const expiresAt = DateTime.fromJSDate(token.expiresAt).setZone('America/Lima');
+    if (expiresAt <= now) {
       return apiError('TOKEN_EXPIRED', 'Token expirado', undefined, 410);
     }
 
     // Verificar ventana horaria si aplica
     if (token.startTime && token.endTime) {
-      const currentHour = now.getHours();
-      const startHour = token.startTime.getHours();
-      const endHour = token.endTime.getHours();
+      const startTime = DateTime.fromJSDate(token.startTime).setZone('America/Lima');
+      const endTime = DateTime.fromJSDate(token.endTime).setZone('America/Lima');
+      
+      // @ts-ignore
+      const currentHour = now.hour;
+      // @ts-ignore
+      const startHour = startTime.hour;
+      // @ts-ignore
+      const endHour = endTime.hour;
+
       if (currentHour < startHour || currentHour >= endHour) {
         return apiError('OUTSIDE_TIME_WINDOW', 'Fuera de horario válido', undefined, 403);
       }

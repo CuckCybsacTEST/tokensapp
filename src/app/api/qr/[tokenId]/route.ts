@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { generateQrPngDataUrl } from '@/lib/qr';
 import { headers } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: { params: { tokenId: string } }) {
   try {
     const tokenId = params.tokenId;
@@ -32,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
         baseUrl = `${protocol}://${host}`;
       }
 
-      qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
+      qrUrl = `${baseUrl}/reusable/${tokenId}`;
     } else {
       // It's a regular token - check Token table
       const token = await prisma.token.findUnique({
@@ -58,7 +60,7 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
         baseUrl = `${protocol}://${host}`;
       }
 
-      qrUrl = `${baseUrl}/reusable/rt_B408598EF46E02FB`;
+      qrUrl = `${baseUrl}/r/${tokenId}`;
     }
     const qrDataUrl = await generateQrPngDataUrl(qrUrl);
 
@@ -69,7 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: { tokenId: str
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'Cache-Control': process.env.NODE_ENV === 'development' ? 'no-cache' : 'public, max-age=3600', // No cache in development
       },
     });
   } catch (error) {
