@@ -287,21 +287,26 @@ export async function POST(req: Request) {
     return apiError('AUTO_BATCH_FAILED', 'Fallo al generar lote automático', details, 500);
   }
 
-  // Post-process for single-day mode: adjust expiresAt to endOfDay and toggle disabled for future dates.
+  // Post-process for single-day mode: adjust expiresAt to 03:00 AM of the next day and toggle disabled for future dates.
   if (mode === "singleDay" && batch?.id && singleDayEnd && singleDayStart) {
   // Comparación en zona Lima: si el día seleccionado es futuro, los tokens se crean deshabilitados y se podrán habilitar el mismo día.
   const nowStart = DateTime.now().setZone("America/Lima").startOf("day");
     const isFutureDay = singleDayStart.toJSDate().getTime() > nowStart.toJSDate().getTime();
+    
+    // Nueva expiración: fin del día + 3 horas (03:00 AM del día siguiente)
+    const expirationWithGrace = singleDayEnd.plus({ hours: 3 });
+
     await prisma.token.updateMany({
       where: { batchId: batch.id },
       data: {
-        expiresAt: singleDayEnd.toJSDate(),
+        expiresAt: expirationWithGrace.toJSDate(),
         disabled: isFutureDay,
       },
     });
     await logEvent("BATCH_SINGLE_DAY_POST", "post-proceso singleDay aplicado", {
       batchId: batch.id,
       singleDayDate: singleDayStart.toISO(),
+      expiresAt: expirationWithGrace.toISO(),
       isFutureDay,
     });
     // Reload tokens from DB to reflect updated fields; map to the expected in-memory shape

@@ -45,22 +45,26 @@ export function computeTokensEnabled(opts: { now?: Date; tz?: string }): Compute
   // Helper to build next toggle ISO in the same zone
   const nextToggleIsoFor = (dt: any) => (typeof dt.toISO === 'function' ? dt.toISO() : new Date(dt).toISOString());
 
-  // Default scheduled behavior
+  // Default scheduled behavior: Enabled between 18:00 and 03:00 (inclusive-exclusive)
   const hour = now.hour; // 0..23 in the selected tz or runtime default
-  const enabled = hour >= 18; // 18..23 enabled, 0..17 disabled
-  const reason = enabled ? 'scheduled-18-00' : 'scheduled-off';
+  const enabled = hour >= 18 || hour < 3; 
+  const reason = enabled ? 'scheduled-active' : 'scheduled-off';
   const nextScheduled = computeNextScheduledToggle(now);
   return { enabled, reason, nextToggleIso: nextToggleIsoFor(nextScheduled) };
 }
 
 function computeNextScheduledToggle(now: any) {
-  // If currently enabled (hour >= 18) next toggle is midnight (start of next day)
-  // If currently disabled (hour < 18) next toggle is today at 18:00
-  if (now.hour >= 18) {
-    // next midnight: start of next day at 00:00
-    return typeof now.plus === 'function' ? now.plus({ days: 1 }).startOf('day') : new Date(Date.now() + 24 * 3600 * 1000);
+  // If currently enabled (18:00 - 03:00):
+  // - If hour >= 18, toggle is at 03:00 of tomorrow.
+  // - If hour < 3, toggle is at 03:00 of today.
+  if (now.hour >= 18 || now.hour < 3) {
+    if (now.hour >= 18) {
+      return typeof now.plus === 'function' ? now.plus({ days: 1 }).set({ hour: 3, minute: 0, second: 0, millisecond: 0 }) : new Date(new Date().setHours(3, 0, 0, 0) + 24 * 3600 * 1000);
+    } else {
+      return typeof now.set === 'function' ? now.set({ hour: 3, minute: 0, second: 0, millisecond: 0 }) : new Date(new Date().setHours(3, 0, 0, 0));
+    }
   }
-  // today at 18:00
-  return typeof now.set === 'function' ? now.set({ hour: 18, minute: 0, second: 0, millisecond: 0 }) : new Date(new Date().setUTCHours(18, 0, 0, 0));
+  // If currently disabled (03:00 - 18:00): next toggle is 18:00 of today.
+  return typeof now.set === 'function' ? now.set({ hour: 18, minute: 0, second: 0, millisecond: 0 }) : new Date(new Date().setHours(18, 0, 0, 0));
 }
 

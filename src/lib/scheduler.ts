@@ -111,15 +111,15 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
-  // 00:00 -> FORZAR OFF
-  const job00 = cron.schedule('0 0 * * *', async () => {
+  // 03:00 -> FORZAR OFF
+  const job03 = cron.schedule('0 3 * * *', async () => {
     try {
-      console.log('[scheduler] Enforcing OFF at 00:00 Lima');
+      console.log('[scheduler] Enforcing OFF at 03:00 Lima');
       await setTokensEnabled(false);
-      if (shouldLog('info')) logInfo('scheduler.enforce.off', 'boundary 00:00 enforce OFF');
+      if (shouldLog('info')) logInfo('scheduler.enforce.off', 'boundary 03:00 enforce OFF');
     } catch (e) {
       console.error('[scheduler] Error enforcing OFF:', e);
-      if (shouldLog('error')) logError('scheduler.enforce.off.error', 'boundary 00:00 enforce failed', { error: String(e) });
+      if (shouldLog('error')) logError('scheduler.enforce.off.error', 'boundary 03:00 enforce failed', { error: String(e) });
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
