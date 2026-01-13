@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       packId,
       guestsPlanned,
       createdBy: session?.role,
+      isAdmin: isAdmin || isUser,
     });
 
     const dto = {

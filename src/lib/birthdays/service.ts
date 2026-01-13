@@ -119,6 +119,7 @@ export type CreateReservationInput = {
   guestsPlanned: number;
   referrerId?: string;
   createdBy?: string;
+  isAdmin?: boolean;
 };
 
 export type ListReservationFilters = {
@@ -171,17 +172,19 @@ export async function createReservation(input: CreateReservationInput): Promise<
     reservaDateObj = new Date(input.date);
   }
 
-  // Validar que no sea más allá del fin de mes actual (en zona Lima)
-  const nowLima = getLimaDate(new Date()) as DateTime;
-  const maxFuture = nowLima.endOf('month');
-  const reservationLima = DateTime.fromJSDate(reservaDateObj).setZone('America/Lima');
+  // Validar que no sea más allá del fin de mes actual (SOLO para usuarios públicos)
+  if (!input.isAdmin) {
+    const nowLima = getLimaDate(new Date()) as DateTime;
+    const maxFuture = nowLima.endOf('month');
+    const reservationLima = DateTime.fromJSDate(reservaDateObj).setZone('America/Lima');
 
-  if (reservationLima > maxFuture) {
-    console.error('[BIRTHDAYS] createReservation: Fecha demasiado lejana', {
-      reservationLima: reservationLima.toISO(),
-      maxFuture: maxFuture.toISO()
-    });
-    throw new Error('DATE_TOO_FAR');
+    if (reservationLima > maxFuture) {
+      console.error('[BIRTHDAYS] createReservation: Fecha demasiado lejana', {
+        reservationLima: reservationLima.toISO(),
+        maxFuture: maxFuture.toISO()
+      });
+      throw new Error('DATE_TOO_FAR');
+    }
   }
 
   // NO validar fechas pasadas - permitir reservas para hoy
