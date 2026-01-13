@@ -672,6 +672,33 @@ export default function TriviaClient({
     }
   };
 
+  const deleteAssignment = async (assignmentId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta asignación? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/trivia/assignments/${assignmentId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (r.ok) {
+        alert('Asignación eliminada correctamente');
+        await loadAssignments();
+      } else {
+        const error = await r.json();
+        alert(`Error: ${error.message || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      alert('Error al eliminar la asignación');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateQuestionSetForm = (field: keyof NewQuestionSetForm, value: any) => {
     setQuestionSetForm(prev => ({ ...prev, [field]: value }));
   };
@@ -1055,6 +1082,7 @@ export default function TriviaClient({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Fecha Asignación</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Completado</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
@@ -1089,11 +1117,23 @@ export default function TriviaClient({
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                         {assignment.completedAt ? new Date(assignment.completedAt).toLocaleString() : '-'}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => deleteAssignment(assignment.id)}
+                          disabled={loading}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Eliminar asignación"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {assignments.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400 italic">
+                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400 italic">
                         No hay asignaciones registradas
                       </td>
                     </tr>
