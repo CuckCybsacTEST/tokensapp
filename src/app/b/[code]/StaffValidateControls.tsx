@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useTransition } from 'react';
 import { DateTime } from 'luxon';
 
-export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt, reservationDate, reservationStatus, onValidate, buttonState }: { 
+export default function StaffValidateControls({ code, isHost, multiUse, initialStatus, expiresAt, initialGuestArrivals = 0, lastGuestArrivalAt, reservationDate, reservationStatus, onValidate, buttonState, isStaff }: { 
   code:string; 
   isHost:boolean; 
   multiUse: any; 
@@ -14,6 +14,7 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
   reservationStatus?: string;
   onValidate?: () => void;
   buttonState?: { pending: boolean; disabled: boolean; text: string; };
+  isStaff?: boolean;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [used, setUsed] = useState(multiUse?.used ?? (initialStatus === 'redeemed' ? 1 : 0));
@@ -179,7 +180,7 @@ export default function StaffValidateControls({ code, isHost, multiUse, initialS
             <h2 className="text-lg font-semibold text-emerald-300">Registro exitoso</h2>
             <p className="text-sm text-slate-200 leading-relaxed">{modalMessage}</p>
             <div className="flex flex-col gap-2">
-              <button onClick={()=>{ window.location.href = isHost ? '/u/scanner' : '/admin/scanner'; }} className="px-4 py-2 rounded bg-emerald-600 text-sm font-semibold">Volver al panel</button>
+              <button onClick={()=>{ window.location.href = isStaff ? '/u/scanner' : '/admin/scanner'; }} className="px-4 py-2 rounded bg-emerald-600 text-sm font-semibold">Volver al panel</button>
               <button onClick={()=>{ setShowModal(false); }} className="px-4 py-2 rounded bg-slate-700 text-xs">Cerrar</button>
             </div>
             <div className="text-[10px] opacity-50">Para otro ingreso escanea un nuevo código.</div>
