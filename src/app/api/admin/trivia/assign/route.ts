@@ -35,22 +35,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const { userIds, questionSetId, area, includeTrivia } = await req.json();
+    const { userIds, questionSetId, area, includeTrivia, assignToAll } = await req.json();
 
     let targetUserIds = userIds || [];
 
+    // Si se selecciona "TODOS", obtener todos los usuarios activos
+    if (assignToAll) {
+      const allUsers = await prisma.user.findMany({
+        where: {
+          person: {
+            active: true
+          }
+        },
+        select: { id: true }
+      });
+      targetUserIds = allUsers.map(u => u.id);
+    }
     // Si se especifica área, buscar todos los usuarios de ese área
-    if (area) {
+    else if (area) {
       const usersInArea = await prisma.user.findMany({
         where: {
-          person: { area: area }
+          person: { 
+            area: area,
+            active: true
+          }
         },
         select: { id: true }
       });
       targetUserIds = [...new Set([...targetUserIds, ...usersInArea.map(u => u.id)])];
     }
 
-    if (targetUserIds.length === 0) {
+    if (!assignToAll && targetUserIds.length === 0) {
       return NextResponse.json({ ok: false, code: 'NO_USERS_SELECTED' }, { status: 400 });
     }
 

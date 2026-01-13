@@ -201,7 +201,8 @@ export default function TriviaClient({
     userIds: [] as string[],
     questionSetId: '',
     area: '',
-    includeTrivia: false
+    includeTrivia: false,
+    assignToAll: false
   });
 
   // Load assignments
@@ -1991,12 +1992,31 @@ export default function TriviaClient({
                   <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-3 uppercase tracking-wider">¿A quiénes asignar?</p>
                   
                   <div className="space-y-4">
+                    <div className="flex items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="flex-1">
+                        <label className="text-sm font-semibold text-green-800 dark:text-green-200">Opción A: TODOS los colaboradores</label>
+                        <p className="text-xs text-green-600 dark:text-green-300">Asignar a todos los colaboradores activos del sistema.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={assignForm.assignToAll}
+                        onChange={(e) => setAssignForm({ 
+                          ...assignForm, 
+                          assignToAll: e.target.checked,
+                          area: '',
+                          userIds: []
+                        })}
+                        className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción A: Por Área</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción B: Por Área</label>
                       <select
                         value={assignForm.area}
-                        onChange={(e) => setAssignForm({ ...assignForm, area: e.target.value, userIds: [] })}
+                        onChange={(e) => setAssignForm({ ...assignForm, area: e.target.value, userIds: [], assignToAll: false })}
                         className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 rounded-md bg-blue-50/30 dark:bg-blue-900/10 text-gray-900 dark:text-slate-100"
+                        disabled={assignForm.assignToAll}
                       >
                         <option value="">-- No filtrar por área --</option>
                         {['Caja', 'Barra', 'Mozos', 'Seguridad', 'Animación', 'DJs', 'Multimedia', 'Otros'].map(a => (
@@ -2006,7 +2026,7 @@ export default function TriviaClient({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción B: Colaboradores específicos</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción C: Colaboradores específicos</label>
                       <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-slate-600 rounded-md p-2 space-y-1">
                         {allUsers.filter(u => !assignForm.area || u.area === assignForm.area).map(u => (
                           <label key={u.id} className="flex items-center text-sm p-1 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded pointer">
@@ -2014,12 +2034,13 @@ export default function TriviaClient({
                               type="checkbox"
                               checked={assignForm.userIds.includes(u.id)}
                               onChange={(e) => {
-                                if (e.target.checked) setAssignForm({ ...assignForm, userIds: [...assignForm.userIds, u.id], area: '' });
+                                if (e.target.checked) setAssignForm({ ...assignForm, userIds: [...assignForm.userIds, u.id], area: '', assignToAll: false });
                                 else setAssignForm({ ...assignForm, userIds: assignForm.userIds.filter(id => id !== u.id) });
                               }}
                               className="mr-2"
+                              disabled={assignForm.assignToAll}
                             />
-                            <span>{u.personName} <span className="text-xs text-gray-400">({u.area})</span></span>
+                            <span className={assignForm.assignToAll ? 'text-gray-400' : ''}>{u.personName} <span className="text-xs text-gray-400">({u.area})</span></span>
                           </label>
                         ))}
                       </div>
@@ -2037,7 +2058,7 @@ export default function TriviaClient({
                   <button
                     onClick={async () => {
                       if (!assignForm.questionSetId) return alert("Selecciona una trivia");
-                      if (assignForm.userIds.length === 0 && !assignForm.area) return alert("Selecciona destinatarios");
+                      if (!assignForm.assignToAll && assignForm.userIds.length === 0 && !assignForm.area) return alert("Selecciona destinatarios");
                       
                       setLoading(true);
                       try {
