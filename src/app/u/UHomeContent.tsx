@@ -82,13 +82,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm ml-8 sm:ml-9">Ver perfil →</div>
               </Link>
 
-              <Link href="/u?view-regulation=1" className="block rounded-lg border-2 border-blue-300 bg-blue-50/50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-blue-600/60 dark:bg-blue-900/20">
+              <Link href="/u?view-regulation=1" className="block rounded-lg border-2 border-red-300 bg-red-50/50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-red-600/60 dark:bg-red-900/20">
                 <div className="flex items-center gap-3 mb-2">
-                  <IconShieldLock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                  <div className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-100">Reglamento Interno</div>
+                  <IconShieldLock className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <div className="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100">Reglamento Interno</div>
                 </div>
-                <p className="text-sm text-blue-800 dark:text-blue-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-blue-700 dark:text-blue-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
+                <p className="text-sm text-red-800 dark:text-red-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
               </Link>
 
               <AutoAttendanceCard initialLastType={lastType} />
