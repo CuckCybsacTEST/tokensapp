@@ -214,7 +214,48 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-2 sm:p-4">
+    <>
+      <style jsx global>{`
+        .commitment-modal-content ul {
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+          list-style-type: disc;
+        }
+        
+        .commitment-modal-content ol {
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+          list-style-type: decimal;
+        }
+        
+        .commitment-modal-content li {
+          margin: 0.25rem 0;
+        }
+        
+        .commitment-modal-content p {
+          margin: 0.5rem 0;
+        }
+        
+        .commitment-modal-content strong, .commitment-modal-content b {
+          font-weight: 700;
+        }
+        
+        .commitment-modal-content em, .commitment-modal-content i {
+          font-style: italic;
+        }
+        
+        .commitment-modal-content u {
+          text-decoration: underline;
+        }
+        
+        .commitment-modal-content br {
+          display: block;
+          content: "";
+          margin: 0.5rem 0;
+        }
+      `}</style>
+
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-2 sm:p-4">
       <div
         role="dialog"
         aria-modal="true"
@@ -622,45 +663,6 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
         </div>
       </div>
     </div>
+    </>
   );
 }
-
-<style jsx global>{`
-  .commitment-modal-content ul {
-    padding-left: 1.5rem;
-    margin: 0.5rem 0;
-    list-style-type: disc;
-  }
-  
-  .commitment-modal-content ol {
-    padding-left: 1.5rem;
-    margin: 0.5rem 0;
-    list-style-type: decimal;
-  }
-  
-  .commitment-modal-content li {
-    margin: 0.25rem 0;
-  }
-  
-  .commitment-modal-content p {
-    margin: 0.5rem 0;
-  }
-  
-  .commitment-modal-content strong, .commitment-modal-content b {
-    font-weight: 700;
-  }
-  
-  .commitment-modal-content em, .commitment-modal-content i {
-    font-style: italic;
-  }
-  
-  .commitment-modal-content u {
-    text-decoration: underline;
-  }
-  
-  .commitment-modal-content br {
-    display: block;
-    content: "";
-    margin: 0.5rem 0;
-  }
-`}</style>
