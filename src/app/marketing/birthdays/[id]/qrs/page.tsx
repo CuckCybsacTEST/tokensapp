@@ -220,9 +220,9 @@ export default function QRsFinalesPage() {
           Volver al inicio
         </a>
       </div>
-      <h1 className="text-2xl font-extrabold">Tus tarjetas QR</h1>
+      <h1 className="text-2xl font-extrabold">Tu tarjeta QR</h1>
       <p className="opacity-80 mt-1">
-        Descarga y comparte tus códigos. El de invitados puedes compartirlo por WhatsApp.
+        Descarga y comparte tu código de acceso.
       </p>
 
       {/* Slider móvil */}
@@ -372,7 +372,8 @@ export default function QRsFinalesPage() {
             </div>
           )}
         </div>
-        {(host || guest) && (
+        {/* Solo mostrar indicadores si hay más de una tarjeta */}
+        {(host && guest) && (
           <div className="mt-4 flex items-center justify-center gap-2">
             {[host, guest].filter(Boolean).map((_, i) => (
               <button
@@ -387,16 +388,12 @@ export default function QRsFinalesPage() {
       </div>
 
       {/* Grid para pantallas medianas y grandes */}
-      <div className="hidden md:grid mt-6 grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={`hidden md:mt-6 ${host && guest ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex justify-center'}`}>
         {/* Cumpleañero (host) */}
         {host && (
           <div
-            className="relative overflow-hidden rounded-2xl p-5"
+            className={`${host && guest ? '' : 'max-w-md w-full'}`}
             data-testid="qr-host"
-            style={{
-              background: "linear-gradient(145deg,#121212 0%,#1a1812 55%,#262017 100%)",
-              boxShadow: "0 0 0 1px rgba(212,175,55,0.55),0 0 18px -6px rgba(212,175,55,0.5)",
-            }}
           >
             <div
               className="pointer-events-none absolute inset-0 rounded-2xl"
@@ -471,13 +468,8 @@ export default function QRsFinalesPage() {
         {/* Invitados (guest) */}
         {guest && (
           <div
-            className="relative rounded-2xl p-5 flex flex-col"
+            className={`${host && guest ? '' : 'max-w-md w-full'}`}
             data-testid="qr-guest"
-            style={{
-              background: "linear-gradient(150deg,#171717 0%,#1F1F24 60%,#23262B 100%)",
-              boxShadow: "0 0 0 1px #B7BDC9",
-              border: "1px solid #B7BDC9",
-            }}
           >
             <div className="text-sm font-semibold opacity-90" style={{ color: "#E2E6EC" }}>
               Invitados
