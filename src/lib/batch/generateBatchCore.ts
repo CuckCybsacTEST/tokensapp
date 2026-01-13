@@ -26,6 +26,7 @@ export interface GeneratedToken {
   expiresAt: Date;
   signature: string;
   signatureVersion: number;
+  disabled: boolean;
   pairedNextTokenId?: string | null;
 }
 

@@ -156,7 +156,7 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
-  jobs = [job18, job00, jobBday]; // jobMinute disabled for investigation
+  jobs = [job18, jobBday]; // jobMinute disabled for investigation
   if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 03:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m' });
   started = true;
 }

@@ -153,7 +153,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm ml-8 sm:ml-9">Administrar ruleta →</div>
                 </Link>
               )}
-              )}
               {session.role === 'STAFF' && (
                 <Link href="/u/statics-batches" className="block rounded-lg border border-violet-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-violet-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">

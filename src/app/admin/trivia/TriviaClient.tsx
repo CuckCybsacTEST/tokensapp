@@ -308,6 +308,7 @@ export default function TriviaClient({
       setQuestionSetForm({
         name: '',
         description: '',
+        regulationContent: '',
         active: true
       });
 

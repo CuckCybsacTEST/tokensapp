@@ -38,7 +38,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const needsByVersion = (initialAcceptedVersion || 0) < requiredVersion;
 
   useEffect(() => {
-    if (searchParams.get('view-regulation') === '1') {
+    if (searchParams && searchParams.get('view-regulation') === '1') {
       setOpen(true);
       if (selectedQuestions.length === 0) {
         const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
