@@ -246,7 +246,7 @@ function StaffControlsWrapper({
               <h2 className="text-lg font-semibold text-emerald-300">Registro exitoso</h2>
               <p className="text-sm text-slate-200 leading-relaxed">{modalMessage}</p>
               <div className="flex flex-col gap-2">
-                <button onClick={()=>{ window.location.href = isStaff ? '/u' : '/admin/scanner'; }} className="px-4 py-2 rounded bg-emerald-600 text-sm font-semibold">Volver al panel</button>
+                <button onClick={()=>{ window.location.href = isStaff ? '/u/scanner' : '/admin/scanner'; }} className="px-4 py-2 rounded bg-emerald-600 text-sm font-semibold">Volver al panel</button>
                 <button onClick={()=>{ setShowModal(false); }} className="px-4 py-2 rounded bg-slate-700 text-xs">Cerrar</button>
               </div>
               <div className="text-[10px] opacity-50">Para otro ingreso escanea un nuevo código.</div>
