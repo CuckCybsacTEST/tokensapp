@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import AutoAttendanceCard from './AutoAttendanceCard';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconBook } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -82,17 +82,14 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm ml-8 sm:ml-9">Ver perfil →</div>
               </Link>
 
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('open-commitment-modal'))}
-                className="w-full text-left block rounded-lg border border-slate-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800"
-              >
+              <Link href="/u?view-regulation=1" className="block rounded-lg border border-slate-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
                   <IconShieldLock className="w-5 h-5 sm:w-6 sm:h-6 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Reglamento y Compromiso</div>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
-              </button>
+              </Link>
 
               <AutoAttendanceCard initialLastType={lastType} />
               <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
@@ -114,20 +111,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 </Link>
               )}
             
-              <Link href="/u?view-regulation=1" className="block rounded-lg border border-slate-200 bg-slate-50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-slate-700 dark:bg-slate-800/50">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                    <IconBook className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
-                  </div>
-                  <div>
-                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Reglamento y Compromiso</div>
-                    <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">LECTURA OBLIGATORIA</div>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300 ml-12 sm:ml-13">Revisa las normas de convivencia, seguridad y compromiso laboral.</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-sm ml-12 sm:ml-13 font-medium">Ver reglamento ahora →</div>
-              </Link>
-              
               {session.role === 'STAFF' && (
                 <Link href="/u/scanner" className="block rounded-lg border border-teal-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-teal-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">

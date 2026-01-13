@@ -33,6 +33,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(null);
   const [includeTrivia, setIncludeTrivia] = useState(false);
   const [dynamicContent, setDynamicContent] = useState<DynamicContent | null>(null);
+  const [manuallyClosed, setManuallyClosed] = useState(false);
   
   // Trivia state
   const [selectedQuestions, setSelectedQuestions] = useState<TriviaQuestion[]>([]);
@@ -98,6 +99,31 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
           
           // Open modal if there's a pending assignment or if accessed with view-regulation
           if (data.assignment.status === 'PENDING' || isViewRegulation) {
+            // If user already accepted the regulation and assignment doesn't include trivia, complete it automatically
+            if (initialAcceptedVersion >= requiredVersion && !data.assignment.includeTrivia && !isViewRegulation) {
+              try {
+                // Complete the assignment automatically since user already accepted the regulation
+                const completeRes = await fetch('/api/user/commitment/accept', { 
+                  method: 'POST', 
+                  headers: { 'Content-Type':'application/json' }, 
+                  body: JSON.stringify({ 
+                    version: requiredVersion,
+                    assignmentId: data.assignment.id,
+                    acceptOnly: false
+                  }) 
+                });
+                if (completeRes.ok) {
+                  // Assignment completed successfully, don't open modal
+                  return;
+                }
+                // If completion failed, continue with normal flow
+              } catch (e) {
+                // If completion failed, continue with normal flow
+                console.error('Failed to auto-complete assignment:', e);
+              }
+            }
+            
+            setManuallyClosed(false); // Reset manual close state when opening automatically
             setOpen(true);
             // For pending assignments, load content but not questions yet
             loadQuestionsFromAssignment(data.assignment);
@@ -121,10 +147,17 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
           const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
           setSelectedQuestions(shuffled.slice(0, 2));
         } else if (isViewRegulation) {
-          // If accessed with view-regulation but no assignment, show default
+          // If accessed with view-regulation, show regulation content
           setOpen(true);
-          const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
-          setSelectedQuestions(shuffled.slice(0, 2));
+          if (initialAcceptedVersion >= requiredVersion) {
+            // User already accepted - show in read-only mode
+            setStep('ALREADY_COMPLETED');
+          } else {
+            // User hasn't accepted - show for acceptance
+            setStep('READING');
+            const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
+            setSelectedQuestions(shuffled.slice(0, 2));
+          }
         }
       } catch (err) {
         console.error("Assignment check failed", err);
@@ -135,7 +168,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
     // Polling para verificar nuevas asignaciones cada 30 segundos cuando el modal esté cerrado
     const pollInterval = setInterval(() => {
-      if (!open) {
+      if (!open && !manuallyClosed) {
         checkAssignments();
       }
     }, 30000); // 30 segundos
@@ -145,6 +178,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
   useEffect(() => {
     const handleOpen = () => {
+      setManuallyClosed(false); // Reset manual close state
       setOpen(true);
       if (selectedQuestions.length === 0) {
         const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
@@ -263,7 +297,10 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
       >
         {(!assignmentId && !needsByVersion) && (
           <button 
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setManuallyClosed(true);
+              setOpen(false);
+            }}
             className="absolute top-4 right-4 z-10 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -652,7 +689,11 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
           {step === 'ALREADY_COMPLETED' && (
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setManuallyClosed(true);
+                // Navegar primero, luego cerrar el modal
+                window.location.href = '/u';
+              }}
               className="w-full py-3 px-4 rounded-lg font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
             >
               Cerrar y volver a mi panel

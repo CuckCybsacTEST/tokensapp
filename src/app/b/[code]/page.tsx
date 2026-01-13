@@ -414,7 +414,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
 
   // Determinar si el token está disponible basado en la fecha de reserva
   const isTokenAvailable = () => {
-    if (!isStaff || !data.reservation?.date) return true; // Vista pública siempre muestra, staff necesita fecha de reserva
+    if (!data.reservation?.date) return true; // Si no hay fecha de reserva, está disponible
     const reservationLima = DateTime.fromISO(data.reservation.date).setZone('America/Lima').startOf('day');
     return nowLima.startOf('day') >= reservationLima;
   };
