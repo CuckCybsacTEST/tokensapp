@@ -186,10 +186,16 @@ export async function GET(
 // Función auxiliar para serializar un token
 function serializeToken(token: any) {
   let availableFrom: string | null = null;
+  let disabled = token.disabled;
   try {
-    // Derivamos el inicio del día a partir de expiresAt (que en singleDay es fin de día)
-    const exp = DateTime.fromISO(new Date(token.expiresAt).toISOString(), { zone: 'system' });
-    if (exp.isValid) availableFrom = exp.startOf('day').toISO();
+    // Usar batch.functionalDate si existe, sino derivar del expiresAt
+    const dateToUse = token.batch?.functionalDate ? new Date(token.batch.functionalDate) : new Date(token.expiresAt);
+    availableFrom = dateToUse.toISOString();
+    
+    // Si availableFrom existe y la fecha actual es anterior, marcar como disabled
+    if (availableFrom && DateTime.now().setZone('America/Lima') < DateTime.fromISO(availableFrom).setZone('America/Lima')) {
+      disabled = true;
+    }
   } catch {}
   return {
     id: token.id,
@@ -197,7 +203,7 @@ function serializeToken(token: any) {
     redeemedAt: token.redeemedAt ? token.redeemedAt.toISOString() : null,
     revealedAt: token.revealedAt ? token.revealedAt.toISOString() : null,
     deliveredAt: token.deliveredAt ? token.deliveredAt.toISOString() : null,
-    disabled: token.disabled,
+    disabled,
     availableFrom,
     batchId: token.batchId,
     prize: {

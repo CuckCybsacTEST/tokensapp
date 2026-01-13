@@ -259,6 +259,12 @@ export async function POST(req: Request) {
     const nowStart = DateTime.now().setZone("America/Lima").startOf("day");
     genOptions.overrideDisabled = singleDayStart.toJSDate().getTime() > nowStart.toJSDate().getTime();
     genOptions.overrideExpiresAt = singleDayEnd.plus({ hours: 3 }).toJSDate();
+    // Include date in description for proper functionalDate derivation
+    const jsDate = singleDayStart.toJSDate();
+    const day = jsDate.getDate().toString().padStart(2, '0');
+    const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = jsDate.getFullYear();
+    genOptions.description = `${name} ${day}/${month}/${year}`;
   } else if (mode === 'singleHour' && singleHourWindowStart && singleHourWindowEnd) {
     genOptions.overrideDisabled = singleHourWindowStart.getTime() > Date.now();
     genOptions.overrideExpiresAt = singleHourWindowEnd;

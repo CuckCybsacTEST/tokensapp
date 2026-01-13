@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   // Habilitar tokens que fueron generados para este día y quedaron disabled=true (modo singleDay futuro)
   const where = {
     disabled: true,
-    expiresAt: { gte: start.toJSDate(), lte: end.toJSDate() },
+    batch: { functionalDate: { gte: start.toJSDate(), lte: end.toJSDate() } },
   } as const;
 
   if (dryRun) {
