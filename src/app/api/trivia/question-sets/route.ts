@@ -17,12 +17,14 @@ import { logTriviaEvent } from "@/lib/trivia-log";
 const createQuestionSetSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   description: z.string().optional(),
+  regulationContent: z.string().optional(),
   active: z.boolean().default(true)
 });
 
 const updateQuestionSetSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").optional(),
   description: z.string().optional(),
+  regulationContent: z.string().optional(),
   active: z.boolean().optional()
 });
 

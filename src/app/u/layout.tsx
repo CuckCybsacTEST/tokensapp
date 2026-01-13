@@ -2,10 +2,12 @@ import React from "react";
 import UserLogoutButton from "./components/LogoutButton";
 import SmartBackLink from "./components/SmartBackLink";
 import ForcePasswordChangeGuard from "./components/ForcePasswordChangeGuard";
+import CommitmentModal from "./CommitmentModal";
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { CURRENT_REGULATION } from "@/lib/regulations/constants";
 
 export const metadata = {
   title: "Colaborador | QR App",
@@ -15,13 +17,19 @@ export default async function ULayout({ children }: { children: React.ReactNode 
   // Cargar datos del colaborador (si hay sesión activa)
   let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; role?: string | null } | null = null;
   let mustChangePassword = false;
+  let userId: string | null = null;
+  let commitmentAcceptedVersion = 0;
+  const REQUIRED_VERSION = CURRENT_REGULATION.version;
+
   try {
     const raw = cookies().get('user_session')?.value;
     const session = await verifyUserSessionCookie(raw);
     if (session) {
+      userId = session.userId;
       const u = await prisma.user.findUnique({ where: { id: session.userId }, include: { person: true } });
 
       mustChangePassword = !!u?.forcePasswordChange;
+      commitmentAcceptedVersion = u?.commitmentVersionAccepted || 0;
 
       // Try to read staff record (if the collaborator is registered as staff)
       let staffRecord = null;
@@ -91,6 +99,13 @@ export default async function ULayout({ children }: { children: React.ReactNode 
       <main className="app-container pt-0 pb-2">
         <ForcePasswordChangeGuard required={mustChangePassword} />
         {children}
+        {userId && (
+          <CommitmentModal 
+            userId={userId} 
+            initialAcceptedVersion={commitmentAcceptedVersion} 
+            requiredVersion={REQUIRED_VERSION} 
+          />
+        )}
       </main>
     </div>
   );

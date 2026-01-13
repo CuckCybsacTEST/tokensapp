@@ -312,7 +312,7 @@ La función `computeDistribution` analiza:
 El sistema incluye un scheduler que controla la disponibilidad general de tokens:
 
 - **18:00**: Activa tokens (`tokensEnabled = true`)
-- **00:00**: Desactiva tokens (`tokensEnabled = false`)
+- **03:00 AM**: Desactiva tokens (`tokensEnabled = false`)
 
 ### 9.2 Modo Pruebas
 

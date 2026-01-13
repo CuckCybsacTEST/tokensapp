@@ -523,10 +523,10 @@ export async function listPublic() {
     imageBlurData: s.imageBlurData,
     width: s.width,
     height: s.height,
-    startsAt: s.startsAt.toISOString(),
-    endsAt: s.endsAt ? s.endsAt.toISOString() : null,
+    startsAt: new Date(s.startsAt).toISOString(),
+    endsAt: s.endsAt ? new Date(s.endsAt).toISOString() : null,
     order: s.slot ?? (slotted.length + idx + 1),
-    updatedAt: s.updatedAt.toISOString(),
+    updatedAt: new Date(s.updatedAt).toISOString(),
     isExpired: !!(s.endsAt && s.endsAt.getTime() <= now.getTime()),
   }));
 }

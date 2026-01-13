@@ -13,6 +13,8 @@ export interface GenerateBatchOptions {
   lazyQr?: boolean;
   description?: string;
   expirationDays?: number;
+  overrideExpiresAt?: Date;
+  overrideDisabled?: boolean;
 }
 
 export interface GeneratedToken {
@@ -71,18 +73,33 @@ interface BuildPrizeTokensArgs {
   batchId: string;
   supportsSignatureVersion: boolean;
   secret: string;
+  overrideExpiresAt?: Date;
+  overrideDisabled?: boolean;
 }
 
 function buildPrizeTokens(args: BuildPrizeTokensArgs) {
-  const { prize, count, expirationDays, batchId, supportsSignatureVersion, secret } = args;
-  const expiresAtBase = Date.now();
+  const { prize, count, expirationDays, batchId, supportsSignatureVersion, secret, overrideExpiresAt, overrideDisabled } = args;
+  
+  // Calculate expiry at 03:00 AM (Lima) of the target business day
+  // We shift 8 hours to align with 03:00 AM business day logic
+  const now = new Date();
+  const businessDate = new Date(now.getTime() - 8 * 3600 * 1000);
+  
+  // Set to 03:00:00 Lima (08:00:00 UTC) of the day AFTER the business day starts
+  // (e.g. Business Day Jan 13 expires Jan 14 03:00 AM)
+  const expiresAt = overrideExpiresAt || new Date(Date.UTC(
+    businessDate.getUTCFullYear(),
+    businessDate.getUTCMonth(),
+    businessDate.getUTCDate() + (expirationDays || 1),
+    8, 0, 0, 0
+  ));
+
   const rows: any[] = [];
   const tokens: GeneratedToken[] = [];
   for (let i = 0; i < count; i++) {
     const tokenId = crypto.randomUUID();
-    const expiresAt = new Date(expiresAtBase + expirationDays * 24 * 3600 * 1000);
     const signature = signToken(secret, tokenId, prize.id, expiresAt, CURRENT_SIGNATURE_VERSION);
-    const baseRow: any = { id: tokenId, prizeId: prize.id, batchId, expiresAt, signature, disabled: false };
+    const baseRow: any = { id: tokenId, prizeId: prize.id, batchId, expiresAt, signature, disabled: overrideDisabled ?? false };
     if (supportsSignatureVersion) baseRow.signatureVersion = CURRENT_SIGNATURE_VERSION;
     rows.push(baseRow);
     tokens.push({
@@ -94,6 +111,7 @@ function buildPrizeTokens(args: BuildPrizeTokensArgs) {
       expiresAt,
       signature,
       signatureVersion: CURRENT_SIGNATURE_VERSION,
+      disabled: overrideDisabled ?? false,
     });
   }
   return { rows, tokens };
@@ -126,8 +144,10 @@ function deriveFunctionalDate(description: string | null | undefined, createdAt:
     }
   }
   if (y && m && d) return limaMidnightUtc(y, m, d);
-  const createdLocal = new Date(createdAt.getTime() - 5 * 3600 * 1000);
-  y = createdLocal.getUTCFullYear(); m = createdLocal.getUTCMonth() + 1; d = createdLocal.getUTCDate();
+  
+  // Shift 8 hours back to ensure 00:00-03:00 counts as the previous day
+  const shifted = new Date(createdAt.getTime() - 8 * 3600 * 1000);
+  y = shifted.getUTCFullYear(); m = shifted.getUTCMonth() + 1; d = shifted.getUTCDate();
   return limaMidnightUtc(y, m, d);
 }
 
@@ -219,6 +239,8 @@ export async function generateBatchCore(
           batchId: b.id,
           supportsSignatureVersion,
           secret,
+          overrideExpiresAt: options.overrideExpiresAt,
+          overrideDisabled: options.overrideDisabled,
         });
         // Acumular para pairing global posterior
         allRows.push(...rows);
@@ -401,6 +423,8 @@ export async function generateBatchPlanned(
       batchId: b.id,
       supportsSignatureVersion,
       secret,
+      overrideExpiresAt: options.overrideExpiresAt,
+      overrideDisabled: options.overrideDisabled,
     });
     allRows.push(...rows);
     allTokens.push(...tokens);

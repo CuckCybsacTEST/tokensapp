@@ -29,7 +29,7 @@ export type ComputeResult = {
 
 /**
  * Compute whether tokens are enabled based on the time of day:
- * Enabled between 18:00 (inclusive) and 00:00 (exclusive) in provided tz.
+ * Enabled between 18:00 (inclusive) and 03:00 (exclusive) in provided tz.
  *
  * tz: IANA timezone string (e.g. 'America/Argentina/Buenos_Aires'). If not provided,
  * we use the runtime's resolved timeZone via Intl; fallback to UTC.

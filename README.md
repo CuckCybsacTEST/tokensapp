@@ -129,13 +129,13 @@ npm run dev
 8. (Seguridad) clientSecret usa el mismo secreto que tokens (`TOKEN_SECRET`)
 ### Política de activación (Scheduler Tokens)
 
-El sistema aplica una ventana programada: operativo entre 18:00 (inclusive) y 00:00 (exclusive) en la zona `America/Lima` (configurable vía `TOKENS_TIMEZONE`).
+El sistema aplica una ventana programada: operativo entre 18:00 (inclusive) y 03:00 (exclusive) en la zona `America/Lima` (configurable vía `TOKENS_TIMEZONE`).
 
 Option B (boundary enforcement):
 - A las 18:00 se fuerza ON.
-- A las 00:00 se fuerza OFF.
-- Si un admin enciende manualmente fuera de la ventana (ej. 02:00) queda ON hasta la medianoche siguiente (override temporal).
-- Si un admin apaga dentro de la ventana (ej. 20:30) queda OFF hasta la medianoche (cuando se fuerza OFF igualmente).
+- A las 03:00 se fuerza OFF.
+- Si un admin enciende manualmente fuera de la ventana (ej. 04:00) queda ON hasta las 18:00 siguiente (override temporal).
+- Si un admin apaga dentro de la ventana (ej. 20:30) queda OFF hasta las 03:00 (cuando se fuerza OFF igualmente).
 
 Los endpoints internos diferencian:
 - `tokensEnabled` (estado efectivo persistido en DB)

@@ -95,7 +95,7 @@ SELECT prize_id, COUNT(*) FROM "Token" GROUP BY prize_id;
 ```sql
 -- Corregir functionalDate
 UPDATE "Batch"
-SET functional_date = '2025-10-11 00:00:00'::timestamptz
+SET functional_date = '2025-10-11 03:00:00'::timestamptz
 WHERE id = 'batch_id';
 
 -- Recalcular expiraciones
@@ -207,8 +207,8 @@ SELECT
   COUNT(CASE WHEN redeemed_at IS NOT NULL THEN 1 END) as redeemed
 FROM "Token" t
 JOIN "Batch" b ON t.batch_id = b.id
-WHERE b.functional_date >= '2025-10-11 00:00:00'
-  AND b.functional_date < '2025-10-12 00:00:00';
+WHERE b.functional_date >= '2025-10-11 03:00:00'
+  AND b.functional_date < '2025-10-12 03:00:00';
 ```
 
 **Solución:**

@@ -48,7 +48,7 @@ type TriviaQuestion = {
   }>;
 };
 
-type TabType = 'overview' | 'question-sets' | 'prizes' | 'questions';
+type TabType = 'overview' | 'question-sets' | 'prizes' | 'questions' | 'assignments';
 
 type TriviaStats = {
   totalQuestionSets: number;
@@ -65,6 +65,7 @@ type TriviaStats = {
 type NewQuestionSetForm = {
   name: string;
   description: string;
+  regulationContent: string;
   active: boolean;
 };
 
@@ -137,6 +138,27 @@ type TriviaAnswer = {
   updatedAt: Date;
 };
 
+type TriviaAssignment = {
+  id: string;
+  userId: string;
+  questionSetId: string;
+  status: 'PENDING' | 'COMPLETED' | 'SKIPPED';
+  includeTrivia: boolean;
+  assignedAt: string;
+  completedAt: string | null;
+  user: {
+    username: string;
+    person: {
+      name: string;
+      area: string | null;
+      dni: string | null;
+    }
+  };
+  questionSet: {
+    name: string;
+  };
+};
+
 type TriviaQuestionWithStats = {
   id: string;
   questionSetId: string | null;
@@ -169,6 +191,43 @@ export default function TriviaClient({
   const [stats, setStats] = useState(initialStats);
   const [loading, setLoading] = useState(false);
 
+  // Assignments state
+  const [assignments, setAssignments] = useState<TriviaAssignment[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignForm, setAssignForm] = useState({
+    userIds: [] as string[],
+    questionSetId: '',
+    area: '',
+    includeTrivia: false
+  });
+
+  // Load assignments
+  const loadAssignments = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/admin/trivia/assign');
+      const data = await r.json();
+      if (data.ok) setAssignments(data.assignments);
+    } catch {}
+    setLoading(false);
+  };
+
+  const loadUsersForAssign = async () => {
+    try {
+      const r = await fetch('/api/admin/users');
+      const data = await r.json();
+      if (data.ok) setAllUsers(data.users);
+    } catch {}
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'assignments') {
+      loadAssignments();
+      loadUsersForAssign();
+    }
+  }, [activeTab]);
+
   // Estados para modales
   const [showCreateQuestionSetModal, setShowCreateQuestionSetModal] = useState(false);
   const [showCreatePrizeModal, setShowCreatePrizeModal] = useState(false);
@@ -178,6 +237,7 @@ export default function TriviaClient({
   const [questionSetForm, setQuestionSetForm] = useState<NewQuestionSetForm>({
     name: '',
     description: '',
+    regulationContent: '',
     active: true
   });
 
@@ -452,7 +512,8 @@ export default function TriviaClient({
             { id: 'overview', label: 'Resumen', count: null },
             { id: 'question-sets', label: 'Sets de Preguntas', count: stats.totalQuestionSets },
             { id: 'prizes', label: 'Premios', count: stats.totalPrizes },
-            { id: 'questions', label: 'Preguntas', count: stats.totalQuestions }
+            { id: 'questions', label: 'Preguntas', count: stats.totalQuestions },
+            { id: 'assignments', label: 'Asignaciones', count: assignments.length }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -514,6 +575,14 @@ export default function TriviaClient({
               className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700"
             >
               Nueva Pregunta
+            </button>
+          )}
+          {activeTab === 'assignments' && (
+            <button
+              onClick={() => setShowAssignModal(true)}
+              className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Asignar Trivia
             </button>
           )}
         </div>
@@ -715,6 +784,82 @@ export default function TriviaClient({
               ))}
             </div>
           )}
+          {questions.length === 0 && !loading && (
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-gray-200 dark:border-slate-700 p-8 text-center">
+              <p className="text-gray-500 dark:text-slate-400 italic">No hay preguntas configuradas</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'assignments' && (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">Gestión de Cumplimiento</h3>
+            <p className="text-xs text-blue-700 dark:text-blue-400">
+              Usa esta sección para asignar trivias específicas a áreas completas o personas individuales como requisito 
+              complementario al contrato. Los usuarios asignados verán el modal de trivia al ingresar a su panel.
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-slate-700">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-900/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Colaborador</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Contenido</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Trivia?</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Fecha Asignación</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Completado</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                  {assignments.map((assignment) => (
+                    <tr key={assignment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 dark:text-slate-100">{assignment.user.person.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400">{assignment.user.person.area || 'Sin área'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-slate-100 font-mono">{assignment.questionSet.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {assignment.includeTrivia ? (
+                          <span className="text-indigo-600 dark:text-indigo-400 text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">SÍ</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">NO</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          assignment.status === 'COMPLETED' 
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                        }`}>
+                          {assignment.status === 'COMPLETED' ? 'Completado' : 'Pendiente'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
+                        {new Date(assignment.assignedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
+                        {assignment.completedAt ? new Date(assignment.completedAt).toLocaleString() : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                  {assignments.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400 italic">
+                        No hay asignaciones registradas
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -767,9 +912,23 @@ export default function TriviaClient({
                     value={questionSetForm.description}
                     onChange={(e) => updateQuestionSetForm('description', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    rows={3}
+                    rows={2}
                     placeholder="Descripción opcional del set de preguntas"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Contenido del Reglamento / Mensaje
+                  </label>
+                  <textarea
+                    value={questionSetForm.regulationContent}
+                    onChange={(e) => updateQuestionSetForm('regulationContent', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans"
+                    rows={6}
+                    placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1 italic">Este texto se mostrará en el primer paso del compromiso del colaborador.</p>
                 </div>
 
                 <div className="flex items-center">
@@ -1083,6 +1242,139 @@ export default function TriviaClient({
                 >
                   {loading ? 'Creando...' : 'Crear Pregunta'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Asignar Trivia */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Asignar Trivia Dirigida</h3>
+                <button
+                  onClick={() => setShowAssignModal(false)}
+                  className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Set de Trivia (Contenido)</label>
+                  <select
+                    value={assignForm.questionSetId}
+                    onChange={(e) => setAssignForm({ ...assignForm, questionSetId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                  >
+                    <option value="">Seleccionar set...</option>
+                    {questionSets.map((set) => (
+                      <option key={set.id} value={set.id}>
+                        {set.name} ({set.questionCount} preguntas)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200">Requerir Trivia de Conocimiento</label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Si se desactiva, solo se les pedirá leer y firmar el reglamento.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAssignForm({ ...assignForm, includeTrivia: !assignForm.includeTrivia })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      assignForm.includeTrivia ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        assignForm.includeTrivia ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 mb-3 uppercase tracking-wider">¿A quiénes asignar?</p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción A: Por Área</label>
+                      <select
+                        value={assignForm.area}
+                        onChange={(e) => setAssignForm({ ...assignForm, area: e.target.value, userIds: [] })}
+                        className="w-full px-3 py-2 border border-blue-200 dark:border-blue-900/30 rounded-md bg-blue-50/30 dark:bg-blue-900/10 text-gray-900 dark:text-slate-100"
+                      >
+                        <option value="">-- No filtrar por área --</option>
+                        {['Caja', 'Barra', 'Mozos', 'Seguridad', 'Animación', 'DJs', 'Multimedia', 'Otros'].map(a => (
+                          <option key={a} value={a}>{a}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Opción B: Colaboradores específicos</label>
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-slate-600 rounded-md p-2 space-y-1">
+                        {allUsers.filter(u => !assignForm.area || u.area === assignForm.area).map(u => (
+                          <label key={u.id} className="flex items-center text-sm p-1 hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded pointer">
+                            <input
+                              type="checkbox"
+                              checked={assignForm.userIds.includes(u.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setAssignForm({ ...assignForm, userIds: [...assignForm.userIds, u.id], area: '' });
+                                else setAssignForm({ ...assignForm, userIds: assignForm.userIds.filter(id => id !== u.id) });
+                              }}
+                              className="mr-2"
+                            />
+                            <span>{u.personName} <span className="text-xs text-gray-400">({u.area})</span></span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    onClick={() => setShowAssignModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!assignForm.questionSetId) return alert("Selecciona una trivia");
+                      if (assignForm.userIds.length === 0 && !assignForm.area) return alert("Selecciona destinatarios");
+                      
+                      setLoading(true);
+                      try {
+                        const r = await fetch('/api/admin/trivia/assign', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(assignForm)
+                        });
+                        if (r.ok) {
+                          alert("Trivias asignadas correctamente");
+                          setShowAssignModal(false);
+                          loadAssignments();
+                        }
+                      } catch {}
+                      setLoading(false);
+                    }}
+                    disabled={loading}
+                    className="flex-1 px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Asignando...' : 'Confirmar Asignación'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

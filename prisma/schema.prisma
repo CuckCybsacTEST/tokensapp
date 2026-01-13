@@ -235,8 +235,26 @@ model User {
   TaskComment               TaskComment[]
   ticketPurchases           TicketPurchase[]
   person                    Person                 @relation(fields: [personId], references: [id])
+  commitmentAssignments     CommitmentAssignment[]
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
+}
+
+model CommitmentAssignment {
+  id              String            @id @default(cuid())
+  userId          String
+  questionSetId   String
+  requiredVersion Int               @default(1)
+  status          String            @default("PENDING") // PENDING, COMPLETED, SKIPPED
+  includeTrivia   Boolean           @default(false)
+  assignedAt      DateTime          @default(now())
+  completedAt     DateTime?
+  
+  user            User              @relation(fields: [userId], references: [id])
+  questionSet     TriviaQuestionSet @relation(fields: [questionSetId], references: [id])
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Customer {
@@ -1076,15 +1094,17 @@ model TriviaProgress {
 }
 
 model TriviaQuestionSet {
-  id          String           @id @default(cuid())
-  name        String
-  description String?
-  active      Boolean          @default(true)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  prizes      TriviaPrize[]
-  questions   TriviaQuestion[]
-  sessions    TriviaSession[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  description           String?
+  regulationContent     String?
+  active                Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  prizes                TriviaPrize[]
+  questions             TriviaQuestion[]
+  sessions              TriviaSession[]
+  commitmentAssignments CommitmentAssignment[]
 
   @@index([active])
 }

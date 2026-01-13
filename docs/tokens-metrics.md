@@ -26,8 +26,8 @@ GET /api/system/tokens/period-metrics?period=today&batchId=optional
 ## 📅 Períodos Disponibles
 
 ### Períodos Diarios
-- **`today`**: Día actual (cierra a las 00:00 Lima)
-- **`yesterday`**: Día anterior
+- **`today`**: Día actual (cierra a las 03:00 AM Lima)
+- **`yesterday`**: Día anterior (finaliza a las 03:00 AM del día actual)
 - **`day_before_yesterday`**: Anteayer
 
 ### Períodos Semanales
@@ -67,17 +67,17 @@ GET /api/system/tokens/period-metrics?period=today&batchId=optional
 ## 🗓️ Sistema functionalDate
 
 ### ¿Qué es functionalDate?
-Campo `Batch.functionalDate` que mapea tokens al día operativo real, considerando el cierre a medianoche Lima (00:00).
+Campo `Batch.functionalDate` que mapea tokens al día operativo real, considerando el cierre a las **03:00 AM Lima**.
 
 ### Reglas de Cálculo para Períodos Diarios
-1. **Tokens del día** = tokens cuyo `batch.functionalDate` cae dentro del rango del día Lima
-2. **Lotes legacy** (sin functionalDate) se contabilizan por `token.createdAt` si cae en rango
-3. **Ventana de negocio**: 18:00 del día anterior a 00:00 del día actual (hora Lima)
+1. **Tokens del día** = tokens cuyo `batch.functionalDate` cae dentro del rango del día Lima. Un lote generado a la 1 AM del lunes se mapea al domingo.
+2. **Lotes legacy** (sin functionalDate) se contabilizan por `token.createdAt` si cae en rango.
+3. **Ventana de negocio**: 18:00 del día anterior a 03:00 AM del día actual (hora Lima).
 
 ### Ejemplo de Cálculo
 ```sql
 -- Para period=today (11 Oct 2025)
--- Rango: 2025-10-10 18:00:00 - 2025-10-11 00:00:00 (Lima)
+-- Rango: 2025-10-10 18:00:00 - 2025-10-11 03:00:00 (Lima)
 
 SELECT COUNT(*) as tokens_hoy
 FROM "Token" t
@@ -85,11 +85,11 @@ JOIN "Batch" b ON t.batch_id = b.id
 WHERE (
   -- Lotes con functionalDate
   (b.functional_date >= '2025-10-10 18:00:00' AND
-   b.functional_date < '2025-10-11 00:00:00')
+   b.functional_date < '2025-10-11 03:00:00')
   OR
   -- Lotes legacy
   (t.created_at >= '2025-10-10 18:00:00' AND
-   t.created_at < '2025-10-11 00:00:00' AND
+   t.created_at < '2025-10-11 03:00:00' AND
    b.functional_date IS NULL)
 )
 ```
@@ -399,15 +399,15 @@ SELECT
   COUNT(CASE WHEN redeemed_at IS NOT NULL THEN 1 END) as redeemed_manual
 FROM "Token" t
 JOIN "Batch" b ON t.batch_id = b.id
-WHERE b.functional_date >= '2025-10-11 00:00:00'
-  AND b.functional_date < '2025-10-12 00:00:00';
+WHERE b.functional_date >= '2025-10-11 03:00:00'
+  AND b.functional_date < '2025-10-12 03:00:00';
 ```
 
 #### functionalDate Incorrecto
 ```sql
 -- Corregir functionalDate de lote
 UPDATE "Batch"
-SET functional_date = '2025-10-11 00:00:00'::timestamptz
+SET functional_date = '2025-10-11 03:00:00'::timestamptz
 WHERE id = 'batch_id';
 ```
 

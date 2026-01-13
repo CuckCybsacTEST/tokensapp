@@ -78,7 +78,7 @@ Este documento define todos los términos técnicos, abreviaturas y conceptos ut
 - **Period Metrics**: Métricas por período de tiempo
 - **Conversion Rate**: Tasa de conversión (canjeados/total)
 - **Active Tokens**: Tokens disponibles actualmente
-- **Business Day**: Día operativo (18:00-00:00 Lima)
+- **Business Day**: Día operativo (18:00 - 03:00 AM Lima)
 
 ### Períodos de Reporte
 - **Today**: Día actual operativo

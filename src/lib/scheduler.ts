@@ -5,8 +5,8 @@
  * - On start, reconcile DB state: compute tokensEnabled (via computeTokensEnabled) and persist it.
  * - Schedule daily jobs (Option B – boundary enforcement):
  *   - 18:00 server local time: force tokensEnabled = true (start window)
- *   - 00:00 server local time: force tokensEnabled = false (end window)
- *   - Entre esos límites NO se fuerzan cambios: si un admin apaga dentro del tramo ON (>=18:00) queda OFF hasta medianoche; si un admin enciende dentro del tramo OFF (<18:00) queda ON hasta las 18:00.
+ *   - 03:00 server local time: force tokensEnabled = false (end window)
+ *   - Entre esos límites NO se fuerzan cambios: si un admin apaga dentro del tramo ON (>=18:00) queda OFF hasta las 03:00; si un admin enciende dentro del tramo OFF (<18:00) queda ON hasta las 18:00.
  *
  * Usage:
  *   import { startScheduler } from '@/lib/scheduler';
@@ -157,7 +157,7 @@ export function startScheduler() {
   }, { scheduled: true, timezone: TOKENS_TZ });
 
   jobs = [job18, job00, jobBday]; // jobMinute disabled for investigation
-  if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 00:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m' });
+  if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 03:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m' });
   started = true;
 }
 

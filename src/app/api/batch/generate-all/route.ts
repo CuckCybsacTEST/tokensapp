@@ -246,14 +246,27 @@ export async function POST(req: Request) {
   }
 
   let batch, tokens, meta, prizeEmittedTotals;
+  
+  // Prepare generation options with overrides to keep signatures consistent with DB data
+  const genOptions: any = {
+    description: name,
+    includeQr,
+    lazyQr,
+    expirationDays,
+  };
+
+  if (mode === "singleDay" && singleDayEnd && singleDayStart) {
+    const nowStart = DateTime.now().setZone("America/Lima").startOf("day");
+    genOptions.overrideDisabled = singleDayStart.toJSDate().getTime() > nowStart.toJSDate().getTime();
+    genOptions.overrideExpiresAt = singleDayEnd.plus({ hours: 3 }).toJSDate();
+  } else if (mode === 'singleHour' && singleHourWindowStart && singleHourWindowEnd) {
+    genOptions.overrideDisabled = singleHourWindowStart.getTime() > Date.now();
+    genOptions.overrideExpiresAt = singleHourWindowEnd;
+  }
+
   try {
     const generator = mode === 'plannedCounts' ? generateBatchPlanned : generateBatchCore;
-    const res = await generator(prizeRequests, {
-      description: name,
-      includeQr,
-      lazyQr,
-      expirationDays,
-    });
+    const res = await generator(prizeRequests, genOptions);
     batch = res.batch;
     tokens = res.tokens;
     meta = res.meta;
@@ -287,86 +300,29 @@ export async function POST(req: Request) {
     return apiError('AUTO_BATCH_FAILED', 'Fallo al generar lote automático', details, 500);
   }
 
-  // Post-process for single-day mode: adjust expiresAt to 03:00 AM of the next day and toggle disabled for future dates.
+  // Post-process for single-day mode: logging only (expiration handled in core to preserve signatures)
   if (mode === "singleDay" && batch?.id && singleDayEnd && singleDayStart) {
-  // Comparación en zona Lima: si el día seleccionado es futuro, los tokens se crean deshabilitados y se podrán habilitar el mismo día.
-  const nowStart = DateTime.now().setZone("America/Lima").startOf("day");
-    const isFutureDay = singleDayStart.toJSDate().getTime() > nowStart.toJSDate().getTime();
-    
-    // Nueva expiración: fin del día + 3 horas (03:00 AM del día siguiente)
-    const expirationWithGrace = singleDayEnd.plus({ hours: 3 });
-
-    await prisma.token.updateMany({
-      where: { batchId: batch.id },
-      data: {
-        expiresAt: expirationWithGrace.toJSDate(),
-        disabled: isFutureDay,
-      },
-    });
-    await logEvent("BATCH_SINGLE_DAY_POST", "post-proceso singleDay aplicado", {
+    await logEvent("BATCH_SINGLE_DAY_POST", "post-proceso singleDay aplicado (core-only)", {
       batchId: batch.id,
       singleDayDate: singleDayStart.toISO(),
-      expiresAt: expirationWithGrace.toISO(),
-      isFutureDay,
+      expiresAt: genOptions.overrideExpiresAt.toISOString(),
     });
-    // Reload tokens from DB to reflect updated fields; map to the expected in-memory shape
-    const fresh = await prisma.token.findMany({
-      where: { batchId: batch.id },
-      include: { prize: { select: { key: true, label: true, color: true } } },
-      orderBy: { id: "asc" },
-    });
-    tokens = fresh.map((t: any) => ({
-      id: t.id,
-      prizeId: t.prizeId,
-      prizeKey: t.prize.key,
-      prizeLabel: t.prize.label,
-      prizeColor: t.prize.color ?? null,
-      expiresAt: t.expiresAt,
-      signature: t.signature,
-      signatureVersion: t.signatureVersion,
-      disabled: t.disabled,
-    }));
   }
 
-  // Post-process for singleHour mode: adjust validFrom + expiresAt window, set disabled if future
+  // Post-process for singleHour mode: adjust validFrom (expiresAt already handled in core)
   if (mode === 'singleHour' && batch?.id && singleHourWindowStart && singleHourWindowEnd && singleHourDuration) {
-    const isFutureWindow = singleHourWindowStart.getTime() > Date.now();
-    await prisma.token.updateMany({
-      where: { batchId: batch.id },
-      data: {
-        expiresAt: singleHourWindowEnd,
-        disabled: isFutureWindow,
-      }
-    });
     // Raw SQL para setear validFrom sin que el tipo del cliente actual (pre-migrate) bloquee
     try {
       await prisma.$executeRawUnsafe(`UPDATE \"Token\" SET \"validFrom\" = $1 WHERE \"batchId\" = $2`, singleHourWindowStart as any, batch.id as any);
     } catch (e) {
       console.error('[singleHour.validFrom.update.error]', e);
     }
-    await logEvent('BATCH_SINGLE_HOUR_POST', 'post-proceso singleHour aplicado', {
+    await logEvent('BATCH_SINGLE_HOUR_POST', 'post-proceso singleHour aplicado (validFrom)', {
       batchId: batch.id,
       windowStart: singleHourWindowStart.toISOString(),
       windowEnd: singleHourWindowEnd.toISOString(),
       durationMinutes: singleHourDuration,
-      isFutureWindow,
     });
-    const fresh = await prisma.token.findMany({
-      where: { batchId: batch.id },
-      include: { prize: { select: { key: true, label: true, color: true } } },
-      orderBy: { id: 'asc' },
-    });
-    tokens = fresh.map((t: any) => ({
-      id: t.id,
-      prizeId: t.prizeId,
-      prizeKey: t.prize.key,
-      prizeLabel: t.prize.label,
-      prizeColor: t.prize.color ?? null,
-      expiresAt: t.expiresAt,
-      signature: t.signature,
-      signatureVersion: t.signatureVersion,
-      disabled: t.disabled,
-    }));
     // Adjuntar metadata de la ventana en meta (no destructivo)
     meta = {
       ...meta,

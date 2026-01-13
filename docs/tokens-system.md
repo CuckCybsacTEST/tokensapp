@@ -77,16 +77,16 @@ Controla `tokensEnabled` aplicando flips solo en límites horarios y respetando 
 ### Ventana Programada
 | Hora (local TZ `TOKENS_TIMEZONE`, default `America/Lima`) | Acción programada |
 |-----------------------------------------------------------|--------------------|
-| 18:00 (inclusive) → 23:59 | Forzar ON (si estaba OFF) |
-| 00:00 (medianoche) | Forzar OFF |
+| 18:00 (inclusive) → 02:59 | Forzar ON (si estaba OFF) |
+| 03:00 | Forzar OFF |
 
 Entre límites NO se altera el valor manualmente establecido.
 
 ### Overrides Manuales
 | Escenario | Resultado |
 |-----------|-----------|
-| Admin enciende 02:00 | Permanece ON hasta 00:00 siguiente |
-| Admin apaga 20:30 | Permanece OFF hasta 00:00 |
+| Admin enciende 04:00 | Permanece ON hasta 03:00 siguiente |
+| Admin apaga 20:30 | Permanece OFF hasta 03:00 |
 
 ### Estados Expuestos
 - `tokensEnabled`: estado efectivo persistido (aplica gating real)
@@ -128,7 +128,7 @@ GET /api/system/tokens/period-metrics?period=today&batchId=optional
 ```
 
 ### Períodos Disponibles
-- **`today`**: Día actual (cierra 00:00 Lima)
+- **`today`**: Día actual (cierra 03:00 Lima)
 - **`yesterday`**: Día anterior
 - **`this_week`**: Semana actual (lunes-domingo)
 - **`last_week`**: Semana anterior
@@ -137,7 +137,7 @@ GET /api/system/tokens/period-metrics?period=today&batchId=optional
 - **Custom**: `?period=custom&start=2025-01-01&end=2025-01-31`
 
 ### Sistema functionalDate
-Campo `Batch.functionalDate` mapea tokens al día operativo real, considerando cierre a medianoche Lima.
+Campo `Batch.functionalDate` mapea tokens al día operativo real, considerando cierre a las 03:00 Lima.
 
 ### Tipos de Métricas
 | Métrica | Descripción | Cálculo |
@@ -245,7 +245,7 @@ Invoke-RestMethod -Method Post -Uri 'http://localhost:3001/api/system/tokens/tes
 # Simular 18:00 (forzar ON)
 npx ts-node -e "import('./src/lib/prisma').then(({prisma})=>prisma.$executeRawUnsafe('UPDATE SystemConfig SET tokensEnabled = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = 1'))"
 
-# Simular 00:00 (forzar OFF)
+# Simular 03:00 (forzar OFF)
 npx ts-node -e "import('./src/lib/prisma').then(({prisma})=>prisma.$executeRawUnsafe('UPDATE SystemConfig SET tokensEnabled = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = 1'))"
 ```
 

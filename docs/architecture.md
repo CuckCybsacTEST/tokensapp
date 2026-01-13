@@ -235,7 +235,7 @@ Servidor → Cliente:
 ## Scheduler y Automatización
 
 ### Tokens Scheduler
-- **Boundary Enforcement**: Fuerza ON/OFF en límites horarios (18:00-00:00), respeta overrides manuales.
+- **Boundary Enforcement**: Fuerza ON/OFF en límites horarios (18:00 - 03:00 AM), respeta overrides manuales.
 - **Expiry Jobs**: Expira tokens de cumpleaños, activa tokens por ventana horaria.
 - **Tecnología**: `node-cron` con Luxon para TZ, logging configurable.
 

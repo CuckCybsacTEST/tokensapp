@@ -97,8 +97,8 @@ function deriveFunctionalDate(description: string | null | undefined, createdAt:
     }
   }
   if (y && m && d) return { fDate: limaMidnightUtc(y, m, d), source: 'parsed' };
-  // derive from createdAt shifting to Lima
-  const createdLocal = new Date(createdAt.getTime() - 5 * 3600 * 1000);
+  // derive from createdAt shifting to Lima (using 8h shift to honor 03:00 AM cutoff for business day)
+  const createdLocal = new Date(createdAt.getTime() - 8 * 3600 * 1000);
   y = createdLocal.getUTCFullYear(); m = createdLocal.getUTCMonth() + 1; d = createdLocal.getUTCDate();
   return { fDate: limaMidnightUtc(y, m, d), source: 'derived' };
 }
