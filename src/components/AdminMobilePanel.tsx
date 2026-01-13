@@ -225,6 +225,13 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "REGLAMENTO",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/regulations`, label: "Reglamento Interno", icon: ICONS.book }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "ESCÁNER MULTI-USO",
         icon: ICONS.qr,
         items: [

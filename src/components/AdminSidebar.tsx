@@ -153,6 +153,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/statics`, label: "Estadísticas Globales", icon: ICONS.chart }
         ]
       }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "REGLAMENTO",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/regulations`, label: "Reglamento Interno", icon: ICONS.book }
+        ]
+      }] : []),
       {
         title: "TOKENS RULETA",
         icon: ICONS.roulette,
