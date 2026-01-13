@@ -53,7 +53,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     if (qSet.regulationContent) {
       setDynamicContent({
         title: qSet.name,
-        paragraphs: qSet.regulationContent.split('\n').filter((p: string) => p.trim() !== '')
+        paragraphs: [qSet.regulationContent] // Pass HTML as single paragraph
       });
     }
 
@@ -261,11 +261,36 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 {dynamicContent ? dynamicContent.title : CURRENT_REGULATION.title}
               </h3>
               
-              {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).map((p, i) => (
-                <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                  {p}
-                </p>
-              ))}
+                {dynamicContent ? (
+                  <div 
+                    className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 prose prose-sm max-w-none dark:prose-invert commitment-modal-content"
+                    dangerouslySetInnerHTML={{ __html: dynamicContent.paragraphs.join('<br>') }}
+                    style={{
+                      '--tw-prose-body': 'rgb(71 85 105)',
+                      '--tw-prose-headings': 'rgb(30 58 138)',
+                      '--tw-prose-lead': 'rgb(71 85 105)',
+                      '--tw-prose-links': 'rgb(30 58 138)',
+                      '--tw-prose-bold': 'rgb(15 23 42)',
+                      '--tw-prose-counters': 'rgb(71 85 105)',
+                      '--tw-prose-bullets': 'rgb(71 85 105)',
+                      '--tw-prose-hr': 'rgb(226 232 240)',
+                      '--tw-prose-quotes': 'rgb(71 85 105)',
+                      '--tw-prose-quote-borders': 'rgb(226 232 240)',
+                      '--tw-prose-captions': 'rgb(71 85 105)',
+                      '--tw-prose-code': 'rgb(15 23 42)',
+                      '--tw-prose-pre-code': 'rgb(241 245 249)',
+                      '--tw-prose-pre-bg': 'rgb(15 23 42)',
+                      '--tw-prose-th-borders': 'rgb(226 232 240)',
+                      '--tw-prose-td-borders': 'rgb(226 232 240)',
+                    } as React.CSSProperties}
+                  />
+                ) : (
+                CURRENT_REGULATION.content.map((p, i) => (
+                  <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {p}
+                  </p>
+                ))
+              )}
 
               <div className="pt-10 pb-4 text-center">
                 {!hasScrolledToBottom && (
@@ -381,11 +406,36 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                   {dynamicContent ? dynamicContent.title : CURRENT_REGULATION.title}
                 </h3>
                 
-                {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).map((p, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                    {p}
-                  </p>
-                ))}
+                {dynamicContent ? (
+                  <div 
+                    className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 prose prose-sm max-w-none dark:prose-invert commitment-modal-content"
+                    dangerouslySetInnerHTML={{ __html: dynamicContent.paragraphs[0] }}
+                    style={{
+                      '--tw-prose-body': 'rgb(71 85 105)',
+                      '--tw-prose-headings': 'rgb(30 58 138)',
+                      '--tw-prose-lead': 'rgb(71 85 105)',
+                      '--tw-prose-links': 'rgb(30 58 138)',
+                      '--tw-prose-bold': 'rgb(15 23 42)',
+                      '--tw-prose-counters': 'rgb(71 85 105)',
+                      '--tw-prose-bullets': 'rgb(71 85 105)',
+                      '--tw-prose-hr': 'rgb(226 232 240)',
+                      '--tw-prose-quotes': 'rgb(71 85 105)',
+                      '--tw-prose-quote-borders': 'rgb(226 232 240)',
+                      '--tw-prose-captions': 'rgb(71 85 105)',
+                      '--tw-prose-code': 'rgb(15 23 42)',
+                      '--tw-prose-pre-code': 'rgb(241 245 249)',
+                      '--tw-prose-pre-bg': 'rgb(15 23 42)',
+                      '--tw-prose-th-borders': 'rgb(226 232 240)',
+                      '--tw-prose-td-borders': 'rgb(226 232 240)',
+                    } as React.CSSProperties}
+                  />
+                ) : (
+                  CURRENT_REGULATION.content.map((p, i) => (
+                    <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                      {p}
+                    </p>
+                  ))
+                )}
               </div>
 
               {/* Información de aceptación más abajo */}
@@ -574,3 +624,43 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     </div>
   );
 }
+
+<style jsx global>{`
+  .commitment-modal-content ul {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+    list-style-type: disc;
+  }
+  
+  .commitment-modal-content ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+    list-style-type: decimal;
+  }
+  
+  .commitment-modal-content li {
+    margin: 0.25rem 0;
+  }
+  
+  .commitment-modal-content p {
+    margin: 0.5rem 0;
+  }
+  
+  .commitment-modal-content strong, .commitment-modal-content b {
+    font-weight: 700;
+  }
+  
+  .commitment-modal-content em, .commitment-modal-content i {
+    font-style: italic;
+  }
+  
+  .commitment-modal-content u {
+    text-decoration: underline;
+  }
+  
+  .commitment-modal-content br {
+    display: block;
+    content: "";
+    margin: 0.5rem 0;
+  }
+`}</style>

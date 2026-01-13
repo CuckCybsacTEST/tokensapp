@@ -272,6 +272,24 @@ export default function TriviaClient({
 
   const [formErrors, setFormErrors] = useState<string[]>([]);
 
+  // Ref for the contentEditable div
+  const regulationContentRef = React.useRef<HTMLDivElement>(null);
+  const editRegulationContentRef = React.useRef<HTMLDivElement>(null);
+
+  // Set initial content when modal opens or form changes
+  React.useEffect(() => {
+    if (regulationContentRef.current && showCreateQuestionSetModal) {
+      regulationContentRef.current.innerHTML = questionSetForm.regulationContent;
+    }
+  }, [showCreateQuestionSetModal, questionSetForm.regulationContent]);
+
+  // Set initial content for edit modal
+  React.useEffect(() => {
+    if (editRegulationContentRef.current && showEditQuestionSetModal) {
+      editRegulationContentRef.current.innerHTML = questionSetForm.regulationContent;
+    }
+  }, [showEditQuestionSetModal, questionSetForm.regulationContent]);
+
   const refreshData = async () => {
     setLoading(true);
     try {
@@ -1144,13 +1162,102 @@ export default function TriviaClient({
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Contenido del Reglamento / Mensaje
                   </label>
-                  <textarea
-                    value={questionSetForm.regulationContent}
-                    onChange={(e) => updateQuestionSetForm('regulationContent', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans"
-                    rows={6}
-                    placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                  
+                  {/* Barra de herramientas de formato */}
+                  <div className="mb-2 flex flex-wrap gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.execCommand('bold', false);
+                      }}
+                      className="px-2 py-1 text-xs font-bold bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Negrita"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.execCommand('italic', false);
+                      }}
+                      className="px-2 py-1 text-xs italic bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Cursiva"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.execCommand('underline', false);
+                      }}
+                      className="px-2 py-1 text-xs underline bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Subrayado"
+                    >
+                      U
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.execCommand('insertUnorderedList', false);
+                      }}
+                      className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Viñetas"
+                    >
+                      •
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document.execCommand('insertOrderedList', false);
+                      }}
+                      className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Numeración"
+                    >
+                      1.
+                    </button>
+                  </div>
+                  
+                  <div
+                    ref={regulationContentRef}
+                    contentEditable
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
+                    onBlur={(e) => updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML)}
+                    data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                    suppressContentEditableWarning={true}
                   />
+                  <style jsx>{`
+                    div[contenteditable]:empty:before {
+                      content: attr(data-placeholder);
+                      color: #9ca3af;
+                      font-style: italic;
+                      pointer-events: none;
+                    }
+                    div[contenteditable] ul {
+                      padding-left: 1.5rem;
+                      margin: 0.5rem 0;
+                    }
+                    div[contenteditable] ol {
+                      padding-left: 1.5rem;
+                      margin: 0.5rem 0;
+                    }
+                    div[contenteditable] li {
+                      margin: 0.25rem 0;
+                    }
+                    div[contenteditable] p {
+                      margin: 0.5rem 0;
+                    }
+                    div[contenteditable] br {
+                      display: block;
+                      content: "";
+                      margin: 0.5rem 0;
+                    }
+                  `}</style>
                   <p className="text-[10px] text-gray-500 mt-1 italic">Este texto se mostrará en el primer paso del compromiso del colaborador.</p>
                 </div>
 
@@ -1256,13 +1363,78 @@ export default function TriviaClient({
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Contenido del Reglamento / Mensaje
                   </label>
-                  <textarea
-                    value={questionSetForm.regulationContent}
-                    onChange={(e) => updateQuestionSetForm('regulationContent', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans"
-                    rows={6}
-                    placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                  
+                  {/* Barra de herramientas de formato */}
+                  <div className="mb-2 flex flex-wrap gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
+                    <button
+                      type="button"
+                      onClick={() => document.execCommand('bold', false)}
+                      className="px-2 py-1 text-xs font-bold bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Negrita"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.execCommand('italic', false)}
+                      className="px-2 py-1 text-xs italic bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Cursiva"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.execCommand('underline', false)}
+                      className="px-2 py-1 text-xs underline bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Subrayado"
+                    >
+                      U
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    <button
+                      type="button"
+                      onClick={() => document.execCommand('insertUnorderedList', false)}
+                      className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Viñetas"
+                    >
+                      •
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.execCommand('insertOrderedList', false)}
+                      className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Numeración"
+                    >
+                      1.
+                    </button>
+                  </div>
+                  
+                  <div
+                    ref={editRegulationContentRef}
+                    contentEditable
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
+                    onBlur={(e) => updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML)}
+                    data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
                   />
+                  <style jsx>{`
+                    div[contenteditable]:empty:before {
+                      content: attr(data-placeholder);
+                      color: #9ca3af;
+                      font-style: italic;
+                      pointer-events: none;
+                    }
+                    div[contenteditable] ul {
+                      padding-left: 1.5rem;
+                      margin: 0.5rem 0;
+                    }
+                    div[contenteditable] ol {
+                      padding-left: 1.5rem;
+                      margin: 0.5rem 0;
+                    }
+                    div[contenteditable] li {
+                      margin: 0.25rem 0;
+                    }
+                  `}</style>
                   <p className="text-[10px] text-gray-500 mt-1 italic">Este texto se mostrará en el primer paso del compromiso del colaborador.</p>
                 </div>
 
