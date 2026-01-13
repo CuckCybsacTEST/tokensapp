@@ -5,6 +5,7 @@ type TriviaQuestionSet = {
   id: string;
   name: string;
   description?: string;
+  regulationContent?: string;
   active: boolean;
   questionCount: number;
   prizeCount: number;
@@ -95,6 +96,7 @@ type TriviaQuestionSetWithCounts = {
   id: string;
   name: string;
   description: string | null;
+  regulationContent: string | null;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -230,8 +232,12 @@ export default function TriviaClient({
 
   // Estados para modales
   const [showCreateQuestionSetModal, setShowCreateQuestionSetModal] = useState(false);
+  const [showEditQuestionSetModal, setShowEditQuestionSetModal] = useState(false);
+  const [editingQuestionSet, setEditingQuestionSet] = useState<TriviaQuestionSetWithCounts | null>(null);
   const [showCreatePrizeModal, setShowCreatePrizeModal] = useState(false);
   const [showCreateQuestionModal, setShowCreateQuestionModal] = useState(false);
+  const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<TriviaQuestionWithStats | null>(null);
 
   // Formularios
   const [questionSetForm, setQuestionSetForm] = useState<NewQuestionSetForm>({
@@ -316,6 +322,194 @@ export default function TriviaClient({
     } catch (error) {
       console.error('Error creating question set:', error);
       setFormErrors([error instanceof Error ? error.message : 'Error desconocido']);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditQuestionSet = (questionSet: TriviaQuestionSetWithCounts) => {
+    setEditingQuestionSet(questionSet);
+    setQuestionSetForm({
+      name: questionSet.name,
+      description: questionSet.description || '',
+      regulationContent: questionSet.regulationContent || '',
+      active: questionSet.active
+    });
+    setShowEditQuestionSetModal(true);
+  };
+
+  const handleUpdateQuestionSet = async () => {
+    if (!editingQuestionSet) return;
+
+    const errors: string[] = [];
+
+    if (!questionSetForm.name.trim()) {
+      errors.push('El nombre es requerido');
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setLoading(true);
+    setFormErrors([]);
+
+    try {
+      const response = await fetch(`/api/trivia/question-sets/${editingQuestionSet.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(questionSetForm)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al actualizar set de preguntas');
+      }
+
+      setShowEditQuestionSetModal(false);
+      setEditingQuestionSet(null);
+      setQuestionSetForm({
+        name: '',
+        description: '',
+        regulationContent: '',
+        active: true
+      });
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating question set:', error);
+      setFormErrors([error instanceof Error ? error.message : 'Error desconocido']);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteQuestionSet = async (questionSet: TriviaQuestionSetWithCounts) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar el set "${questionSet.name}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/trivia/question-sets/${questionSet.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al eliminar set de preguntas');
+      }
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting question set:', error);
+      alert(error instanceof Error ? error.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditQuestion = (question: TriviaQuestionWithStats) => {
+    setEditingQuestion(question);
+    setQuestionForm({
+      questionSetId: question.questionSetId || '',
+      question: question.question,
+      order: question.order,
+      active: question.active,
+      answers: question.answers.map(a => ({
+        answer: a.answer,
+        isCorrect: a.isCorrect,
+        order: a.order
+      }))
+    });
+    setShowEditQuestionModal(true);
+  };
+
+  const handleUpdateQuestion = async () => {
+    if (!editingQuestion) return;
+
+    const errors: string[] = [];
+
+    if (!questionForm.question.trim()) {
+      errors.push('La pregunta es requerida');
+    }
+
+    if (!questionForm.questionSetId) {
+      errors.push('Debe seleccionar un set de preguntas');
+    }
+
+    const correctAnswers = questionForm.answers.filter(a => a.isCorrect);
+    if (correctAnswers.length !== 1) {
+      errors.push('Debe haber exactamente una respuesta correcta');
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setLoading(true);
+    setFormErrors([]);
+
+    try {
+      const response = await fetch(`/api/trivia/questions/${editingQuestion.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(questionForm)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al actualizar pregunta');
+      }
+
+      setShowEditQuestionModal(false);
+      setEditingQuestion(null);
+      setQuestionForm({
+        questionSetId: '',
+        question: '',
+        order: 1,
+        active: true,
+        answers: [
+          { answer: '', isCorrect: false, order: 1 },
+          { answer: '', isCorrect: false, order: 2 },
+          { answer: '', isCorrect: false, order: 3 },
+          { answer: '', isCorrect: false, order: 4 }
+        ]
+      });
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating question:', error);
+      setFormErrors([error instanceof Error ? error.message : 'Error desconocido']);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteQuestion = async (question: TriviaQuestionWithStats) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar la pregunta "${question.question}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/trivia/questions/${question.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Error al eliminar pregunta');
+      }
+
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      alert(error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
@@ -665,8 +859,22 @@ export default function TriviaClient({
                         <span>{set.sessionCount} sesiones</span>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-400 dark:text-slate-500">
-                      Creado: {new Date(set.createdAt).toLocaleDateString()}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditQuestionSet(set)}
+                        className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQuestionSet(set)}
+                        className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
+                      >
+                        Eliminar
+                      </button>
+                      <div className="text-xs text-gray-400 dark:text-slate-500 ml-4">
+                        Creado: {new Date(set.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -778,6 +986,20 @@ export default function TriviaClient({
                       </div>
                       <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                         {question.correctAnswerCount} respuesta(s) correcta(s)
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={() => handleEditQuestion(question)}
+                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQuestion(question)}
+                          className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
+                        >
+                          Eliminar
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -960,6 +1182,127 @@ export default function TriviaClient({
                   className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {loading ? 'Creando...' : 'Crear Set'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Set de Preguntas */}
+      {showEditQuestionSetModal && (
+        <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Editar Set de Preguntas</h3>
+                <button
+                  onClick={() => {
+                    setShowEditQuestionSetModal(false);
+                    setEditingQuestionSet(null);
+                    setQuestionSetForm({
+                      name: '',
+                      description: '',
+                      regulationContent: '',
+                      active: true
+                    });
+                  }}
+                  className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              {formErrors.length > 0 && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <ul className="text-sm text-red-600 dark:text-red-400">
+                    {formErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Nombre *
+                  </label>
+                  <input
+                    type="text"
+                    value={questionSetForm.name}
+                    onChange={(e) => updateQuestionSetForm('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    placeholder="Ej: Trivia Básica"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={questionSetForm.description}
+                    onChange={(e) => updateQuestionSetForm('description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    rows={2}
+                    placeholder="Descripción opcional del set de preguntas"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Contenido del Reglamento / Mensaje
+                  </label>
+                  <textarea
+                    value={questionSetForm.regulationContent}
+                    onChange={(e) => updateQuestionSetForm('regulationContent', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans"
+                    rows={6}
+                    placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1 italic">Este texto se mostrará en el primer paso del compromiso del colaborador.</p>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="editQuestionSetActive"
+                    checked={questionSetForm.active}
+                    onChange={(e) => updateQuestionSetForm('active', e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-600 rounded"
+                  />
+                  <label htmlFor="editQuestionSetActive" className="ml-2 text-sm text-gray-700 dark:text-slate-300">
+                    Set activo
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditQuestionSetModal(false);
+                    setEditingQuestionSet(null);
+                    setQuestionSetForm({
+                      name: '',
+                      description: '',
+                      regulationContent: '',
+                      active: true
+                    });
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateQuestionSet}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? 'Actualizando...' : 'Actualizar Set'}
                 </button>
               </div>
             </div>
@@ -1242,6 +1585,175 @@ export default function TriviaClient({
                   className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
                 >
                   {loading ? 'Creando...' : 'Crear Pregunta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Pregunta de Trivia */}
+      {showEditQuestionModal && (
+        <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Editar Pregunta de Trivia</h3>
+                <button
+                  onClick={() => {
+                    setShowEditQuestionModal(false);
+                    setEditingQuestion(null);
+                    setQuestionForm({
+                      questionSetId: '',
+                      question: '',
+                      order: 1,
+                      active: true,
+                      answers: [
+                        { answer: '', isCorrect: false, order: 1 },
+                        { answer: '', isCorrect: false, order: 2 },
+                        { answer: '', isCorrect: false, order: 3 },
+                        { answer: '', isCorrect: false, order: 4 }
+                      ]
+                    });
+                  }}
+                  className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              {formErrors.length > 0 && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <ul className="text-sm text-red-600 dark:text-red-400">
+                    {formErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Set de Preguntas *
+                  </label>
+                  <select
+                    value={questionForm.questionSetId}
+                    onChange={(e) => updateQuestionForm('questionSetId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                  >
+                    <option value="">Seleccionar set...</option>
+                    {questionSets.filter(set => set.active).map((set) => (
+                      <option key={set.id} value={set.id}>{set.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Pregunta *
+                  </label>
+                  <textarea
+                    value={questionForm.question}
+                    onChange={(e) => updateQuestionForm('question', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    rows={3}
+                    placeholder="Escribe la pregunta aquí..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                    Orden
+                  </label>
+                  <input
+                    type="number"
+                    value={questionForm.order}
+                    onChange={(e) => updateQuestionForm('order', parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    min="1"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="editQuestionActive"
+                    checked={questionForm.active}
+                    onChange={(e) => updateQuestionForm('active', e.target.checked)}
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 dark:border-slate-600 rounded"
+                  />
+                  <label htmlFor="editQuestionActive" className="ml-2 text-sm text-gray-700 dark:text-slate-300">
+                    Pregunta activa
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                    Respuestas * (marca una como correcta)
+                  </label>
+                  <div className="space-y-2">
+                    {questionForm.answers.map((answer, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="editCorrect"
+                          checked={answer.isCorrect}
+                          onChange={() => {
+                            setQuestionForm(prev => ({
+                              ...prev,
+                              answers: prev.answers.map((a, i) => ({
+                                ...a,
+                                isCorrect: i === index
+                              }))
+                            }));
+                          }}
+                          className="h-4 w-4 text-purple-600 focus:ring-purple-500"
+                        />
+                        <input
+                          type="text"
+                          value={answer.answer}
+                          onChange={(e) => updateQuestionAnswer(index, 'answer', e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                          placeholder={`Respuesta ${index + 1}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditQuestionModal(false);
+                    setEditingQuestion(null);
+                    setQuestionForm({
+                      questionSetId: '',
+                      question: '',
+                      order: 1,
+                      active: true,
+                      answers: [
+                        { answer: '', isCorrect: false, order: 1 },
+                        { answer: '', isCorrect: false, order: 2 },
+                        { answer: '', isCorrect: false, order: 3 },
+                        { answer: '', isCorrect: false, order: 4 }
+                      ]
+                    });
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateQuestion}
+                  disabled={loading}
+                  className="px-4 py-2 bg-purple-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {loading ? 'Actualizando...' : 'Actualizar Pregunta'}
                 </button>
               </div>
             </div>

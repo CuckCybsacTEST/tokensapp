@@ -9,11 +9,19 @@ interface Props {
   requiredVersion: number;
 }
 
-type Step = 'READING' | 'TRIVIA' | 'RESULT';
+type Step = 'READING' | 'ACCEPT' | 'TRIVIA' | 'RESULT' | 'ALREADY_COMPLETED';
 
 interface DynamicContent {
   title: string;
   paragraphs: string[];
+}
+
+interface AssignmentData {
+  id: string;
+  status: string;
+  completedAt: string | null;
+  includeTrivia: boolean;
+  questionSet: any;
 }
 
 export default function CommitmentModal({ userId, initialAcceptedVersion, requiredVersion }: Props) {
@@ -22,6 +30,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>('READING');
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
+  const [assignmentData, setAssignmentData] = useState<AssignmentData | null>(null);
   const [includeTrivia, setIncludeTrivia] = useState(false);
   const [dynamicContent, setDynamicContent] = useState<DynamicContent | null>(null);
   
@@ -37,48 +46,82 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
   const needsByVersion = (initialAcceptedVersion || 0) < requiredVersion;
 
+  const loadQuestionsFromAssignment = (assignment: any) => {
+    const qSet = assignment.questionSet;
+    
+    // Set dynamic regulation content if available
+    if (qSet.regulationContent) {
+      setDynamicContent({
+        title: qSet.name,
+        paragraphs: qSet.regulationContent.split('\n').filter((p: string) => p.trim() !== '')
+      });
+    }
+
+    // Use questions from the dynamic assignment
+    const questions = qSet.questions.map((q: any) => ({
+      id: q.id,
+      question: q.question,
+      options: q.answers.sort((a: any, b: any) => a.order - b.order).map((a: any) => a.answer),
+      correctIndex: q.answers.findIndex((a: any) => a.isCorrect)
+    }));
+    
+    setSelectedQuestions(questions);
+  };
+
   useEffect(() => {
     if (searchParams && searchParams.get('view-regulation') === '1') {
       setOpen(true);
-      if (selectedQuestions.length === 0) {
-        const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
-        setSelectedQuestions(shuffled.slice(0, 2));
-      }
+      // Don't load default questions here, wait for checkAssignments
     }
-  }, [searchParams, selectedQuestions]);
+  }, [searchParams]);
 
   useEffect(() => { 
     async function checkAssignments() {
       try {
-        const res = await fetch('/api/user/commitment/pending');
+        const isViewRegulation = searchParams && searchParams.get('view-regulation') === '1';
+        const url = isViewRegulation ? '/api/user/commitment/pending?view-regulation=1' : '/api/user/commitment/pending';
+        
+        const res = await fetch(url);
         const data = await res.json();
         
         if (data.ok && data.assignment) {
           setAssignmentId(data.assignment.id);
+          setAssignmentData(data.assignment);
           setIncludeTrivia(!!data.assignment.includeTrivia);
-          setOpen(true);
           
-          const qSet = data.assignment.questionSet;
-          
-          // Set dynamic regulation content if available
-          if (qSet.regulationContent) {
-            setDynamicContent({
-              title: qSet.name,
-              paragraphs: qSet.regulationContent.split('\n').filter((p: string) => p.trim() !== '')
-            });
+          // If assignment is already completed, show already completed state
+          if (data.assignment.status === 'COMPLETED') {
+            setStep('ALREADY_COMPLETED');
+            // Load questions for completed assignments so they can review them
+            loadQuestionsFromAssignment(data.assignment);
           }
-
-          // Use questions from the dynamic assignment
-          const questions = qSet.questions.map((q: any) => ({
-            id: q.id,
-            question: q.question,
-            options: q.answers.sort((a: any, b: any) => a.order - b.order).map((a: any) => a.answer),
-            correctIndex: q.answers.findIndex((a: any) => a.isCorrect)
-          }));
           
-          setSelectedQuestions(questions);
+          // Open modal if there's a pending assignment or if accessed with view-regulation
+          if (data.assignment.status === 'PENDING' || isViewRegulation) {
+            setOpen(true);
+            // For pending assignments, load content but not questions yet
+            loadQuestionsFromAssignment(data.assignment);
+            
+            // Determine initial step based on acceptance status and assignment type
+            if (initialAcceptedVersion >= requiredVersion) {
+              // User already accepted current version
+              if (data.assignment.includeTrivia) {
+                setStep('TRIVIA'); // Skip to trivia if questions are included
+              } else {
+                setStep('ALREADY_COMPLETED'); // Show already completed for content-only assignments
+              }
+            } else {
+              // User hasn't accepted current version
+              setStep('READING');
+            }
+          }
         } else if (needsByVersion) {
           // Fallback to default regulation + random questions if version update is required
+          setOpen(true);
+          const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
+          setSelectedQuestions(shuffled.slice(0, 2));
+        } else if (isViewRegulation) {
+          // If accessed with view-regulation but no assignment, show default
           setOpen(true);
           const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
           setSelectedQuestions(shuffled.slice(0, 2));
@@ -89,7 +132,16 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     }
     
     checkAssignments();
-  }, [needsByVersion, requiredVersion]);
+
+    // Polling para verificar nuevas asignaciones cada 30 segundos cuando el modal esté cerrado
+    const pollInterval = setInterval(() => {
+      if (!open) {
+        checkAssignments();
+      }
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(pollInterval);
+  }, [needsByVersion, requiredVersion, searchParams, open]);
 
   useEffect(() => {
     const handleOpen = () => {
@@ -130,11 +182,29 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     } finally { setLoading(false); }
   }
 
-  const handleTriviaSubmit = () => {
+  const handleTriviaSubmit = async () => {
     setTriviaError(null);
     const allCorrect = selectedQuestions.every(q => answers[q.id] === q.correctIndex);
     if (allCorrect) {
-      setStep('RESULT');
+      // Complete the assignment since trivia was passed
+      setLoading(true);
+      try {
+        const res = await fetch('/api/user/commitment/accept', { 
+          method: 'POST', 
+          headers: { 'Content-Type':'application/json' }, 
+          body: JSON.stringify({ 
+            version: requiredVersion,
+            assignmentId: assignmentId 
+          }) 
+        });
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok || !j?.ok) throw new Error(j?.code || 'ERROR');
+        setStep('RESULT');
+      } catch (e: any) {
+        setTriviaError(e.message || String(e));
+      } finally {
+        setLoading(false);
+      }
     } else {
       setTriviaError("Algunas respuestas son incorrectas. Por favor, revisa el reglamento y vuelve a intentarlo.");
       // Opcionalmente reiniciar trivia o devolver al inicio
@@ -166,8 +236,10 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/20">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             {step === 'READING' && "📖 Reglamento y Compromiso"}
+            {step === 'ACCEPT' && "🤝 Aceptación del Reglamento"}
             {step === 'TRIVIA' && "🧠 Trivia de Conocimiento"}
             {step === 'RESULT' && "✅ ¡Compromiso Completado!"}
+            {step === 'ALREADY_COMPLETED' && "✅ Reglamento Ya Aceptado"}
           </h2>
         </div>
 
@@ -242,6 +314,48 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
             </div>
           )}
 
+          {step === 'ACCEPT' && (
+            <div className="space-y-6">
+              {/* Resumen del reglamento */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg text-indigo-600 dark:text-indigo-400">
+                  {dynamicContent ? dynamicContent.title : CURRENT_REGULATION.title}
+                </h3>
+                
+                <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).slice(0, 1).join(' ')}
+                    {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).length > 1 && '...'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Declaración de compromiso */}
+              <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-4 sm:p-5">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1">
+                    <div className="w-5 h-5 rounded-full border-2 border-indigo-500 flex items-center justify-center p-0.5">
+                      <div className="w-full h-full bg-indigo-500 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Declaración de Compromiso</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">
+                      "Confirmo que he leído y comprendido el reglamento presentado. Me comprometo a cumplir con todas las normas 
+                      establecidas, actuar con responsabilidad en la plataforma y reportar cualquier anomalía. Entiendo que la 
+                      aceptación de este reglamento es obligatoria para el desempeño de mis funciones."
+                    </p>
+                    {includeTrivia && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 font-medium">
+                        ⚠️ Después de aceptar, deberás completar una trivia de conocimiento sobre el reglamento.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {step === 'RESULT' && (
             <div className="py-10 text-center space-y-4">
               <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto text-4xl mb-6">
@@ -258,6 +372,50 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
               </p>
             </div>
           )}
+
+          {step === 'ALREADY_COMPLETED' && (
+            <div className="space-y-6">
+              {/* Contenido completo del reglamento primero */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg text-indigo-600 dark:text-indigo-400">
+                  {dynamicContent ? dynamicContent.title : CURRENT_REGULATION.title}
+                </h3>
+                
+                {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).map((p, i) => (
+                  <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {p}
+                  </p>
+                ))}
+              </div>
+
+              {/* Información de aceptación más abajo */}
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="text-center space-y-4">
+                  <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto text-4xl">
+                    ℹ️
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-900 dark:text-white">Reglamento Ya Aceptado</h4>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Ya has completado este compromiso anteriormente.
+                  </p>
+                  {assignmentData?.completedAt && (
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                        Aceptado el {new Date(assignmentData.completedAt).toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -266,11 +424,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
             <button
               disabled={!hasScrolledToBottom}
               onClick={() => {
-                if (includeTrivia) {
-                  setStep('TRIVIA');
-                } else {
-                  setStep('RESULT');
-                }
+                setStep('ACCEPT');
               }}
               className={`w-full py-3 rounded-lg font-bold text-center transition-all ${
                 hasScrolledToBottom 
@@ -278,8 +432,54 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
               }`}
             >
-              {includeTrivia ? 'Comenzar Trivia' : 'Aceptar Reglamento'}
+              Continuar a Aceptación
             </button>
+          )}
+
+          {step === 'ACCEPT' && (
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep('READING')}
+                className="flex-1 py-3 px-4 rounded-lg font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              >
+                Volver a leer
+              </button>
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  try {
+                    // Accept the content first
+                    const res = await fetch('/api/user/commitment/accept', { 
+                      method: 'POST', 
+                      headers: { 'Content-Type':'application/json' }, 
+                      body: JSON.stringify({ 
+                        version: requiredVersion,
+                        assignmentId: assignmentId,
+                        acceptOnly: true // New flag to accept content without completing trivia
+                      }) 
+                    });
+                    const j = await res.json().catch(()=>({}));
+                    if (!res.ok || !j?.ok) throw new Error(j?.code || 'ERROR');
+                    
+                    // Now proceed to trivia if required
+                    if (includeTrivia) {
+                      setStep('TRIVIA');
+                    } else {
+                      setStep('RESULT');
+                    }
+                  } catch (e: any) {
+                    setError(e.message || String(e));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="flex-[2] py-3 px-4 rounded-lg font-bold text-center transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+              >
+                {loading ? 'Aceptando...' : 'ACEPTO el Reglamento'}
+              </button>
+            </div>
           )}
 
           {step === 'TRIVIA' && (
@@ -291,15 +491,25 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 Volver a leer
               </button>
               <button
-                disabled={Object.keys(answers).length < selectedQuestions.length}
+                disabled={Object.keys(answers).length < selectedQuestions.length || loading}
                 onClick={handleTriviaSubmit}
                 className={`flex-[2] py-3 px-4 rounded-lg font-bold text-center transition-all ${
-                  Object.keys(answers).length >= selectedQuestions.length
+                  Object.keys(answers).length >= selectedQuestions.length && !loading
                   ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20'
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
                 }`}
               >
-                Validar Respuestas
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 inline mr-2" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Validando...
+                  </>
+                ) : (
+                  'Validar Respuestas'
+                )}
               </button>
             </div>
           )}
@@ -347,6 +557,15 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 )}
               </button>
             </div>
+          )}
+
+          {step === 'ALREADY_COMPLETED' && (
+            <button
+              onClick={() => setOpen(false)}
+              className="w-full py-3 px-4 rounded-lg font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+            >
+              Cerrar y volver a mi panel
+            </button>
           )}
 
           {error && <p className="text-[10px] text-red-500 text-center">{error}</p>}

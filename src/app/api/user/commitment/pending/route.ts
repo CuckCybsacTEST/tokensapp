@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { verifyUserSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const raw = cookies().get('user_session')?.value;
     const session = await verifyUserSessionCookie(raw);
@@ -12,12 +12,20 @@ export async function GET() {
       return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // Buscar asignaciones pendientes para este usuario
+    const url = new URL(req.url);
+    const viewRegulation = url.searchParams.get('view-regulation') === '1';
+
+    // Buscar asignaciones para este usuario
+    // Si es view-regulation, buscar cualquier assignment, si no, solo PENDING
+    const whereClause = viewRegulation ? {
+      userId: session.userId
+    } : {
+      userId: session.userId,
+      status: 'PENDING'
+    };
+
     const assignment = await prisma.commitmentAssignment.findFirst({
-      where: {
-        userId: session.userId,
-        status: 'PENDING'
-      },
+      where: whereClause,
       include: {
         questionSet: {
           include: {

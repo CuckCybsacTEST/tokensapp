@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const body = await req.json().catch(()=>({}));
     const version = Number(body.version);
     const assignmentId = body.assignmentId;
+    const acceptOnly = body.acceptOnly; // New flag to accept content without completing assignment
 
     if (!Number.isFinite(version) || version < CURRENT_REGULATION.version) {
       return NextResponse.json({ ok:false, code:'INVALID_VERSION'}, { status:400 });
@@ -30,8 +31,8 @@ export async function POST(req: Request) {
         }
       });
 
-      // Si hay una asignación específica, marcarla como completada
-      if (assignmentId) {
+      // Si hay una asignación específica y NO es acceptOnly, marcarla como completada
+      if (assignmentId && !acceptOnly) {
         await tx.commitmentAssignment.update({
           where: { id: assignmentId, userId: session.userId },
           data: {
