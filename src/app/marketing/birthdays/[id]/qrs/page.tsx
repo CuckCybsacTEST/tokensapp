@@ -388,11 +388,12 @@ export default function QRsFinalesPage() {
       </div>
 
       {/* Grid para pantallas medianas y grandes */}
-      <div className={`hidden md:mt-6 ${host && guest ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex justify-center'}`}>
+      <div className={`md:mt-6 ${host && guest ? 'hidden md:grid grid-cols-1 md:grid-cols-2 gap-6' : 'hidden md:flex md:justify-center'}`}>
+
         {/* Cumpleañero (host) */}
         {host && (
           <div
-            className={`${host && guest ? '' : 'max-w-md w-full'}`}
+            className="relative overflow-hidden rounded-2xl p-5"
             data-testid="qr-host"
           >
             <div
@@ -516,9 +517,9 @@ export default function QRsFinalesPage() {
         )}
       </div>
 
-      {(!host || !guest) && (
+      {(!host && !guest) && (
         <p className="mt-4 text-sm opacity-70">
-          Nota: No se encontraron ambos tokens esperados. Si el problema persiste, vuelve a
+          Nota: No se encontraron tokens para esta reserva. Si el problema persiste, vuelve a
           intentarlo desde el formulario.
         </p>
       )}
