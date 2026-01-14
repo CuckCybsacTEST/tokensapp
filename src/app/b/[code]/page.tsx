@@ -554,18 +554,12 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
             {/* Información de identificación - Lo más importante para el personal */}
             <div className="text-center pb-2 border-b border-white/10">
               <div className="text-xl font-bold text-[#FF4D2E]">{token.celebrantName}</div>
-            </div>
-
-            {/* Información de identificación prioritaria - DNI destacado */}
-            {token.isHost && (
-              <div className="text-center">
-                <div className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-[#2196F3]/20 to-[#42A5F5]/20 backdrop-blur-sm rounded-xl border border-[#2196F3]/30 shadow-lg">
-                  <div className="text-lg sm:text-xl font-mono font-black text-[#2196F3] tracking-wider">
-                    {data.reservation.documento}
-                  </div>
+              {data.reservation?.documento && (
+                <div className="text-sm font-medium text-white/70 mt-1">
+                  DNI: {data.reservation.documento}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Información destacada de fecha y hora - Dentro del contenedor del cumpleañero */}
             <div className="text-center">
