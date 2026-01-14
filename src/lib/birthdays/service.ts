@@ -323,7 +323,12 @@ export async function createReservation(input: CreateReservationInput): Promise<
     // Obtener configuración del sistema
     const systemConfig = await prisma.systemConfig.findFirst();
     if (systemConfig?.wednesdaySpecialBottle) {
-      // Crear una copia del pack con la botella especial
+      // Actualizar la reserva con la botella especial
+      await prisma.birthdayReservation.update({
+        where: { id: created.id },
+        data: { specialBottle: systemConfig.wednesdaySpecialBottle }
+      });
+      // Modificar el objeto en memoria para la respuesta
       created.pack = {
         ...created.pack,
         bottle: systemConfig.wednesdaySpecialBottle

@@ -130,7 +130,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       expiresAt: token.expiresAt.toISOString(),
       celebrantName: r.celebrantName, // full (staff only) — public response will override with firstName
       packName: r.pack?.name || null,
-      packBottle: r.pack?.bottle || null,
+      packBottle: r.specialBottle || r.pack?.bottle || null,
       guestsPlanned: r.guestsPlanned,
       isHost: token.kind === 'host',
       multiUse: (token as any).maxUses ? { used: (token as any).usedCount, max: (token as any).maxUses } : null,

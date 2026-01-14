@@ -326,6 +326,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
           { href: `${pathPrefix}/birthdays/packs`, label: "Gestión de packs", icon: ICONS.box },
           { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.users },
           { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart },
+          { href: `${pathPrefix}/birthdays/special-bottle`, label: "Botella especial", icon: ICONS.settings },
           { href: `${pathPrefix}/birthdays/purge`, label: "Purge", icon: ICONS.check }
         ]
       }] : []),

@@ -256,16 +256,11 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/birthdays/packs`, label: "Gestión de packs", icon: ICONS.box },
           { href: `${pathPrefix}/birthdays/referrers`, label: "Referrers", icon: ICONS.users },
           { href: `${pathPrefix}/birthdays/referrers/metrics`, label: "Métricas", icon: ICONS.chart },
+          { href: `${pathPrefix}/birthdays/special-bottle`, label: "Botella especial", icon: ICONS.settings },
           { href: `${pathPrefix}/birthdays/purge`, label: "Purge", icon: ICONS.check }
         ]
       }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "CONFIGURACIÓN DEL SISTEMA",
-        icon: ICONS.settings,
-        items: [
-          { href: `${pathPrefix}/system/config`, label: "Configuración General", icon: ICONS.settings }
-        ]
-      }] : []),
+
       ...(basePath === 'admin' ? [{
         title: "GESTIÓN DE SHOWS",
         icon: ICONS.film,
