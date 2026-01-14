@@ -1029,6 +1029,8 @@ model TriviaQuestion {
   question      String
   order         Int                @default(0)
   active        Boolean            @default(true)
+  pointsForCorrect   Int           @default(10)
+  pointsForIncorrect Int           @default(0)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   questionSetId String?
@@ -1062,18 +1064,16 @@ model TriviaSession {
   questionSetId        String
   currentQuestionIndex Int               @default(0)
   completed            Boolean           @default(false)
-  prizeId              String?
+  totalPoints          Int               @default(0)
   startedAt            DateTime          @default(now())
   completedAt          DateTime?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   progress             TriviaProgress[]
-  prize                TriviaPrize?      @relation(fields: [prizeId], references: [id])
   questionSet          TriviaQuestionSet @relation(fields: [questionSetId], references: [id])
 
   @@index([sessionId])
   @@index([completed])
-  @@index([prizeId])
   @@index([questionSetId])
 }
 
@@ -1103,7 +1103,6 @@ model TriviaQuestionSet {
   active                Boolean                @default(true)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
-  prizes                TriviaPrize[]
   questions             TriviaQuestion[]
   sessions              TriviaSession[]
   commitmentAssignments CommitmentAssignment[]
@@ -1111,28 +1110,6 @@ model TriviaQuestionSet {
   @@index([active])
 }
 
-model TriviaPrize {
-  id            String            @id @default(cuid())
-  name          String
-  description   String?
-  qrCode        String
-  imageUrl      String?
-  value         Float?
-  validFrom     DateTime
-  validUntil    DateTime
-  questionSetId String
-  active        Boolean           @default(true)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  questionSet   TriviaQuestionSet @relation(fields: [questionSetId], references: [id])
-  sessions      TriviaSession[]
-
-  @@unique([questionSetId, qrCode])
-  @@index([questionSetId])
-  @@index([active])
-  @@index([validFrom])
-  @@index([validUntil])
-}
 
 model CustomQr {
   id               String         @id @default(cuid())

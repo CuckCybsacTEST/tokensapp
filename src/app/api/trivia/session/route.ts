@@ -84,6 +84,7 @@ export const GET = withTriviaErrorHandler(async (req: Request) => {
       id: session.sessionId,
       currentQuestionIndex: session.currentQuestionIndex,
       completed: session.completed,
+      totalPoints: session.totalPoints,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
       totalQuestions: allQuestions.length,
@@ -96,6 +97,8 @@ export const GET = withTriviaErrorHandler(async (req: Request) => {
     nextQuestion: nextQuestion ? {
       id: nextQuestion.id,
       question: nextQuestion.question,
+      pointsForCorrect: nextQuestion.pointsForCorrect,
+      pointsForIncorrect: nextQuestion.pointsForIncorrect,
       answers: nextQuestion.answers.map(a => ({
         id: a.id,
         answer: a.answer
@@ -104,6 +107,7 @@ export const GET = withTriviaErrorHandler(async (req: Request) => {
     progress: session.progress.map(p => ({
       questionId: p.questionId,
       isCorrect: p.isCorrect,
+      pointsEarned: p.isCorrect ? p.question.pointsForCorrect : p.question.pointsForIncorrect,
       answeredAt: p.answeredAt
     })),
     prize: session.prize ? {
@@ -332,6 +336,8 @@ async function handleAnswerQuestion(data: any, req: Request) {
 
   // Registrar la respuesta
   const isCorrect = selectedAnswer.isCorrect;
+  const pointsEarned = isCorrect ? question.pointsForCorrect : question.pointsForIncorrect;
+  
   const progress = await prisma.triviaProgress.create({
     data: {
       sessionId: session.id,
@@ -341,7 +347,7 @@ async function handleAnswerQuestion(data: any, req: Request) {
     }
   });
 
-  logTriviaAnswer(sessionId, questionId, answerId, isCorrect);
+  logTriviaAnswer(sessionId, questionId, answerId, isCorrect, pointsEarned);
 
   // Actualizar el índice de pregunta actual en la sesión
   const currentProgressCount = await prisma.triviaProgress.count({
@@ -359,21 +365,36 @@ async function handleAnswerQuestion(data: any, req: Request) {
   });
   const completed = currentProgressCount >= totalQuestions;
 
+  let totalPoints = 0;
   let prize = null;
+  
   if (completed) {
-    // Completó la trivia - asignar premio del question set
-    prize = await assignTriviaPrize(session.id, session.questionSetId);
+    // Calcular puntos totales de todas las respuestas en esta sesión
+    const allProgress = await prisma.triviaProgress.findMany({
+      where: { sessionId: session.id },
+      include: { question: true }
+    });
+    
+    totalPoints = allProgress.reduce((sum, p) => {
+      return sum + (p.isCorrect ? p.question.pointsForCorrect : p.question.pointsForIncorrect);
+    }, 0);
+
+    // Completó la trivia - asignar premio basado en puntos (opcional, mantener compatibilidad)
+    prize = await assignTriviaPrize(session.id, session.questionSetId, totalPoints);
+    
     await prisma.triviaSession.update({
       where: { id: session.id },
       data: {
         completed: true,
         completedAt: new Date(),
+        totalPoints,
         prizeId: prize?.id
       }
     });
 
     logTriviaSession('COMPLETE', sessionId, {
       questionSetId: session.questionSetId,
+      totalPoints,
       prizeId: prize?.id
     });
   }
@@ -383,6 +404,8 @@ async function handleAnswerQuestion(data: any, req: Request) {
     completed,
     currentQuestionIndex: currentProgressCount,
     totalQuestions,
+    pointsEarned,
+    totalPoints: completed ? totalPoints : undefined,
     prize: prize ? {
       id: prize.id,
       name: prize.name,
@@ -392,7 +415,7 @@ async function handleAnswerQuestion(data: any, req: Request) {
   });
 }
 
-async function assignTriviaPrize(sessionId: string, questionSetId: string) {
+async function assignTriviaPrize(sessionId: string, questionSetId: string, totalPoints?: number) {
   // Obtener premios disponibles para este question set que estén válidos en el tiempo actual
   const now = nowInLima();
 
@@ -409,17 +432,19 @@ async function assignTriviaPrize(sessionId: string, questionSetId: string) {
     logTriviaEvent('no_prizes_available', `No prizes available for session ${sessionId}`, {
       sessionId,
       questionSetId,
+      totalPoints,
       currentTime: now.toISO()
     });
     return null; // No hay premios disponibles
   }
 
-  // Seleccionar un premio aleatorio
+  // Seleccionar un premio aleatorio (podría mejorarse para usar puntos en el futuro)
   const randomPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)];
 
-  logTriviaEvent('prize_assigned', `Prize "${randomPrize.name}" assigned to session ${sessionId}`, {
+  logTriviaEvent('prize_assigned', `Prize "${randomPrize.name}" assigned to session ${sessionId} with ${totalPoints} points`, {
     sessionId,
     questionSetId,
+    totalPoints,
     prizeId: randomPrize.id,
     prizeName: randomPrize.name
   });

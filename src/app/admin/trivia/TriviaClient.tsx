@@ -8,29 +8,8 @@ type TriviaQuestionSet = {
   regulationContent?: string;
   active: boolean;
   questionCount: number;
-  prizeCount: number;
   sessionCount: number;
   createdAt: string;
-};
-
-type TriviaPrize = {
-  id: string;
-  name: string;
-  description?: string;
-  qrCode: string;
-  validFrom: string;
-  validUntil: string;
-  active: boolean;
-  questionSet: {
-    id: string;
-    name: string;
-  };
-  assignmentCount: number;
-  recentAssignments: Array<{
-    id: string;
-    sessionId: string;
-    completedAt: string;
-  }>;
 };
 
 type TriviaQuestion = {
@@ -49,13 +28,11 @@ type TriviaQuestion = {
   }>;
 };
 
-type TabType = 'overview' | 'question-sets' | 'prizes' | 'questions' | 'assignments';
+type TabType = 'overview' | 'question-sets' | 'questions' | 'assignments';
 
 type TriviaStats = {
   totalQuestionSets: number;
   activeQuestionSets: number;
-  totalPrizes: number;
-  activePrizes: number;
   totalQuestions: number;
   activeQuestions: number;
   totalSessions: number;
@@ -70,20 +47,12 @@ type NewQuestionSetForm = {
   active: boolean;
 };
 
-type NewPrizeForm = {
-  questionSetId: string;
-  name: string;
-  description: string;
-  qrCode: string;
-  validFrom: string;
-  validUntil: string;
-  active: boolean;
-};
-
 type NewQuestionForm = {
   questionSetId: string;
   question: string;
   order: number;
+  pointsForCorrect: number;
+  pointsForIncorrect: number;
   active: boolean;
   answers: Array<{
     answer: string;
@@ -101,33 +70,7 @@ type TriviaQuestionSetWithCounts = {
   createdAt: Date;
   updatedAt: Date;
   questionCount: number;
-  prizeCount: number;
   sessionCount: number;
-};
-
-type TriviaPrizeWithCounts = {
-  id: string;
-  name: string;
-  description: string | null;
-  qrCode: string;
-  imageUrl: string | null;
-  value: number | null;
-  validFrom: Date;
-  validUntil: Date;
-  questionSetId: string;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  questionSet: {
-    id: string;
-    name: string;
-  };
-  assignmentCount: number;
-  recentAssignments: Array<{
-    id: string;
-    sessionId: string;
-    completedAt: Date | null;
-  }>;
 };
 
 type TriviaAnswer = {
@@ -166,6 +109,8 @@ type TriviaQuestionWithStats = {
   questionSetId: string | null;
   question: string;
   order: number;
+  pointsForCorrect: number;
+  pointsForIncorrect: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -177,18 +122,15 @@ type TriviaQuestionWithStats = {
 
 export default function TriviaClient({
   initialQuestionSets,
-  initialPrizes,
   initialQuestions,
   initialStats
 }: {
   initialQuestionSets: TriviaQuestionSetWithCounts[];
-  initialPrizes: TriviaPrizeWithCounts[];
   initialQuestions: TriviaQuestionWithStats[];
   initialStats: TriviaStats;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [questionSets, setQuestionSets] = useState(initialQuestionSets);
-  const [prizes, setPrizes] = useState(initialPrizes);
   const [questions, setQuestions] = useState(initialQuestions);
   const [stats, setStats] = useState(initialStats);
   const [loading, setLoading] = useState(false);
@@ -235,7 +177,6 @@ export default function TriviaClient({
   const [showCreateQuestionSetModal, setShowCreateQuestionSetModal] = useState(false);
   const [showEditQuestionSetModal, setShowEditQuestionSetModal] = useState(false);
   const [editingQuestionSet, setEditingQuestionSet] = useState<TriviaQuestionSetWithCounts | null>(null);
-  const [showCreatePrizeModal, setShowCreatePrizeModal] = useState(false);
   const [showCreateQuestionModal, setShowCreateQuestionModal] = useState(false);
   const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<TriviaQuestionWithStats | null>(null);
@@ -248,20 +189,12 @@ export default function TriviaClient({
     active: true
   });
 
-  const [prizeForm, setPrizeForm] = useState<NewPrizeForm>({
-    questionSetId: '',
-    name: '',
-    description: '',
-    qrCode: '',
-    validFrom: '',
-    validUntil: '',
-    active: true
-  });
-
   const [questionForm, setQuestionForm] = useState<NewQuestionForm>({
     questionSetId: '',
     question: '',
     order: 1,
+    pointsForCorrect: 10,
+    pointsForIncorrect: 0,
     active: true,
     answers: [
       { answer: '', isCorrect: false, order: 1 },
@@ -436,6 +369,8 @@ export default function TriviaClient({
       questionSetId: question.questionSetId || '',
       question: question.question,
       order: question.order,
+      pointsForCorrect: question.pointsForCorrect || 10,
+      pointsForIncorrect: question.pointsForIncorrect || 0,
       active: question.active,
       answers: question.answers.map(a => ({
         answer: a.answer,
@@ -490,6 +425,8 @@ export default function TriviaClient({
         questionSetId: '',
         question: '',
         order: 1,
+        pointsForCorrect: 10,
+        pointsForIncorrect: 0,
         active: true,
         answers: [
           { answer: '', isCorrect: false, order: 1 },
@@ -529,77 +466,6 @@ export default function TriviaClient({
     } catch (error) {
       console.error('Error deleting question:', error);
       alert(error instanceof Error ? error.message : 'Error desconocido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreatePrize = async () => {
-    const errors: string[] = [];
-
-    if (!prizeForm.questionSetId) {
-      errors.push('Debe seleccionar un set de preguntas');
-    }
-
-    if (!prizeForm.name.trim()) {
-      errors.push('El nombre es requerido');
-    }
-
-    if (!prizeForm.qrCode.trim()) {
-      errors.push('El código QR es requerido');
-    }
-
-    if (!prizeForm.validFrom) {
-      errors.push('La fecha de inicio es requerida');
-    }
-
-    if (!prizeForm.validUntil) {
-      errors.push('La fecha de fin es requerida');
-    }
-
-    if (prizeForm.validFrom && prizeForm.validUntil) {
-      const fromDate = new Date(prizeForm.validFrom);
-      const toDate = new Date(prizeForm.validUntil);
-      if (fromDate >= toDate) {
-        errors.push('La fecha de inicio debe ser anterior a la fecha de fin');
-      }
-    }
-
-    if (errors.length > 0) {
-      setFormErrors(errors);
-      return;
-    }
-
-    setLoading(true);
-    setFormErrors([]);
-
-    try {
-      const response = await fetch('/api/trivia/prizes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prizeForm)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error al crear premio');
-      }
-
-      setShowCreatePrizeModal(false);
-      setPrizeForm({
-        questionSetId: '',
-        name: '',
-        description: '',
-        qrCode: '',
-        validFrom: '',
-        validUntil: '',
-        active: true
-      });
-
-      await refreshData();
-    } catch (error) {
-      console.error('Error creating prize:', error);
-      setFormErrors([error instanceof Error ? error.message : 'Error desconocido']);
     } finally {
       setLoading(false);
     }
@@ -654,6 +520,8 @@ export default function TriviaClient({
         questionSetId: '',
         question: '',
         order: 1,
+        pointsForCorrect: 10,
+        pointsForIncorrect: 0,
         active: true,
         answers: [
           { answer: '', isCorrect: false, order: 1 },
@@ -703,10 +571,6 @@ export default function TriviaClient({
     setQuestionSetForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const updatePrizeForm = (field: keyof NewPrizeForm, value: any) => {
-    setPrizeForm(prev => ({ ...prev, [field]: value }));
-  };
-
   const updateQuestionForm = (field: keyof NewQuestionForm, value: any) => {
     setQuestionForm(prev => ({ ...prev, [field]: value }));
   };
@@ -723,16 +587,11 @@ export default function TriviaClient({
   return (
     <div className="space-y-6">
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Sets de Preguntas</h3>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalQuestionSets}</p>
           <p className="text-sm text-gray-600 dark:text-slate-400">{stats.activeQuestionSets} activos</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Premios</h3>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.totalPrizes}</p>
-          <p className="text-sm text-gray-600 dark:text-slate-400">{stats.activePrizes} activos</p>
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Preguntas</h3>
@@ -752,7 +611,6 @@ export default function TriviaClient({
           {[
             { id: 'overview', label: 'Resumen', count: null },
             { id: 'question-sets', label: 'Sets de Preguntas', count: stats.totalQuestionSets },
-            { id: 'prizes', label: 'Premios', count: stats.totalPrizes },
             { id: 'questions', label: 'Preguntas', count: stats.totalQuestions },
             { id: 'assignments', label: 'Asignaciones', count: assignments.length }
           ].map((tab) => (
@@ -783,7 +641,6 @@ export default function TriviaClient({
         <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
           {activeTab === 'overview' && 'Resumen del Sistema de Trivia'}
           {activeTab === 'question-sets' && 'Sets de Preguntas'}
-          {activeTab === 'prizes' && 'Premios'}
           {activeTab === 'questions' && 'Preguntas'}
         </h2>
         <div className="flex gap-2">
@@ -800,14 +657,6 @@ export default function TriviaClient({
               className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
             >
               Nuevo Set
-            </button>
-          )}
-          {activeTab === 'prizes' && (
-            <button
-              onClick={() => setShowCreatePrizeModal(true)}
-              className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700"
-            >
-              Nuevo Premio
             </button>
           )}
           {activeTab === 'questions' && (
@@ -853,20 +702,6 @@ export default function TriviaClient({
                   )}
                 </div>
               </div>
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-slate-100 mb-2">Premios Recientes</h4>
-                <div className="space-y-2">
-                  {prizes.slice(0, 3).map((prize) => (
-                    <div key={prize.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-700 rounded">
-                      <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{prize.name}</span>
-                      <span className="text-xs text-gray-600 dark:text-slate-400">{prize.questionSet.name}</span>
-                    </div>
-                  ))}
-                  {prizes.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-slate-400 italic">No hay premios configurados</p>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -901,7 +736,6 @@ export default function TriviaClient({
                       )}
                       <div className="flex gap-4 text-sm text-gray-500 dark:text-slate-400">
                         <span>{set.questionCount} preguntas</span>
-                        <span>{set.prizeCount} premios</span>
                         <span>{set.sessionCount} sesiones</span>
                       </div>
                     </div>
@@ -920,53 +754,6 @@ export default function TriviaClient({
                       </button>
                       <div className="text-xs text-gray-400 dark:text-slate-500 ml-4">
                         Creado: {new Date(set.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'prizes' && (
-        <div className="bg-white dark:bg-slate-800 shadow rounded-lg border border-slate-200 dark:border-slate-700">
-          {prizes.length === 0 ? (
-            <div className="p-6 text-center text-gray-500 dark:text-slate-400">
-              No hay premios configurados aún.
-              <br />
-              Crea el primer premio para comenzar.
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200 dark:divide-slate-700">
-              {prizes.map((prize) => (
-                <div key={prize.id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">{prize.name}</h3>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          prize.active
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
-                            : 'bg-gray-100 dark:bg-slate-600 text-gray-800 dark:text-slate-300'
-                        }`}>
-                          {prize.active ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </div>
-                      {prize.description && (
-                        <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">{prize.description}</p>
-                      )}
-                      <div className="flex gap-4 text-sm text-gray-500 dark:text-slate-400 mb-2">
-                        <span>Set: {prize.questionSet.name}</span>
-                        <span>Asignado: {prize.assignmentCount} veces</span>
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-slate-400">
-                        <span className="font-medium">Válido desde:</span> {new Date(prize.validFrom).toLocaleString()} -
-                        <span className="font-medium ml-1">hasta:</span> {new Date(prize.validUntil).toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-slate-400 mt-1">
-                        <span className="font-medium">QR:</span> {prize.qrCode}
                       </div>
                     </div>
                   </div>
@@ -1523,149 +1310,6 @@ export default function TriviaClient({
         </div>
       )}
 
-      {/* Modal Crear Premio */}
-      {showCreatePrizeModal && (
-        <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <div className="mt-3">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Nuevo Premio</h3>
-                <button
-                  onClick={() => setShowCreatePrizeModal(false)}
-                  className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
-              </div>
-
-              {formErrors.length > 0 && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                  <ul className="text-sm text-red-600 dark:text-red-400">
-                    {formErrors.map((error, index) => (
-                      <li key={index}>• {error}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Set de Preguntas *
-                  </label>
-                  <select
-                    value={prizeForm.questionSetId}
-                    onChange={(e) => updatePrizeForm('questionSetId', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                  >
-                    <option value="">Seleccionar set...</option>
-                    {questionSets.filter(set => set.active).map((set) => (
-                      <option key={set.id} value={set.id}>{set.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Nombre del Premio *
-                  </label>
-                  <input
-                    type="text"
-                    value={prizeForm.name}
-                    onChange={(e) => updatePrizeForm('name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    placeholder="Ej: 2x1 en Bebidas"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Descripción
-                  </label>
-                  <textarea
-                    value={prizeForm.description}
-                    onChange={(e) => updatePrizeForm('description', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    rows={2}
-                    placeholder="Descripción del premio"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Código QR *
-                  </label>
-                  <input
-                    type="text"
-                    value={prizeForm.qrCode}
-                    onChange={(e) => updatePrizeForm('qrCode', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    placeholder="Ej: PRIZE-2X1-DRINKS"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                      Válido Desde *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={prizeForm.validFrom}
-                      onChange={(e) => updatePrizeForm('validFrom', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                      Válido Hasta *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={prizeForm.validUntil}
-                      onChange={(e) => updatePrizeForm('validUntil', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="prizeActive"
-                    checked={prizeForm.active}
-                    onChange={(e) => updatePrizeForm('active', e.target.checked)}
-                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-slate-600 rounded"
-                  />
-                  <label htmlFor="prizeActive" className="ml-2 text-sm text-gray-700 dark:text-slate-300">
-                    Premio activo
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  onClick={() => setShowCreatePrizeModal(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
-                  disabled={loading}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreatePrize}
-                  disabled={loading}
-                  className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {loading ? 'Creando...' : 'Crear Premio'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal Crear Pregunta */}
       {showCreateQuestionModal && (
         <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -1734,6 +1378,32 @@ export default function TriviaClient({
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     min="1"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Puntos por respuesta correcta
+                    </label>
+                    <input
+                      type="number"
+                      value={questionForm.pointsForCorrect}
+                      onChange={(e) => updateQuestionForm('pointsForCorrect', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Puntos por respuesta incorrecta
+                    </label>
+                    <input
+                      type="number"
+                      value={questionForm.pointsForIncorrect}
+                      onChange={(e) => updateQuestionForm('pointsForIncorrect', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center">
@@ -1820,6 +1490,8 @@ export default function TriviaClient({
                       questionSetId: '',
                       question: '',
                       order: 1,
+                      pointsForCorrect: 10,
+                      pointsForIncorrect: 0,
                       active: true,
                       answers: [
                         { answer: '', isCorrect: false, order: 1 },
@@ -1890,6 +1562,32 @@ export default function TriviaClient({
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Puntos por respuesta correcta
+                    </label>
+                    <input
+                      type="number"
+                      value={questionForm.pointsForCorrect}
+                      onChange={(e) => updateQuestionForm('pointsForCorrect', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Puntos por respuesta incorrecta
+                    </label>
+                    <input
+                      type="number"
+                      value={questionForm.pointsForIncorrect}
+                      onChange={(e) => updateQuestionForm('pointsForIncorrect', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -1947,6 +1645,8 @@ export default function TriviaClient({
                       questionSetId: '',
                       question: '',
                       order: 1,
+                      pointsForCorrect: 10,
+                      pointsForIncorrect: 0,
                       active: true,
                       answers: [
                         { answer: '', isCorrect: false, order: 1 },

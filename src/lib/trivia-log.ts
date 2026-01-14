@@ -78,15 +78,17 @@ export function logTriviaAnswer(
   questionId: string,
   answerId: string,
   isCorrect: boolean,
+  pointsEarned: number,
   timeSpent?: number
 ) {
   return logTriviaEvent(
     'QUESTION_ANSWERED',
-    `Pregunta respondida - ${isCorrect ? 'Correcta' : 'Incorrecta'}`,
+    `Pregunta respondida - ${isCorrect ? 'Correcta' : 'Incorrecta'} (+${pointsEarned} puntos)`,
     {
       questionId,
       answerId,
       isCorrect,
+      pointsEarned,
       timeSpent
     },
     'INFO',

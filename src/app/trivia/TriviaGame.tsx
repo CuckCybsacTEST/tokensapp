@@ -11,6 +11,7 @@ type TriviaSession = {
   id: string;
   currentQuestionIndex: number;
   completed: boolean;
+  totalPoints: number;
   startedAt: string;
   completedAt: string | null;
   totalQuestions: number;
@@ -24,6 +25,8 @@ type TriviaSession = {
 type TriviaQuestion = {
   id: string;
   question: string;
+  pointsForCorrect: number;
+  pointsForIncorrect: number;
   answers: Array<{
     id: string;
     answer: string;
@@ -33,6 +36,7 @@ type TriviaQuestion = {
 type TriviaProgress = Array<{
   questionId: string;
   isCorrect: boolean;
+  pointsEarned: number;
   answeredAt: string;
 }>;
 
@@ -50,6 +54,7 @@ type GameState = {
   loading: boolean;
   error: string | null;
   completed: boolean;
+  totalPoints: number;
   prize: TriviaPrize | null;
   questionSets: TriviaQuestionSet[];
   selectedQuestionSet: TriviaQuestionSet | null;
@@ -64,6 +69,7 @@ export default function TriviaGame() {
     loading: false,
     error: null,
     completed: false,
+    totalPoints: 0,
     prize: null,
     questionSets: [], // array vacío inicialmente para mostrar loading
     selectedQuestionSet: null,
@@ -166,6 +172,7 @@ export default function TriviaGame() {
         currentQuestion: data.nextQuestion,
         progress: data.progress,
         completed: data.session.completed,
+        totalPoints: data.session.totalPoints || 0,
         prize: data.prize,
         loading: false
       }));
@@ -205,9 +212,11 @@ export default function TriviaGame() {
         progress: [...prev.progress, {
           questionId: gameState.currentQuestion!.id,
           isCorrect: data.isCorrect,
+          pointsEarned: data.pointsEarned,
           answeredAt: new Date().toISOString()
         }],
         completed: data.completed,
+        totalPoints: data.totalPoints || prev.totalPoints + data.pointsEarned,
         prize: data.prize,
         loading: false
       }));
@@ -233,6 +242,7 @@ export default function TriviaGame() {
       loading: false,
       error: null,
       completed: false,
+      totalPoints: 0,
       prize: null,
       questionSets: gameState.questionSets || [], // Mantener los question sets cargados o usar array vacío
       selectedQuestionSet: null,
@@ -340,14 +350,17 @@ export default function TriviaGame() {
             ¡Felicitaciones!
           </h2>
           <p className="text-gray-600 dark:text-slate-400 mb-4">
-            Has completado la trivia exitosamente. Aquí está tu premio:
+            Has completado la trivia con <strong>{gameState.totalPoints} puntos</strong>!
           </p>
           <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-lg mb-4 border border-slate-200 dark:border-slate-600">
-            <h3 className="font-semibold text-gray-900 dark:text-slate-100">
-              {gameState.prize.name}
+            <h3 className="font-semibold text-gray-900 dark:text-slate-100 mb-2">
+              Tu Premio
             </h3>
+            <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">
+              {gameState.prize.name}
+            </div>
             {gameState.prize.description && (
-              <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+              <p className="text-sm text-gray-600 dark:text-slate-400">
                 {gameState.prize.description}
               </p>
             )}
@@ -366,6 +379,33 @@ export default function TriviaGame() {
                 </p>
               </div>
             </div>
+          </div>
+          <button
+            onClick={resetGame}
+            className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Jugar de Nuevo
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState.completed && !gameState.prize) {
+    return (
+      <div className="max-w-md mx-auto bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-200 dark:border-slate-700">
+        <div className="text-center">
+          <div className="text-green-500 text-6xl mb-4">🎉</div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+            ¡Trivia Completada!
+          </h2>
+          <p className="text-gray-600 dark:text-slate-400 mb-4">
+            Has completado la trivia con <strong>{gameState.totalPoints} puntos</strong>!
+          </p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              No hay premios disponibles en este momento, pero ¡bien jugado!
+            </p>
           </div>
           <button
             onClick={resetGame}
@@ -419,9 +459,14 @@ export default function TriviaGame() {
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Pregunta {gameState.session?.currentQuestionIndex || 0 + 1} de {gameState.session?.totalQuestions || 0}
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {gameState.progress.filter(p => p.isCorrect).length} correctas
-          </span>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {gameState.progress.filter(p => p.isCorrect).length} correctas
+            </span>
+            <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+              {gameState.totalPoints} puntos
+            </span>
+          </div>
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
@@ -435,9 +480,19 @@ export default function TriviaGame() {
 
       {/* Pregunta */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          {gameState.currentQuestion.question}
-        </h2>
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {gameState.currentQuestion.question}
+          </h2>
+          <div className="text-right">
+            <div className="text-sm text-green-600 dark:text-green-400 font-semibold">
+              +{gameState.currentQuestion.pointsForCorrect} pts
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Correcta
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-3">
           {gameState.currentQuestion.answers.map((answer) => (

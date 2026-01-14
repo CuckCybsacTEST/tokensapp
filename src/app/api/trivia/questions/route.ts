@@ -18,6 +18,8 @@ const createQuestionSchema = z.object({
   questionSetId: z.string(),
   question: z.string().min(1, "La pregunta es requerida"),
   order: z.number().int().min(1, "El orden debe ser mayor a 0"),
+  pointsForCorrect: z.number().int().min(0, "Los puntos deben ser mayor o igual a 0").default(10),
+  pointsForIncorrect: z.number().int().default(0),
   active: z.boolean().default(true),
   answers: z.array(z.object({
     answer: z.string().min(1, "La respuesta es requerida"),
@@ -29,6 +31,8 @@ const createQuestionSchema = z.object({
 const updateQuestionSchema = z.object({
   question: z.string().min(1, "La pregunta es requerida").optional(),
   order: z.number().int().min(1, "El orden debe ser mayor a 0").optional(),
+  pointsForCorrect: z.number().int().min(0, "Los puntos deben ser mayor o igual a 0").optional(),
+  pointsForIncorrect: z.number().int().optional(),
   active: z.boolean().optional(),
   answers: z.array(z.object({
     id: z.string().optional(), // Para actualizar respuestas existentes
@@ -107,7 +111,7 @@ export const POST = withTriviaErrorHandler(
       return handleTriviaValidationError(parsed.error);
     }
 
-    const { questionSetId, question, order, active, answers } = parsed.data;
+    const { questionSetId, question, order, pointsForCorrect, pointsForIncorrect, active, answers } = parsed.data;
 
     // Verificar que el question set existe
     const questionSet = await prisma.triviaQuestionSet.findUnique({
@@ -151,6 +155,8 @@ export const POST = withTriviaErrorHandler(
           questionSetId,
           question,
           order,
+          pointsForCorrect,
+          pointsForIncorrect,
           active
         }
       });
@@ -256,6 +262,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           data: {
             question: updateData.question,
             order: updateData.order,
+            pointsForCorrect: updateData.pointsForCorrect,
+            pointsForIncorrect: updateData.pointsForIncorrect,
             active: updateData.active
           }
         });
@@ -303,6 +311,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         changes: {
           hasQuestionChange: !!updateData.question,
           hasOrderChange: !!updateData.order,
+          hasPointsForCorrectChange: updateData.pointsForCorrect !== undefined,
+          hasPointsForIncorrectChange: updateData.pointsForIncorrect !== undefined,
           hasActiveChange: updateData.active !== undefined,
           hasAnswersChange: !!updateData.answers
         }
