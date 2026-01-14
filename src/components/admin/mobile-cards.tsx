@@ -138,9 +138,9 @@ export const ADMIN_CATEGORIES = {
       },
       {
         title: "Gestión de Trivias",
-        description: "Preguntas y premios de trivia",
+        description: "Preguntas y sets de trivia",
         icon: <IconPuzzle className="w-5 h-5" />,
-        href: "/admin/trivia"
+        href: "/admin/internalnews"
       }
     ]
   },
