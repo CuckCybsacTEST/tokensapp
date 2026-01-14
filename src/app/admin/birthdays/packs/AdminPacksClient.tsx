@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 export function AdminPacksPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[]; priceSoles?: number; isCustom?: boolean }[]>([]);
+  const [packs, setPacks] = useState<{ id:string; name:string; qrCount:number; bottle?: string | null; perks?: string[]; priceSoles?: number; isCustom?: boolean; active: boolean }[]>([]);
   const [editingPack, setEditingPack] = useState<string|null>(null);
-  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string; priceSoles: number; hasPrice: boolean }>>({});
+  const [packEdits, setPackEdits] = useState<Record<string, { name: string; qrCount: number; bottle: string; perksText: string; priceSoles: number; hasPrice: boolean; active: boolean }>>({});
 
   // Cargar packs desde endpoint admin para incluir isCustom y evitar filtrado público
   useEffect(()=>{ (async()=>{ try { const res=await fetch('/api/admin/birthdays/packs'); const j=await res.json().catch(()=>({})); if(res.ok && j?.packs) setPacks(j.packs); } catch{} })(); }, []);
@@ -25,7 +25,7 @@ export function AdminPacksPage() {
     const p = packs.find(x=>x.id===pId);
     if(!p) return;
     setEditingPack(pId);
-    setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n'), priceSoles: p.priceSoles ?? 0, hasPrice: (p.priceSoles ?? 0) > 0 }}));
+    setPackEdits(prev=>({...prev,[pId]:{ name:p.name, qrCount:p.qrCount, bottle:p.bottle||'', perksText:(p.perks||[]).join('\n'), priceSoles: p.priceSoles ?? 0, hasPrice: (p.priceSoles ?? 0) > 0, active: p.active ?? true }}));
   }
 
   function cancelEdit(){
@@ -37,7 +37,7 @@ export function AdminPacksPage() {
     if(!e) return;
     try {
       const perks = e.perksText.split(/\n+/).map(l=>l.trim()).filter(Boolean);
-      const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.hasPrice ? e.priceSoles : 0 };
+      const body={ name:e.name, qrCount:e.qrCount, bottle:e.bottle, perks, priceSoles: e.hasPrice ? e.priceSoles : 0, active: e.active };
       const res = await fetch(`/api/admin/birthdays/packs/${pId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const j=await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(j?.code||j?.message||res.status);
@@ -96,11 +96,20 @@ export function AdminPacksPage() {
                         <div className="font-semibold text-base text-slate-900 dark:text-white flex-1 min-w-0">
                           {p.name}
                         </div>
-                        {p.isCustom && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-medium flex-shrink-0">
-                            Custom
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            p.active 
+                              ? 'bg-green-500/15 border border-green-500/40 text-green-600 dark:text-green-300' 
+                              : 'bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-300'
+                          }`}>
+                            {p.active ? 'Activo' : 'Inactivo'}
                           </span>
-                        )}
+                          {p.isCustom && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-600 dark:text-fuchsia-300 font-medium">
+                              Custom
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-2 text-sm">
@@ -213,6 +222,18 @@ export function AdminPacksPage() {
                           placeholder="Precio (S/)"
                           disabled={!edit.hasPrice}
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={edit.active}
+                            onChange={e=>setPackEdits(prev=>({...prev,[p.id]:{...prev[p.id], active:e.target.checked}}))}
+                            className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">Pack activo (visible para usuarios)</span>
+                        </label>
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-2 pt-2">
