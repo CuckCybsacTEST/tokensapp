@@ -62,8 +62,7 @@ async function getTriviaData(): Promise<{
     include: {
       _count: {
         select: {
-          questions: true,
-          prizes: true
+          questions: true
         }
       }
     },
