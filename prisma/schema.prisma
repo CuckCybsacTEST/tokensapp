@@ -119,9 +119,10 @@ model Token {
 }
 
 model SystemConfig {
-  id            Int      @id @default(autoincrement())
-  tokensEnabled Boolean  @default(true)
-  updatedAt     DateTime @updatedAt
+  id                      Int      @id @default(autoincrement())
+  tokensEnabled           Boolean  @default(true)
+  wednesdaySpecialBottle  String?
+  updatedAt               DateTime @updatedAt
 }
 
 model EventLog {

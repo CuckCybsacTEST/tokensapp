@@ -314,6 +314,27 @@ export async function createReservation(input: CreateReservationInput): Promise<
 
   console.log('[BIRTHDAYS] createReservation: Transacción completada exitosamente');
 
+  // Aplicar botella especial de miércoles para packs gratuitos
+  const isWednesday = created.date.getDay() === 3; // 0=domingo, 3=miércoles
+  const isFreePack = created.pack.priceSoles === 0;
+
+  if (isWednesday && isFreePack) {
+    console.log('[BIRTHDAYS] createReservation: Aplicando botella especial de miércoles');
+    // Obtener configuración del sistema
+    const systemConfig = await prisma.systemConfig.findFirst();
+    if (systemConfig?.wednesdaySpecialBottle) {
+      // Crear una copia del pack con la botella especial
+      created.pack = {
+        ...created.pack,
+        bottle: systemConfig.wednesdaySpecialBottle
+      };
+      console.log('[BIRTHDAYS] createReservation: Botella especial aplicada', {
+        original: created.pack.bottle,
+        special: systemConfig.wednesdaySpecialBottle
+      });
+    }
+  }
+
   await audit('birthday.createReservation', input.createdBy, { id: created.id, date: toIso(created.date) });
   return created as ReservationWithRelations;
 }
