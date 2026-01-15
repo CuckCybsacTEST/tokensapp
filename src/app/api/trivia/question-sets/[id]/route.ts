@@ -109,12 +109,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         );
       }
 
-      // Eliminar preguntas y premios asociados primero
+      // Eliminar preguntas asociadas primero
       await prisma.triviaQuestion.deleteMany({
-        where: { questionSetId: id }
-      });
-
-      await prisma.triviaPrize.deleteMany({
         where: { questionSetId: id }
       });
 

@@ -138,23 +138,3 @@ export function logTriviaRateLimit(
     sessionId
   );
 }
-
-/**
- * Logging para premios otorgados
- */
-export function logTriviaPrize(
-  sessionId: string,
-  prizeId: string,
-  prizeName: string
-) {
-  return logTriviaEvent(
-    'PRIZE_AWARDED',
-    `Premio otorgado: ${prizeName}`,
-    {
-      prizeId,
-      prizeName
-    },
-    'INFO',
-    sessionId
-  );
-}
