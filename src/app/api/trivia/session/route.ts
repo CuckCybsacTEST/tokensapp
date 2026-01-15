@@ -36,11 +36,6 @@ export const GET = withTriviaErrorHandler(async (req: Request) => {
     where: { sessionId },
     include: {
       questionSet: true,
-      prize: {
-        include: {
-          questionSet: true
-        }
-      },
       progress: {
         include: {
           question: {
@@ -109,13 +104,7 @@ export const GET = withTriviaErrorHandler(async (req: Request) => {
       isCorrect: p.isCorrect,
       pointsEarned: p.isCorrect ? p.question.pointsForCorrect : p.question.pointsForIncorrect,
       answeredAt: p.answeredAt
-    })),
-    prize: session.prize ? {
-      id: session.prize.id,
-      name: session.prize.name,
-      description: session.prize.description,
-      qrCode: session.prize.qrCode
-    } : null
+    }))
   };
 
   logTriviaEvent('SESSION_STATUS_RETRIEVED', 'Estado de sesión de trivia recuperado', {
@@ -366,8 +355,7 @@ async function handleAnswerQuestion(data: any, req: Request) {
   const completed = currentProgressCount >= totalQuestions;
 
   let totalPoints = 0;
-  let prize = null;
-  
+
   if (completed) {
     // Calcular puntos totales de todas las respuestas en esta sesión
     const allProgress = await prisma.triviaProgress.findMany({
@@ -379,23 +367,19 @@ async function handleAnswerQuestion(data: any, req: Request) {
       return sum + (p.isCorrect ? p.question.pointsForCorrect : p.question.pointsForIncorrect);
     }, 0);
 
-    // Completó la trivia - asignar premio basado en puntos (opcional, mantener compatibilidad)
-    prize = await assignTriviaPrize(session.id, session.questionSetId, totalPoints);
-    
+    // Completó la trivia
     await prisma.triviaSession.update({
       where: { id: session.id },
       data: {
         completed: true,
         completedAt: new Date(),
-        totalPoints,
-        prizeId: prize?.id
+        totalPoints
       }
     });
 
     logTriviaSession('COMPLETE', sessionId, {
       questionSetId: session.questionSetId,
-      totalPoints,
-      prizeId: prize?.id
+      totalPoints
     });
   }
 
@@ -405,49 +389,8 @@ async function handleAnswerQuestion(data: any, req: Request) {
     currentQuestionIndex: currentProgressCount,
     totalQuestions,
     pointsEarned,
-    totalPoints: completed ? totalPoints : undefined,
-    prize: prize ? {
-      id: prize.id,
-      name: prize.name,
-      description: prize.description,
-      qrCode: prize.qrCode
-    } : null
+    totalPoints: completed ? totalPoints : undefined
   });
 }
 
-async function assignTriviaPrize(sessionId: string, questionSetId: string, totalPoints?: number) {
-  // Obtener premios disponibles para este question set que estén válidos en el tiempo actual
-  const now = nowInLima();
 
-  const availablePrizes = await prisma.triviaPrize.findMany({
-    where: {
-      questionSetId,
-      active: true,
-      validFrom: { lte: now.toJSDate() },
-      validUntil: { gte: now.toJSDate() }
-    }
-  });
-
-  if (availablePrizes.length === 0) {
-    logTriviaEvent('no_prizes_available', `No prizes available for session ${sessionId}`, {
-      sessionId,
-      questionSetId,
-      totalPoints,
-      currentTime: now.toISO()
-    });
-    return null; // No hay premios disponibles
-  }
-
-  // Seleccionar un premio aleatorio (podría mejorarse para usar puntos en el futuro)
-  const randomPrize = availablePrizes[Math.floor(Math.random() * availablePrizes.length)];
-
-  logTriviaEvent('prize_assigned', `Prize "${randomPrize.name}" assigned to session ${sessionId} with ${totalPoints} points`, {
-    sessionId,
-    questionSetId,
-    totalPoints,
-    prizeId: randomPrize.id,
-    prizeName: randomPrize.name
-  });
-
-  return randomPrize;
-}

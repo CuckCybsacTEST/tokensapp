@@ -85,8 +85,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       const questionSet = await prisma.triviaQuestionSet.findUnique({
         where: { id },
         include: {
-          questions: { take: 1 },
-          prizes: { take: 1 }
+          questions: { take: 1 }
         }
       });
 
@@ -97,9 +96,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       // Verificar que no tenga sesiones activas
       const activeSessions = await prisma.triviaSession.count({
         where: {
-          prize: {
-            questionSetId: id
-          },
+          questionSetId: id,
           completed: false
         }
       });
@@ -129,8 +126,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       logTriviaEvent('question_set_deleted', `Question set "${questionSet.name}" deleted`, {
         questionSetId: id,
         name: questionSet.name,
-        questionsDeleted: questionSet.questions.length,
-        prizesDeleted: questionSet.prizes.length
+        questionsDeleted: questionSet.questions.length
       });
 
       return createTriviaSuccessResponse({

@@ -47,20 +47,9 @@ export const GET = withTriviaErrorHandler(
           },
           orderBy: { order: 'asc' }
         },
-        prizes: {
-          where: { active: true },
-          select: {
-            id: true,
-            name: true,
-            active: true,
-            validFrom: true,
-            validUntil: true
-          }
-        },
         _count: {
           select: {
-            questions: true,
-            prizes: true
+            questions: true
           }
         }
       },
@@ -72,16 +61,13 @@ export const GET = withTriviaErrorHandler(
       questionSets.map(async (set) => {
         const sessionCount = await prisma.triviaSession.count({
           where: {
-            prize: {
-              questionSetId: set.id
-            }
+            questionSetId: set.id
           }
         });
 
         return {
           ...set,
           questionCount: set._count.questions,
-          prizeCount: set._count.prizes,
           sessionCount
         };
       })
@@ -212,8 +198,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       const questionSet = await prisma.triviaQuestionSet.findUnique({
         where: { id },
         include: {
-          questions: { take: 1 },
-          prizes: { take: 1 }
+          questions: { take: 1 }
         }
       });
 
@@ -224,9 +209,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       // Verificar que no tenga sesiones activas
       const activeSessions = await prisma.triviaSession.count({
         where: {
-          prize: {
-            questionSetId: id
-          },
+          questionSetId: id,
           completed: false
         }
       });
@@ -239,12 +222,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         );
       }
 
-      // Eliminar preguntas y premios asociados primero
+      // Eliminar preguntas asociadas primero
       await prisma.triviaQuestion.deleteMany({
-        where: { questionSetId: id }
-      });
-
-      await prisma.triviaPrize.deleteMany({
         where: { questionSetId: id }
       });
 
@@ -256,8 +235,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       logTriviaEvent('question_set_deleted', `Question set "${questionSet.name}" deleted`, {
         questionSetId: id,
         name: questionSet.name,
-        questionsDeleted: questionSet.questions.length,
-        prizesDeleted: questionSet.prizes.length
+        questionsDeleted: questionSet.questions.length
       });
 
       return createTriviaSuccessResponse({
