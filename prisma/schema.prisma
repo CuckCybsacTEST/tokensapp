@@ -194,6 +194,7 @@ model Person {
   PersonTaskStatus PersonTaskStatus[]
   scans            Scan[]
   user             User?
+  BriefAcceptance  BriefAcceptance[]
 
   @@index([code])
 }
@@ -1300,4 +1301,16 @@ enum OfferPurchaseStatus {
   CANCELLED
   REFUNDED
   EXPIRED
+}
+
+model BriefAcceptance {
+  id        String   @id @default(cuid())
+  personId  String
+  day       String
+  acceptedAt DateTime @default(now())
+  person    Person   @relation(fields: [personId], references: [id])
+
+  @@unique([personId, day])
+  @@index([personId])
+  @@index([day])
 }

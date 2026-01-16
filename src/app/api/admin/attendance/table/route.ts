@@ -62,9 +62,9 @@ export async function GET(req: Request) {
       }
     }
     // Exclude admins/system users
-    personWhereConds.push(`p."name" NOT ILIKE '%Deivis Contreras%'`);
-    personWhereConds.push(`p."name" NOT ILIKE '%Gabriela Mayhua%'`);
-    personWhereConds.push(`p."name" NOT ILIKE '%Administrador%'`);
+    // personWhereConds.push(`p."name" NOT ILIKE '%Deivis Contreras%'`);
+    // personWhereConds.push(`p."name" NOT ILIKE '%Gabriela Mayhua%'`);
+    // personWhereConds.push(`p."name" NOT ILIKE '%Administrador%'`);
 
     const personWhereCond = personWhereConds.join(' AND ');
 

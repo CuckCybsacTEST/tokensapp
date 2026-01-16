@@ -26,8 +26,6 @@ export default function ManualAttendancePage() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ variant: "success" | "error"; text: string } | null>(null);
   const [flash, setFlash] = useState<{ mode: Mode; ts: number } | null>(null);
-  const [holdMs, setHoldMs] = useState(0);
-  const holdTimerRef = useRef<number | null>(null);
   const [password, setPassword] = useState("");
 
   const nextAction: Mode = useMemo(() => {
@@ -158,29 +156,9 @@ export default function ManualAttendancePage() {
                       ? 'bg-orange-600 hover:bg-orange-500 text-white focus:ring-orange-300'
                       : 'bg-emerald-600 hover:bg-emerald-500 text-white focus:ring-emerald-300'}`}
                   disabled={submitting || mode == null || password.length === 0}
-                  onMouseDown={(e) => {
-                    if (mode !== 'OUT') return; // long-press solo para salida
-                    setHoldMs(0);
-                    const start = Date.now();
-                    const id = window.setInterval(() => {
-                      const ms = Date.now() - start;
-                      setHoldMs(ms);
-                      if (ms >= 2000) {
-                        window.clearInterval(id);
-                        setHoldMs(0);
-                        handleSubmit();
-                      }
-                    }, 50);
-                    holdTimerRef.current = id as unknown as number;
-                  }}
-                  onMouseUp={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
-                  onMouseLeave={() => { if (holdTimerRef.current) { window.clearInterval(holdTimerRef.current); holdTimerRef.current = null; setHoldMs(0); } }}
-                  onClick={(e) => { if (mode === 'OUT') { e.preventDefault(); return; } handleSubmit(); }}
+                  onClick={handleSubmit}
                 >
-                  {submitting ? 'Enviando…' : (mode === 'OUT' ? (holdMs > 0 ? `Mantén… ${Math.ceil(Math.max(0, 2000 - holdMs)/1000)}s` : 'Mantén para Salida') : 'Registrar Entrada')}
-                  {mode === 'OUT' && holdMs > 0 && (
-                    <span className="absolute inset-x-0 bottom-0 h-1 rounded-b bg-orange-400" style={{ width: `${Math.min(100, (holdMs/2000)*100)}%` }} />
-                  )}
+                  {submitting ? 'Enviando…' : (mode === 'OUT' ? 'Registrar Salida' : 'Registrar Entrada')}
                 </button>
                 <Link
                   href="/u/assistance"

@@ -107,6 +107,7 @@ function ChecklistPageInner() {
   const [adminSums, setAdminSums] = useState<Map<string, number>>(new Map());
   const [metaSavingIds, setMetaSavingIds] = useState<Set<string>>(new Set());
   const [brief, setBrief] = useState<{ day: string; title?: string | null; show?: string | null; promos?: string | null; notes?: string | null; updatedAt?: string } | null>(null);
+  const [acceptedBrief, setAcceptedBrief] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'brief' | 'tasks'>('brief');
 
   // Local state of check statuses
@@ -190,6 +191,12 @@ function ChecklistPageInner() {
         const jb = await rb.json().catch(() => ({}));
         if (jb?.ok) setBrief(jb.brief || null);
       } catch {}
+      // Check if brief accepted
+      try {
+        const ra = await fetch(`/api/user/accept-brief?day=${encodeURIComponent(day!)}`, { cache: 'no-store', signal });
+        const ja = await ra.json().catch(() => ({}));
+        if (ja?.ok) setAcceptedBrief(ja.accepted || false);
+      } catch {}
     } catch (e: any) {
       // Friendly error for network issues
       const msg = String(e?.message || e);
@@ -221,6 +228,26 @@ function ChecklistPageInner() {
       }
       setAdminSums(map);
     } catch {}
+  }
+
+  async function acceptBrief() {
+    if (!day) return;
+    try {
+      const r = await fetch('/api/user/accept-brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day })
+      });
+      const j = await r.json();
+      if (r.ok && j?.ok) {
+        setAcceptedBrief(true);
+        router.push('/u');
+      } else {
+        alert('Error al aceptar el brief');
+      }
+    } catch (e) {
+      alert('Error de red');
+    }
   }
 
   useEffect(() => {
@@ -541,6 +568,17 @@ function ChecklistPageInner() {
                   <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
                     <span>Actualizado:</span>
                     <span className="font-mono">{new Date(brief.updatedAt).toLocaleString()}</span>
+                  </div>
+                )}
+
+                {!acceptedBrief && (
+                  <div className="mt-4 flex justify-center">
+                    <button
+                      onClick={acceptBrief}
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-md font-medium"
+                    >
+                      Aceptar Tareas y Brief
+                    </button>
                   </div>
                 )}
               </div>
