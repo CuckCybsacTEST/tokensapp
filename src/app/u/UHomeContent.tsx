@@ -35,6 +35,25 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
     }
   }, [hasDefaultPassword]);
 
+  // Añadir animación personalizada para resaltar el checklist
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .highlight-bounce {
+        animation: highlightBounce 4s infinite;
+      }
+      @keyframes highlightBounce {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+        100% { transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const handleClosePasswordModal = () => {
     setShowPasswordResetModal(false);
     sessionStorage.setItem('passwordResetModalShown', 'true');
@@ -118,7 +137,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
                 </Link>
               )}
-              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
+              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition highlight-bounce dark:border-amber-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
                   <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
