@@ -134,6 +134,15 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
+        return;
+      }
+      // Para cualquier otra URL del mismo origen, redirigir
+      if (url.origin === window.location.origin) {
+        console.log('Detected same-origin URL:', url.href);
+        redirectedRef.current = true;
+        setActive(false);
+        setTimeout(()=>{ window.location.href = url.href; }, 120);
+        return;
       }
     } catch (e) {
       console.log('URL parsing failed:', (e as Error).message, 'for text:', raw);
@@ -144,6 +153,14 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = raw; }, 120);
+        return;
+      }
+      // Para cualquier otra ruta relativa, redirigir
+      if (/^\//.test(raw)) {
+        console.log('Detected relative path:', raw);
+        redirectedRef.current = true;
+        setActive(false);
         setTimeout(()=>{ window.location.href = raw; }, 120);
         return;
       }
