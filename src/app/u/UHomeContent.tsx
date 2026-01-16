@@ -65,7 +65,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
-                Trabajo
+                Herramientas
               </button>
             </nav>
           </div>
@@ -73,6 +73,8 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           {/* Contenido de las pestañas */}
           {activeTab === 'personal' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
+              <AutoAttendanceCard initialLastType={lastType} />
+
               <Link href="/u/profile" className="block rounded-lg border border-blue-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-blue-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
                   <IconUser className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -82,24 +84,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm ml-8 sm:ml-9">Ver perfil →</div>
               </Link>
 
-              <Link href="/u?view-regulation=1" className="block rounded-lg border-2 border-red-300 bg-red-50/50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-red-600/60 dark:bg-red-900/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <IconShieldLock className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
-                  <div className="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100">Reglamento Interno</div>
-                </div>
-                <p className="text-sm text-red-800 dark:text-red-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
-              </Link>
-
-              <AutoAttendanceCard initialLastType={lastType} />
-              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
-                <div className="flex items-center gap-3 mb-2">
-                  <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
-              </Link>
               {session.role === 'STAFF' && (
                 <Link href="/u/attendance" className="block rounded-lg border border-indigo-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-indigo-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -110,7 +94,20 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-sm ml-8 sm:ml-9">Ver registro →</div>
                 </Link>
               )}
-            
+
+              <Link href="/u?view-regulation=1" className="block rounded-lg border-2 border-red-300 bg-red-50/50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-red-600/60 dark:bg-red-900/20">
+                <div className="flex items-center gap-3 mb-2">
+                  <IconShieldLock className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <div className="text-base sm:text-lg font-semibold text-red-900 dark:text-red-100">Reglamento Interno</div>
+                </div>
+                <p className="text-sm text-red-800 dark:text-red-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
+              </Link>
+            </div>
+          )}
+
+          {activeTab === 'work' && (
+            <div className="grid grid-cols-1 gap-3 sm:gap-6">
               {session.role === 'STAFF' && (
                 <Link href="/u/scanner" className="block rounded-lg border border-teal-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-teal-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -121,11 +118,24 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
                 </Link>
               )}
-            </div>
-          )}
-
-          {activeTab === 'work' && (
-            <div className="grid grid-cols-1 gap-3 sm:gap-6">
+              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
+                <div className="flex items-center gap-3 mb-2">
+                  <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
+              </Link>
+              {session.role === 'STAFF' && (
+                <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconCake className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Gestión de Cumpleaños</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Administra tokens y ofertas de cumpleaños.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Gestionar cumpleaños →</div>
+                </Link>
+              )}
               {isStaff && (
                 <Link href="/u/tokens" className="block rounded-lg border border-emerald-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -154,16 +164,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Visualiza los sorteos QR personalizados y sus detalles.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-sm ml-8 sm:ml-9">Ver sorteos →</div>
-                </Link>
-              )}
-              {session.role === 'STAFF' && (
-                <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
-                  <div className="flex items-center gap-3 mb-2">
-                    <IconCake className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
-                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Gestión de Cumpleaños</div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Administra tokens y ofertas de cumpleaños.</p>
-                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Gestionar cumpleaños →</div>
                 </Link>
               )}
               {session.role === 'STAFF' && hasCartaAccess && (
