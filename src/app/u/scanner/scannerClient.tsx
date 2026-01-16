@@ -99,8 +99,8 @@ export default function ScannerClient() {
   }, []);
 
   // Function to navigate to birthday pages
-  const maybeNavigate = useCallback((raw: string) => {
-    if (redirectedRef.current) return;
+  const maybeNavigate = useCallback((raw: string): boolean => {
+    if (redirectedRef.current) return false;
     console.log('maybeNavigate called with:', raw);
     
     // More flexible detection for static tokens
@@ -113,7 +113,7 @@ export default function ScannerClient() {
       setActive(false); // detener cámara antes de salir
       // pequeña pausa para permitir sonido/flash visual
       setTimeout(()=>{ window.location.href = `/static/${tokenId}`; }, 120);
-      return;
+      return true;
     }
     
     try {
@@ -126,7 +126,7 @@ export default function ScannerClient() {
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
-        return;
+        return true;
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
@@ -134,7 +134,7 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
-        return;
+        return true;
       }
       // Para cualquier otra URL del mismo origen, redirigir
       if (url.origin === window.location.origin) {
@@ -142,7 +142,7 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.href; }, 120);
-        return;
+        return true;
       }
     } catch (e) {
       console.log('URL parsing failed:', (e as Error).message, 'for text:', raw);
@@ -154,7 +154,7 @@ export default function ScannerClient() {
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
         setTimeout(()=>{ window.location.href = raw; }, 120);
-        return;
+        return true;
       }
       // Para cualquier otra ruta relativa, redirigir
       if (/^\//.test(raw)) {
@@ -162,7 +162,7 @@ export default function ScannerClient() {
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = raw; }, 120);
-        return;
+        return true;
       }
       // no es URL absoluta; podría venir un code simple futuro: birthday:<code>
       if (/^https?:\/\//i.test(raw) === false && /^bday:/i.test(raw)) {
@@ -173,9 +173,11 @@ export default function ScannerClient() {
           redirectedRef.current = true;
           setActive(false);
           setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
+          return true;
         }
       }
     }
+    return false;
   }, []);
 
   // Function to process QR text (extracted for reuse)
@@ -184,7 +186,7 @@ export default function ScannerClient() {
     console.log('processQrText called with:', raw);
 
     // First, check if it's a URL that should trigger navigation (static tokens, birthday codes, etc.)
-    maybeNavigate(raw);
+    if (maybeNavigate(raw)) return;
 
     // Check if it's an offer QR
     try {
