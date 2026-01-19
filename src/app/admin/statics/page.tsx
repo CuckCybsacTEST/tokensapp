@@ -259,29 +259,45 @@ async function getBirthdayMetrics(startDate: Date | undefined, endDate: Date | u
 }
 
 async function getMetrics(startDate: Date | undefined, endDate: Date | undefined) {
-  const dateFilter = startDate ? { createdAt: { gte: startDate, lte: endDate } } : {};
+  // Filtramos por fecha de expiración del TOKEN, no creación del batch
+  const dateFilter = startDate ? { expiresAt: { gte: startDate, lte: endDate } } : {};
 
   // Filtros para batches de ruleta: no reusables y sin staticTargetUrl
-  const batchFilter = { isReusable: false, staticTargetUrl: null, ...dateFilter };
+  const batchFilter = { isReusable: false, staticTargetUrl: null };
 
-  // Tokens totales en batches de ruleta
+  // Tokens totales que expiran en el período
   const totalTokens = await prisma.token.count({
-    where: { batch: batchFilter },
+    where: { 
+      batch: batchFilter,
+      ...dateFilter
+    },
   });
 
-  // Tokens revelados
+  // Tokens revelados (de batches que expiran en el período)
   const revealedTokens = await prisma.token.count({
-    where: { revealedAt: { not: null }, batch: batchFilter },
+    where: { 
+      revealedAt: { not: null }, 
+      batch: batchFilter,
+      ...dateFilter 
+    },
   });
 
   // Tokens no revelados
   const unrevealedTokens = await prisma.token.count({
-    where: { revealedAt: null, batch: batchFilter },
+    where: { 
+      revealedAt: null, 
+      batch: batchFilter,
+      ...dateFilter 
+    },
   });
 
   // Tokens entregados
   const deliveredTokens = await prisma.token.count({
-    where: { deliveredAt: { not: null }, batch: batchFilter },
+    where: { 
+      deliveredAt: { not: null }, 
+      batch: batchFilter,
+      ...dateFilter 
+    },
   });
 
   // Tasa de entrega
@@ -295,7 +311,8 @@ async function getMetrics(startDate: Date | undefined, endDate: Date | undefined
     where: {
       deliveredAt: { not: null },
       revealedAt: { not: null },
-      batch: batchFilter
+      batch: batchFilter,
+      ...dateFilter
     },
     select: { revealedAt: true, deliveredAt: true }
   });
@@ -317,7 +334,8 @@ async function getMetrics(startDate: Date | undefined, endDate: Date | undefined
   const deliveredTokensWithPrizes = await prisma.token.findMany({
     where: { 
       deliveredAt: { not: null }, 
-      batch: batchFilter 
+      batch: batchFilter,
+      ...dateFilter
     },
     select: { prize: { select: { label: true } } }
   });
@@ -335,7 +353,8 @@ async function getMetrics(startDate: Date | undefined, endDate: Date | undefined
     where: { 
       deliveredAt: null, 
       revealedAt: { not: null },
-      batch: { isReusable: false, staticTargetUrl: null, ...dateFilter } 
+      batch: batchFilter,
+      ...dateFilter
     },
     select: { prize: { select: { label: true } } }
   });
@@ -350,7 +369,11 @@ async function getMetrics(startDate: Date | undefined, endDate: Date | undefined
 
   // Premios no revelados durante el período
   const unrevealedTokensWithPrizes = await prisma.token.findMany({
-    where: { revealedAt: null, batch: { isReusable: false, staticTargetUrl: null, ...dateFilter } },
+    where: { 
+      revealedAt: null, 
+      batch: batchFilter, 
+      ...dateFilter 
+    },
     select: { prize: { select: { label: true } } }
   });
   const unrevealedPrizeCountMap = new Map<string, number>();
