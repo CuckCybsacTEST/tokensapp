@@ -38,9 +38,22 @@ model ReusablePrize {
   @@index([key])
 }
 
+model TokenGroup {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  color       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  tokens      ReusableToken[]
+
+  @@index([name])
+}
+
 model ReusableToken {
   id                String        @id @default(cuid())
   prizeId           String
+  groupId           String?
   expiresAt         DateTime
   createdAt         DateTime      @default(now())
   redeemedAt        DateTime?
@@ -55,8 +68,10 @@ model ReusableToken {
   endTime           DateTime?
   startTime         DateTime?
   prize             ReusablePrize @relation(fields: [prizeId], references: [id])
+  group             TokenGroup?   @relation(fields: [groupId], references: [id])
 
   @@index([prizeId])
+  @@index([groupId])
   @@index([expiresAt])
   @@index([redeemedAt])
   @@index([deliveredAt])

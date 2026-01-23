@@ -33,6 +33,7 @@ type ReusableTokenPageProps = {
 function ExpirationCountdown({ expiresAt }: { expiresAt: string }) {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0 });
   const [isVisible, setIsVisible] = useState(false);
+  const [hasExpired, setHasExpired] = useState(false);
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -42,8 +43,9 @@ function ExpirationCountdown({ expiresAt }: { expiresAt: string }) {
       const diff = expiry.diff(now);
 
       if (diff.as('milliseconds') <= 0) {
-        // Token expiró, recargar página
-        window.location.reload();
+        // Token expiró - solo marcar como expirado, NO recargar
+        setHasExpired(true);
+        setIsVisible(false);
         return;
       }
 
@@ -67,7 +69,8 @@ function ExpirationCountdown({ expiresAt }: { expiresAt: string }) {
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  if (!isVisible) return null;
+  // Si ya expiró, no mostrar nada (la UI principal mostrará el estado expirado)
+  if (hasExpired || !isVisible) return null;
 
   return (
     <div className="w-full bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-2xl p-4 mb-4 animate-pulse">

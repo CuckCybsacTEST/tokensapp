@@ -12,10 +12,33 @@ interface ReusablePrize {
   createdAt: string;
 }
 
+interface TokenGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  createdAt: string;
+  tokens: GroupToken[];
+  _count: { tokens: number };
+}
+
+interface GroupToken {
+  id: string;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  createdAt: string;
+  deliveryNote?: string | null;
+  prize: { id: string; label: string; key: string; color?: string | null };
+}
+
 interface IndividualToken {
   id: string;
   qrUrl: string;
   prize: { id: string; label: string; key?: string; color?: string };
+  group?: { id: string; name: string; color?: string } | null;
   maxUses: number;
   usedCount?: number;
   expiresAt: string;
@@ -34,6 +57,7 @@ interface PaginationInfo {
 
 export default function ReusableTokensAdmin() {
   const [prizes, setPrizes] = useState<ReusablePrize[]>([]);
+  const [groups, setGroups] = useState<TokenGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [individualToken, setIndividualToken] = useState<IndividualToken | null>(null);
@@ -41,6 +65,10 @@ export default function ReusableTokensAdmin() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [prizesDropdownOpen, setPrizesDropdownOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'premios' | 'grupos' | 'tokens'>('premios');
+  const [groupForm, setGroupForm] = useState({ name: '', description: '', color: '' });
+  const [editingGroup, setEditingGroup] = useState<TokenGroup | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [prizeForm, setPrizeForm] = useState({
     label: '',
     key: '',
@@ -61,6 +89,7 @@ export default function ReusableTokensAdmin() {
 
   useEffect(() => {
     fetchPrizes();
+    fetchGroups();
     fetchRecentTokens(currentPage);
     // Limpiar localStorage ya que ahora usamos la API de tokens recientes
     localStorage.removeItem('lastGeneratedToken');
@@ -91,6 +120,114 @@ export default function ReusableTokensAdmin() {
       setPrizes(data);
     }
     setLoading(false);
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/api/admin/token-groups');
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[fetchGroups] Grupos recibidos:', data);
+        setGroups(data);
+      } else {
+        console.log('[fetchGroups] Error en respuesta:', res.status);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+  };
+
+  const saveGroup = async () => {
+    if (!groupForm.name.trim()) {
+      alert('El nombre del grupo es requerido');
+      return;
+    }
+
+    const body = {
+      name: groupForm.name.trim(),
+      description: groupForm.description?.trim() || null,
+      color: groupForm.color || null
+    };
+
+    const res = await fetch('/api/admin/token-groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      alert('Grupo creado exitosamente');
+      setGroupForm({ name: '', description: '', color: '' });
+      fetchGroups();
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Error creando grupo');
+    }
+  };
+
+  const editGroup = (group: TokenGroup) => {
+    setEditingGroup(group);
+    setGroupForm({
+      name: group.name,
+      description: group.description || '',
+      color: group.color || ''
+    });
+  };
+
+  const updateGroup = async () => {
+    if (!editingGroup) return;
+    if (!groupForm.name.trim()) {
+      alert('El nombre del grupo es requerido');
+      return;
+    }
+
+    const body = {
+      name: groupForm.name.trim(),
+      description: groupForm.description?.trim() || null,
+      color: groupForm.color || null
+    };
+
+    const res = await fetch(`/api/admin/token-groups/${editingGroup.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      alert('Grupo actualizado exitosamente');
+      setEditingGroup(null);
+      setGroupForm({ name: '', description: '', color: '' });
+      fetchGroups();
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Error actualizando grupo');
+    }
+  };
+
+  const deleteGroup = async (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    if (!confirm(`¿Eliminar el grupo "${group.name}"? Los tokens del grupo no serán eliminados.`)) {
+      return;
+    }
+
+    const res = await fetch(`/api/admin/token-groups/${groupId}`, {
+      method: 'DELETE'
+    });
+
+    if (res.ok) {
+      alert('Grupo eliminado exitosamente');
+      fetchGroups();
+    } else {
+      const error = await res.json();
+      alert(error.error || 'Error eliminando grupo');
+    }
+  };
+
+  const cancelEditGroup = () => {
+    setEditingGroup(null);
+    setGroupForm({ name: '', description: '', color: '' });
   };
 
   const fetchRecentTokens = async (page: number = 1) => {
@@ -268,13 +405,52 @@ export default function ReusableTokensAdmin() {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tokens Reusables Individuales</h1>
       </div>
 
-      {/* Gestión de Premios */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold">Premios para Tokens Reusables</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Gestiona los premios específicos para tokens reusables</p>
-        </div>
-        <div className="card-body">
+      {/* Pestañas de navegación */}
+      <div className="border-b border-slate-200 dark:border-slate-700">
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('premios')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'premios'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            🏆 Gestión de Premios
+          </button>
+          <button
+            onClick={() => setActiveTab('grupos')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'grupos'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            📁 Gestión de Grupos
+          </button>
+          <button
+            onClick={() => setActiveTab('tokens')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'tokens'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            🎫 Gestión de Tokens
+          </button>
+        </nav>
+      </div>
+
+      {/* ==================== PESTAÑA: GESTIÓN DE PREMIOS ==================== */}
+      {activeTab === 'premios' && (
+        <>
+          {/* Gestión de Premios */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="text-lg font-semibold">Premios para Tokens Reusables</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Gestiona los premios específicos para tokens reusables</p>
+            </div>
+            <div className="card-body">
           {/* Formulario para crear premio */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <div>
@@ -429,15 +605,227 @@ export default function ReusableTokensAdmin() {
           </div>
         </div>
       </div>
+        </>
+      )}
 
-      {/* Generar Token Individual */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold">Generar Token Individual</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Crea un solo token reutilizable sin lote</p>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ==================== PESTAÑA: GESTIÓN DE GRUPOS ==================== */}
+      {activeTab === 'grupos' && (
+        <>
+          <div className="card">
+            <div className="card-header">
+              <h2 className="text-lg font-semibold">Grupos de Tokens</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Organiza tus tokens en grupos personalizados</p>
+            </div>
+            <div className="card-body">
+              {/* Formulario para crear/editar grupo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre del Grupo *</label>
+                  <input
+                    type="text"
+                    className="input w-full"
+                    value={groupForm.name}
+                    onChange={e => setGroupForm({ ...groupForm, name: e.target.value })}
+                    placeholder="Ej: PROMOS BARRA"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Color</label>
+                  <input
+                    type="color"
+                    className="input w-full h-10"
+                    value={groupForm.color || '#3b82f6'}
+                    onChange={e => setGroupForm({ ...groupForm, color: e.target.value })}
+                  />
+                </div>
+                <div className="flex items-end">
+                  {editingGroup ? (
+                    <div className="flex gap-2 w-full">
+                      <button
+                        onClick={updateGroup}
+                        className="btn flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Actualizar
+                      </button>
+                      <button
+                        onClick={cancelEditGroup}
+                        className="btn flex-1 bg-gray-600 hover:bg-gray-700 text-white"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={saveGroup}
+                      className="btn w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Crear Grupo
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descripción (opcional)</label>
+                <textarea
+                  className="input w-full"
+                  value={groupForm.description}
+                  onChange={e => setGroupForm({ ...groupForm, description: e.target.value })}
+                  placeholder="Descripción del grupo"
+                  rows={2}
+                />
+              </div>
+
+              {/* Lista de grupos */}
+              <div>
+                <h3 className="text-md font-semibold text-slate-900 dark:text-slate-100 mb-4">
+                  Grupos Existentes ({groups.length})
+                </h3>
+                {groups.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    No hay grupos creados aún
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {groups.map(group => {
+                      const isExpanded = expandedGroups.has(group.id);
+                      return (
+                        <div 
+                          key={group.id} 
+                          className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 overflow-hidden"
+                        >
+                          {/* Header del grupo */}
+                          <div className="p-4 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+                            <div 
+                              className="flex items-center gap-3 cursor-pointer flex-1"
+                              onClick={() => {
+                                const newExpanded = new Set(expandedGroups);
+                                if (isExpanded) {
+                                  newExpanded.delete(group.id);
+                                } else {
+                                  newExpanded.add(group.id);
+                                }
+                                setExpandedGroups(newExpanded);
+                              }}
+                            >
+                              <svg
+                                className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                              <div
+                                className="w-4 h-4 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: group.color || '#3b82f6' }}
+                              />
+                              <div>
+                                <h4 className="font-medium text-slate-900 dark:text-slate-100">{group.name}</h4>
+                                <span className="text-sm text-slate-500 dark:text-slate-400">
+                                  {group._count?.tokens || group.tokens?.length || 0} tokens
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => editGroup(group)}
+                                className="btn-sm bg-blue-600 hover:bg-blue-700 text-white"
+                                title="Editar grupo"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => deleteGroup(group.id)}
+                                className="btn-sm bg-red-600 hover:bg-red-700 text-white"
+                                title="Eliminar grupo"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Descripción */}
+                          {group.description && (
+                            <div className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                              {group.description}
+                            </div>
+                          )}
+                          
+                          {/* Lista de tokens expandible */}
+                          {isExpanded && (
+                            <div className="p-4">
+                              {(!group.tokens || group.tokens.length === 0) ? (
+                                <div className="text-center py-4 text-slate-500 dark:text-slate-400">
+                                  No hay tokens en este grupo
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {group.tokens.map(token => (
+                                    <div 
+                                      key={token.id}
+                                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div
+                                          className="w-3 h-3 rounded-full flex-shrink-0"
+                                          style={{ backgroundColor: token.prize.color || '#666' }}
+                                        />
+                                        <div>
+                                          <div className="font-medium text-sm text-slate-900 dark:text-slate-100">
+                                            {token.prize.label}
+                                          </div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                                            ID: {token.id.slice(0, 8)}...
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                          <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                            {token.usedCount || 0}/{token.maxUses} usos
+                                          </div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                                            Expira: {new Date(token.expiresAt).toLocaleDateString('es-ES')}
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={`/reusable/${token.id}`}
+                                          target="_blank"
+                                          className="btn-sm bg-slate-600 hover:bg-slate-700 text-white"
+                                          title="Ver token"
+                                        >
+                                          👁️
+                                        </a>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ==================== PESTAÑA: GESTIÓN DE TOKENS ==================== */}
+      {activeTab === 'tokens' && (
+        <>
+          {/* Generar Token Individual */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="text-lg font-semibold">Generar Token Individual</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Crea un solo token reutilizable sin lote</p>
+            </div>
+            <div className="card-body">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Premio</label>
               <select
@@ -768,17 +1156,19 @@ export default function ReusableTokensAdmin() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold text-amber-600 dark:text-amber-400">Nota Importante</h2>
-        </div>
-        <div className="card-body">
-          <p className="text-slate-600 dark:text-slate-400">
-            La funcionalidad anterior de lotes ha sido eliminada. Ahora solo se generan tokens individuales.
-            Los tokens existentes siguen funcionando normalmente.
-          </p>
-        </div>
-      </div>
+          <div className="card">
+            <div className="card-header">
+              <h2 className="text-lg font-semibold text-amber-600 dark:text-amber-400">Nota Importante</h2>
+            </div>
+            <div className="card-body">
+              <p className="text-slate-600 dark:text-slate-400">
+                La funcionalidad anterior de lotes ha sido eliminada. Ahora solo se generan tokens individuales.
+                Los tokens existentes siguen funcionando normalmente.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

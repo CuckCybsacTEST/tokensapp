@@ -33,6 +33,13 @@ export async function GET(req: NextRequest) {
               key: true,
               color: true
             }
+          },
+          group: {
+            select: {
+              id: true,
+              name: true,
+              color: true
+            }
           }
         }
       }),
@@ -48,6 +55,11 @@ export async function GET(req: NextRequest) {
         key: token.prize.key,
         color: token.prize.color
       },
+      group: token.group ? {
+        id: token.group.id,
+        name: token.group.name,
+        color: token.group.color
+      } : null,
       maxUses: token.maxUses,
       usedCount: token.usedCount,
       expiresAt: token.expiresAt,
