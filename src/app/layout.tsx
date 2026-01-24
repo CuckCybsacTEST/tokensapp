@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import { DynamicTitle } from "@/components/seo/DynamicTitle";
+import { CustomerAuthProvider } from "@/lib/hooks/use-customer-auth";
 
 // Nota: Este es un layout de respaldo, ahora cada sección tiene su propio layout
 // Este layout no debería usarse normalmente ya que tenemos layouts específicos para:
@@ -45,9 +46,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full w-full antialiased transition-colors duration-150 theme-hydrated" suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{__html:`document.documentElement.classList.add('theme-hydrated');document.body.classList.add('theme-hydrated');`}} />
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <CustomerAuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </CustomerAuthProvider>
         <DynamicTitle />
         <script
           dangerouslySetInnerHTML={{

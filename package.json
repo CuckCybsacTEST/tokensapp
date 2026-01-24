@@ -39,6 +39,7 @@
     "purge:batches": "tsx scripts/purge-batches.ts",
     "tasks:clear": "set CONFIRM=YES && tsx scripts/clearTasks.ts",
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
+    "cleanup:sessions": "tsx scripts/cleanup-customer-sessions.ts",
     "backfill:retry-reservations": "tsx scripts/backfillRetryReservations.ts",
     "backfill:retry-reservations:direct": "tsx scripts/backfillRetryReservationsDirect.ts",
     "verify:postgres": "tsx scripts/verify-postgres.ts",

@@ -293,11 +293,29 @@ model Customer {
   customerVisits  CustomerVisit[]
   orders          Order[]
   ticketPurchases TicketPurchase[]
+  sessions        CustomerSession[]
 
   @@index([dni])
   @@index([email])
   @@index([membershipLevel])
   @@index([isActive])
+}
+
+model CustomerSession {
+  id           String    @id @default(cuid())
+  customerId   String
+  sessionToken String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  lastActivity DateTime  @default(now())
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([sessionToken])
+  @@index([customerId])
+  @@index([expiresAt])
+  @@index([lastActivity])
 }
 
 model CustomerVisit {

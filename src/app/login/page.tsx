@@ -1,51 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCustomerAuth } from '@/lib/hooks/use-customer-auth';
 
 export default function CustomerLogin() {
   const router = useRouter();
+  const { login } = useCustomerAuth();
   const [dni, setDni] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Check if user was redirected from registration
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('registered') === 'true') {
+      setSuccessMessage('¡Registro exitoso! Ahora puedes iniciar sesión con tu DNI.');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    try {
-      // Buscar customer por DNI
-      const response = await fetch(`/api/customers/search?dni=${encodeURIComponent(dni)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+    const success = await login(dni);
 
-      if (!response.ok) {
-        throw new Error('Error al buscar cliente');
-      }
-
-      const data = await response.json();
-
-      if (!data.customer) {
-        setError('Cliente no encontrado. ¿Ya te registraste?');
-        return;
-      }
-
-      // Guardar información del cliente en localStorage o session
-      localStorage.setItem('customer', JSON.stringify(data.customer));
-
-      // Redirigir al perfil del cliente
+    if (!success) {
+      setError('DNI no encontrado o cliente inactivo. ¿Ya te registraste?');
+    } else {
       router.push('/profile');
-
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Error al iniciar sesión. Inténtalo de nuevo.');
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -55,6 +43,12 @@ export default function CustomerLogin() {
           <h1 className="text-3xl font-bold text-white mb-2">Iniciar Sesión</h1>
           <p className="text-white/80">Ingresa tu DNI para acceder a tu cuenta</p>
         </div>
+
+        {successMessage && (
+          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 mb-6">
+            <p className="text-green-200 text-sm">{successMessage}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -66,12 +60,12 @@ export default function CustomerLogin() {
               id="dni"
               name="dni"
               value={dni}
-              onChange={(e) => setDni(e.target.value)}
+              onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))} // Solo números
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               placeholder="Ingresa tu DNI"
               required
-              maxLength={8}
-              pattern="[0-9]{8}"
+              maxLength={12}
+              minLength={8}
             />
           </div>
 

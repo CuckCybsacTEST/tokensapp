@@ -56,9 +56,9 @@ export default function CustomerRegistration() {
 
       setSuccess(true);
 
-      // Redirect to success page or back to menu after 2 seconds
+      // Redirect to login page after successful registration
       setTimeout(() => {
-        router.push('/menu?registered=true');
+        router.push('/login?registered=true');
       }, 2000);
 
     } catch (err: any) {
@@ -79,10 +79,10 @@ export default function CustomerRegistration() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Registro Exitoso!</h2>
           <p className="text-gray-600 mb-4">
-            Bienvenido a nuestro programa de fidelidad. Ya puedes acumular puntos con tus compras.
+            Tu cuenta ha sido creada exitosamente. Ahora puedes iniciar sesión con tu DNI.
           </p>
           <p className="text-sm text-gray-500">
-            Redirigiendo al menú...
+            Redirigiendo al login...
           </p>
         </div>
       </div>

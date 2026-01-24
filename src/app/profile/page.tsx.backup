@@ -1,8 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCustomerAuth } from '@/lib/hooks/use-customer-auth';
-import { CustomerProtectedRoute } from '@/components/CustomerProtectedRoute';
+import { useRouter } from 'next/navigation';
+
+interface Customer {
+  id: string;
+  dni: string;
+  name: string;
+  email: string | null;
+  phone: string;
+  whatsapp: string | null;
+  birthday: string | null;
+  membershipLevel: string;
+  points: number;
+  totalSpent: number;
+  visitCount: number;
+  lastVisit: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
 
 interface CustomerVisit {
   id: string;
@@ -13,23 +29,44 @@ interface CustomerVisit {
   pointsEarned: number;
 }
 
-function CustomerProfileContent() {
-  const { customer, logout } = useCustomerAuth();
+function CustomerProfile() {
+  const router = useRouter();
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [visits, setVisits] = useState<CustomerVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (customer) {
-      fetchVisits();
-    }
-  }, [customer]);
+    fetchCustomerData();
+  }, []);
 
-  const fetchVisits = async () => {
+  const fetchCustomerData = async () => {
     try {
-      const visitsResponse = await fetch(`/api/customers/visits?customerId=${customer!.id}`);
+      // Obtener información del cliente autenticado
+      const meResponse = await fetch('/api/customer/auth/me');
+
+      if (!meResponse.ok) {
+        if (meResponse.status === 401) {
+          // No autenticado, redirigir al login
+          router.push('/login');
+          return;
+        }
+        throw new Error('Error de autenticación');
+      }
+
+      const meData = await meResponse.json();
+
+      if (!meData.ok || !meData.customer) {
+        throw new Error('Datos de cliente no encontrados');
+      }
+
+      setCustomer(meData.customer);
+
+      // Cargar visitas del cliente
+      const visitsResponse = await fetch(`/api/customers/visits?customerId=${meData.customer.id}`);
       const visitsData = visitsResponse.ok ? await visitsResponse.json() : { visits: [] };
       setVisits(visitsData.visits || []);
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -39,9 +76,12 @@ function CustomerProfileContent() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await fetch('/api/customer/auth/logout', { method: 'POST' });
+      router.push('/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+      // Forzar redirección aunque falle el logout
+      router.push('/login');
     }
   };
 
@@ -63,14 +103,59 @@ function CustomerProfileContent() {
     }
   };
 
-  if (!customer) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Acceso Denegado</h2>
-            <p className="text-gray-600 mb-6">Debes iniciar sesión para ver tu perfil.</p>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !customer) {
+
+  const getMembershipColor = (level: string) => {
+    switch (level) {
+      case 'VIP': return 'bg-purple-100 text-purple-800';
+      case 'MEMBER': return 'bg-blue-100 text-blue-800';
+      case 'GUEST': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getVisitTypeLabel = (type: string) => {
+    switch (type) {
+      case 'VISIT': return 'Visita';
+      case 'BIRTHDAY': return 'Cumpleaños';
+      case 'SPECIAL_EVENT': return 'Evento Especial';
+      default: return 'Visita';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error || !customer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
           </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
+          <p className="text-gray-600 mb-4">{error || 'Cliente no encontrado'}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Volver
+          </button>
         </div>
       </div>
     );
@@ -96,63 +181,40 @@ function CustomerProfileContent() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Profile Overview */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Información del Perfil</h2>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">{customer.name}</h1>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getMembershipColor(customer.membershipLevel)}`}>
               {customer.membershipLevel}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Puntos Acumulados</p>
-                  <p className="text-2xl font-bold text-blue-600">{customer.points}</p>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">{customer.points}</div>
+              <div className="text-sm text-blue-600">Puntos Acumulados</div>
             </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Total Gastado</p>
-                  <p className="text-2xl font-bold text-green-600">S/ {customer.totalSpent.toFixed(2)}</p>
-                </div>
-              </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">S/ {customer.totalSpent.toFixed(2)}</div>
+              <div className="text-sm text-green-600">Total Gastado</div>
             </div>
-
-            <div className="bg-purple-50 rounded-lg p-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 4v10a2 2 0 002 2h4a2 2 0 002-2V11M9 11h6" />
-                  </svg>
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Total Visitas</p>
-                  <p className="text-2xl font-bold text-purple-600">{customer.visitCount}</p>
-                </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">{customer.visitCount}</div>
+              <div className="text-sm text-purple-600">Total Visitas</div>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">
+                {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Nunca'}
               </div>
+              <div className="text-sm text-orange-600">Última Visita</div>
             </div>
           </div>
         </div>
 
-        {/* Personal Information */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        {/* Customer Info */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Información Personal</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -243,10 +305,12 @@ function CustomerProfileContent() {
   );
 }
 
-export default function CustomerProfile() {
+function ProfileWrapper() {
   return (
-    <CustomerProtectedRoute>
-      <CustomerProfileContent />
-    </CustomerProtectedRoute>
+    <Suspense fallback={<div>Cargando...</div>}>
+      <CustomerProfile />
+    </Suspense>
   );
 }
+
+export default ProfileWrapper;
