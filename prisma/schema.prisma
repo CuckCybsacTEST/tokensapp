@@ -759,16 +759,17 @@ model Product {
 }
 
 model Table {
-  id        String   @id @default(cuid())
-  number    Int      @unique
-  name      String?
-  zone      String?
-  capacity  Int      @default(4)
-  active    Boolean  @default(true)
-  qrCode    String?  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id          String       @id @default(cuid())
+  number      Int          @unique
+  name        String?
+  zone        String?
+  capacity    Int          @default(4)
+  active      Boolean      @default(true)
+  qrCode      String?      @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orders      Order[]
+  musicOrders MusicOrder[]
 
   @@index([zone])
   @@index([active])
@@ -791,20 +792,21 @@ model Location {
 }
 
 model ServicePoint {
-  id         String           @id @default(cuid())
-  locationId String
-  number     String
-  name       String?
-  type       ServicePointType
-  capacity   Int              @default(4)
-  active     Boolean          @default(true)
-  qrCode     String?          @unique
-  positionX  Int?
-  positionY  Int?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  orders     Order[]
-  location   Location         @relation(fields: [locationId], references: [id])
+  id          String           @id @default(cuid())
+  locationId  String
+  number      String
+  name        String?
+  type        ServicePointType
+  capacity    Int              @default(4)
+  active      Boolean          @default(true)
+  qrCode      String?          @unique
+  positionX   Int?
+  positionY   Int?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  orders      Order[]
+  musicOrders MusicOrder[]
+  location    Location         @relation(fields: [locationId], references: [id])
 
   @@index([locationId])
   @@index([type])
@@ -1328,4 +1330,139 @@ model BriefAcceptance {
   @@unique([personId, day])
   @@index([personId])
   @@index([day])
+}
+
+// ============================================
+// MUSIC JUKEBOX SYSTEM - Pedidos Musicales
+// ============================================
+
+model MusicOrder {
+  id                String            @id @default(cuid())
+  requesterName     String
+  whatsapp          String?
+  userId            String?
+  songTitle         String
+  artist            String
+  spotifyId         String?
+  spotifyUri        String?
+  albumName         String?
+  albumImage        String?
+  duration          Int?              // Duration in seconds
+  previewUrl        String?           // Spotify preview URL
+  orderType         MusicOrderType    @default(FREE)
+  status            MusicOrderStatus  @default(PENDING)
+  priority          Int               @default(0)
+  queuePosition     Int?
+  playedAt          DateTime?
+  playedBy          String?
+  djNotes           String?
+  deviceFingerprint String?
+  ipAddress         String?
+  tableId           String?
+  servicePointId    String?
+  isPaid            Boolean           @default(false)
+  paidAmount        Float?
+  paidAt            DateTime?
+  paymentId         String?
+  rejectedReason    String?
+  flagged           Boolean           @default(false)
+  flaggedReason     String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  table             Table?            @relation(fields: [tableId], references: [id])
+  servicePoint      ServicePoint?     @relation(fields: [servicePointId], references: [id])
+
+  @@index([status])
+  @@index([orderType])
+  @@index([createdAt])
+  @@index([deviceFingerprint])
+  @@index([ipAddress])
+  @@index([tableId])
+  @@index([servicePointId])
+  @@index([flagged])
+}
+
+model MusicRateLimit {
+  id                String   @id @default(cuid())
+  identifier        String   // IP + deviceFingerprint combined
+  ipAddress         String?
+  deviceFingerprint String?
+  tableId           String?
+  requestCount      Int      @default(0)
+  freeCount         Int      @default(0)
+  premiumCount      Int      @default(0)
+  lastRequestAt     DateTime @default(now())
+  windowStart       DateTime @default(now())
+  blocked           Boolean  @default(false)
+  blockedUntil      DateTime?
+  blockedReason     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([identifier])
+  @@index([ipAddress])
+  @@index([deviceFingerprint])
+  @@index([tableId])
+  @@index([blocked])
+}
+
+model MusicSystemConfig {
+  id                    String   @id @default(cuid())
+  systemEnabled         Boolean  @default(true)
+  qrEnabled             Boolean  @default(true)
+  qrCode                String?  // Generated QR code data
+  premiumPrice          Float    @default(5.0)
+  vipPrice              Float    @default(10.0)
+  freeLimitPerHour      Int      @default(3)
+  premiumLimitPerHour   Int      @default(10)
+  tableLimitPerHour     Int      @default(5)
+  cooldownMinutes       Int      @default(5)
+  captchaThreshold      Int      @default(2)  // After X requests without register
+  captchaWindowMinutes  Int      @default(30)
+  duplicateSongHours    Int      @default(2)  // Block same song for X hours
+  peakHourMultiplier    Float    @default(1.5) // Price multiplier during peak
+  peakHourStart         Int      @default(22)  // 10 PM
+  peakHourEnd           Int      @default(2)   // 2 AM
+  eventModeEnabled      Boolean  @default(false)
+  eventModeLimits       Json?    // Custom limits for events
+  blockedArtists        String[] @default([])
+  blockedSongs          String[] @default([])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model MusicBlockedUser {
+  id                String   @id @default(cuid())
+  identifier        String   // IP or deviceFingerprint
+  ipAddress         String?
+  deviceFingerprint String?
+  reason            String
+  blockedBy         String   // Admin/DJ who blocked
+  blockedAt         DateTime @default(now())
+  expiresAt         DateTime?
+  permanent         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([ipAddress])
+  @@index([deviceFingerprint])
+  @@index([expiresAt])
+}
+
+enum MusicOrderType {
+  FREE
+  PREMIUM
+  VIP
+}
+
+enum MusicOrderStatus {
+  PENDING
+  APPROVED
+  QUEUED
+  PLAYING
+  PLAYED
+  REJECTED
+  CANCELLED
 }

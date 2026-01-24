@@ -47,7 +47,7 @@ export const initSocketIO = (httpServer: NetServer): ServerIO => {
 
   // Configurar eventos de Socket.IO
   io.on("connection", (socket) => {
-    console.log("Cliente conectado:", socket.id);
+    console.log("🔌 Cliente conectado:", socket.id);
 
     // Unirse a salas por rol
     socket.on("join-staff", (staffId: string) => {
@@ -60,8 +60,14 @@ export const initSocketIO = (httpServer: NetServer): ServerIO => {
       console.log(`Admin se unió a sala admin-tasks: ${socket.id}`);
     });
 
+    // Sala para la consola del DJ
+    socket.on("join-dj", () => {
+      socket.join("dj-console");
+      console.log(`🎧 DJ se unió a sala dj-console: ${socket.id}`);
+    });
+
     socket.on("disconnect", () => {
-      console.log("Cliente desconectado:", socket.id);
+      console.log("🔌 Cliente desconectado:", socket.id);
     });
   });
 
