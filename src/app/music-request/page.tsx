@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Music,
@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { brand } from "./styles/brand";
 
 interface SpotifyTrack {
   id: string;
@@ -51,7 +52,10 @@ interface QueueInfo {
 
 type OrderType = "FREE" | "PREMIUM" | "VIP";
 
-export default function MusicRequestPage() {
+function MusicRequestContent() {
+  const searchParams = useSearchParams();
+  const tableId = searchParams?.get("table") ?? null;
+
   // Form state
   const [requesterName, setRequesterName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -79,9 +83,6 @@ export default function MusicRequestPage() {
     vipPrice: number;
     systemEnabled: boolean;
   } | null>(null);
-
-  const searchParams = useSearchParams();
-  const tableId = searchParams?.get("table") ?? null;
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -305,12 +306,25 @@ export default function MusicRequestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div
+      className="min-h-screen w-full text-white overflow-x-hidden relative"
+      style={{
+        background: `radial-gradient(1200px 600px at 15% -10%, ${brand.primary}10, transparent), 
+                   radial-gradient(900px 500px at 110% 10%, ${brand.secondary}10, transparent), 
+                   linear-gradient(180deg, ${brand.darkA}, ${brand.darkB})`,
+      }}
+    >
       {/* Header */}
       <header className="bg-black/30 backdrop-blur-lg border-b border-white/10 sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
+                boxShadow: brand.shadows.primaryGlow
+              }}
+            >
               <Music className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -328,36 +342,30 @@ export default function MusicRequestPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 pb-24">
-        {/* Now Playing */}
-        {queueInfo?.nowPlaying && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl border border-white/10"
-          >
-            <div className="flex items-center gap-2 text-purple-400 text-sm mb-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Reproduciendo ahora
+        {/* Jukebox Status */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-2xl border"
+          style={{
+            background: brand.gradients.cardBg,
+            borderColor: brand.borders.accent,
+            boxShadow: brand.shadows.subtle
+          }}
+        >
+          <div className="flex items-center gap-2 text-[#FF4D2E] text-sm mb-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            Jukebox activo
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-white font-medium">
+              {queueInfo?.stats.totalInQueue || 0} canciones en cola
             </div>
-            <div className="flex items-center gap-3">
-              {queueInfo.nowPlaying.albumImage && (
-                <img
-                  src={queueInfo.nowPlaying.albumImage}
-                  alt=""
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="text-white font-medium truncate">
-                  {queueInfo.nowPlaying.songTitle}
-                </div>
-                <div className="text-gray-400 text-sm truncate">
-                  {queueInfo.nowPlaying.artist}
-                </div>
-              </div>
+            <div className="text-gray-400 text-sm">
+              ~{queueInfo?.stats.estimatedWaitMinutes || 0} min de espera
             </div>
-          </motion.div>
-        )}
+          </div>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {submitSuccess ? (
@@ -369,8 +377,14 @@ export default function MusicRequestPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="text-center py-8"
             >
-              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-green-500" />
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+                style={{
+                  background: `${brand.primary}20`,
+                  boxShadow: brand.shadows.primaryGlow
+                }}
+              >
+                <CheckCircle className="w-10 h-10 text-[#FF4D2E]" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">¡Pedido Enviado!</h2>
               <p className="text-gray-400 mb-6">
@@ -380,9 +394,15 @@ export default function MusicRequestPage() {
               </p>
 
               {queueInfo && queueInfo.userPosition !== null && (
-                <div className="bg-white/5 rounded-2xl p-6 mb-6">
+                <div
+                  className="rounded-2xl p-6 mb-6"
+                  style={{
+                    background: brand.gradients.cardBg,
+                    border: brand.borders.subtle
+                  }}
+                >
                   <div className="text-gray-400 text-sm mb-1">Tu posición en cola</div>
-                  <div className="text-4xl font-bold text-purple-400">
+                  <div className="text-4xl font-bold text-[#FF4D2E]">
                     #{queueInfo.userPosition}
                   </div>
                   <div className="text-gray-500 text-sm mt-2">
@@ -391,7 +411,13 @@ export default function MusicRequestPage() {
                 </div>
               )}
 
-              <div className="bg-white/5 rounded-xl p-4 mb-6">
+              <div
+                className="rounded-xl p-4 mb-6"
+                style={{
+                  background: brand.gradients.cardBg,
+                  border: brand.borders.subtle
+                }}
+              >
                 <div className="flex items-center gap-3">
                   {selectedTrack?.albumImage && (
                     <img
@@ -413,7 +439,16 @@ export default function MusicRequestPage() {
 
               <button
                 onClick={handleNewRequest}
-                className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-xl transition-colors"
+                className="w-full py-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-[#FF4D2E]/25"
+                style={{
+                  background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = brand.gradients.buttonHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`;
+                }}
               >
                 Pedir otra canción
               </button>
@@ -439,7 +474,7 @@ export default function MusicRequestPage() {
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
                   placeholder="¿Cómo te llamas?"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className={brand.components.input}
                   required
                   maxLength={100}
                 />
@@ -456,7 +491,7 @@ export default function MusicRequestPage() {
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="999 999 999"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className={brand.components.input}
                   maxLength={15}
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -477,11 +512,11 @@ export default function MusicRequestPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Busca por título o artista..."
-                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={`${brand.components.input} pl-12 pr-4`}
                     disabled={!!selectedTrack}
                   />
                   {isSearching && (
-                    <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-500 animate-spin" />
+                    <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FF4D2E] animate-spin" />
                   )}
                 </div>
 
@@ -492,7 +527,8 @@ export default function MusicRequestPage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute z-10 mt-2 w-full bg-gray-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto"
+                      className="absolute z-10 mt-2 w-full bg-gray-800/95 backdrop-blur-sm border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto"
+                      style={{ boxShadow: brand.shadows.subtle }}
                     >
                       {searchResults.map((track) => (
                         <button
@@ -551,7 +587,12 @@ export default function MusicRequestPage() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4"
+                  className="bg-gradient-to-r border rounded-xl p-4"
+                  style={{
+                    background: `linear-gradient(135deg, ${brand.primary}10, ${brand.secondary}10)`,
+                    borderColor: brand.borders.accent,
+                    boxShadow: brand.shadows.subtle
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     {selectedTrack.albumImage && (
@@ -588,7 +629,7 @@ export default function MusicRequestPage() {
                 <button
                   type="button"
                   onClick={() => setShowManualInput(!showManualInput)}
-                  className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300"
+                  className="flex items-center gap-2 text-sm text-[#FF4D2E] hover:text-[#FF7A3C] transition-colors"
                 >
                   <ChevronDown
                     className={`w-4 h-4 transition-transform ${showManualInput ? "rotate-180" : ""}`}
@@ -611,7 +652,7 @@ export default function MusicRequestPage() {
                       value={manualSong}
                       onChange={(e) => setManualSong(e.target.value)}
                       placeholder="Nombre de la canción"
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className={brand.components.input}
                       maxLength={200}
                     />
                     <input
@@ -619,7 +660,7 @@ export default function MusicRequestPage() {
                       value={manualArtist}
                       onChange={(e) => setManualArtist(e.target.value)}
                       placeholder="Artista"
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className={brand.components.input}
                       maxLength={200}
                     />
                   </motion.div>
@@ -656,14 +697,14 @@ export default function MusicRequestPage() {
                     onClick={() => setOrderType("PREMIUM")}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       orderType === "PREMIUM"
-                        ? "border-purple-500 bg-purple-500/10"
+                        ? `border-[#FF4D2E] bg-[#FF4D2E]/10`
                         : "border-white/10 bg-white/5 hover:border-white/20"
                     }`}
                   >
                     <div className="text-center">
-                      <Star className="w-6 h-6 text-purple-400 mx-auto mb-1" />
+                      <Star className="w-6 h-6 text-[#FF4D2E] mx-auto mb-1" />
                       <div className="text-white font-medium text-sm">Premium</div>
-                      <div className="text-purple-400 text-xs font-bold">
+                      <div className="text-[#FF4D2E] text-xs font-bold">
                         S/ {config?.premiumPrice || 5}
                       </div>
                     </div>
@@ -675,21 +716,21 @@ export default function MusicRequestPage() {
                     onClick={() => setOrderType("VIP")}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       orderType === "VIP"
-                        ? "border-yellow-500 bg-yellow-500/10"
+                        ? `border-[#FFD166] bg-[#FFD166]/10`
                         : "border-white/10 bg-white/5 hover:border-white/20"
                     }`}
                   >
                     <div className="text-center">
-                      <Crown className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
+                      <Crown className="w-6 h-6 text-[#FFD166] mx-auto mb-1" />
                       <div className="text-white font-medium text-sm">VIP</div>
-                      <div className="text-yellow-400 text-xs font-bold">
+                      <div className="text-[#FFD166] text-xs font-bold">
                         S/ {config?.vipPrice || 10}
                       </div>
                     </div>
                   </button>
                 </div>
                 {orderType !== "FREE" && (
-                  <p className="text-xs text-purple-400 text-center">
+                  <p className="text-xs text-[#FF4D2E] text-center">
                     ⚡ Tu canción saltará al frente de la cola
                   </p>
                 )}
@@ -723,7 +764,21 @@ export default function MusicRequestPage() {
                   !requesterName.trim() ||
                   (retryAfter !== null && retryAfter > 0)
                 }
-                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25"
+                className="w-full py-4 font-semibold rounded-xl transition-all duration-200 shadow-lg disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{
+                  background: `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`,
+                  boxShadow: brand.shadows.buttonPrimary,
+                }}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.background = brand.gradients.buttonHover;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`;
+                  }
+                }}
               >
                 {isSubmitting ? (
                   <>
@@ -756,5 +811,25 @@ export default function MusicRequestPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function MusicRequestPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen w-full text-white overflow-x-hidden relative flex items-center justify-center"
+           style={{
+             background: `radial-gradient(1200px 600px at 15% -10%, #FF4D2E10, transparent), 
+                         radial-gradient(900px 500px at 110% 10%, #FF7A3C10, transparent), 
+                         linear-gradient(180deg, #0E0606, #07070C)`,
+           }}>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: '#FF4D2E' }} />
+          <p className="text-gray-400">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <MusicRequestContent />
+    </Suspense>
   );
 }

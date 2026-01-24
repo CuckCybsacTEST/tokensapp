@@ -14,6 +14,7 @@ import {
   detectSuspiciousPatterns,
 } from "@/lib/music-rate-limit";
 import { emitSocketEvent } from "../../../../lib/socket";
+import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 
 const TIMEZONE = "America/Lima";
 
@@ -122,33 +123,40 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
     const deviceFingerprint = data.deviceFingerprint;
 
-    // 1. Verificar si el sistema está habilitado
+    // Verificar si el usuario es ADMIN o STAFF (sin rate limit)
+    const userCookie = getUserSessionCookieFromRequest(request);
+    const userSession = userCookie ? await verifyUserSessionCookie(userCookie) : null;
+    const isPrivilegedUser = userSession?.role === "ADMIN" || userSession?.role === "STAFF";
+
+    // 1. Verificar si el sistema está habilitado (ADMIN/STAFF pueden ignorar esto)
     const config = await prisma.musicSystemConfig.findFirst();
-    if (config && !config.systemEnabled) {
+    if (config && !config.systemEnabled && !isPrivilegedUser) {
       return NextResponse.json(
         { ok: false, error: "El sistema de pedidos musicales está deshabilitado" },
         { status: 503 }
       );
     }
 
-    // 2. Verificar rate limit
-    const rateLimitResult = await checkRateLimit(
-      ipAddress,
-      deviceFingerprint ?? undefined,
-      data.orderType,
-      data.tableId ?? undefined
-    );
-
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { 
-          ok: false, 
-          error: rateLimitResult.reason,
-          retryAfter: rateLimitResult.retryAfter,
-          requiresCaptcha: rateLimitResult.requiresCaptcha,
-        },
-        { status: 429 }
+    // 2. Verificar rate limit (ADMIN/STAFF están exentos)
+    if (!isPrivilegedUser) {
+      const rateLimitResult = await checkRateLimit(
+        ipAddress,
+        deviceFingerprint ?? undefined,
+        data.orderType,
+        data.tableId ?? undefined
       );
+
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(
+          { 
+            ok: false, 
+            error: rateLimitResult.reason,
+            retryAfter: rateLimitResult.retryAfter,
+            requiresCaptcha: rateLimitResult.requiresCaptcha,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     // 3. Validar contenido
@@ -243,8 +251,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 9. Registrar en rate limiter
-    await recordRequest(ipAddress, deviceFingerprint ?? undefined, data.orderType, data.tableId ?? undefined);
+    // 9. Registrar en rate limiter (solo para usuarios normales)
+    if (!isPrivilegedUser) {
+      await recordRequest(ipAddress, deviceFingerprint ?? undefined, data.orderType, data.tableId ?? undefined);
+    }
 
     // 10. Calcular posición en cola
     const queuePosition = await prisma.musicOrder.count({
@@ -275,7 +285,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       order: { ...order, queuePosition },
-      requiresCaptcha: rateLimitResult.requiresCaptcha,
+      requiresCaptcha: false, // ADMIN/STAFF nunca requieren captcha
       message: data.orderType === "FREE" 
         ? "Pedido enviado. El DJ lo revisará pronto."
         : "¡Pedido premium confirmado! Tu canción estará en la cola prioritaria.",
