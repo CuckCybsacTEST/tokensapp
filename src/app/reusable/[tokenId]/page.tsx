@@ -451,49 +451,20 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                 </h1>
             </div>
 
-            <div className="w-full bg-gradient-to-b from-white/10 to-transparent rounded-2xl p-4 sm:p-6 border border-white/5 mb-4 sm:mb-6">
-                <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">RECLAMA</div>
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 break-words leading-tight">
-                  {tokenData.prize.label}
-                </h2>
-                <div className="h-1 w-12 sm:w-16 bg-[#FF4D2E] mx-auto rounded-full my-3 sm:my-4" />
-                <p className="text-white/80 text-xs sm:text-sm leading-relaxed px-2 sm:px-0">
-                  {isStaff
-                    ? 'Token válido. El local abre a las 5:00 PM. Procede a marcar la entrega cuando llegue el cliente.'
-                    : isLoggedIn
-                    ? '¡Felicidades! Haz clic en Canjear Premio para obtener tu recompensa.'
-                    : '¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.'}
-                </p>
-            </div>
-
-            {/* Usage Progress */}
-            <div className="w-full bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10 mb-3 sm:mb-4">
-                <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">DISPONIBILIDAD</div>
-                <div className="text-2xl sm:text-3xl font-bold text-[#FF4D2E] mb-2">
-                  {tokenData.usedCount} / {maxUses}
-                </div>
-                <div className="w-full bg-white/10 rounded-full h-2 sm:h-3">
-                  <div
-                    className="bg-[#FF4D2E] h-2 sm:h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${(tokenData.usedCount / maxUses) * 100}%` }}
-                  ></div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 text-sm text-blue-400/80 bg-blue-400/10 px-3 py-2 rounded-full border border-blue-400/20 mb-4">
-              <span>Expira: {formattedExpiry}</span>
-            </div>
-
-            {/* QR Code Section */}
+            {/* QR Code Section - Primera posición para máxima relevancia */}
             {qrSrc && !isStaff && canRedeem && (
-                <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg mb-4 sm:mb-6 transform transition-transform hover:scale-105 duration-300">
+                <>
+                <p className="text-white/80 text-sm sm:text-base leading-relaxed mb-4 text-center">
+                  ¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.
+                </p>
+                <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-2xl mb-6 sm:mb-8 transform transition-transform hover:scale-105 duration-300 border-4 border-[#FF4D2E]/30">
                     <img
                         src={qrSrc}
                         alt="QR Canje"
-                        className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 object-contain mx-auto"
+                        className="w-44 h-44 sm:w-52 sm:h-52 lg:w-60 lg:h-60 object-contain mx-auto"
                     />
-                    <div className="flex items-center justify-between mt-2">
-                        <div className="text-black/60 text-[9px] sm:text-[10px] font-mono uppercase tracking-widest">Escanear en barra</div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-black/10">
+                        <div className="text-black/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest">📲 Escanear en barra</div>
                         <button
                             onClick={async () => {
                                 try {
@@ -510,10 +481,10 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                                     window.open(qrSrc, '_blank');
                                 }
                             }}
-                            className="text-black/40 hover:text-black/60 transition-colors p-1 rounded hover:bg-black/5"
+                            className="text-black/50 hover:text-black/70 transition-colors p-1.5 rounded-lg hover:bg-black/5"
                             title="Descargar QR"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                 <polyline points="7,10 12,15 17,10"/>
                                 <line x1="12" y1="15" x2="12" y2="3"/>
@@ -521,20 +492,42 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
                         </button>
                     </div>
                 </div>
+                </>
             )}
 
-            {/* Expiration Countdown */}
-            <div className="flex items-center justify-center gap-2 text-sm text-orange-400/80 bg-orange-400/10 px-3 py-2 rounded-full border border-orange-400/20 mb-4">
-              <span>Expira en: {(() => {
-                const now = DateTime.now().setZone('America/Lima');
-                const expiry = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
-                // @ts-ignore - diff method exists in Luxon DateTime
-                const diff = expiry.diff(now);
-                if (diff.as('milliseconds') <= 0) return 'Expirado';
-                const hours = Math.floor(diff.as('hours'));
-                const minutes = Math.floor(diff.as('minutes') % 60);
-                return `${hours}h ${minutes}m`;
-              })()}</span>
+            <div className="w-full bg-gradient-to-b from-white/10 to-transparent rounded-2xl p-4 sm:p-6 border border-white/5 mb-4 sm:mb-6">
+                <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">{isStaff || isAdmin ? 'CANJEA' : 'RECLAMA'}</div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 break-words leading-tight">
+                  {tokenData.prize.label}
+                </h2>
+                {isStaff && (
+                  <>
+                  <div className="h-1 w-12 sm:w-16 bg-[#FF4D2E] mx-auto rounded-full my-3 sm:my-4" />
+                  <p className="text-white/80 text-xs sm:text-sm leading-relaxed px-2 sm:px-0">
+                    ✓ Token verificado. Entrega el premio al cliente y confirma abajo.
+                  </p>
+                  </>
+                )}
+            </div>
+
+            {/* Usage Progress - Solo visible para admin y staff */}
+            {(isAdmin || isStaff) && (
+                <div className="w-full bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10 mb-3 sm:mb-4">
+                    <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">DISPONIBILIDAD</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-[#FF4D2E] mb-2">
+                      {tokenData.usedCount} / {maxUses}
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-2 sm:h-3">
+                      <div
+                        className="bg-[#FF4D2E] h-2 sm:h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${(tokenData.usedCount / maxUses) * 100}%` }}
+                      ></div>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center justify-center gap-2 text-sm text-blue-400/80 bg-blue-400/10 px-3 py-2 rounded-full border border-blue-400/20 mb-4">
+              <span>Expira: {formattedExpiry}</span>
             </div>
 
             {/* Time window info */}
