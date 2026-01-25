@@ -12,7 +12,9 @@ import {
   TextInput,
   SelectInput,
   BooleanInput,
+  FunctionField,
 } from 'react-admin';
+import Link from 'next/link';
 
 const CustomerFilter = (props: any) => (
   <Filter {...props}>
@@ -30,6 +32,18 @@ const CustomerFilter = (props: any) => (
   </Filter>
 );
 
+// Componente para mostrar estado de sesión con enlace
+const SessionStatus = ({ record }: { record: any }) => {
+  return (
+    <Link
+      href={`/admin/customer-sessions?customerId=${record.id}`}
+      className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded text-xs transition-colors"
+    >
+      Ver sesiones
+    </Link>
+  );
+};
+
 export const CustomerList = (props: any) => (
   <List {...props} filters={<CustomerFilter />} perPage={25} sort={{ field: 'createdAt', order: 'DESC' }}>
     <Datagrid>
@@ -44,6 +58,7 @@ export const CustomerList = (props: any) => (
       <DateField source="lastVisit" label="Última Visita" />
       <BooleanField source="isActive" label="Activo" />
       <DateField source="createdAt" label="Creado" />
+      <FunctionField label="Sesiones" render={SessionStatus} />
       <EditButton />
       <DeleteButton />
     </Datagrid>

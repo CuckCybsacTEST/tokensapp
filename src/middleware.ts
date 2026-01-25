@@ -19,7 +19,11 @@ export async function middleware(req: NextRequest) {
     "/u/reset-password",
     "/u/register",
     "/api/user/auth/login",
-    "/api/user/auth/reset-password"
+    "/api/user/auth/reset-password",
+    "/api/customer/auth/login",
+    "/api/customer/auth/logout",
+    "/api/customer/auth/me",
+    "/api/customers"
   ];
 
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
