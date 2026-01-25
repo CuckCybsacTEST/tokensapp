@@ -9,13 +9,28 @@ import { CustomerEdit } from './CustomerEdit';
 import { CustomerSessions } from '@/components/admin/CustomerSessions';
 import Link from 'next/link';
 
-// Configurar dataProvider con cookies incluidas
-const dataProvider = simpleRestProvider('/api', (url, options = {}) => {
-  return fetch(url, {
+// Configurar httpClient con cookies incluidas y formato correcto para ra-data-simple-rest
+const httpClient = async (url: string, options: RequestInit = {}) => {
+  const response = await fetch(url, {
     ...options,
     credentials: 'include', // Incluir cookies de autenticación
   });
-});
+  const text = await response.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = {};
+  }
+  return {
+    status: response.status,
+    headers: response.headers,
+    body: text,
+    json,
+  };
+};
+
+const dataProvider = simpleRestProvider('/api', httpClient);
 
 // Componente que se renderiza solo en el cliente
 function ClientOnlyAdmin() {
