@@ -103,6 +103,18 @@ export default function ScannerClient() {
     if (redirectedRef.current) return false;
     console.log('maybeNavigate called with:', raw);
     
+    // Detect reusable tokens: /reusable/rt_... or reusable/rt_... 
+    const reusableTokenRegex = /(?:^|\/)reusable\/(rt_[A-Za-z0-9]+)/i;
+    const reusableMatch = raw.match(reusableTokenRegex);
+    if (reusableMatch) {
+      const tokenId = reusableMatch[1];
+      console.log('Detected reusable token, ID:', tokenId, 'from text:', raw);
+      redirectedRef.current = true;
+      setActive(false);
+      setTimeout(()=>{ window.location.href = `/reusable/${tokenId}`; }, 120);
+      return true;
+    }
+    
     // More flexible detection for static tokens
     const staticTokenRegex = /(?:^|\/)static\/([^\/\s]{4,})/i;
     const staticMatch = raw.match(staticTokenRegex);
