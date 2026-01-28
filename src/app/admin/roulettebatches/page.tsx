@@ -140,7 +140,7 @@ export default async function BatchesListPage({ searchParams }: { searchParams?:
                     <div className="font-medium text-slate-700 dark:text-slate-300">Métricas</div>
                     <div>Tasa canje: {b.tokens.length > 0 ? ((redeemed / b.tokens.length) * 100).toFixed(1) : '0.0'}%</div>
                     <div className="text-[10px] text-slate-500">
-                      {b.functionalDate ? `Func: ${new Date(b.functionalDate).toLocaleDateString()}` : 'Sin fecha funcional'}
+                      {b.functionalDate ? `Func: ${new Date(b.functionalDate).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}` : 'Sin fecha funcional'}
                     </div>
                     {isStatic && <div className="text-indigo-600 dark:text-indigo-400 font-medium">Estático</div>}
                   </div>

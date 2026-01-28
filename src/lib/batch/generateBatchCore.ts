@@ -15,6 +15,8 @@ export interface GenerateBatchOptions {
   expirationDays?: number;
   overrideExpiresAt?: Date;
   overrideDisabled?: boolean;
+  overrideStartTime?: Date;
+  overrideEndTime?: Date;
 }
 
 export interface GeneratedToken {
@@ -27,6 +29,8 @@ export interface GeneratedToken {
   signature: string;
   signatureVersion: number;
   disabled: boolean;
+  startTime?: Date;
+  endTime?: Date;
   pairedNextTokenId?: string | null;
 }
 
@@ -76,10 +80,12 @@ interface BuildPrizeTokensArgs {
   secret: string;
   overrideExpiresAt?: Date;
   overrideDisabled?: boolean;
+  overrideStartTime?: Date;
+  overrideEndTime?: Date;
 }
 
 function buildPrizeTokens(args: BuildPrizeTokensArgs) {
-  const { prize, count, expirationDays, batchId, supportsSignatureVersion, secret, overrideExpiresAt, overrideDisabled } = args;
+  const { prize, count, expirationDays, batchId, supportsSignatureVersion, secret, overrideExpiresAt, overrideDisabled, overrideStartTime, overrideEndTime } = args;
   
   // Calculate expiry at 03:00 AM (Lima) of the target business day
   // We shift 8 hours to align with 03:00 AM business day logic
@@ -101,6 +107,8 @@ function buildPrizeTokens(args: BuildPrizeTokensArgs) {
     const tokenId = crypto.randomUUID();
     const signature = signToken(secret, tokenId, prize.id, expiresAt, CURRENT_SIGNATURE_VERSION);
     const baseRow: any = { id: tokenId, prizeId: prize.id, batchId, expiresAt, signature, disabled: overrideDisabled ?? false };
+    if (overrideStartTime) baseRow.startTime = overrideStartTime;
+    if (overrideEndTime) baseRow.endTime = overrideEndTime;
     if (supportsSignatureVersion) baseRow.signatureVersion = CURRENT_SIGNATURE_VERSION;
     rows.push(baseRow);
     tokens.push({
@@ -113,6 +121,8 @@ function buildPrizeTokens(args: BuildPrizeTokensArgs) {
       signature,
       signatureVersion: CURRENT_SIGNATURE_VERSION,
       disabled: overrideDisabled ?? false,
+      startTime: overrideStartTime,
+      endTime: overrideEndTime,
     });
   }
   return { rows, tokens };
@@ -242,6 +252,8 @@ export async function generateBatchCore(
           secret,
           overrideExpiresAt: options.overrideExpiresAt,
           overrideDisabled: options.overrideDisabled,
+          overrideStartTime: options.overrideStartTime,
+          overrideEndTime: options.overrideEndTime,
         });
         // Acumular para pairing global posterior
         allRows.push(...rows);
@@ -426,6 +438,8 @@ export async function generateBatchPlanned(
       secret,
       overrideExpiresAt: options.overrideExpiresAt,
       overrideDisabled: options.overrideDisabled,
+      overrideStartTime: options.overrideStartTime,
+      overrideEndTime: options.overrideEndTime,
     });
     allRows.push(...rows);
     allTokens.push(...tokens);
