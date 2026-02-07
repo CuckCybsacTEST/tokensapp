@@ -66,7 +66,8 @@ export async function middleware(req: NextRequest) {
       '/admin/users',
       '/admin/reusable-tokens',
       '/admin/dj',           // DJ Console
-      '/admin/music-orders'  // Music orders admin
+      '/admin/music-orders',  // Music orders admin
+      '/admin/generadorinvitaciones'  // Special event invitations
     ];
 
     const isStaffAllowedRoute = staffAllowedRoutes.some(route => pathname.startsWith(route));
@@ -101,7 +102,8 @@ export async function middleware(req: NextRequest) {
       '/api/admin/birthdays',  // Allow STAFF to access birthdays admin API
       '/api/admin/reusable-tokens',  // Allow STAFF to access reusable tokens API
       '/api/admin/reusable-prizes',  // Allow STAFF to access reusable prizes API
-      '/api/admin/music-system'      // Allow STAFF to access music system API
+      '/api/admin/music-system',      // Allow STAFF to access music system API
+      '/api/admin/invitations'  // Allow STAFF to access invitations API
     ];
 
     const isStaffAllowedAPI = staffAllowedAPIs.some(api => pathname.startsWith(api));

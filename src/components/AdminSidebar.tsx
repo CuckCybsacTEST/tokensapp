@@ -262,6 +262,15 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
       }] : []),
 
       ...(basePath === 'admin' ? [{
+        title: "INVITACIONES ESPECIALES",
+        icon: ICONS.star,
+        items: [
+          { href: `${pathPrefix}/generadorinvitaciones`, label: "Eventos", icon: ICONS.starSmall },
+          { href: `${pathPrefix}/generadorinvitaciones/create`, label: "Crear evento", icon: ICONS.checkSmall },
+          { href: `${pathPrefix}/generadorinvitaciones/stats`, label: "Estadísticas", icon: ICONS.chart },
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "GESTIÓN DE SHOWS",
         icon: ICONS.film,
         items: [

@@ -34,6 +34,7 @@ export const STORAGE_BUCKET = 'qr-images'
 export const BIRTHDAY_CARDS_BUCKET = 'birthday-cards'
 export const BIRTHDAY_TEMPLATES_BUCKET = 'birthday-templates'
 export const MENU_IMAGES_BUCKET = 'menu-images'
+export const INVITATION_TEMPLATES_BUCKET = 'invitation-templates'
 
 // Storage folders
 export const MENU_FOLDERS = {

@@ -1484,3 +1484,67 @@ enum MusicOrderStatus {
   REJECTED
   CANCELLED
 }
+
+// ─── Invitaciones Especiales ───────────────────────────────────────────
+
+model SpecialEvent {
+  id          String              @id @default(cuid())
+  name        String              // "Apertura Box VIP", "Re-apertura Nivel 3"
+  description String?
+  date        DateTime
+  timeSlot    String              // "20:00", "21:00"
+  location    String?             // "Box 3", "Nivel 3", "Terraza"
+  maxGuests   Int?
+  status      String              @default("draft") // draft | active | completed | cancelled
+  templateUrl String?             // URL de la plantilla 1080x1920 (Supabase)
+  createdBy   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  invitations SpecialInvitation[]
+
+  @@index([status])
+  @@index([date])
+  @@index([createdAt])
+}
+
+model SpecialInvitation {
+  id            String                  @id @default(cuid())
+  eventId       String
+  guestName     String                  // obligatorio
+  guestPhone    String?
+  guestWhatsapp String?
+  guestEmail    String?
+  guestDni      String?
+  notes         String?
+  code          String?                 @unique // código QR, se genera después
+  claim         String?                 // JWT firmado
+  status        String                  @default("pending") // pending | confirmed | arrived | cancelled
+  expiresAt     DateTime?
+  arrivedAt     DateTime?
+  validatedBy   String?                 // userId del staff que validó
+  metadata      String?                 // JSON extensible
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  event         SpecialEvent            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  card          SpecialInvitationCard?
+
+  @@index([eventId])
+  @@index([code])
+  @@index([status])
+  @@index([arrivedAt])
+}
+
+model SpecialInvitationCard {
+  id              String            @id @default(cuid())
+  invitationId    String            @unique
+  kind            String            @default("guest")
+  filePath        String?
+  storageKey      String?
+  storageProvider String?           @default("supabase")
+  storageUrl      String?
+  createdAt       DateTime          @default(now())
+  invitation      SpecialInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+
+  @@index([kind])
+  @@index([createdAt])
+}
