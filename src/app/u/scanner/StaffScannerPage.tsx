@@ -303,6 +303,50 @@ export default function StaffScannerPage() {
       // Not a URL, continue with normal processing
     }
 
+    // 3.8) Detect INVITATION URL: redirect to invitation validation page
+    try {
+      const url = new URL(text);
+      if (url.pathname.startsWith('/i/')) {
+        // Extract code from URL
+        const code = url.pathname.split('/i/')[1];
+        if (code && code.length >= 4) {
+          console.log('Staff scanner detected invitation, code:', code, 'from text:', text);
+          setBanner({ variant: "success", message: `🎟️ Invitación detectada - Redirigiendo...` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 2000);
+          // Redirect to invitation validation page
+          window.location.href = url.pathname + url.search + url.hash;
+          processingRef.current = false;
+          return;
+        }
+      }
+    } catch {
+      // Not a URL, continue with normal processing
+    }
+
+    // 3.8) Detect INVITATION URL: redirect to invitation validation page
+    try {
+      const url = new URL(text);
+      if (url.pathname.startsWith('/i/')) {
+        // Extract code from URL
+        const code = url.pathname.split('/i/')[1];
+        if (code && code.length >= 4) {
+          console.log('Staff scanner detected invitation, code:', code, 'from text:', text);
+          setBanner({ variant: "success", message: `🎟️ Invitación detectada - Redirigiendo...` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 2000);
+          // Redirect to invitation validation page
+          window.location.href = url.pathname + url.search + url.hash;
+          processingRef.current = false;
+          return;
+        }
+      }
+    } catch {
+      // Not a URL, continue with normal processing
+    }
+
     const payload = decodePersonPayloadFromQr(text);
     if (!payload) {
       setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });

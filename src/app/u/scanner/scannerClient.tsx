@@ -140,6 +140,15 @@ export default function ScannerClient() {
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
         return true;
       }
+      // Patrón para invitaciones: /i/<code>
+      if (/^\/i\/[^/]{4,}$/.test(url.pathname)) {
+        console.log('Detected invitation URL:', url.pathname);
+        redirectedRef.current = true;
+        setActive(false); // detener cámara antes de salir
+        // pequeña pausa para permitir sonido/flash visual
+        setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
+        return true;
+      }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
         console.log('Detected marketing birthday URL:', url.pathname);

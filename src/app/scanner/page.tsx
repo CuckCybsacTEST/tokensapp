@@ -277,14 +277,27 @@ export default function ScannerPage() {
       processingRef.current = false;
       return;
     }
-    
+
+    // 3.6) Detect INVITATION URL: redirect to invitation validation page
     try {
       const url = new URL(text);
-      // Check for other URL patterns if needed
-      console.log('Admin scanner parsed URL:', url.href, 'pathname:', url.pathname);
+      if (url.pathname.startsWith('/i/')) {
+        // Extract code from URL
+        const code = url.pathname.split('/i/')[1];
+        if (code && code.length >= 4) {
+          console.log('Admin scanner detected invitation, code:', code, 'from text:', text);
+          setBanner({ variant: "success", message: `🎟️ Invitación detectada - Redirigiendo...` });
+          beep(880, 120, "sine");
+          vibrate(60);
+          setCooldownUntil(Date.now() + 2000);
+          // Redirect to invitation validation page
+          window.location.href = url.pathname + url.search + url.hash;
+          processingRef.current = false;
+          return;
+        }
+      }
     } catch {
-      // Not an absolute URL
-      console.log('Admin scanner URL parsing failed for:', text);
+      // Not a URL, continue with normal processing
     }
 
     const payload = decodePersonPayloadFromQr(text);
