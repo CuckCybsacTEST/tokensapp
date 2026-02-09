@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
         const cardBuf = await generateInvitationCard({
           redeemUrl,
           guestName: inv.guestName,
-          eventName: event.name,
+          eventDate: event.date,
           templateUrl: event.templateUrl,
           format: 'png',
         });

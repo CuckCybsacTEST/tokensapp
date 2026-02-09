@@ -29,15 +29,15 @@ export const invitationTemplate: InvitationTemplateConfig = {
     size: 460,   // 460×460 px
   },
   nameBar: {
-    left: 321,
-    top: 1127,   // 621 + 460 + 46 = 1127
-    width: 438,
-    height: 74,
+    left: 140,     // (1080 − 800) / 2 = 140, centered
+    top: 1121,     // 621 + 460 + 40 = 1121  (40px below QR)
+    width: 800,    // wide enough for long names in StretchPro
+    height: 120,   // tall bar for big bold name
   },
   eventBar: {
-    left: 321,
-    top: 1247,   // 1127 + 74 + 46 = 1247
-    width: 438,
-    height: 74,
+    left: 140,
+    top: 1249,     // 1121 + 120 + 8 = 1249  (8px gap)
+    width: 800,
+    height: 60,
   },
 } as const;

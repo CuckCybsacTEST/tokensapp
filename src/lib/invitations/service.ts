@@ -1,5 +1,8 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import { DateTime } from 'luxon';
 import { signInvitationClaim, buildDefaultInvitationClaim } from './token';
+
+const LIMA_TZ = 'America/Lima';
 
 const prisma = new PrismaClient();
 
@@ -77,18 +80,18 @@ export async function listEvents(
   }
 
   if (filters?.dateFilter && filters.dateFilter !== 'all') {
-    const now = new Date();
-    const limaNow = new Date(now.getTime() - 5 * 3600 * 1000);
-    const today = new Date(limaNow.getUTCFullYear(), limaNow.getUTCMonth(), limaNow.getUTCDate());
+    const limaNow = DateTime.now().setZone(LIMA_TZ);
+    const todayStart = limaNow.startOf('day').toJSDate();
+    const tomorrowStart = limaNow.plus({ days: 1 }).startOf('day').toJSDate();
     switch (filters.dateFilter) {
       case 'upcoming':
-        where.date = { gte: today };
+        where.date = { gte: todayStart };
         break;
       case 'past':
-        where.date = { lt: today };
+        where.date = { lt: todayStart };
         break;
       case 'today':
-        where.date = { gte: today, lt: new Date(today.getTime() + 86400000) };
+        where.date = { gte: todayStart, lt: tomorrowStart };
         break;
     }
   }
@@ -204,15 +207,9 @@ export async function generateInvitationCodes(eventId: string, opts?: { force?: 
     where: { eventId },
   });
 
-  // Compute expiration: 23:59:59 on event date (Lima timezone)
-  const eventDate = new Date(event.date);
-  const limaOffset = -5 * 3600 * 1000;
-  const limaDate = new Date(eventDate.getTime() + limaOffset);
-  const endOfDay = new Date(
-    Date.UTC(limaDate.getUTCFullYear(), limaDate.getUTCMonth(), limaDate.getUTCDate(), 23, 59, 59, 999),
-  );
-  // Convert back to UTC
-  const expiresAt = new Date(endOfDay.getTime() - limaOffset);
+  // Compute expiration: 23:59:59 Lima time on event date
+  const eventDT = DateTime.fromJSDate(event.date, { zone: 'utc' }).setZone(LIMA_TZ);
+  const expiresAt = eventDT.endOf('day').toJSDate();
 
   const results = [];
   for (const inv of invitations) {
