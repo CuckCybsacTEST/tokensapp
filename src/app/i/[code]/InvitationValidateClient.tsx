@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 type InvitationData = {
   guestName: string;
@@ -66,6 +67,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
   const [markDone, setMarkDone] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -74,6 +76,21 @@ export function InvitationValidateClient({ code }: { code: string }) {
         const j = await res.json();
         if (!res.ok) throw new Error(j?.message || j?.code || "Invitación no válida");
         setData(j);
+
+        // Generate QR code for the invitation code
+        try {
+          const qrUrl = await QRCode.toDataURL(code, {
+            width: 200,
+            margin: 2,
+            color: {
+              dark: '#ffffff',
+              light: '#000000'
+            }
+          });
+          setQrCodeUrl(qrUrl);
+        } catch (qrError) {
+          console.error('Error generating QR code:', qrError);
+        }
       } catch (e: any) {
         setErr(String(e?.message || e));
       } finally {
@@ -110,7 +127,6 @@ export function InvitationValidateClient({ code }: { code: string }) {
     return (
       <div className="h-screen flex items-center justify-center bg-black text-white px-4">
         <div className="max-w-sm w-full text-center space-y-4">
-          <div className="text-5xl">❌</div>
           <h1 className="text-xl font-bold text-rose-400">Invitación no válida</h1>
           <p className="text-slate-400 text-sm">{err}</p>
         </div>
@@ -131,20 +147,17 @@ export function InvitationValidateClient({ code }: { code: string }) {
         <div className="flex-shrink-0 px-4 pt-4">
           {isArrived && (
             <div className="rounded-xl bg-emerald-900/50 border border-emerald-500 p-4 text-center max-w-md mx-auto">
-              <div className="text-4xl mb-2">✅</div>
               <div className="text-emerald-300 font-bold text-lg">Llegada registrada</div>
               {data.arrivedAt && <div className="text-emerald-400/70 text-xs mt-1">{fmtDateTime(data.arrivedAt)}</div>}
             </div>
           )}
           {isCancelled && (
             <div className="rounded-xl bg-rose-900/50 border border-rose-500 p-4 text-center max-w-md mx-auto">
-              <div className="text-4xl mb-2">🚫</div>
               <div className="text-rose-300 font-bold text-lg">Invitación cancelada</div>
             </div>
           )}
           {isExpired && !isArrived && !isCancelled && (
             <div className="rounded-xl bg-amber-900/50 border border-amber-500 p-4 text-center max-w-md mx-auto">
-              <div className="text-4xl mb-2">⏰</div>
               <div className="text-amber-300 font-bold text-lg">Invitación expirada</div>
             </div>
           )}
@@ -176,12 +189,10 @@ export function InvitationValidateClient({ code }: { code: string }) {
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
-                <div className="text-xl sm:text-2xl mb-1">📅</div>
                 <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Fecha</div>
                 <div className="font-bold text-base sm:text-lg text-pink-300">{fmtDate(data.eventDate)}</div>
               </div>
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
-                <div className="text-xl sm:text-2xl mb-1">🕐</div>
                 <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Hora</div>
                 <div className="font-bold text-base sm:text-lg text-blue-300">{data.eventTimeSlot}</div>
               </div>
@@ -189,7 +200,6 @@ export function InvitationValidateClient({ code }: { code: string }) {
 
             {data.eventLocation && (
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
-                <div className="text-xl sm:text-2xl mb-1">📍</div>
                 <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Ubicación</div>
                 <div className="font-bold text-base sm:text-lg text-emerald-300">{data.eventLocation}</div>
               </div>
@@ -200,9 +210,11 @@ export function InvitationValidateClient({ code }: { code: string }) {
           {!data.isStaff && (
             <div className="bg-gradient-to-r from-slate-800/30 to-slate-800/20 rounded-xl p-3 sm:p-4 border border-slate-700/50 text-center">
               <div className="text-xs text-slate-400 uppercase tracking-widest mb-2">Código de Invitación</div>
-              <div className="text-sm sm:text-base text-slate-300 font-mono bg-slate-900/50 rounded-lg p-3 border border-slate-600 break-all">
-                {data.code}
-              </div>
+              {qrCodeUrl && (
+                <div className="flex justify-center mb-3">
+                  <img src={qrCodeUrl} alt="QR Code" className="w-32 h-32 sm:w-40 sm:h-40" />
+                </div>
+              )}
               <div className="text-xs text-slate-500 mt-2">
                 Presenta este código al llegar al evento
               </div>
@@ -212,8 +224,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
           {/* Status Information */}
           {!isArrived && !isCancelled && !isExpired && (
             <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-xl p-3 sm:p-4 border border-blue-500/30 text-center">
-              <div className="text-blue-300 font-semibold text-sm sm:text-base">✅ Invitación válida</div>
-              <div className="text-xs text-blue-400/70 mt-1">Presenta este código al llegar</div>
+              <div className="text-blue-300 font-semibold text-sm sm:text-base">Invitación válida</div>
             </div>
           )}
 
@@ -260,7 +271,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
                   disabled={marking}
                   onClick={handleMarkArrival}
                 >
-                  {marking ? "Registrando..." : "✅ Registrar Llegada"}
+                  {marking ? "Registrando..." : "Registrar Llegada"}
                 </button>
               )}
             </div>
