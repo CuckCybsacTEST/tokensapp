@@ -81,6 +81,7 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
   // Actions
   const [busyGenerate, setBusyGenerate] = useState(false);
   const [busyDownload, setBusyDownload] = useState(false);
+  const [busyCardId, setBusyCardId] = useState<string | null>(null);
 
   // Template edit
   const [editingTemplate, setEditingTemplate] = useState(false);
@@ -202,6 +203,21 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
       URL.revokeObjectURL(url);
     } catch (e: any) { setErr(String(e?.message || e)); }
     finally { setBusyDownload(false); }
+  }
+
+  async function handleDownloadSingleCard(guestId: string, guestName: string) {
+    setBusyCardId(guestId); setErr(null);
+    try {
+      const res = await fetch(`/api/admin/invitations/${eventId}/download-cards?guestId=${guestId}`);
+      if (!res.ok) throw new Error('Error descargando tarjeta');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeName = guestName.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').replace(/\s+/g, '_');
+      a.href = url; a.download = `${safeName}.png`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { setErr(String(e?.message || e)); }
+    finally { setBusyCardId(null); }
   }
 
   async function handleCancelEvent() {
@@ -428,10 +444,19 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                           ) : '—'}
                         </td>
                         <td className="px-3 py-2">
-                          <button
-                            className="text-xs text-rose-500 hover:text-rose-700"
-                            onClick={() => handleRemoveGuest(g.id)}
-                          >Eliminar</button>
+                          <div className="flex items-center gap-2">
+                            {g.code && (
+                              <button
+                                className="text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                                disabled={busyCardId === g.id}
+                                onClick={() => handleDownloadSingleCard(g.id, g.guestName)}
+                              >{busyCardId === g.id ? '⏳' : '📥 Tarjeta'}</button>
+                            )}
+                            <button
+                              className="text-xs text-rose-500 hover:text-rose-700"
+                              onClick={() => handleRemoveGuest(g.id)}
+                            >Eliminar</button>
+                          </div>
                         </td>
                       </tr>
                     ))}

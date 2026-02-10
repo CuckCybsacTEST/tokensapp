@@ -149,10 +149,21 @@ export type AddGuestInput = {
 };
 
 export async function addGuest(eventId: string, input: AddGuestInput) {
+  // Duplicate name check (case-insensitive) within the same event
+  const existing = await prisma.specialInvitation.findFirst({
+    where: {
+      eventId,
+      guestName: { equals: input.guestName.trim(), mode: 'insensitive' },
+    },
+  });
+  if (existing) {
+    throw new Error(`DUPLICATE_NAME: Ya existe un invitado con el nombre "${input.guestName.trim()}" en este evento`);
+  }
+
   return prisma.specialInvitation.create({
     data: {
       eventId,
-      guestName: input.guestName,
+      guestName: input.guestName.trim(),
       guestPhone: input.guestPhone ?? null,
       guestWhatsapp: input.guestWhatsapp ?? null,
       guestEmail: input.guestEmail ?? null,
@@ -164,6 +175,17 @@ export async function addGuest(eventId: string, input: AddGuestInput) {
 }
 
 export async function bulkAddGuests(eventId: string, guests: AddGuestInput[]) {
+  // Pre-check for duplicates within the batch itself
+  const seen = new Set<string>();
+  for (const g of guests) {
+    const normalized = g.guestName.trim().toLowerCase();
+    if (seen.has(normalized)) {
+      throw new Error(`DUPLICATE_NAME: El nombre "${g.guestName.trim()}" aparece más de una vez en la lista`);
+    }
+    seen.add(normalized);
+  }
+
+  // Each addGuest call checks against existing DB records
   const results = [];
   for (const g of guests) {
     results.push(await addGuest(eventId, g));

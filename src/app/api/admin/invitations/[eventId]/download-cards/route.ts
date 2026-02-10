@@ -23,7 +23,32 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
       ? `${req.headers.get('x-forwarded-proto')}://${req.headers.get('host')}`
       : new URL(req.url).origin;
 
-    // Build ZIP with individual card PNGs
+    // ── Single guest download (individual card PNG) ───────────────────
+    const guestId = req.nextUrl.searchParams.get('guestId');
+    if (guestId) {
+      const inv = guests.find((g) => g.id === guestId);
+      if (!inv) return apiError('GUEST_NOT_FOUND', 'Guest not found or has no code', undefined, 404);
+
+      const redeemUrl = `${baseUrl}/i/${inv.code}`;
+      const cardBuf = await generateInvitationCard({
+        redeemUrl,
+        guestName: inv.guestName,
+        eventDate: event.date,
+        templateUrl: event.templateUrl,
+        format: 'png',
+      });
+      const safeName = inv.guestName.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').replace(/\s+/g, '_');
+      return new Response(cardBuf, {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': `attachment; filename="${safeName}_${inv.code}.png"`,
+          'Content-Length': String(cardBuf.length),
+        },
+      });
+    }
+
+    // ── All guests → ZIP ─────────────────────────────────────────────
     const chunks: Uint8Array[] = [];
     const archive = archiver('zip', { zlib: { level: 6 } });
     archive.on('data', (chunk) => chunks.push(chunk));
