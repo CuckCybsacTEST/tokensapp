@@ -19,6 +19,14 @@ type InvitationData = {
   guestDni?: string;
   notes?: string;
   code?: string;
+  eventStats?: {
+    total: number;
+    arrived: number;
+    lastArrival: {
+      arrivedAt: string;
+      guestName: string;
+    } | null;
+  };
 };
 
 function fmtDate(iso?: string | null) {
@@ -92,7 +100,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="h-screen flex items-center justify-center bg-black text-white px-4">
         <div className="animate-pulse text-lg">Verificando invitación...</div>
       </div>
     );
@@ -100,7 +108,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
 
   if (err && !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white p-4">
+      <div className="h-screen flex items-center justify-center bg-black text-white px-4">
         <div className="max-w-sm w-full text-center space-y-4">
           <div className="text-5xl">❌</div>
           <h1 className="text-xl font-bold text-rose-400">Invitación no válida</h1>
@@ -117,68 +125,128 @@ export function InvitationValidateClient({ code }: { code: string }) {
   const isExpired = data.expiresAt && new Date(data.expiresAt) < new Date();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-black to-slate-950 text-white p-4 flex items-center justify-center">
-      <div className="max-w-md w-full space-y-6">
-        {/* Status Banner */}
-        {isArrived && (
-          <div className="rounded-xl bg-emerald-900/50 border border-emerald-500 p-4 text-center">
-            <div className="text-4xl mb-2">✅</div>
-            <div className="text-emerald-300 font-bold text-lg">Llegada registrada</div>
-            {data.arrivedAt && <div className="text-emerald-400/70 text-xs mt-1">{fmtDateTime(data.arrivedAt)}</div>}
-          </div>
-        )}
-        {isCancelled && (
-          <div className="rounded-xl bg-rose-900/50 border border-rose-500 p-4 text-center">
-            <div className="text-4xl mb-2">🚫</div>
-            <div className="text-rose-300 font-bold text-lg">Invitación cancelada</div>
-          </div>
-        )}
-        {isExpired && !isArrived && !isCancelled && (
-          <div className="rounded-xl bg-amber-900/50 border border-amber-500 p-4 text-center">
-            <div className="text-4xl mb-2">⏰</div>
-            <div className="text-amber-300 font-bold text-lg">Invitación expirada</div>
-          </div>
-        )}
+    <div className="h-screen bg-gradient-to-b from-slate-950 via-black to-slate-950 text-white overflow-hidden flex flex-col">
+      {/* Status Banner - Fixed at top */}
+      {(isArrived || isCancelled || isExpired) && (
+        <div className="flex-shrink-0 px-4 pt-4">
+          {isArrived && (
+            <div className="rounded-xl bg-emerald-900/50 border border-emerald-500 p-4 text-center max-w-md mx-auto">
+              <div className="text-4xl mb-2">✅</div>
+              <div className="text-emerald-300 font-bold text-lg">Llegada registrada</div>
+              {data.arrivedAt && <div className="text-emerald-400/70 text-xs mt-1">{fmtDateTime(data.arrivedAt)}</div>}
+            </div>
+          )}
+          {isCancelled && (
+            <div className="rounded-xl bg-rose-900/50 border border-rose-500 p-4 text-center max-w-md mx-auto">
+              <div className="text-4xl mb-2">🚫</div>
+              <div className="text-rose-300 font-bold text-lg">Invitación cancelada</div>
+            </div>
+          )}
+          {isExpired && !isArrived && !isCancelled && (
+            <div className="rounded-xl bg-amber-900/50 border border-amber-500 p-4 text-center max-w-md mx-auto">
+              <div className="text-4xl mb-2">⏰</div>
+              <div className="text-amber-300 font-bold text-lg">Invitación expirada</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main Content - Takes remaining space */}
+      <div className="flex-1 flex items-center justify-center px-4 py-4 min-h-0">
+        <div className="w-full max-w-md space-y-6">
 
         {/* Main Card */}
-        <div className="rounded-2xl border border-slate-700 bg-slate-900/80 backdrop-blur p-6 space-y-4 shadow-xl">
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/80 backdrop-blur p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-xl w-full max-h-full overflow-y-auto">
           {/* Event Name */}
-          <div className="text-center space-y-1">
+          <div className="text-center space-y-2">
             <div className="text-xs text-slate-500 uppercase tracking-widest">Invitación especial</div>
-            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent leading-tight">
               {data.eventName}
             </h1>
+            <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-pink-400 to-purple-400 mx-auto rounded-full"></div>
           </div>
 
           {/* Guest Name */}
-          <div className="text-center">
-            <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Invitado</div>
-            <div className="text-xl font-bold">{data.guestName}</div>
+          <div className="text-center bg-gradient-to-r from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 border border-slate-700/50">
+            <div className="text-xs text-slate-400 uppercase tracking-widest mb-2">Invitado</div>
+            <div className="text-xl sm:text-2xl font-bold text-white">{data.guestName}</div>
           </div>
 
-          {/* Event Details */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-              <div className="text-xs text-slate-500 mb-0.5">Fecha</div>
-              <div className="font-semibold text-pink-300">{fmtDate(data.eventDate)}</div>
+          {/* Event Details - Enhanced Grid */}
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
+                <div className="text-xl sm:text-2xl mb-1">📅</div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Fecha</div>
+                <div className="font-bold text-base sm:text-lg text-pink-300">{fmtDate(data.eventDate)}</div>
+              </div>
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
+                <div className="text-xl sm:text-2xl mb-1">🕐</div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Hora</div>
+                <div className="font-bold text-base sm:text-lg text-blue-300">{data.eventTimeSlot}</div>
+              </div>
             </div>
-            <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-              <div className="text-xs text-slate-500 mb-0.5">Hora</div>
-              <div className="font-semibold">{data.eventTimeSlot}</div>
-            </div>
+
+            {data.eventLocation && (
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
+                <div className="text-xl sm:text-2xl mb-1">📍</div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Ubicación</div>
+                <div className="font-bold text-base sm:text-lg text-emerald-300">{data.eventLocation}</div>
+              </div>
+            )}
           </div>
 
-          {data.eventLocation && (
-            <div className="bg-slate-800/50 rounded-lg p-3 text-center text-sm">
-              <div className="text-xs text-slate-500 mb-0.5">Ubicación</div>
-              <div className="font-semibold">{data.eventLocation}</div>
+          {/* QR Code Section for Public */}
+          {!data.isStaff && (
+            <div className="bg-gradient-to-r from-slate-800/30 to-slate-800/20 rounded-xl p-3 sm:p-4 border border-slate-700/50 text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-widest mb-2">Código de Invitación</div>
+              <div className="text-sm sm:text-base text-slate-300 font-mono bg-slate-900/50 rounded-lg p-3 border border-slate-600 break-all">
+                {data.code}
+              </div>
+              <div className="text-xs text-slate-500 mt-2">
+                Presenta este código al llegar al evento
+              </div>
+            </div>
+          )}
+
+          {/* Status Information */}
+          {!isArrived && !isCancelled && !isExpired && (
+            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-xl p-3 sm:p-4 border border-blue-500/30 text-center">
+              <div className="text-blue-300 font-semibold text-sm sm:text-base">✅ Invitación válida</div>
+              <div className="text-xs text-blue-400/70 mt-1">Presenta este código al llegar</div>
             </div>
           )}
 
           {/* Staff-only section */}
           {data.isStaff && (
-            <div className="border-t border-slate-700 pt-4 space-y-2">
+            <div className="border-t border-slate-700 pt-4 space-y-3">
               <div className="text-xs text-purple-400 uppercase tracking-widest font-semibold">Info Staff</div>
+
+              {/* Event Statistics */}
+              {data.eventStats && (
+                <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
+                  <div className="text-xs text-slate-400 uppercase tracking-widest">Estadísticas del Evento</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-emerald-400">{data.eventStats.arrived}</div>
+                      <div className="text-xs text-slate-500">Llegaron</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-400">{data.eventStats.total}</div>
+                      <div className="text-xs text-slate-500">Total</div>
+                    </div>
+                  </div>
+                  {data.eventStats.lastArrival && (
+                    <div className="text-xs text-slate-400 border-t border-slate-700 pt-2 mt-2">
+                      <div className="font-medium">Última llegada:</div>
+                      <div>{data.eventStats.lastArrival.guestName}</div>
+                      <div className="text-slate-500">{fmtDateTime(data.eventStats.lastArrival.arrivedAt)}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Guest details */}
               {data.guestWhatsapp && <div className="text-sm"><span className="text-slate-500">WhatsApp:</span> {data.guestWhatsapp}</div>}
               {data.guestPhone && <div className="text-sm"><span className="text-slate-500">Tel:</span> {data.guestPhone}</div>}
               {data.guestEmail && <div className="text-sm"><span className="text-slate-500">Email:</span> {data.guestEmail}</div>}
@@ -198,13 +266,17 @@ export function InvitationValidateClient({ code }: { code: string }) {
             </div>
           )}
         </div>
+        </div>
+      </div>
 
-        {err && (
-          <div className="rounded-lg bg-rose-900/30 border border-rose-700 p-3 text-sm text-rose-200 text-center">
+      {/* Error message at bottom */}
+      {err && (
+        <div className="flex-shrink-0 px-4 pb-4">
+          <div className="rounded-lg bg-rose-900/30 border border-rose-700 p-3 text-sm text-rose-200 text-center max-w-md mx-auto">
             {err}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

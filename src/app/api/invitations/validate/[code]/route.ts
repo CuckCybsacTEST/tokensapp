@@ -1,7 +1,22 @@
 import { NextRequest } from 'next/server';
 import { apiError, apiOk } from '@/lib/apiError';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
-import { findInvitationByCode, markArrival } from '@/lib/invitations/service';
+import { findInvitationByCode, markArrival, getEventStats } from '@/lib/invitations/service';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function getLastArrival(eventId: string) {
+  const lastArrival = await prisma.specialInvitation.findFirst({
+    where: { eventId, arrivedAt: { not: null } },
+    orderBy: { arrivedAt: 'desc' },
+    select: { arrivedAt: true, guestName: true },
+  });
+  return lastArrival ? {
+    arrivedAt: lastArrival.arrivedAt?.toISOString(),
+    guestName: lastArrival.guestName,
+  } : null;
+}
 
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
   try {
@@ -16,16 +31,12 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     const publicData: any = {
       code: inv.code,
       guestName: inv.guestName,
+      eventName: inv.event.name,
+      eventDate: inv.event.date.toISOString(),
+      eventTimeSlot: inv.event.timeSlot,
+      eventLocation: inv.event.location,
       status: inv.status,
       arrivedAt: inv.arrivedAt?.toISOString() ?? null,
-      event: {
-        name: inv.event.name,
-        description: inv.event.description,
-        date: inv.event.date.toISOString(),
-        timeSlot: inv.event.timeSlot,
-        location: inv.event.location,
-        status: inv.event.status,
-      },
       isStaff: !!isStaff,
     };
 
@@ -38,6 +49,14 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       publicData.notes = inv.notes;
       publicData.expiresAt = inv.expiresAt?.toISOString() ?? null;
       publicData.validatedBy = inv.validatedBy;
+
+      // Add event statistics for staff
+      const eventStats = await getEventStats(inv.eventId);
+      publicData.eventStats = {
+        total: eventStats.total,
+        arrived: eventStats.arrived,
+        lastArrival: await getLastArrival(inv.eventId),
+      };
     }
 
     return apiOk(publicData);
