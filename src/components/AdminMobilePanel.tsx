@@ -287,6 +287,17 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "INTERCAMBIO CLIENTE",
+        icon: ICONS.qr,
+        items: [
+          { href: `${pathPrefix}/intercambiocliente`, label: "Intercambios", icon: ICONS.qr },
+          { href: `${pathPrefix}/intercambiocliente?tab=lotes`, label: "Lotes", icon: ICONS.box },
+          { href: `${pathPrefix}/intercambiocliente?tab=politicas`, label: "Políticas", icon: ICONS.check },
+          { href: `${pathPrefix}/intercambiocliente?tab=stats`, label: "Estadísticas", icon: ICONS.chart },
+          { href: "/intercambio", label: "Página Pública", icon: ICONS.star }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "GESTION DE OFERTAS",
         icon: ICONS.tag,
         items: [

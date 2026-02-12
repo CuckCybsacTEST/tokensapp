@@ -1548,3 +1548,98 @@ model SpecialInvitationCard {
   @@index([kind])
   @@index([createdAt])
 }
+
+// ─── Client Exchange System ─────────────────────────────────────────────────
+
+model ClientExchangePolicy {
+  id                   String   @id @default(cuid())
+  name                 String
+  description          String?
+  isDefault            Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  allowPhoto           Boolean  @default(true)
+  allowVideo           Boolean  @default(false)
+  allowText            Boolean  @default(true)
+  allowTrivia          Boolean  @default(false)
+  requireWhatsapp      Boolean  @default(true)
+  requireDni           Boolean  @default(false)
+  maxMediaSize         Int      @default(5242880)
+  allowedMediaFormats  String   @default("jpg,jpeg,png,webp")
+  mediaQuality         Int      @default(80)
+  maxMediaWidth        Int      @default(1200)
+  maxMediaHeight       Int      @default(1200)
+  maxVideoSize         Int      @default(31457280)
+  allowedVideoFormats  String   @default("mp4,webm,mov")
+  rateLimitPerHour     Int?
+  maxExchangesPerUser  Int?
+  autoReward           Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([isDefault])
+}
+
+model ClientExchangeBatch {
+  id                   String            @id @default(cuid())
+  name                 String
+  description          String?
+  isActive             Boolean           @default(true)
+  rewardPrizeId        String?
+  rewardGroupId        String?
+  exchangeTypes        String            @default("photo,text")
+  triviaQuestionSetId  String?
+  maxExchanges         Int?
+  policyId             String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  exchanges            ClientExchange[]
+
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([rewardPrizeId])
+}
+
+model ClientExchange {
+  id               String                @id @default(cuid())
+  customerName     String
+  customerWhatsapp String
+  customerDni      String?
+  exchangeType     String
+  customerText     String?
+  triviaSessionId  String?
+  rewardTokenId    String?
+  rewardDelivered  Boolean               @default(false)
+  batchId          String?
+  status           String                @default("pending")
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime              @default(now())
+  completedAt      DateTime?
+  reviewedBy       String?
+  reviewNote       String?
+  batch            ClientExchangeBatch?  @relation(fields: [batchId], references: [id])
+  media            ClientExchangeMedia[]
+
+  @@index([batchId])
+  @@index([status])
+  @@index([exchangeType])
+  @@index([customerWhatsapp])
+  @@index([createdAt])
+  @@index([rewardTokenId])
+}
+
+model ClientExchangeMedia {
+  id               String         @id @default(cuid())
+  exchangeId       String
+  mediaType        String
+  imageUrl         String?
+  originalImageUrl String?
+  thumbnailUrl     String?
+  mediaMetadata    String?
+  createdAt        DateTime       @default(now())
+  exchange         ClientExchange @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+
+  @@index([exchangeId])
+  @@index([mediaType])
+}
