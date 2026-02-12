@@ -49,6 +49,7 @@
     "cookie:admin": "tsx scripts/genAdminCookie.ts admin",
     "cookie:staff": "tsx scripts/genAdminCookie.ts staff",
     "upload:real-images": "node scripts/upload-real-images.js",
+    "purge:qr-images": "tsx scripts/purge-qr-images.ts",
     "postinstall": "prisma generate",
     "build:css": "npx postcss src/app/globals.css -o src/app/output.css"
   },

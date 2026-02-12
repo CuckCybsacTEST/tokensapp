@@ -1,9 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl!, supabaseServiceKey) : null;
+const STORAGE_BUCKET = 'qr-images';
 
 function err(code: string, message: string, status = 400) {
   return NextResponse.json({ ok: false, code, message }, { status });
+}
+
+// Extraer paths de Supabase de URLs públicas
+function extractSupabasePaths(urls: string[]): string[] {
+  const paths: string[] = [];
+
+  for (const url of urls) {
+    if (!url || typeof url !== 'string') continue;
+
+    try {
+      // URL típica: https://upmqzhfnigsihpcclsao.supabase.co/storage/v1/object/public/qr-images/original/filename.jpg
+      const urlObj = new URL(url);
+      const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/[^\/]+\/(.+)/);
+      if (pathMatch && pathMatch[1]) {
+        paths.push(pathMatch[1]);
+      }
+    } catch (error) {
+      // URL malformada, ignorar
+      console.warn('Invalid Supabase URL:', url);
+    }
+  }
+
+  return paths;
+}
+
+// Eliminar imágenes de Supabase Storage en lotes
+async function deleteImagesFromSupabase(imagePaths: string[]): Promise<{ deleted: number; errors: string[] }> {
+  if (!supabaseAdmin || imagePaths.length === 0) {
+    return { deleted: 0, errors: [] };
+  }
+
+  const BATCH_SIZE = 10;
+  let deleted = 0;
+  const errors: string[] = [];
+
+  for (let i = 0; i < imagePaths.length; i += BATCH_SIZE) {
+    const batch = imagePaths.slice(i, i + BATCH_SIZE);
+
+    try {
+      const { error } = await supabaseAdmin.storage
+        .from(STORAGE_BUCKET)
+        .remove(batch);
+
+      if (error) {
+        errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
+      } else {
+        deleted += batch.length;
+      }
+    } catch (error: any) {
+      errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  return { deleted, errors };
 }
 
 export async function GET(req: NextRequest) {
@@ -83,10 +143,17 @@ export async function POST(req: NextRequest) {
     const purgeOrphansOnly = !!body?.options?.purgeOrphansOnly;
 
     if (purgeOrphansOnly) {
-      // Contar QR huérfanos
+      // Obtener QR huérfanos con sus URLs de imágenes
       const orphanQrs = await (prisma as any).customQr.findMany({
         where: { batchId: null },
-        select: { id: true, redeemedAt: true, expiresAt: true }
+        select: {
+          id: true,
+          redeemedAt: true,
+          expiresAt: true,
+          imageUrl: true,
+          originalImageUrl: true,
+          thumbnailUrl: true
+        }
       });
 
       if (dryRun) {
@@ -108,8 +175,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ok: true,
           batchIds: [],
-          deleted: { qrs: 0 }
+          deleted: { qrs: 0, images: 0 }
         });
+      }
+
+      // Extraer todas las URLs de imágenes
+      const imageUrls: string[] = [];
+      for (const qr of orphanQrs) {
+        if (qr.imageUrl) imageUrls.push(qr.imageUrl);
+        if (qr.originalImageUrl) imageUrls.push(qr.originalImageUrl);
+        if (qr.thumbnailUrl) imageUrls.push(qr.thumbnailUrl);
+      }
+
+      // Eliminar imágenes de Supabase
+      const { deleted: imagesDeleted, errors: imageErrors } = await deleteImagesFromSupabase(
+        extractSupabasePaths(imageUrls)
+      );
+
+      // Loggear errores de eliminación de imágenes (pero no fallar la operación)
+      if (imageErrors.length > 0) {
+        console.warn('Errors deleting orphan QR images:', imageErrors);
       }
 
       // Ejecutar purga de huérfanos
@@ -120,7 +205,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         batchIds: [],
-        deleted: { qrs: deletedQrs.count }
+        deleted: {
+          qrs: deletedQrs.count,
+          images: imagesDeleted
+        },
+        imageErrors: imageErrors.length > 0 ? imageErrors : undefined
       });
     }
 
@@ -156,6 +245,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Obtener todas las URLs de imágenes antes de eliminar los registros
+    const qrsToDelete = await (prisma as any).customQr.findMany({
+      where: { batchId: { in: batchIds } },
+      select: {
+        imageUrl: true,
+        originalImageUrl: true,
+        thumbnailUrl: true
+      }
+    });
+
+    // Extraer todas las URLs de imágenes
+    const imageUrls: string[] = [];
+    for (const qr of qrsToDelete) {
+      if (qr.imageUrl) imageUrls.push(qr.imageUrl);
+      if (qr.originalImageUrl) imageUrls.push(qr.originalImageUrl);
+      if (qr.thumbnailUrl) imageUrls.push(qr.thumbnailUrl);
+    }
+
+    // Eliminar imágenes de Supabase
+    const { deleted: imagesDeleted, errors: imageErrors } = await deleteImagesFromSupabase(
+      extractSupabasePaths(imageUrls)
+    );
+
+    // Loggear errores de eliminación de imágenes (pero no fallar la operación)
+    if (imageErrors.length > 0) {
+      console.warn('Errors deleting batch QR images:', imageErrors);
+    }
+
     // Execute purge
     const deletedQrs = await (prisma as any).customQr.deleteMany({
       where: { batchId: { in: batchIds } }
@@ -169,8 +286,10 @@ export async function POST(req: NextRequest) {
       batchIds,
       deleted: {
         qrs: deletedQrs.count,
-        batches: deletedBatches.count
-      }
+        batches: deletedBatches.count,
+        images: imagesDeleted
+      },
+      imageErrors: imageErrors.length > 0 ? imageErrors : undefined
     });
   } catch (e: any) {
     return err('INTERNAL', e?.message || 'internal error', 500);
