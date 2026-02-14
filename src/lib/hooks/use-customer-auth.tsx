@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useContext, createContext, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface Customer {
   id: string;
@@ -40,6 +41,10 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/u');
+  if (isAdminRoute) { return <>{children}</>; }
+
   const [authState, setAuthState] = useState<AuthState>({
     customer: null,
     session: null,

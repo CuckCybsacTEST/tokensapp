@@ -78,12 +78,6 @@ export async function POST(req: NextRequest) {
         return apiError('BAD_REQUEST', 'Lote de intercambio no disponible', undefined, 400);
       }
 
-      // Check if exchange type is allowed for this batch
-      const allowedTypes = batch.exchangeTypes.split(',').map((t: string) => t.trim());
-      if (!allowedTypes.includes(exchangeType)) {
-        return apiError('BAD_REQUEST', `Tipo "${exchangeType}" no permitido en este lote`, undefined, 400);
-      }
-
       // Check max exchanges if set
       if (batch.maxExchanges) {
         const count = await (prisma as any).clientExchange.count({
@@ -107,6 +101,15 @@ export async function POST(req: NextRequest) {
         where: { isActive: true },
         orderBy: { isDefault: 'desc' }
       });
+    }
+
+    // Policy-based: validate exchange type is allowed
+    if (policy) {
+      const typeFieldMap: Record<string, string> = { photo: 'allowPhoto', video: 'allowVideo', text: 'allowText', trivia: 'allowTrivia' };
+      const allowField = typeFieldMap[exchangeType];
+      if (allowField && !policy[allowField]) {
+        return apiError('BAD_REQUEST', `Tipo "${exchangeType}" no permitido por la política`, undefined, 400);
+      }
     }
 
     // Policy-based validations
@@ -161,10 +164,10 @@ export async function POST(req: NextRequest) {
         return apiError('BAD_REQUEST', 'Se requiere completar la trivia', undefined, 400);
       }
       // Verify the trivia session was completed successfully
-      const triviaSession = await (prisma as any).triviaSession.findUnique({
+      const triviaSession = await (prisma as any).exchangeTriviaSession.findUnique({
         where: { id: triviaSessionId }
       });
-      if (!triviaSession || triviaSession.status !== 'completed') {
+      if (!triviaSession || !triviaSession.completed) {
         return apiError('BAD_REQUEST', 'La trivia no fue completada exitosamente', undefined, 400);
       }
     }
@@ -222,6 +225,9 @@ export async function POST(req: NextRequest) {
       exchange: result,
       rewardAssigned: !!rewardToken,
       rewardTokenId: rewardToken?.tokenId || null,
+      rewardPrizeLabel: rewardToken?.prizeLabel || null,
+      rewardPrizeColor: rewardToken?.prizeColor || null,
+      rewardUrl: rewardToken ? `/reusable/${rewardToken.tokenId}` : null,
       message: shouldAutoReward
         ? (rewardToken ? '¡Intercambio completado! Tu premio ha sido asignado.' : 'Intercambio registrado. No hay premios disponibles en este momento.')
         : 'Intercambio registrado. Será revisado por un administrador.'
@@ -249,8 +255,8 @@ export async function GET(req: NextRequest) {
           id: true,
           name: true,
           description: true,
-          exchangeTypes: true,
           maxExchanges: true,
+          triviaQuestionSetId: true,
           _count: { select: { exchanges: true } }
         }
       });
@@ -289,6 +295,7 @@ export async function GET(req: NextRequest) {
           allowedMediaFormats: policy.allowedMediaFormats,
           maxVideoSize: policy.maxVideoSize,
           allowedVideoFormats: policy.allowedVideoFormats,
+          triviaSetId: policy.triviaSetId || null,
         } : null,
         available: !batch.maxExchanges || batch._count.exchanges < batch.maxExchanges
       });
@@ -301,7 +308,6 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         description: true,
-        exchangeTypes: true,
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -316,11 +322,11 @@ export async function GET(req: NextRequest) {
 /**
  * Assign a reusable token from the batch's reward pool
  */
-async function assignRewardToken(batch: any, exchangeId: string): Promise<{ tokenId: string } | null> {
+async function assignRewardToken(batch: any, exchangeId: string): Promise<{ tokenId: string; prizeLabel: string; prizeColor: string | null } | null> {
   try {
     const where: any = {
-      isActive: true,
-      usedAt: null,
+      disabled: false,
+      redeemedAt: null,
     };
 
     if (batch.rewardPrizeId) {
@@ -331,20 +337,25 @@ async function assignRewardToken(batch: any, exchangeId: string): Promise<{ toke
       return null;
     }
 
+    // Also filter: usedCount < maxUses, not expired
     const token = await (prisma as any).reusableToken.findFirst({
-      where,
-      orderBy: { createdAt: 'asc' }
+      where: {
+        ...where,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'asc' },
+      include: { prize: { select: { label: true, color: true } } },
     });
 
     if (!token) return null;
 
-    // Mark token used & link to exchange
+    // Mark token as delivered & link to exchange
     await (prisma as any).reusableToken.update({
       where: { id: token.id },
       data: {
-        isActive: false,
-        usedAt: new Date(),
-      }
+        deliveredAt: new Date(),
+        deliveryNote: `Entregado por intercambio ${exchangeId}`,
+      },
     });
 
     // Update exchange with reward info
@@ -353,10 +364,10 @@ async function assignRewardToken(batch: any, exchangeId: string): Promise<{ toke
       data: {
         rewardTokenId: token.id,
         rewardDelivered: true,
-      }
+      },
     });
 
-    return { tokenId: token.id };
+    return { tokenId: token.id, prizeLabel: token.prize?.label || 'Premio', prizeColor: token.prize?.color || null };
   } catch (error) {
     console.error('[assignRewardToken] Error:', error);
     return null;

@@ -71,7 +71,17 @@ interface Policy {
   rateLimitPerHour: number | null;
   maxExchangesPerUser: number | null;
   autoReward: boolean;
+  triviaSetId: string | null;
   createdAt: string;
+}
+
+interface ReusablePrizeOption {
+  id: string;
+  key: string;
+  label: string;
+  color: string | null;
+  description: string | null;
+  active: boolean;
 }
 
 interface Stats {
@@ -83,6 +93,32 @@ interface Stats {
   activeBatches: number;
   typeBreakdown: Record<string, number>;
   recentExchanges: Exchange[];
+}
+
+interface TriviaSet {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  createdAt: string;
+  _count: { questions: number; sessions: number };
+}
+
+interface TriviaQuestion {
+  id: string;
+  question: string;
+  order: number;
+  active: boolean;
+  pointsForCorrect: number;
+  pointsForIncorrect: number;
+  answers: TriviaAnswer[];
+}
+
+interface TriviaAnswer {
+  id: string;
+  answer: string;
+  isCorrect: boolean;
+  order: number;
 }
 
 // ── Helper formatting ─────────────────────────────────────────────────
@@ -112,9 +148,12 @@ export default function IntercambioClientePage() {
   const searchParams = useSearchParams();
   const initialTab = (searchParams?.get('tab') as string) || 'intercambios';
 
-  const [activeTab, setActiveTab] = useState<'intercambios' | 'lotes' | 'politicas' | 'stats'>(
-    ['intercambios', 'lotes', 'politicas', 'stats'].includes(initialTab) ? initialTab as any : 'intercambios'
+  const [activeTab, setActiveTab] = useState<'intercambios' | 'lotes' | 'politicas' | 'trivia' | 'stats'>(
+    ['intercambios', 'lotes', 'politicas', 'trivia', 'stats'].includes(initialTab) ? initialTab as any : 'intercambios'
   );
+
+  // Trivia sets (for batch form selector + trivia tab)
+  const [triviaSets, setTriviaSets] = useState<TriviaSet[]>([]);
 
   // Data
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
@@ -187,10 +226,20 @@ export default function IntercambioClientePage() {
     }
   }, []);
 
+  const fetchTriviaSets = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/intercambio/trivia-sets');
+      const data = await res.json();
+      setTriviaSets(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Error fetching trivia sets:', e);
+    }
+  }, []);
+
   useEffect(() => {
-    Promise.all([fetchExchanges(), fetchBatches(), fetchPolicies(), fetchStats()])
+    Promise.all([fetchExchanges(), fetchBatches(), fetchPolicies(), fetchStats(), fetchTriviaSets()])
       .finally(() => setLoading(false));
-  }, [fetchExchanges, fetchBatches, fetchPolicies, fetchStats]);
+  }, [fetchExchanges, fetchBatches, fetchPolicies, fetchStats, fetchTriviaSets]);
 
   useEffect(() => {
     fetchExchanges(1);
@@ -332,6 +381,7 @@ export default function IntercambioClientePage() {
           { key: 'intercambios', label: '📋 Intercambios' },
           { key: 'lotes', label: '📦 Lotes' },
           { key: 'politicas', label: '⚙️ Políticas' },
+          { key: 'trivia', label: '🧠 Trivia' },
           { key: 'stats', label: '📊 Estadísticas' },
         ].map(tab => (
           <button
@@ -372,6 +422,7 @@ export default function IntercambioClientePage() {
         <BatchesTab
           batches={batches}
           policies={policies}
+          triviaSets={triviaSets}
           showForm={showBatchForm}
           editing={editingBatch}
           onShowForm={() => { setEditingBatch(null); setShowBatchForm(true); }}
@@ -385,6 +436,7 @@ export default function IntercambioClientePage() {
       {activeTab === 'politicas' && (
         <PoliciesTab
           policies={policies}
+          triviaSets={triviaSets}
           showForm={showPolicyForm}
           editing={editingPolicy}
           onShowForm={() => { setEditingPolicy(null); setShowPolicyForm(true); }}
@@ -393,6 +445,10 @@ export default function IntercambioClientePage() {
           onSave={savePolicy}
           onDelete={deletePolicy}
         />
+      )}
+
+      {activeTab === 'trivia' && (
+        <TriviaTab triviaSets={triviaSets} onRefresh={fetchTriviaSets} />
       )}
 
       {activeTab === 'stats' && (
@@ -607,10 +663,10 @@ function ExchangesTab({
 // ══════════════════════════════════════════════════════════════════════
 
 function BatchesTab({
-  batches, policies, showForm, editing,
+  batches, policies, triviaSets, showForm, editing,
   onShowForm, onEdit, onCancel, onSave, onDelete
 }: {
-  batches: Batch[]; policies: Policy[];
+  batches: Batch[]; policies: Policy[]; triviaSets: TriviaSet[];
   showForm: boolean; editing: Batch | null;
   onShowForm: () => void; onEdit: (b: Batch) => void;
   onCancel: () => void;
@@ -630,6 +686,7 @@ function BatchesTab({
         <BatchForm
           initial={editing}
           policies={policies}
+          triviaSets={triviaSets}
           onSave={onSave}
           onCancel={onCancel}
         />
@@ -652,7 +709,6 @@ function BatchesTab({
                   {b.description && <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{b.description}</p>}
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-slate-400">
                     <span>📋 {b._count?.exchanges || 0} intercambios</span>
-                    <span>🎯 Tipos: {b.exchangeTypes}</span>
                     {b.maxExchanges && <span>📊 Máx: {b.maxExchanges}</span>}
                     {b.rewardPrizeId && <span>🎁 Premio: {b.rewardPrizeId.slice(0, 8)}...</span>}
                     {b.rewardGroupId && <span>👥 Grupo: {b.rewardGroupId.slice(0, 8)}...</span>}
@@ -677,19 +733,34 @@ function BatchesTab({
   );
 }
 
-function BatchForm({ initial, policies, onSave, onCancel }: {
-  initial: Batch | null; policies: Policy[];
+function BatchForm({ initial, policies, triviaSets, onSave, onCancel }: {
+  initial: Batch | null; policies: Policy[]; triviaSets: TriviaSet[];
   onSave: (data: any) => void; onCancel: () => void;
 }) {
   const [name, setName] = useState(initial?.name || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-  const [exchangeTypes, setExchangeTypes] = useState(initial?.exchangeTypes || 'photo,text');
   const [rewardPrizeId, setRewardPrizeId] = useState(initial?.rewardPrizeId || '');
   const [rewardGroupId, setRewardGroupId] = useState(initial?.rewardGroupId || '');
   const [triviaQuestionSetId, setTriviaQuestionSetId] = useState(initial?.triviaQuestionSetId || '');
   const [maxExchanges, setMaxExchanges] = useState(initial?.maxExchanges?.toString() || '');
   const [policyId, setPolicyId] = useState(initial?.policyId || '');
+  const [prizes, setPrizes] = useState<ReusablePrizeOption[]>([]);
+
+  const loadPrizes = async () => {
+    try {
+      const res = await fetch('/api/admin/reusable-prizes');
+      if (!res.ok) { console.error('Error fetching reusable prizes:', res.status); return; }
+      const data: ReusablePrizeOption[] = await res.json();
+      setPrizes(data.filter(p => p.active));
+    } catch (err) {
+      console.error('Error loading reusable prizes:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadPrizes();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -697,7 +768,6 @@ function BatchForm({ initial, policies, onSave, onCancel }: {
       name,
       description: description || null,
       isActive,
-      exchangeTypes,
       rewardPrizeId: rewardPrizeId || null,
       rewardGroupId: rewardGroupId || null,
       triviaQuestionSetId: triviaQuestionSetId || null,
@@ -723,25 +793,40 @@ function BatchForm({ initial, policies, onSave, onCancel }: {
               <input type="text" className="input w-full" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Tipos permitidos</label>
-              <input type="text" className="input w-full" value={exchangeTypes} onChange={e => setExchangeTypes(e.target.value)} placeholder="photo,video,text,trivia" />
-              <p className="text-xs text-gray-400 mt-1">Separados por coma</p>
-            </div>
-            <div>
               <label className="block text-sm font-medium mb-1">Máximo intercambios</label>
               <input type="number" className="input w-full" value={maxExchanges} onChange={e => setMaxExchanges(e.target.value)} placeholder="Sin límite" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">ID Premio (ReusablePrize)</label>
-              <input type="text" className="input w-full" value={rewardPrizeId} onChange={e => setRewardPrizeId(e.target.value)} placeholder="Opcional" />
+              <label className="block text-sm font-medium mb-1">Premio Reutilizable</label>
+              <select className="input w-full" value={rewardPrizeId} onChange={e => setRewardPrizeId(e.target.value)}>
+                <option value="">Sin premio reutilizable</option>
+                {prizes.map(prize => (
+                  <option key={prize.id} value={prize.id}>
+                    {prize.label} ({prize.key})
+                  </option>
+                ))}
+              </select>
+              {prizes.length === 0 && (
+                <p className="text-xs text-amber-500 mt-1">No hay premios reutilizables. Crea uno en Reusable Tokens.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">ID Grupo (TokenGroup)</label>
               <input type="text" className="input w-full" value={rewardGroupId} onChange={e => setRewardGroupId(e.target.value)} placeholder="Opcional" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">ID TriviaQuestionSet</label>
-              <input type="text" className="input w-full" value={triviaQuestionSetId} onChange={e => setTriviaQuestionSetId(e.target.value)} placeholder="Opcional" />
+              <label className="block text-sm font-medium mb-1">Set de Trivia</label>
+              <select className="input w-full" value={triviaQuestionSetId} onChange={e => setTriviaQuestionSetId(e.target.value)}>
+                <option value="">Sin trivia</option>
+                {triviaSets.filter(s => s.active).map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s._count.questions} preguntas)
+                  </option>
+                ))}
+              </select>
+              {triviaSets.filter(s => s.active).length === 0 && (
+                <p className="text-xs text-amber-500 mt-1">No hay sets de trivia. Crea uno en la pestaña Trivia.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Política</label>
@@ -778,10 +863,11 @@ function BatchForm({ initial, policies, onSave, onCancel }: {
 // ══════════════════════════════════════════════════════════════════════
 
 function PoliciesTab({
-  policies, showForm, editing,
+  policies, triviaSets, showForm, editing,
   onShowForm, onEdit, onCancel, onSave, onDelete
 }: {
   policies: Policy[];
+  triviaSets: TriviaSet[];
   showForm: boolean; editing: Policy | null;
   onShowForm: () => void; onEdit: (p: Policy) => void;
   onCancel: () => void;
@@ -800,6 +886,7 @@ function PoliciesTab({
       {showForm && (
         <PolicyForm
           initial={editing}
+          triviaSets={triviaSets}
           onSave={onSave}
           onCancel={onCancel}
         />
@@ -827,6 +914,7 @@ function PoliciesTab({
                     <span>| 📏 {Math.round(p.maxMediaSize / 1048576)}MB img</span>
                     <span>| 📏 {Math.round(p.maxVideoSize / 1048576)}MB vid</span>
                     {p.autoReward && <span>| 🤖 Auto-premio</span>}
+                    {p.triviaSetId && <span>| 🧠 Trivia default</span>}
                     {p.requireWhatsapp && <span>| 📱 WA requerido</span>}
                     {p.requireDni && <span>| 🪪 DNI requerido</span>}
                     {p.rateLimitPerHour && <span>| ⏱️ {p.rateLimitPerHour}/h</span>}
@@ -846,8 +934,9 @@ function PoliciesTab({
   );
 }
 
-function PolicyForm({ initial, onSave, onCancel }: {
+function PolicyForm({ initial, triviaSets, onSave, onCancel }: {
   initial: Policy | null;
+  triviaSets: TriviaSet[];
   onSave: (data: any) => void; onCancel: () => void;
 }) {
   const [name, setName] = useState(initial?.name || '');
@@ -870,6 +959,7 @@ function PolicyForm({ initial, onSave, onCancel }: {
   const [rateLimitPerHour, setRateLimitPerHour] = useState(initial?.rateLimitPerHour?.toString() || '');
   const [maxExchangesPerUser, setMaxExchangesPerUser] = useState(initial?.maxExchangesPerUser?.toString() || '');
   const [autoReward, setAutoReward] = useState(initial?.autoReward ?? true);
+  const [triviaSetId, setTriviaSetId] = useState(initial?.triviaSetId || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -890,6 +980,7 @@ function PolicyForm({ initial, onSave, onCancel }: {
       rateLimitPerHour: rateLimitPerHour ? parseInt(rateLimitPerHour) : null,
       maxExchangesPerUser: maxExchangesPerUser ? parseInt(maxExchangesPerUser) : null,
       autoReward,
+      triviaSetId: triviaSetId || null,
     });
   };
 
@@ -1005,6 +1096,22 @@ function PolicyForm({ initial, onSave, onCancel }: {
             </label>
           </div>
 
+          {/* Trivia set default */}
+          {allowTrivia && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Set de Trivia por defecto</label>
+              <select className="input w-full" value={triviaSetId} onChange={e => setTriviaSetId(e.target.value)}>
+                <option value="">Sin trivia por defecto</option>
+                {triviaSets.filter(s => s.active).map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s._count.questions} preguntas)
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Los lotes pueden sobreescribir este set con uno propio</p>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button type="submit" className="btn btn-primary text-sm">
               {initial ? 'Guardar cambios' : 'Crear política'}
@@ -1012,6 +1119,356 @@ function PolicyForm({ initial, onSave, onCancel }: {
             <button type="button" onClick={onCancel} className="btn btn-secondary text-sm">
               Cancelar
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ── Trivia Tab ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+
+function TriviaTab({ triviaSets, onRefresh }: { triviaSets: TriviaSet[]; onRefresh: () => void }) {
+  const [showSetForm, setShowSetForm] = useState(false);
+  const [editingSet, setEditingSet] = useState<TriviaSet | null>(null);
+  const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
+  const [setDetail, setSetDetail] = useState<(TriviaSet & { questions: TriviaQuestion[] }) | null>(null);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<TriviaQuestion | null>(null);
+
+  // ── Set CRUD ────────────────────────────────────────────────────
+
+  const saveSet = async (data: { name: string; description: string; active: boolean }) => {
+    try {
+      const url = editingSet
+        ? `/api/admin/intercambio/trivia-sets/${editingSet.id}`
+        : '/api/admin/intercambio/trivia-sets';
+      const method = editingSet ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      alert(editingSet ? 'Set actualizado' : 'Set creado');
+      setShowSetForm(false);
+      setEditingSet(null);
+      onRefresh();
+    } catch (e: any) { alert('Error: ' + e.message); }
+  };
+
+  const deleteSet = async (id: string) => {
+    if (!confirm('¿Eliminar este set de trivia?')) return;
+    try {
+      const res = await fetch(`/api/admin/intercambio/trivia-sets/${id}`, { method: 'DELETE' });
+      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      alert('Set eliminado');
+      if (expandedSetId === id) { setExpandedSetId(null); setSetDetail(null); }
+      onRefresh();
+    } catch (e: any) { alert('Error: ' + e.message); }
+  };
+
+  const loadSetDetail = async (id: string) => {
+    if (expandedSetId === id) { setExpandedSetId(null); setSetDetail(null); return; }
+    try {
+      const res = await fetch(`/api/admin/intercambio/trivia-sets/${id}`);
+      const data = await res.json();
+      setSetDetail(data);
+      setExpandedSetId(id);
+      setShowQuestionForm(false);
+      setEditingQuestion(null);
+    } catch { alert('Error cargando detalle'); }
+  };
+
+  // ── Question CRUD ───────────────────────────────────────────────
+
+  const saveQuestion = async (qData: { question: string; order: number; pointsForCorrect: number; answers: { answer: string; isCorrect: boolean }[] }) => {
+    if (!expandedSetId) return;
+    try {
+      const url = editingQuestion
+        ? `/api/admin/intercambio/trivia-sets/${expandedSetId}/questions/${editingQuestion.id}`
+        : `/api/admin/intercambio/trivia-sets/${expandedSetId}/questions`;
+      const method = editingQuestion ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(qData) });
+      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      alert(editingQuestion ? 'Pregunta actualizada' : 'Pregunta creada');
+      setShowQuestionForm(false);
+      setEditingQuestion(null);
+      // Reload detail
+      const r2 = await fetch(`/api/admin/intercambio/trivia-sets/${expandedSetId}`);
+      setSetDetail(await r2.json());
+      onRefresh();
+    } catch (e: any) { alert('Error: ' + e.message); }
+  };
+
+  const deleteQuestion = async (questionId: string) => {
+    if (!expandedSetId || !confirm('¿Eliminar esta pregunta?')) return;
+    try {
+      const res = await fetch(`/api/admin/intercambio/trivia-sets/${expandedSetId}/questions/${questionId}`, { method: 'DELETE' });
+      if (!res.ok) { alert('Error eliminando'); return; }
+      const r2 = await fetch(`/api/admin/intercambio/trivia-sets/${expandedSetId}`);
+      setSetDetail(await r2.json());
+      onRefresh();
+    } catch (e: any) { alert('Error: ' + e.message); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500 dark:text-slate-400">{triviaSets.length} set{triviaSets.length !== 1 ? 's' : ''} de trivia</p>
+        <div className="flex gap-2">
+          <button onClick={onRefresh} className="btn btn-secondary text-sm">🔄</button>
+          <button onClick={() => { setEditingSet(null); setShowSetForm(true); }} className="btn btn-primary text-sm">
+            ➕ Nuevo Set
+          </button>
+        </div>
+      </div>
+
+      {/* Set form */}
+      {showSetForm && (
+        <TriviaSetForm
+          initial={editingSet}
+          onSave={saveSet}
+          onCancel={() => { setShowSetForm(false); setEditingSet(null); }}
+        />
+      )}
+
+      {/* Sets list */}
+      <div className="space-y-3">
+        {triviaSets.map(s => (
+          <div key={s.id} className="card">
+            <div className="card-body">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 cursor-pointer" onClick={() => loadSetDetail(s.id)}>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-gray-900 dark:text-slate-100">{s.name}</h3>
+                    {s.active ? (
+                      <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 px-2 py-0.5 rounded-full">Activo</span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400 px-2 py-0.5 rounded-full">Inactivo</span>
+                    )}
+                  </div>
+                  {s.description && <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{s.description}</p>}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-slate-400">
+                    <span>❓ {s._count.questions} preguntas</span>
+                    <span>🎮 {s._count.sessions} sesiones</span>
+                    <span>🕐 {formatDate(s.createdAt)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => loadSetDetail(s.id)} className="btn btn-sm btn-secondary text-xs">
+                    {expandedSetId === s.id ? '▲' : '▼'}
+                  </button>
+                  <button onClick={() => { setEditingSet(s); setShowSetForm(true); }} className="btn btn-sm btn-secondary text-xs">✏️</button>
+                  <button onClick={() => deleteSet(s.id)} className="btn btn-sm btn-danger text-xs">🗑️</button>
+                </div>
+              </div>
+
+              {/* Expanded: questions */}
+              {expandedSetId === s.id && setDetail && (
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Preguntas ({setDetail.questions.length})</p>
+                    <button
+                      onClick={() => { setEditingQuestion(null); setShowQuestionForm(true); }}
+                      className="btn btn-sm btn-primary text-xs"
+                    >
+                      ➕ Agregar pregunta
+                    </button>
+                  </div>
+
+                  {showQuestionForm && (
+                    <QuestionForm
+                      initial={editingQuestion}
+                      onSave={saveQuestion}
+                      onCancel={() => { setShowQuestionForm(false); setEditingQuestion(null); }}
+                    />
+                  )}
+
+                  {setDetail.questions.length === 0 && (
+                    <p className="text-sm text-gray-400 dark:text-slate-500 italic">Sin preguntas aún. Agrega al menos 1 para que funcione la trivia.</p>
+                  )}
+
+                  {setDetail.questions.map((q, qi) => (
+                    <div key={q.id} className="bg-gray-50 dark:bg-slate-800 rounded-lg p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            <span className="text-gray-400 mr-2">#{qi + 1}</span>
+                            {q.question}
+                            {!q.active && <span className="ml-2 text-xs text-red-400">(inactiva)</span>}
+                          </p>
+                          <div className="mt-2 space-y-1">
+                            {q.answers.map(a => (
+                              <div key={a.id} className={`text-xs px-2 py-1 rounded ${a.isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-medium' : 'bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-400'}`}>
+                                {a.isCorrect ? '✅' : '○'} {a.answer}
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">+{q.pointsForCorrect} pts correcta / {q.pointsForIncorrect} pts incorrecta</p>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => { setEditingQuestion(q); setShowQuestionForm(true); }} className="btn btn-sm btn-secondary text-xs">✏️</button>
+                          <button onClick={() => deleteQuestion(q.id)} className="btn btn-sm btn-danger text-xs">🗑️</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── TriviaSetForm ─────────────────────────────────────────────────
+
+function TriviaSetForm({ initial, onSave, onCancel }: {
+  initial: TriviaSet | null;
+  onSave: (data: { name: string; description: string; active: boolean }) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial?.name || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [active, setActive] = useState(initial?.active ?? true);
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="font-medium">{initial ? '✏️ Editar Set' : '➕ Nuevo Set de Trivia'}</h3>
+      </div>
+      <div className="card-body">
+        <form onSubmit={e => { e.preventDefault(); onSave({ name, description, active }); }} className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Nombre *</label>
+              <input type="text" className="input w-full" value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Descripción</label>
+              <input type="text" className="input w-full" value={description} onChange={e => setDescription(e.target.value)} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />
+            Activo
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" className="btn btn-primary text-sm">{initial ? 'Guardar' : 'Crear'}</button>
+            <button type="button" onClick={onCancel} className="btn btn-secondary text-sm">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── QuestionForm ──────────────────────────────────────────────────
+
+function QuestionForm({ initial, onSave, onCancel }: {
+  initial: TriviaQuestion | null;
+  onSave: (data: { question: string; order: number; pointsForCorrect: number; answers: { answer: string; isCorrect: boolean }[] }) => void;
+  onCancel: () => void;
+}) {
+  const [question, setQuestion] = useState(initial?.question || '');
+  const [order, setOrder] = useState(initial?.order ?? 0);
+  const [pointsForCorrect, setPointsForCorrect] = useState(initial?.pointsForCorrect ?? 10);
+  const [answers, setAnswers] = useState<{ answer: string; isCorrect: boolean }[]>(
+    initial?.answers?.map(a => ({ answer: a.answer, isCorrect: a.isCorrect })) || [
+      { answer: '', isCorrect: true },
+      { answer: '', isCorrect: false },
+    ]
+  );
+
+  const addAnswer = () => {
+    if (answers.length >= 4) return;
+    setAnswers([...answers, { answer: '', isCorrect: false }]);
+  };
+
+  const removeAnswer = (i: number) => {
+    if (answers.length <= 2) return;
+    setAnswers(answers.filter((_, idx) => idx !== i));
+  };
+
+  const updateAnswer = (i: number, field: 'answer' | 'isCorrect', value: any) => {
+    const copy = [...answers];
+    if (field === 'isCorrect' && value) {
+      // Only one correct
+      copy.forEach((a, idx) => { a.isCorrect = idx === i; });
+    } else {
+      (copy[i] as any)[field] = value;
+    }
+    setAnswers(copy);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) { alert('La pregunta es requerida'); return; }
+    if (answers.some(a => !a.answer.trim())) { alert('Todas las respuestas deben tener texto'); return; }
+    if (answers.filter(a => a.isCorrect).length !== 1) { alert('Debe haber exactamente 1 respuesta correcta'); return; }
+    onSave({ question, order, pointsForCorrect, answers });
+  };
+
+  return (
+    <div className="card border-blue-200 dark:border-blue-800">
+      <div className="card-header">
+        <h4 className="font-medium text-sm">{initial ? '✏️ Editar Pregunta' : '➕ Nueva Pregunta'}</h4>
+      </div>
+      <div className="card-body">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Pregunta *</label>
+            <input type="text" className="input w-full" value={question} onChange={e => setQuestion(e.target.value)} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Orden</label>
+              <input type="number" className="input w-full" value={order} onChange={e => setOrder(Number(e.target.value))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Puntos (correcta)</label>
+              <input type="number" className="input w-full" value={pointsForCorrect} onChange={e => setPointsForCorrect(Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Respuestas ({answers.length}/4)</label>
+              {answers.length < 4 && (
+                <button type="button" onClick={addAnswer} className="text-xs text-blue-500 hover:text-blue-600">+ Agregar</button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {answers.map((a, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correct"
+                    checked={a.isCorrect}
+                    onChange={() => updateAnswer(i, 'isCorrect', true)}
+                    title="Marcar como correcta"
+                  />
+                  <input
+                    type="text"
+                    className="input flex-1"
+                    value={a.answer}
+                    onChange={e => updateAnswer(i, 'answer', e.target.value)}
+                    placeholder={`Respuesta ${i + 1}`}
+                    required
+                  />
+                  {answers.length > 2 && (
+                    <button type="button" onClick={() => removeAnswer(i)} className="text-red-400 hover:text-red-600 text-sm">✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Selecciona el radio button de la respuesta correcta</p>
+          </div>
+
+          <div className="flex gap-2">
+            <button type="submit" className="btn btn-primary text-sm">{initial ? 'Guardar' : 'Crear pregunta'}</button>
+            <button type="button" onClick={onCancel} className="btn btn-secondary text-sm">Cancelar</button>
           </div>
         </form>
       </div>

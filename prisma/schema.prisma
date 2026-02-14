@@ -1573,6 +1573,7 @@ model ClientExchangePolicy {
   rateLimitPerHour     Int?
   maxExchangesPerUser  Int?
   autoReward           Boolean  @default(true)
+  triviaSetId          String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -1642,4 +1643,84 @@ model ClientExchangeMedia {
 
   @@index([exchangeId])
   @@index([mediaType])
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ── Client Exchange Trivia (independent — NOT shared with internalnews)
+// ══════════════════════════════════════════════════════════════════════
+
+model ExchangeTriviaSet {
+  id          String                   @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean                  @default(true)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  questions   ExchangeTriviaQuestion[]
+  sessions    ExchangeTriviaSession[]
+
+  @@index([active])
+}
+
+model ExchangeTriviaQuestion {
+  id                 String                  @id @default(cuid())
+  setId              String
+  question           String
+  order              Int                     @default(0)
+  active             Boolean                 @default(true)
+  pointsForCorrect   Int                     @default(10)
+  pointsForIncorrect Int                     @default(0)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  set                ExchangeTriviaSet       @relation(fields: [setId], references: [id], onDelete: Cascade)
+  answers            ExchangeTriviaAnswer[]
+  progress           ExchangeTriviaProgress[]
+
+  @@index([setId])
+  @@index([order])
+  @@index([active])
+}
+
+model ExchangeTriviaAnswer {
+  id         String                    @id @default(cuid())
+  questionId String
+  answer     String
+  isCorrect  Boolean                   @default(false)
+  order      Int                       @default(0)
+  createdAt  DateTime                  @default(now())
+  question   ExchangeTriviaQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  progress   ExchangeTriviaProgress[]
+
+  @@index([questionId])
+}
+
+model ExchangeTriviaSession {
+  id                   String                    @id @default(cuid())
+  setId                String
+  currentQuestionIndex Int                       @default(0)
+  completed            Boolean                   @default(false)
+  totalPoints          Int                       @default(0)
+  startedAt            DateTime                  @default(now())
+  completedAt          DateTime?
+  set                  ExchangeTriviaSet         @relation(fields: [setId], references: [id])
+  progress             ExchangeTriviaProgress[]
+
+  @@index([setId])
+  @@index([completed])
+}
+
+model ExchangeTriviaProgress {
+  id               String                  @id @default(cuid())
+  sessionId        String
+  questionId       String
+  selectedAnswerId String?
+  isCorrect        Boolean?
+  answeredAt       DateTime                @default(now())
+  session          ExchangeTriviaSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question         ExchangeTriviaQuestion  @relation(fields: [questionId], references: [id])
+  selectedAnswer   ExchangeTriviaAnswer?   @relation(fields: [selectedAnswerId], references: [id])
+
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@index([questionId])
 }

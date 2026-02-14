@@ -32,7 +32,22 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json(batches);
+    // Get individual tokens (not in any batch)
+    const allTokens = await prisma.token.findMany({
+      select: {
+        id: true,
+        batchId: true,
+        expiresAt: true,
+        maxUses: true,
+        usedCount: true,
+        disabled: true,
+        deliveredAt: true,
+        prize: { select: { key: true, label: true, color: true } }
+      }
+    });
+    const individualTokens = allTokens.filter(t => t.batchId === null);
+
+    return NextResponse.json({ batches, individualTokens });
   } catch (error) {
     console.error('Error fetching reusable batches:', error);
     return apiError('INTERNAL_ERROR', 'Error interno');

@@ -4,14 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Video, Type, BrainCircuit, Upload, X, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Send } from 'lucide-react';
+import TriviaPlayer from './TriviaPlayer';
 
 // ── Types ─────────────────────────────────────────────────────────────
 interface BatchInfo {
   id: string;
   name: string;
   description: string | null;
-  exchangeTypes: string;
   maxExchanges: number | null;
+  triviaQuestionSetId: string | null;
   _count: { exchanges: number };
 }
 
@@ -26,6 +27,7 @@ interface PolicyInfo {
   allowedMediaFormats: string;
   maxVideoSize: number;
   allowedVideoFormats: string;
+  triviaSetId: string | null;
 }
 
 interface UploadedMedia {
@@ -44,7 +46,7 @@ interface FormState {
   batch: BatchInfo | null;
   policy: PolicyInfo | null;
   available: boolean;
-  batches: { id: string; name: string; description: string | null; exchangeTypes: string }[];
+  batches: { id: string; name: string; description: string | null }[];
   // Form fields
   exchangeType: string;
   customerName: string;
@@ -53,9 +55,16 @@ interface FormState {
   customerText: string;
   uploadedMedia: UploadedMedia[];
   uploadProgress: number;
+  // Trivia
+  triviaSessionId: string | null;
+  triviaCompleted: boolean;
+  triviaTotalPoints: number;
   // Result
   resultMessage: string;
   rewardAssigned: boolean;
+  rewardUrl: string | null;
+  rewardPrizeLabel: string | null;
+  rewardPrizeColor: string | null;
 }
 
 const INITIAL_STATE: FormState = {
@@ -74,8 +83,14 @@ const INITIAL_STATE: FormState = {
   customerText: '',
   uploadedMedia: [],
   uploadProgress: 0,
+  triviaSessionId: null,
+  triviaCompleted: false,
+  triviaTotalPoints: 0,
   resultMessage: '',
   rewardAssigned: false,
+  rewardUrl: null,
+  rewardPrizeLabel: null,
+  rewardPrizeColor: null,
 };
 
 const TYPE_CONFIG: Record<string, { icon: any; label: string; description: string; color: string }> = {
@@ -189,6 +204,7 @@ export default function ExchangeForm() {
         customerDni: state.customerDni || undefined,
         exchangeType: state.exchangeType,
         customerText: state.exchangeType === 'text' ? state.customerText : undefined,
+        triviaSessionId: state.triviaSessionId || undefined,
         media: state.uploadedMedia.length > 0 ? state.uploadedMedia : undefined,
       };
 
@@ -208,6 +224,9 @@ export default function ExchangeForm() {
         step: 'success',
         resultMessage: data.message,
         rewardAssigned: data.rewardAssigned,
+        rewardUrl: data.rewardUrl || null,
+        rewardPrizeLabel: data.rewardPrizeLabel || null,
+        rewardPrizeColor: data.rewardPrizeColor || null,
       });
     } catch (err: any) {
       updateState({ step: 'fill-form', error: err.message });
@@ -221,11 +240,8 @@ export default function ExchangeForm() {
     });
   };
 
-  // ── Determine allowed types ─────────────────────────────────────
+  // ── Determine allowed types (always from policy) ───────────────
   const getAllowedTypes = (): string[] => {
-    if (state.batch) {
-      return state.batch.exchangeTypes.split(',').map(t => t.trim());
-    }
     if (state.policy) {
       const types: string[] = [];
       if (state.policy.allowPhoto) types.push('photo');
@@ -235,6 +251,11 @@ export default function ExchangeForm() {
       return types;
     }
     return ['photo', 'text'];
+  };
+
+  // ── Resolve trivia set: batch override > policy default ─────────
+  const getTriviaSetId = (): string | null => {
+    return state.batch?.triviaQuestionSetId || state.policy?.triviaSetId || null;
   };
 
   // ── Can submit? ─────────────────────────────────────────────────
@@ -274,14 +295,7 @@ export default function ExchangeForm() {
           >
             <h3 className="font-semibold text-lg">{b.name}</h3>
             {b.description && <p className="text-white/50 text-sm mt-1">{b.description}</p>}
-            <div className="flex gap-2 mt-3">
-              {b.exchangeTypes.split(',').map(t => {
-                const cfg = TYPE_CONFIG[t.trim()];
-                return cfg ? (
-                  <span key={t} className="text-xs bg-white/10 px-2 py-1 rounded-full">{cfg.label}</span>
-                ) : null;
-              })}
-            </div>
+
           </a>
         ))}
       </div>
@@ -320,7 +334,33 @@ export default function ExchangeForm() {
         <h2 className="text-2xl font-bold mb-3">
           {state.rewardAssigned ? '¡Premio Asignado!' : '¡Enviado!'}
         </h2>
-        <p className="text-white/60 mb-8">{state.resultMessage}</p>
+        <p className="text-white/60 mb-6">{state.resultMessage}</p>
+
+        {/* Show reward QR link */}
+        {state.rewardAssigned && state.rewardUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8"
+          >
+            <div className="bg-gradient-to-br from-yellow-500/20 to-red-500/20 border border-yellow-500/30 rounded-2xl p-6 max-w-sm mx-auto">
+              <p className="text-yellow-300 font-semibold text-lg mb-2">
+                🎉 {state.rewardPrizeLabel || 'Tu Premio'}
+              </p>
+              <p className="text-white/50 text-sm mb-4">Toca el botón para ver tu QR de premio</p>
+              <a
+                href={state.rewardUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-red-400 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              >
+                🎫 Ver mi Premio
+              </a>
+            </div>
+          </motion.div>
+        )}
+
         <button
           onClick={() => {
             setState(INITIAL_STATE);
@@ -382,7 +422,7 @@ export default function ExchangeForm() {
     <div className="space-y-6">
       {/* Back button */}
       <button
-        onClick={() => updateState({ exchangeType: '', step: 'select-type', uploadedMedia: [], error: null })}
+        onClick={() => updateState({ exchangeType: '', step: 'select-type', uploadedMedia: [], error: null, triviaSessionId: null, triviaCompleted: false, triviaTotalPoints: 0 })}
         className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors text-sm"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -516,22 +556,29 @@ export default function ExchangeForm() {
         </div>
       )}
 
-      {/* Trivia redirect */}
-      {state.exchangeType === 'trivia' && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-          <BrainCircuit className="w-10 h-10 text-yellow-400 mx-auto mb-3" />
-          <p className="text-white/70 mb-4">Completa la trivia para obtener tu premio</p>
-          <a
-            href="/trivia"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-yellow-400 to-red-400 text-black font-semibold rounded-xl hover:opacity-90 transition-opacity"
-          >
-            Ir a la Trivia
-          </a>
+      {/* Trivia embedded player */}
+      {state.exchangeType === 'trivia' && !state.triviaCompleted && getTriviaSetId() && (
+        <TriviaPlayer
+          questionSetId={getTriviaSetId()!}
+          onComplete={(sessionId, totalPoints) => {
+            updateState({
+              triviaSessionId: sessionId,
+              triviaCompleted: true,
+              triviaTotalPoints: totalPoints,
+            });
+          }}
+        />
+      )}
+
+      {state.exchangeType === 'trivia' && !getTriviaSetId() && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center">
+          <BrainCircuit className="w-10 h-10 text-amber-400 mx-auto mb-3" />
+          <p className="text-white/70">Esta campaña no tiene un set de trivia configurado.</p>
         </div>
       )}
 
       {/* Customer info fields */}
-      {state.exchangeType !== 'trivia' && (
+      {(state.exchangeType !== 'trivia' || state.triviaCompleted) && (
         <div className="space-y-4">
           <div>
             <label className="block text-white/60 text-sm mb-2">Tu nombre *</label>
@@ -574,7 +621,7 @@ export default function ExchangeForm() {
       )}
 
       {/* Submit button */}
-      {state.exchangeType !== 'trivia' && (
+      {(state.exchangeType !== 'trivia' || state.triviaCompleted) && (
         <motion.button
           whileHover={{ scale: canSubmit() ? 1.02 : 1 }}
           whileTap={{ scale: canSubmit() ? 0.98 : 1 }}
