@@ -67,11 +67,12 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       return apiError('USAGE_LIMIT_REACHED', 'Límite de usos alcanzado', undefined, 403);
     }
 
-    // Incrementar usedCount
+    // Incrementar usedCount y registrar fecha de último canje
     const updatedToken = await prisma.reusableToken.update({
       where: { id: tokenId },
       data: {
-        usedCount: { increment: 1 }
+        usedCount: { increment: 1 },
+        redeemedAt: new Date()
       },
       include: {
         prize: { select: { key: true, label: true, color: true } }

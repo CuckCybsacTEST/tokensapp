@@ -66,7 +66,9 @@ export async function GET(req: NextRequest) {
       startTime: token.startTime,
       endTime: token.endTime,
       createdAt: token.createdAt,
-      deliveryNote: token.deliveryNote
+      deliveryNote: token.deliveryNote,
+      redeemedAt: token.redeemedAt,
+      deliveredAt: token.deliveredAt
     }));
 
     return NextResponse.json({

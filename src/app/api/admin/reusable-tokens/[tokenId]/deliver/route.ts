@@ -83,7 +83,8 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
     const deliveredAt = new Date();
     const updateData: any = {
       deliveredAt,
-      deliveredByUserId: session.userId
+      deliveredByUserId: session.userId,
+      redeemedAt: deliveredAt
     };
 
     // Incrementar usedCount cada vez que se marca como entregado

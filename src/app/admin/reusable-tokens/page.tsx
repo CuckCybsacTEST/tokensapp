@@ -31,6 +31,8 @@ interface GroupToken {
   endTime?: string | null;
   createdAt: string;
   deliveryNote?: string | null;
+  redeemedAt?: string | null;
+  deliveredAt?: string | null;
   prize: { id: string; label: string; key: string; color?: string | null };
 }
 
@@ -46,6 +48,8 @@ interface IndividualToken {
   endTime?: string | null;
   createdAt?: string;
   deliveryNote?: string;
+  redeemedAt?: string | null;
+  deliveredAt?: string | null;
 }
 
 interface PaginationInfo {
@@ -788,6 +792,24 @@ export default function ReusableTokensAdmin() {
                                           <div className="text-xs text-slate-500 dark:text-slate-400">
                                             Expira: {new Date(token.expiresAt).toLocaleDateString('es-ES')}
                                           </div>
+                                          {(() => {
+                                            const lastDate = token.deliveredAt || token.redeemedAt;
+                                            if (lastDate) return (
+                                              <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                                                Últ. canje: {new Date(lastDate).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
+                                              </div>
+                                            );
+                                            if ((token.usedCount || 0) > 0) return (
+                                              <div className="text-xs text-amber-500 dark:text-amber-400 italic">
+                                                {token.usedCount} canjes (sin fecha registrada)
+                                              </div>
+                                            );
+                                            return (
+                                              <div className="text-xs text-slate-400 dark:text-slate-500 italic">
+                                                Sin canjes
+                                              </div>
+                                            );
+                                          })()}
                                         </div>
                                         <a
                                           href={`/reusable/${token.id}`}
@@ -1080,6 +1102,24 @@ export default function ReusableTokensAdmin() {
                           <div className="text-sm text-slate-600 dark:text-slate-400">
                             Expira: {new Date(token.expiresAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
                           </div>
+                          {(() => {
+                            const lastDate = token.deliveredAt || token.redeemedAt;
+                            if (lastDate) return (
+                              <div className="text-sm text-emerald-600 dark:text-emerald-400">
+                                Últ. canje: {new Date(lastDate).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
+                              </div>
+                            );
+                            if ((token.usedCount || 0) > 0) return (
+                              <div className="text-sm text-amber-500 dark:text-amber-400 italic">
+                                {token.usedCount} canjes (sin fecha registrada)
+                              </div>
+                            );
+                            return (
+                              <div className="text-sm text-slate-400 dark:text-slate-500 italic">
+                                Sin canjes aún
+                              </div>
+                            );
+                          })()}
                           {token.startTime && token.endTime && (
                             <div className="text-sm text-slate-600 dark:text-slate-400">
                               Horario: {new Date(token.startTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })} - {new Date(token.endTime).toLocaleTimeString('es-ES', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' })}
