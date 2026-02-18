@@ -1,6 +1,13 @@
-'use client';
-
+import { Suspense } from 'react';
 import ExchangeForm from './ExchangeForm';
+
+function ExchangeFormFallback() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function IntercambioPage() {
   return (
@@ -14,7 +21,9 @@ export default function IntercambioPage() {
             Comparte tu experiencia y obtén un premio
           </p>
         </div>
-        <ExchangeForm />
+        <Suspense fallback={<ExchangeFormFallback />}>
+          <ExchangeForm />
+        </Suspense>
       </div>
     </div>
   );
