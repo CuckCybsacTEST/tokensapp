@@ -35,6 +35,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       eventDate: inv.event.date.toISOString(),
       eventTimeSlot: inv.event.timeSlot,
       eventLocation: inv.event.location,
+      guestCategory: inv.guestCategory,
+      courtesyNote: inv.courtesyNote,
       status: inv.status,
       arrivedAt: inv.arrivedAt?.toISOString() ?? null,
       isStaff: !!isStaff,
@@ -46,8 +48,6 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       publicData.guestWhatsapp = inv.guestWhatsapp;
       publicData.guestEmail = inv.guestEmail;
       publicData.guestDni = inv.guestDni;
-      publicData.guestCategory = inv.guestCategory;
-      publicData.courtesyNote = inv.courtesyNote;
       publicData.additionalNote = inv.additionalNote;
       publicData.notes = inv.notes;
       publicData.expiresAt = inv.expiresAt?.toISOString() ?? null;

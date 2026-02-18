@@ -13,13 +13,13 @@ type InvitationData = {
   arrivedAt: string | null;
   expiresAt: string | null;
   isStaff?: boolean;
+  guestCategory?: string;
+  courtesyNote?: string;
   // Staff-only fields
   guestPhone?: string;
   guestWhatsapp?: string;
   guestEmail?: string;
   guestDni?: string;
-  guestCategory?: string;
-  courtesyNote?: string;
   additionalNote?: string;
   notes?: string;
   code?: string;
@@ -207,6 +207,23 @@ export function InvitationValidateClient({ code }: { code: string }) {
                 <div className="font-bold text-base sm:text-lg text-emerald-300">{data.eventLocation}</div>
               </div>
             )}
+
+            {/* Guest Category (public) */}
+            {data.guestCategory && data.guestCategory !== 'normal' && (
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Categoría</div>
+                {data.guestCategory === 'vip' && <span className="text-base font-semibold text-amber-300">⭐ VIP</span>}
+                {data.guestCategory === 'influencer' && <span className="text-base font-semibold text-purple-300">📸 Influencer</span>}
+              </div>
+            )}
+
+            {/* Courtesy Note (public) */}
+            {data.courtesyNote && (
+              <div className="bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Cortesía</div>
+                <div className="font-semibold text-base text-amber-200">🎁 {data.courtesyNote}</div>
+              </div>
+            )}
           </div>
 
           {/* QR Code Section for Public */}
@@ -261,17 +278,6 @@ export function InvitationValidateClient({ code }: { code: string }) {
               )}
 
               {/* Guest details */}
-              {data.guestCategory && data.guestCategory !== 'normal' && (
-                <div className="mb-2">
-                  {data.guestCategory === 'vip' && <span className="text-xs px-3 py-1 rounded-full font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">⭐ VIP</span>}
-                  {data.guestCategory === 'influencer' && <span className="text-xs px-3 py-1 rounded-full font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">📸 Influencer</span>}
-                </div>
-              )}
-              {data.courtesyNote && (
-                <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-2 text-sm">
-                  <span className="text-amber-400 font-medium">🎁 Cortesías:</span> <span className="text-amber-200">{data.courtesyNote}</span>
-                </div>
-              )}
               {data.additionalNote && (
                 <div className="text-sm"><span className="text-slate-500">📝 Nota:</span> {data.additionalNote}</div>
               )}
