@@ -18,6 +18,9 @@ type InvitationData = {
   guestWhatsapp?: string;
   guestEmail?: string;
   guestDni?: string;
+  guestCategory?: string;
+  courtesyNote?: string;
+  additionalNote?: string;
   notes?: string;
   code?: string;
   eventStats?: {
@@ -258,6 +261,20 @@ export function InvitationValidateClient({ code }: { code: string }) {
               )}
 
               {/* Guest details */}
+              {data.guestCategory && data.guestCategory !== 'normal' && (
+                <div className="mb-2">
+                  {data.guestCategory === 'vip' && <span className="text-xs px-3 py-1 rounded-full font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">⭐ VIP</span>}
+                  {data.guestCategory === 'influencer' && <span className="text-xs px-3 py-1 rounded-full font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">📸 Influencer</span>}
+                </div>
+              )}
+              {data.courtesyNote && (
+                <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-2 text-sm">
+                  <span className="text-amber-400 font-medium">🎁 Cortesías:</span> <span className="text-amber-200">{data.courtesyNote}</span>
+                </div>
+              )}
+              {data.additionalNote && (
+                <div className="text-sm"><span className="text-slate-500">📝 Nota:</span> {data.additionalNote}</div>
+              )}
               {data.guestWhatsapp && <div className="text-sm"><span className="text-slate-500">WhatsApp:</span> {data.guestWhatsapp}</div>}
               {data.guestPhone && <div className="text-sm"><span className="text-slate-500">Tel:</span> {data.guestPhone}</div>}
               {data.guestEmail && <div className="text-sm"><span className="text-slate-500">Email:</span> {data.guestEmail}</div>}
