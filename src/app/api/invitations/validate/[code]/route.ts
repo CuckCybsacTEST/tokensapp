@@ -46,6 +46,9 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       publicData.guestWhatsapp = inv.guestWhatsapp;
       publicData.guestEmail = inv.guestEmail;
       publicData.guestDni = inv.guestDni;
+      publicData.guestCategory = inv.guestCategory;
+      publicData.courtesyNote = inv.courtesyNote;
+      publicData.additionalNote = inv.additionalNote;
       publicData.notes = inv.notes;
       publicData.expiresAt = inv.expiresAt?.toISOString() ?? null;
       publicData.validatedBy = inv.validatedBy;

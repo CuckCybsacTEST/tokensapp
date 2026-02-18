@@ -10,6 +10,9 @@ const AddGuestSchema = z.object({
   guestWhatsapp: z.string().max(40).optional(),
   guestEmail: z.string().email().max(200).optional(),
   guestDni: z.string().max(40).optional(),
+  guestCategory: z.enum(['normal', 'influencer', 'vip']).optional(),
+  courtesyNote: z.string().max(500).optional(),
+  additionalNote: z.string().max(500).optional(),
   notes: z.string().max(500).optional(),
 });
 

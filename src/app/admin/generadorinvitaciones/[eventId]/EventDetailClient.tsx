@@ -51,6 +51,9 @@ type Invitation = {
   guestWhatsapp: string | null;
   guestEmail: string | null;
   guestDni: string | null;
+  guestCategory: string | null;
+  courtesyNote: string | null;
+  additionalNote: string | null;
   notes: string | null;
   code: string | null;
   status: string;
@@ -71,6 +74,9 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
   const [guestWhatsapp, setGuestWhatsapp] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestDni, setGuestDni] = useState("");
+  const [guestCategory, setGuestCategory] = useState("");
+  const [courtesyNote, setCourtesyNote] = useState("");
+  const [additionalNote, setAdditionalNote] = useState("");
   const [guestNotes, setGuestNotes] = useState("");
   const [addingGuest, setAddingGuest] = useState(false);
 
@@ -136,6 +142,9 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
       if (guestWhatsapp.trim()) payload.guestWhatsapp = guestWhatsapp.trim();
       if (guestEmail.trim()) payload.guestEmail = guestEmail.trim();
       if (guestDni.trim()) payload.guestDni = guestDni.trim();
+      if (guestCategory) payload.guestCategory = guestCategory;
+      if (courtesyNote.trim()) payload.courtesyNote = courtesyNote.trim();
+      if (additionalNote.trim()) payload.additionalNote = additionalNote.trim();
       if (guestNotes.trim()) payload.notes = guestNotes.trim();
 
       const res = await fetch(`/api/admin/invitations/${eventId}/guests`, {
@@ -145,7 +154,7 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j?.message || j?.code || 'Error');
-      setGuestName(""); setGuestPhone(""); setGuestWhatsapp(""); setGuestEmail(""); setGuestDni(""); setGuestNotes("");
+      setGuestName(""); setGuestPhone(""); setGuestWhatsapp(""); setGuestEmail(""); setGuestDni(""); setGuestCategory(""); setCourtesyNote(""); setAdditionalNote(""); setGuestNotes("");
       await loadData();
     } catch (e: any) { setErr(String(e?.message || e)); }
     finally { setAddingGuest(false); }
@@ -409,6 +418,7 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                     <tr className="border-b border-slate-200 dark:border-slate-700 text-left text-xs text-slate-500 uppercase">
                       <th className="px-3 py-2">QR</th>
                       <th className="px-3 py-2">Nombre</th>
+                      <th className="px-3 py-2">Categoría</th>
                       <th className="px-3 py-2">WhatsApp</th>
                       <th className="px-3 py-2">DNI</th>
                       <th className="px-3 py-2">Estado</th>
@@ -430,7 +440,19 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                             <span className="text-xs text-slate-400">—</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-100">{g.guestName}</td>
+                        <td className="px-3 py-2">
+                          <div>
+                            <span className="font-medium text-slate-800 dark:text-slate-100">{g.guestName}</span>
+                            {g.courtesyNote && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">🎁 {g.courtesyNote}</p>}
+                            {g.additionalNote && <p className="text-[10px] text-slate-400 mt-0.5">📝 {g.additionalNote}</p>}
+                            {g.notes && <p className="text-[10px] text-slate-400 italic mt-0.5">{g.notes}</p>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {g.guestCategory === 'vip' && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">⭐ VIP</span>}
+                          {g.guestCategory === 'influencer' && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">📸 Influencer</span>}
+                          {(!g.guestCategory || g.guestCategory === 'normal') && <span className="text-[10px] text-slate-400">Normal</span>}
+                        </td>
                         <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{g.guestWhatsapp || g.guestPhone || '—'}</td>
                         <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{g.guestDni || '—'}</td>
                         <td className="px-3 py-2">
@@ -505,8 +527,26 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                     <input className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Documento" value={guestDni} onChange={e => setGuestDni(e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Notas</label>
-                    <input className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Notas adicionales" value={guestNotes} onChange={e => setGuestNotes(e.target.value)} />
+                    <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Categoría</label>
+                    <select className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={guestCategory} onChange={e => setGuestCategory(e.target.value)}>
+                      <option value="">Normal</option>
+                      <option value="influencer">Influencer</option>
+                      <option value="vip">VIP</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Cortesías</label>
+                    <input className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Ej: 1 botella Red Label, mesa VIP..." value={courtesyNote} onChange={e => setCourtesyNote(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Nota adicional</label>
+                    <input className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Apunte extra..." value={additionalNote} onChange={e => setAdditionalNote(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Notas internas</label>
+                    <input className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white" placeholder="Notas del admin" value={guestNotes} onChange={e => setGuestNotes(e.target.value)} />
                   </div>
                 </div>
                 <div className="flex justify-end">

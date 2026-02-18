@@ -1515,6 +1515,9 @@ model SpecialInvitation {
   guestWhatsapp String?
   guestEmail    String?
   guestDni      String?
+  guestCategory  String?                 // normal | influencer | vip (null = normal)
+  courtesyNote   String?                 // cortesías ofrecidas (texto libre)
+  additionalNote String?                 // apunte adicional
   notes         String?
   code          String?                 @unique // código QR, se genera después
   claim         String?                 // JWT firmado

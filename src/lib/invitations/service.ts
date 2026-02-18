@@ -145,6 +145,9 @@ export type AddGuestInput = {
   guestWhatsapp?: string;
   guestEmail?: string;
   guestDni?: string;
+  guestCategory?: string;
+  courtesyNote?: string;
+  additionalNote?: string;
   notes?: string;
 };
 
@@ -168,6 +171,9 @@ export async function addGuest(eventId: string, input: AddGuestInput) {
       guestWhatsapp: input.guestWhatsapp ?? null,
       guestEmail: input.guestEmail ?? null,
       guestDni: input.guestDni ?? null,
+      guestCategory: input.guestCategory ?? null,
+      courtesyNote: input.courtesyNote ?? null,
+      additionalNote: input.additionalNote ?? null,
       notes: input.notes ?? null,
       status: 'pending',
     },
@@ -202,6 +208,9 @@ export async function updateGuest(invitationId: string, data: Partial<AddGuestIn
       ...(data.guestWhatsapp !== undefined && { guestWhatsapp: data.guestWhatsapp ?? null }),
       ...(data.guestEmail !== undefined && { guestEmail: data.guestEmail ?? null }),
       ...(data.guestDni !== undefined && { guestDni: data.guestDni ?? null }),
+      ...(data.guestCategory !== undefined && { guestCategory: data.guestCategory ?? null }),
+      ...(data.courtesyNote !== undefined && { courtesyNote: data.courtesyNote ?? null }),
+      ...(data.additionalNote !== undefined && { additionalNote: data.additionalNote ?? null }),
       ...(data.notes !== undefined && { notes: data.notes ?? null }),
     },
   });
