@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     if (validity?.type === 'expires_at' && validity.expiresAt) {
       // Parse the provided date as Lima timezone
-      expiresAt = DateTime.fromISO(validity.expiresAt).setZone('America/Lima').toJSDate();
+      expiresAt = DateTime.fromISO(validity.expiresAt, { zone: 'America/Lima' }).toJSDate();
     } else if (validity?.type === 'duration_days' && validity.durationDays) {
       expiresAt = DateTime.now().setZone('America/Lima').plus({ days: validity.durationDays }).toJSDate();
     } else if (validity?.type === 'time_window' && validity.startTime && validity.endTime) {
