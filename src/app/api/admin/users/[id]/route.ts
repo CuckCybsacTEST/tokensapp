@@ -51,7 +51,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'STAFF']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const id = params.id;
@@ -65,6 +65,20 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     await prisma.$transaction(async (tx) => {
       // Delete any password reset OTPs referencing this user (FK may block otherwise)
       await tx.$executeRawUnsafe('DELETE FROM "PasswordResetOtp" WHERE "userId"=$1', user.id);
+      // Delete commitment assignments
+      await tx.commitmentAssignment.deleteMany({ where: { userId: user.id } });
+      // Delete ticket purchases
+      await tx.ticketPurchase.deleteMany({ where: { userId: user.id } });
+      // Delete offer purchases
+      await tx.offerPurchase.deleteMany({ where: { userId: user.id } });
+      // Delete task comments
+      await tx.taskComment.deleteMany({ where: { userId: user.id } });
+      // Delete checklist task comments
+      await tx.checklistTaskComment.deleteMany({ where: { userId: user.id } });
+      // Delete checklist comments
+      await tx.checklistComment.deleteMany({ where: { userId: user.id } });
+      // Delete brief acceptances for the person
+      await tx.briefAcceptance.deleteMany({ where: { personId: user.personId } });
       // Delete task statuses updated by this user (foreign relation)
       await tx.personTaskStatus.deleteMany({ where: { updatedBy: user.id } });
       // Delete scans and task statuses for the person
@@ -77,7 +91,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     await audit('ADMIN_USER_DELETE', undefined, { id, username: user.username, personCode: user.person.code });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ data: { id: user.id } });
   } catch (e: any) {
     console.error('admin delete user error', e);
     return NextResponse.json({ ok: false, code: 'INTERNAL', message: String(e?.message || e) }, { status: 500 });
