@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -146,6 +146,9 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
   const router = useRouter();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["TOKENS RULETA"]));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const scrollPosRef = useRef<number>(0);
+  const isNavigatingRef = useRef(false);
 
   // Configuración dinámica basada en basePath
   const getSidebarGroups = (basePath: 'admin' | 'u'): SidebarGroup[] => {
@@ -361,6 +364,18 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
       newExpanded.add(groupTitle);
     }
     setExpandedGroups(newExpanded);
+    // After expanding, scroll the group header into view
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`sidebar-group-${groupTitle.replace(/\s+/g, '-')}`);
+      if (el && navRef.current) {
+        const navRect = navRef.current.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        // Only scroll if the group header is near the bottom edge of the nav
+        if (elRect.bottom > navRect.bottom - 60) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    });
   };
 
   const handleGroupClick = (groupTitle: string) => {
@@ -375,7 +390,9 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
   const isItemActive = (href: string) => {
     if (href === "#") return false;
     if (!pathname) return false;
-    return pathname === href || pathname.startsWith(href + "/");
+    // Strip query params for comparison (pathname never has them)
+    const hrefPath = href.split('?')[0].split('#')[0];
+    return pathname === hrefPath || pathname.startsWith(hrefPath + "/");
   };
 
   const isGroupActive = (group: SidebarGroup) => {
@@ -402,6 +419,11 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
 
   // Ensure the group for the current route is expanded so the active item is visible/highlighted
   useEffect(() => {
+    // Save scroll position before any state change
+    if (navRef.current) {
+      scrollPosRef.current = navRef.current.scrollTop;
+      isNavigatingRef.current = true;
+    }
     const next = new Set(expandedGroups);
     sidebarGroups.forEach((group) => {
       if (group.items.some((it) => isItemActive(it.href))) {
@@ -414,6 +436,14 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, basePath]);
+
+  // Restore scroll position after re-render caused by navigation
+  useEffect(() => {
+    if (isNavigatingRef.current && navRef.current) {
+      navRef.current.scrollTop = scrollPosRef.current;
+      isNavigatingRef.current = false;
+    }
+  });
 
   return (
     <div className={cn(
@@ -486,10 +516,10 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4">
+      <nav ref={navRef} className="flex-1 overflow-y-auto py-4 scroll-smooth">
         <div className="space-y-2 px-3">
           {sidebarGroups.map((group) => (
-            <div key={group.title} className="space-y-1">
+            <div key={group.title} id={`sidebar-group-${group.title.replace(/\s+/g, '-')}`} className="space-y-1">
               {/* Group Header */}
               {group.title === "UPGRADE" ? (
                 <button

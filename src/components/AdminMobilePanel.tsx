@@ -452,7 +452,8 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
   const isItemActive = (href: string) => {
     if (href === "#") return false;
     if (!pathname) return false;
-    return pathname === href || pathname.startsWith(href + "/");
+    const hrefPath = href.split('?')[0].split('#')[0];
+    return pathname === hrefPath || pathname.startsWith(hrefPath + "/");
   };
 
   return (
