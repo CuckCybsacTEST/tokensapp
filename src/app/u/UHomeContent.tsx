@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import AutoAttendanceCard from './AutoAttendanceCard';
+import SharedAutoAttendanceCard from '@/components/attendance/SharedAutoAttendanceCard';
 import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock } from '@tabler/icons-react';
 
 type SessionData = {
@@ -46,6 +46,14 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
         0% { transform: translateY(0); }
         50% { transform: translateY(-3px); }
         100% { transform: translateY(0); }
+      }
+      @keyframes fabPing {
+        0%   { transform: scale(1);   opacity: .55; }
+        70%  { transform: scale(1.55); opacity: 0; }
+        100% { transform: scale(1.55); opacity: 0; }
+      }
+      .animate-fab-ping {
+        animation: fabPing 2.4s cubic-bezier(0,.6,.4,1) infinite;
       }
     `;
     document.head.appendChild(style);
@@ -92,7 +100,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           {/* Contenido de las pestañas */}
           {activeTab === 'personal' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
-              <AutoAttendanceCard initialLastType={lastType} />
+              <SharedAutoAttendanceCard initialLastType={lastType} basePath="/u" />
 
               <Link href="/u/profile" className="block rounded-lg border border-blue-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-blue-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
@@ -204,11 +212,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
       {session.role === 'STAFF' && (
         <Link
           href="/u/scanner"
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
+          className="fab-scanner fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
           aria-label="Abrir escáner QR"
         >
           <IconQrcode className="w-6 h-6" />
           <span className="text-sm font-semibold hidden sm:inline">Escáner</span>
+          {/* Ping ring micro-animation */}
+          <span className="pointer-events-none absolute inset-0 rounded-full animate-fab-ping bg-teal-400/40" aria-hidden="true" />
         </Link>
       )}
 

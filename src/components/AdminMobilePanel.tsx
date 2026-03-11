@@ -41,7 +41,7 @@ function AdminLogoutButton() {
 }
 
 // Dynamic import to avoid SSR issues
-const AutoAttendanceCard = dynamic(() => import('@/app/admin/AutoAttendanceCard'), { ssr: false });
+const SharedAutoAttendanceCard = dynamic(() => import('@/components/attendance/SharedAutoAttendanceCard'), { ssr: false });
 
 // Icon constants to reduce duplication
 const ICONS = {
@@ -621,7 +621,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
               {(group.title === "MARCAR ENTRADA/SALIDA" || (activeTab === 'purge' ? false : expandedGroups.has(group.title) && !group.title.includes("PERSONALIZACIÓN APP UPGRADE") && !group.title.includes("DISPONIBLE CON UN UPGRADE") && !group.title.includes("PEDIDOS MUSICALES UPGRADE") && !group.title.includes("GESTIÓN DE FIDELIDAD UPGRADE") && !group.title.includes("GESTIÓN WIFI UPGRADE"))) && (
                 <div className="p-3 sm:p-4">
                   {group.title === "MARCAR ENTRADA/SALIDA" ? (
-                    <AutoAttendanceCard showDynamicTitle={false} />
+                    <SharedAutoAttendanceCard showDynamicTitle={false} basePath="/admin" />
                   ) : (
                     <div className="space-y-2">
                       {group.items.map((item, itemIndex) => (

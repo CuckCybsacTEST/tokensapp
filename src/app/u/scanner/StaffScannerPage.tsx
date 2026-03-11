@@ -8,8 +8,6 @@ import {
   IconCamera,
   IconCameraOff,
   IconHistory,
-  IconLogin,
-  IconLogout,
   IconPhoto,
   IconRefresh,
   IconTrash,
@@ -17,52 +15,16 @@ import {
 } from "@tabler/icons-react";
 type Result = { getText(): string };
 
-type Person = { id: string; name: string; code: string };
-type ScanOk = { ok: true; person: Person; scanId?: string; alerts?: string[] };
-type ScanErr = {
-  ok: false;
-  code:
-    | "BAD_REQUEST"
-    | "RATE_LIMIT"
-    | "INVALID_VERSION"
-    | "INVALID_SIGNATURE"
-    | "INVALID_TS"
-    | "FUTURE_TS"
-    | "STALE"
-    | "PERSON_NOT_FOUND"
-    | "PERSON_INACTIVE"
-    | "DUPLICATE"
-    | "REPLAY"
-    | string;
-  person?: Person;
-  lastScanAt?: string;
-  alerts?: string[];
-};
-
-type PersonQrPayload = { pid: string; ts: string; v?: number; sig: string };
-type Mode = "IN" | "OUT";
-type GlobalQrPayload = { kind: "GLOBAL"; mode: Mode; v?: number };
-
 type ScanHistoryEntry = {
   id: string;
   ts: number;
-  type: "person" | "offer" | "birthday" | "invitation" | "reusable" | "global" | "error";
+  type: "offer" | "birthday" | "invitation" | "reusable" | "error";
   label: string;
   detail?: string;
   variant: "success" | "error" | "info";
 };
 
 // Small helpers --------------------------------------------------------------
-function ensureDeviceId(): string {
-  const key = "scannerDeviceId";
-  let v = localStorage.getItem(key);
-  if (!v) {
-    v = crypto.randomUUID();
-    localStorage.setItem(key, v);
-  }
-  return v;
-}
-
 function base64UrlToJson<T = unknown>(s: string): T | null {
   try {
     const pad = s.length % 4 === 2 ? "==" : s.length % 4 === 3 ? "=" : "";
@@ -74,30 +36,22 @@ function base64UrlToJson<T = unknown>(s: string): T | null {
   }
 }
 
-function decodePersonPayloadFromQr(text: string): PersonQrPayload | null {
-  // Try as JSON directly
+function isPersonQr(text: string): boolean {
   try {
     const j = JSON.parse(text);
-    if (j && typeof j === "object" && j.pid && j.ts && j.sig) return j as PersonQrPayload;
+    if (j && typeof j === "object" && j.pid && j.ts && j.sig) return true;
   } catch {}
-  // Try base64url encoded JSON
-  const j = base64UrlToJson<PersonQrPayload>(text);
-  if (j && j.pid && j.ts && j.sig) return j;
-  return null;
+  const j = base64UrlToJson<{ pid: string; ts: string; sig: string }>(text);
+  return !!(j && j.pid && j.ts && j.sig);
 }
 
-function decodeGlobalModeFromQr(text: string): Mode | null {
-  // Try JSON direct
+function isGlobalQr(text: string): boolean {
   try {
     const j = JSON.parse(text);
-    if (j && typeof j === "object" && j.kind === "GLOBAL" && (j.mode === "IN" || j.mode === "OUT")) {
-      return j.mode as Mode;
-    }
+    if (j && typeof j === "object" && j.kind === "GLOBAL") return true;
   } catch {}
-  // Try base64url JSON
-  const j = base64UrlToJson<GlobalQrPayload>(text);
-  if (j && j.kind === "GLOBAL" && (j.mode === "IN" || j.mode === "OUT")) return j.mode;
-  return null;
+  const j = base64UrlToJson<{ kind: string }>(text);
+  return !!(j && j.kind === "GLOBAL");
 }
 
 function decodeOfferQrFromText(text: string): { type: string; purchaseId: string; qrCode: string } | null {
@@ -159,7 +113,6 @@ export default function StaffScannerPage() {
   const [cameraActive, setCameraActive] = useState(true);
 
   const [banner, setBanner] = useState<{ variant: "success" | "error"; message: string } | null>(null);
-  const [overlay, setOverlay] = useState<{ person: Person; lastScanAt?: string } | null>(null);
   const [offerOverlay, setOfferOverlay] = useState<{
     purchase: { customerName: string; amount: number; createdAt: string };
     offer: { title: string; price: number };
@@ -168,9 +121,7 @@ export default function StaffScannerPage() {
     canComplete?: boolean;
   } | null>(null);
   const [overlayHideTimeout, setOverlayHideTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [mode, setMode] = useState<Mode>("IN");
-  const [awaitingCode, setAwaitingCode] = useState<boolean>(false);
-  const [code, setCode] = useState<string>("");
+
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [scanCount, setScanCount] = useState({ total: 0, success: 0, error: 0 });
@@ -216,21 +167,23 @@ export default function StaffScannerPage() {
   const processDecodedText = useCallback(async (text: string) => {
     if (!text) return;
     if (processingRef.current || inCooldown) return;
-    // If we're awaiting code entry from a GLOBAL QR selection, ignore further scans temporarily
-    if (awaitingCode) return;
     processingRef.current = true;
 
-    // 1) Detect GLOBAL QR (posters): just set mode and ask for code entry
-    const globalMode = decodeGlobalModeFromQr(text);
-    if (globalMode) {
-      setMode(globalMode);
-      setAwaitingCode(true);
-      setCode("");
-      const human = globalMode === "IN" ? "Entrada" : "Salida";
-      addHistory({ type: "global", label: `Modo ${human}`, variant: "info" });
-      setBanner({ variant: "success", message: `${human} seleccionado. Ingresa el código y presiona Registrar.` });
-      beep(660, 120, "sine");
-      vibrate(40);
+    // 1) Detect GLOBAL QR (attendance posters) — this scanner does NOT handle attendance
+    if (isGlobalQr(text)) {
+      setBanner({ variant: "error", message: "Este escáner no registra asistencia. Usa el escáner de Entrada/Salida." });
+      beep(220, 100, "square");
+      vibrate(80);
+      setCooldownUntil(Date.now() + 1500);
+      processingRef.current = false;
+      return;
+    }
+
+    // 1.5) Detect PERSON QR (attendance) — this scanner does NOT handle attendance
+    if (isPersonQr(text)) {
+      setBanner({ variant: "error", message: "QR de asistencia detectado. Usa el escáner de Entrada/Salida para registrar." });
+      beep(220, 100, "square");
+      vibrate(80);
       setCooldownUntil(Date.now() + 1500);
       processingRef.current = false;
       return;
@@ -387,87 +340,14 @@ export default function StaffScannerPage() {
       // Not a URL, continue with normal processing
     }
 
-    const payload = decodePersonPayloadFromQr(text);
-    if (!payload) {
-      addHistory({ type: "error", label: "QR inválido", variant: "error" });
-      setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });
-      beep(220, 150, "square");
-      vibrate(120);
-      setCooldownUntil(Date.now() + 800);
-      processingRef.current = false;
-      return;
-    }
-
-    // 4) Process PERSON QR: scan attendance
-
-    const deviceId = ensureDeviceId();
-    try {
-      const res = await fetch("/api/scanner/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payload, type: mode, deviceId }),
-      });
-      const json: (ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string }) | ScanErr = await res.json();
-      if ((json as ScanOk).ok) {
-        const ok = json as ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string };
-        setOverlay({ person: ok.person });
-        if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
-        setOverlayHideTimeout(setTimeout(() => setOverlay(null), 3000));
-        const human = mode === "IN" ? "Entrada registrada" : "Salida registrada";
-        const already = ok.alerts?.includes('already_marked');
-        const sameDir = ok.alerts?.includes('same_direction');
-        const extraAlready = already ? ` · Ya estaba registrada hoy${ok.alreadyMarkedAt ? ` (${new Date(ok.alreadyMarkedAt).toLocaleTimeString()})` : ''}` : '';
-        const extraSame = !already && sameDir ? ` · Nota: misma dirección que tu última marca${ok.lastSameAt ? ` (${new Date(ok.lastSameAt).toLocaleTimeString()})` : ''}` : '';
-        addHistory({ type: "person", label: `${human}: ${ok.person.name}`, detail: ok.person.code, variant: "success" });
-        setBanner({ variant: "success", message: `${human}: ${ok.person.name} (${ok.person.code})${extraAlready}${extraSame}` });
-        beep(880, 120, "sine");
-        vibrate(60);
-        setCooldownUntil(Date.now() + 1200);
-      } else {
-        const err = json as ScanErr;
-        // Map backend codes to UX messages
-        let msg = err.code;
-        if (
-          err.code === "INVALID_SIGNATURE" ||
-          err.code === "INVALID_VERSION" ||
-          err.code === "STALE" ||
-          err.code === "FUTURE_TS" ||
-          err.code === "INVALID_TS"
-        ) {
-          msg = "INVALID_QR";
-        }
-        if (err.code === "DUPLICATE") msg = "REPLAY"; // align with UX wording
-
-        if (err.person) setOverlay({ person: err.person, lastScanAt: err.lastScanAt });
-
-        let human = "Error";
-        if (msg === "INVALID_QR") human = "QR inválido";
-        else if (msg === "REPLAY") human = `Duplicado. Último: ${err.lastScanAt ? new Date(err.lastScanAt).toLocaleTimeString() : "hace <10s"}`;
-        else if (msg === "PERSON_INACTIVE") human = "Persona inactiva";
-        else if (err.code === "RATE_LIMIT") human = "Límite de velocidad alcanzado";
-        else human = msg;
-
-        addHistory({ type: "person", label: human, detail: err.person?.code, variant: "error" });
-
-        setBanner({ variant: "error", message: human });
-        beep(220, 150, "square");
-        vibrate(120);
-        setCooldownUntil(Date.now() + 1000);
-      }
-    } catch (e: any) {
-      setBanner({ variant: "error", message: `Fallo de red: ${String(e?.message || e)}` });
-      beep(220, 150, "square");
-      vibrate(120);
-      setCooldownUntil(Date.now() + 1000);
-    } finally {
-      processingRef.current = false;
-    }
-  }, [inCooldown, mode, awaitingCode, addHistory]);
-
-  const handleResult = useCallback((result: Result) => {
-    if (!result) return;
-    processDecodedText(result.getText());
-  }, [processDecodedText]);
+    // Unrecognized QR
+    addHistory({ type: "error", label: "QR no reconocido", variant: "error" });
+    setBanner({ variant: "error", message: "QR no reconocido por este escáner" });
+    beep(220, 150, "square");
+    vibrate(120);
+    setCooldownUntil(Date.now() + 800);
+    processingRef.current = false;
+  }, [inCooldown, addHistory]);
 
   const onFileSelect = useCallback(async (file: File | null) => {
     if (!file) return;
@@ -488,53 +368,6 @@ export default function StaffScannerPage() {
     };
     reader.readAsDataURL(file);
   }, [processDecodedText]);
-
-  const submitCode = useCallback(async () => {
-    const normalized = code.trim().toUpperCase();
-    if (normalized.length < 4) return;
-    const deviceId = ensureDeviceId();
-    try {
-      const res = await fetch("/api/scanner/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: normalized, type: mode, deviceId }),
-      });
-      const json: (ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string }) | ScanErr = await res.json();
-      if ((json as ScanOk).ok) {
-        const ok = json as ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string };
-        if (ok.person) setOverlay({ person: ok.person });
-        const human = mode === "IN" ? "Entrada registrada" : "Salida registrada";
-        const who = ok.person ? `: ${ok.person.name} (${ok.person.code})` : "";
-        const already = ok.alerts?.includes('already_marked');
-        const sameDir = ok.alerts?.includes('same_direction');
-        const extraAlready = already ? ` · Ya estaba registrada hoy${ok.alreadyMarkedAt ? ` (${new Date(ok.alreadyMarkedAt).toLocaleTimeString()})` : ''}` : '';
-        const extraSame = !already && sameDir ? ` · Nota: misma dirección que la última marca${ok.lastSameAt ? ` (${new Date(ok.lastSameAt).toLocaleTimeString()})` : ''}` : '';
-        setBanner({ variant: "success", message: `${human}${who}${extraAlready}${extraSame}` });
-        beep(880, 120, "sine");
-        vibrate(60);
-        setAwaitingCode(false);
-        setCode("");
-        setCooldownUntil(Date.now() + 800);
-      } else {
-        const err = json as ScanErr;
-        let msg = err.code;
-        if (err.code === "DUPLICATE") msg = "REPLAY";
-        let human = "Error";
-        if (msg === "REPLAY") human = `Duplicado. Último: ${err.lastScanAt ? new Date(err.lastScanAt).toLocaleTimeString() : "hace <10s"}`;
-        else if (msg === "PERSON_INACTIVE") human = "Persona inactiva";
-        else if (err.code === "RATE_LIMIT") human = "Límite de velocidad alcanzado";
-        else if (err.code === "BAD_REQUEST") human = "Formato no soportado (pendiente backend)";
-        else human = msg;
-        setBanner({ variant: "error", message: human });
-        beep(220, 150, "square");
-        vibrate(120);
-      }
-    } catch (e: any) {
-      setBanner({ variant: "error", message: `Fallo de red: ${String(e?.message || e)}` });
-      beep(220, 150, "square");
-      vibrate(120);
-    }
-  }, [code, mode]);
 
   useEffect(() => {
     return () => {
@@ -630,23 +463,6 @@ export default function StaffScannerPage() {
       <div className="w-full max-w-2xl mx-auto flex flex-col lg:flex-row gap-3">
         {/* Main scanner column */}
         <div className="flex-1 min-w-0">
-          {/* Mode toggle — always visible */}
-          <div className="mb-3 flex items-center justify-center gap-1 rounded-xl bg-gray-100 dark:bg-slate-700/60 p-1">
-            <button
-              onClick={() => { setMode("IN"); setAwaitingCode(false); setCode(""); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${mode === "IN" ? "bg-green-500 text-white shadow" : "text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600"}`}
-            >
-              <IconLogin size={16} />
-              Entrada
-            </button>
-            <button
-              onClick={() => { setMode("OUT"); setAwaitingCode(false); setCode(""); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${mode === "OUT" ? "bg-amber-500 text-white shadow" : "text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600"}`}
-            >
-              <IconLogout size={16} />
-              Salida
-            </button>
-          </div>
 
           {/* Banner */}
           {banner && (
@@ -664,44 +480,12 @@ export default function StaffScannerPage() {
             </div>
           )}
 
-          {/* Code entry from GLOBAL QR */}
-          {awaitingCode && (
-            <div className="mb-3 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow">
-              <div className="mb-2 text-sm text-gray-600 dark:text-slate-400 font-medium text-center">
-                Ingresa código manualmente
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="Código"
-                  className="flex-1 text-center text-base font-bold rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:border-teal-500 focus:ring-1 focus:ring-teal-400 outline-none"
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCode(); } }}
-                />
-                <button
-                  className="px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold text-sm shadow hover:bg-teal-700 disabled:opacity-40 transition-colors"
-                  disabled={code.trim().length < 4}
-                  onClick={submitCode}
-                >
-                  OK
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-500 dark:text-slate-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                  onClick={() => { setAwaitingCode(false); setCode(""); }}
-                >
-                  <IconX size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Camera viewport */}
           <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl border-2 border-gray-200 dark:border-slate-600 bg-black shadow-lg">
             <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
 
             {/* Scanning guides */}
-            {!overlay && !offerOverlay && !cameraError && cameraActive && (
+            {!offerOverlay && !cameraError && cameraActive && (
               <div className="pointer-events-none absolute inset-0">
                 {/* Corner brackets */}
                 <div className="absolute left-4 top-4 h-8 w-8 border-l-[3px] border-t-[3px] border-teal-400 rounded-tl-lg" />
@@ -710,10 +494,6 @@ export default function StaffScannerPage() {
                 <div className="absolute right-4 bottom-4 h-8 w-8 border-r-[3px] border-b-[3px] border-teal-400 rounded-br-lg" />
                 {/* Scan line animation */}
                 <div className="absolute left-6 right-6 top-1/2 h-0.5 bg-teal-400/50 animate-pulse" />
-                {/* Mode badge */}
-                <div className={`absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${mode === "IN" ? "bg-green-500/80 text-white" : "bg-amber-500/80 text-white"}`}>
-                  {mode === "IN" ? "ENTRADA" : "SALIDA"}
-                </div>
               </div>
             )}
 
@@ -722,21 +502,6 @@ export default function StaffScannerPage() {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white">
                 <IconCameraOff size={48} className="opacity-40 mb-3" />
                 <p className="text-sm opacity-60">Cámara pausada</p>
-              </div>
-            )}
-
-            {/* Person overlay */}
-            {overlay && (
-              <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-4 px-4 pt-4 text-white rounded-2xl">
-                <div className="min-w-0 flex-1">
-                  <div className="text-lg font-bold leading-tight drop-shadow-lg truncate">{overlay.person.name}</div>
-                  <div className="text-sm opacity-90 font-mono truncate">{overlay.person.code}</div>
-                </div>
-                {overlay.lastScanAt && (
-                  <div className="text-right text-xs opacity-90 ml-2 flex-shrink-0">
-                    Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
-                  </div>
-                )}
               </div>
             )}
 
@@ -841,7 +606,6 @@ export default function StaffScannerPage() {
           {/* Supported QR types info */}
           <div className="mt-3 px-1">
             <div className="flex flex-wrap gap-1.5 justify-center text-[10px] font-medium text-gray-500 dark:text-slate-500">
-              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">👤 Asistencia</span>
               <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎁 Ofertas</span>
               <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎂 Cumpleaños</span>
               <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎟️ Invitaciones</span>

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { IconQrcode } from "@tabler/icons-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import AdminMobilePanel from "@/components/AdminMobilePanel";
 import { AdminMobileHeader } from "@/components/AdminMobileHeader";
@@ -120,6 +122,23 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
   // Check if we're on mobile after hydration
   const isMobileView = isMobile();
   const isAdminRoot = pathname && pathname.startsWith('/admin') && !pathname.includes('/admin/');
+  const isOnScanner = pathname === '/admin/scanner' || pathname === '/admin/assistance';
+
+  // FAB Scanner element — shared across layouts
+  const fabScanner = !isOnScanner && hasSession ? (
+    <>
+      <Link
+        href="/admin/scanner"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
+        aria-label="Abrir escáner QR"
+      >
+        <IconQrcode className="w-6 h-6" />
+        <span className="text-sm font-semibold hidden sm:inline">Escáner</span>
+        <span className="pointer-events-none absolute inset-0 rounded-full animate-[fabPing_2.4s_cubic-bezier(0,.6,.4,1)_infinite] bg-teal-400/40" aria-hidden="true" />
+      </Link>
+      <style jsx global>{`@keyframes fabPing{0%{transform:scale(1);opacity:.55}70%{transform:scale(1.55);opacity:0}100%{transform:scale(1.55);opacity:0}}`}</style>
+    </>
+  ) : null;
 
   // For all admin pages (including root), use the same layout logic
   // Only show AdminMobilePanel for the root page on mobile
@@ -127,6 +146,7 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
     return (
       <div className="block md:hidden">
         <AdminMobilePanel basePath={basePath} userInfo={userInfo} />
+        {fabScanner}
       </div>
     );
   }
@@ -207,6 +227,7 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
         <main className={`flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 ${(title || (breadcrumbs && breadcrumbs.length > 0) || (isMobileView && hasSession)) ? '' : 'pt-8'}`}>
           {children}
         </main>
+        {fabScanner}
       </div>
     </div>
   );
