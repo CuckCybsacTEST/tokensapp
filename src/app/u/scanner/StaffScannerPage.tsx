@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { verifyBirthdayClaim, type BirthdayClaim } from "@/lib/birthdays/token";
+import {
+  IconArrowLeft,
+  IconCamera,
+  IconCameraOff,
+  IconHistory,
+  IconLogin,
+  IconLogout,
+  IconPhoto,
+  IconRefresh,
+  IconTrash,
+  IconX,
+} from "@tabler/icons-react";
 type Result = { getText(): string };
 
 type Person = { id: string; name: string; code: string };
@@ -30,6 +42,15 @@ type ScanErr = {
 type PersonQrPayload = { pid: string; ts: string; v?: number; sig: string };
 type Mode = "IN" | "OUT";
 type GlobalQrPayload = { kind: "GLOBAL"; mode: Mode; v?: number };
+
+type ScanHistoryEntry = {
+  id: string;
+  ts: number;
+  type: "person" | "offer" | "birthday" | "invitation" | "reusable" | "global" | "error";
+  label: string;
+  detail?: string;
+  variant: "success" | "error" | "info";
+};
 
 // Small helpers --------------------------------------------------------------
 function ensureDeviceId(): string {
@@ -135,6 +156,7 @@ export default function StaffScannerPage() {
   const processingRef = useRef(false);
   const [cooldownUntil, setCooldownUntil] = useState<number>(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(true);
 
   const [banner, setBanner] = useState<{ variant: "success" | "error"; message: string } | null>(null);
   const [overlay, setOverlay] = useState<{ person: Person; lastScanAt?: string } | null>(null);
@@ -149,8 +171,47 @@ export default function StaffScannerPage() {
   const [mode, setMode] = useState<Mode>("IN");
   const [awaitingCode, setAwaitingCode] = useState<boolean>(false);
   const [code, setCode] = useState<string>("");
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [scanCount, setScanCount] = useState({ total: 0, success: 0, error: 0 });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const inCooldown = useMemo(() => Date.now() < cooldownUntil, [cooldownUntil]);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("staffScanHistory");
+      if (stored) {
+        const parsed = JSON.parse(stored) as ScanHistoryEntry[];
+        if (Array.isArray(parsed)) {
+          setScanHistory(parsed.slice(0, 50));
+          const s = parsed.reduce((a, e) => ({ total: a.total + 1, success: a.success + (e.variant === "success" ? 1 : 0), error: a.error + (e.variant === "error" ? 1 : 0) }), { total: 0, success: 0, error: 0 });
+          setScanCount(s);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const addHistory = useCallback((entry: Omit<ScanHistoryEntry, "id" | "ts">) => {
+    const newEntry: ScanHistoryEntry = { ...entry, id: crypto.randomUUID(), ts: Date.now() };
+    setScanHistory((prev) => {
+      const next = [newEntry, ...prev].slice(0, 50);
+      try { localStorage.setItem("staffScanHistory", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setScanCount((prev) => ({
+      total: prev.total + 1,
+      success: prev.success + (entry.variant === "success" ? 1 : 0),
+      error: prev.error + (entry.variant === "error" ? 1 : 0),
+    }));
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setScanHistory([]);
+    setScanCount({ total: 0, success: 0, error: 0 });
+    try { localStorage.removeItem("staffScanHistory"); } catch {}
+  }, []);
 
   const processDecodedText = useCallback(async (text: string) => {
     if (!text) return;
@@ -166,6 +227,7 @@ export default function StaffScannerPage() {
       setAwaitingCode(true);
       setCode("");
       const human = globalMode === "IN" ? "Entrada" : "Salida";
+      addHistory({ type: "global", label: `Modo ${human}`, variant: "info" });
       setBanner({ variant: "success", message: `${human} seleccionado. Ingresa el código y presiona Registrar.` });
       beep(660, 120, "sine");
       vibrate(40);
@@ -200,9 +262,9 @@ export default function StaffScannerPage() {
             purchaseId: json.purchase.purchaseId,
             canComplete: json.purchase.status === 'PENDING'
           });
-          // Hide overlay after 10 seconds for offers (longer than person overlays)
           if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
           setOverlayHideTimeout(setTimeout(() => setOfferOverlay(null), 10000));
+          addHistory({ type: "offer", label: `Oferta: ${json.offer.title}`, detail: json.purchase.customerName, variant: "success" });
           setBanner({ variant: "success", message: `✅ Oferta pendiente: ${json.purchase.customerName} - S/ ${json.purchase.amount.toFixed(2)}` });
           beep(880, 120, "sine");
           vibrate(60);
@@ -213,6 +275,8 @@ export default function StaffScannerPage() {
           else if (json.status === 'used') errorMsg = "QR de oferta ya utilizado";
           else if (json.status === 'cancelled') errorMsg = "Compra de oferta cancelada";
           else if (json.status === 'refunded') errorMsg = "Compra de oferta reembolsada";
+
+          addHistory({ type: "offer", label: errorMsg, variant: "error" });
 
           setBanner({ variant: "error", message: errorMsg });
           beep(220, 150, "square");
@@ -239,12 +303,12 @@ export default function StaffScannerPage() {
         const hasValidSession = sessionJson.isStaff || sessionJson.isAdmin || sessionJson.isCollaborator;
 
         if (hasValidSession) {
-          // Redirect to staff birthday interface
           window.location.href = `/u/birthdays/${encodeURIComponent(birthdayClaim.rid)}`;
         } else {
-          // Redirect to public birthday interface
           window.location.href = `/marketing/birthdays/${encodeURIComponent(birthdayClaim.rid)}/qrs`;
         }
+
+        addHistory({ type: "birthday", label: "Token de cumpleaños", detail: birthdayClaim.rid, variant: "success" });
 
         setBanner({ variant: "success", message: `🎂 Token de cumpleaños detectado - Redirigiendo...` });
         beep(880, 120, "sine");
@@ -267,7 +331,7 @@ export default function StaffScannerPage() {
         // Extract code from URL
         const code = url.pathname.split('/b/')[1];
         if (code && code.length >= 4) {
-          // Redirect to birthday page
+          addHistory({ type: "birthday", label: "Código de cumpleaños", detail: code, variant: "info" });
           window.location.href = url.pathname + url.search + url.hash;
           setBanner({ variant: "success", message: `🎂 Código de cumpleaños detectado - Redirigiendo...` });
           beep(880, 120, "sine");
@@ -288,7 +352,7 @@ export default function StaffScannerPage() {
         // Extract tokenId from URL
         const tokenId = url.pathname.split('/reusable/')[1];
         if (tokenId) {
-          console.log('Staff scanner detected reusable token, ID:', tokenId, 'from text:', text);
+          addHistory({ type: "reusable", label: "Token reutilizable", detail: tokenId, variant: "info" });
           setBanner({ variant: "success", message: `🎫 Token reutilizable detectado - Redirigiendo...` });
           beep(880, 120, "sine");
           vibrate(60);
@@ -307,37 +371,13 @@ export default function StaffScannerPage() {
     try {
       const url = new URL(text);
       if (url.pathname.startsWith('/i/')) {
-        // Extract code from URL
-        const code = url.pathname.split('/i/')[1];
-        if (code && code.length >= 4) {
-          console.log('Staff scanner detected invitation, code:', code, 'from text:', text);
+        const invCode = url.pathname.split('/i/')[1];
+        if (invCode && invCode.length >= 4) {
+          addHistory({ type: "invitation", label: "Invitación detectada", detail: invCode, variant: "info" });
           setBanner({ variant: "success", message: `🎟️ Invitación detectada - Redirigiendo...` });
           beep(880, 120, "sine");
           vibrate(60);
           setCooldownUntil(Date.now() + 2000);
-          // Redirect to invitation validation page
-          window.location.href = url.pathname + url.search + url.hash;
-          processingRef.current = false;
-          return;
-        }
-      }
-    } catch {
-      // Not a URL, continue with normal processing
-    }
-
-    // 3.8) Detect INVITATION URL: redirect to invitation validation page
-    try {
-      const url = new URL(text);
-      if (url.pathname.startsWith('/i/')) {
-        // Extract code from URL
-        const code = url.pathname.split('/i/')[1];
-        if (code && code.length >= 4) {
-          console.log('Staff scanner detected invitation, code:', code, 'from text:', text);
-          setBanner({ variant: "success", message: `🎟️ Invitación detectada - Redirigiendo...` });
-          beep(880, 120, "sine");
-          vibrate(60);
-          setCooldownUntil(Date.now() + 2000);
-          // Redirect to invitation validation page
           window.location.href = url.pathname + url.search + url.hash;
           processingRef.current = false;
           return;
@@ -349,6 +389,7 @@ export default function StaffScannerPage() {
 
     const payload = decodePersonPayloadFromQr(text);
     if (!payload) {
+      addHistory({ type: "error", label: "QR inválido", variant: "error" });
       setBanner({ variant: "error", message: "QR inválido (INVALID_QR)" });
       beep(220, 150, "square");
       vibrate(120);
@@ -356,8 +397,6 @@ export default function StaffScannerPage() {
       processingRef.current = false;
       return;
     }
-
-    // 4) Process PERSON QR: scan attendance
 
     // 4) Process PERSON QR: scan attendance
 
@@ -372,7 +411,6 @@ export default function StaffScannerPage() {
       if ((json as ScanOk).ok) {
         const ok = json as ScanOk & { alerts?: string[]; lastSameAt?: string; alreadyMarkedAt?: string };
         setOverlay({ person: ok.person });
-        // Hide overlay after 3 seconds
         if (overlayHideTimeout) clearTimeout(overlayHideTimeout);
         setOverlayHideTimeout(setTimeout(() => setOverlay(null), 3000));
         const human = mode === "IN" ? "Entrada registrada" : "Salida registrada";
@@ -380,6 +418,7 @@ export default function StaffScannerPage() {
         const sameDir = ok.alerts?.includes('same_direction');
         const extraAlready = already ? ` · Ya estaba registrada hoy${ok.alreadyMarkedAt ? ` (${new Date(ok.alreadyMarkedAt).toLocaleTimeString()})` : ''}` : '';
         const extraSame = !already && sameDir ? ` · Nota: misma dirección que tu última marca${ok.lastSameAt ? ` (${new Date(ok.lastSameAt).toLocaleTimeString()})` : ''}` : '';
+        addHistory({ type: "person", label: `${human}: ${ok.person.name}`, detail: ok.person.code, variant: "success" });
         setBanner({ variant: "success", message: `${human}: ${ok.person.name} (${ok.person.code})${extraAlready}${extraSame}` });
         beep(880, 120, "sine");
         vibrate(60);
@@ -408,6 +447,8 @@ export default function StaffScannerPage() {
         else if (err.code === "RATE_LIMIT") human = "Límite de velocidad alcanzado";
         else human = msg;
 
+        addHistory({ type: "person", label: human, detail: err.person?.code, variant: "error" });
+
         setBanner({ variant: "error", message: human });
         beep(220, 150, "square");
         vibrate(120);
@@ -421,7 +462,7 @@ export default function StaffScannerPage() {
     } finally {
       processingRef.current = false;
     }
-  }, [inCooldown, mode, awaitingCode]);
+  }, [inCooldown, mode, awaitingCode, addHistory]);
 
   const handleResult = useCallback((result: Result) => {
     if (!result) return;
@@ -504,6 +545,7 @@ export default function StaffScannerPage() {
   }, [overlayHideTimeout]);
 
   useEffect(() => {
+    if (!cameraActive) return;
     let mounted = true;
     const reader = new BrowserMultiFormatReader();
     readerRef.current = reader;
@@ -513,14 +555,13 @@ export default function StaffScannerPage() {
 
     reader
       .decodeFromConstraints(constraints, videoEl!, (result: Result | null, _err: unknown) => {
-        if (!mounted) return; // Component was unmounted
+        if (!mounted) return;
         if (result) {
           processDecodedText(result.getText());
         }
-        // Ignorar errores frecuentes de decodificación; la librería llama continuamente
       })
       .catch((e: unknown) => {
-        if (!mounted) return; // Component was unmounted
+        if (!mounted) return;
         const msg = typeof e === 'object' && e && 'toString' in e ? (e as any).toString() : String(e);
         setCameraError(msg || "Permiso denegado o cámara no disponible");
         setBanner({ variant: "error", message: `No se pudo abrir la cámara: ${msg}` });
@@ -531,187 +572,326 @@ export default function StaffScannerPage() {
       try {
         readerRef.current?.reset();
       } catch {}
-      // Detener el stream si existe
       try {
         const s = videoRef.current?.srcObject as MediaStream | undefined;
         s?.getTracks().forEach((t) => t.stop());
       } catch {}
     };
-  }, [processDecodedText]);
+  }, [processDecodedText, cameraActive]);
+
+  const toggleCamera = useCallback(() => {
+    if (cameraActive) {
+      // Stop camera
+      try { readerRef.current?.reset(); } catch {}
+      try {
+        const s = videoRef.current?.srcObject as MediaStream | undefined;
+        s?.getTracks().forEach((t) => t.stop());
+      } catch {}
+    }
+    setCameraError(null);
+    setCameraActive((p) => !p);
+  }, [cameraActive]);
+
+  const retryCamera = useCallback(() => {
+    setCameraError(null);
+    setCameraActive(false);
+    setTimeout(() => setCameraActive(true), 100);
+  }, []);
 
   return (
-    <div className="min-h-screen w-full bg-[var(--color-bg)] px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8">
-      <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto rounded-2xl shadow-2xl bg-white dark:bg-slate-800 p-4 sm:p-5 md:p-6 flex flex-col justify-start min-h-[85vh] sm:min-h-[75vh] md:min-h-[70vh]">
-        <h1 className="mb-2 text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-slate-100 tracking-tight text-center drop-shadow">Escáner de Códigos</h1>
-        <p className="mb-4 sm:mb-5 text-sm sm:text-base text-gray-700 dark:text-slate-300 text-center font-medium px-2">Escanea códigos QR de invitaciones, tokens y ofertas especiales.</p>
+    <div className="min-h-screen w-full bg-[var(--color-bg)] px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
+      {/* Header bar */}
+      <div className="w-full max-w-2xl mx-auto mb-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+          >
+            <IconArrowLeft size={18} />
+            <span className="hidden sm:inline">Volver</span>
+          </button>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">
+            Escáner Staff
+          </h1>
+          <button
+            onClick={() => setShowHistory((p) => !p)}
+            className={`relative flex items-center gap-1 text-sm px-2 py-1 rounded-lg transition-colors ${showHistory ? "bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300" : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"}`}
+          >
+            <IconHistory size={18} />
+            {scanCount.total > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-teal-500 text-white rounded-full px-1">
+                {scanCount.total}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
 
-        {banner && (
-          <div className={`mb-3 sm:mb-4 w-full text-center text-sm sm:text-base font-semibold rounded-lg px-3 sm:px-4 py-2 sm:py-3 ${banner.variant === 'success' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'}`}>{banner.message}</div>
-        )}
+      <div className="w-full max-w-2xl mx-auto flex flex-col lg:flex-row gap-3">
+        {/* Main scanner column */}
+        <div className="flex-1 min-w-0">
+          {/* Mode toggle — always visible */}
+          <div className="mb-3 flex items-center justify-center gap-1 rounded-xl bg-gray-100 dark:bg-slate-700/60 p-1">
+            <button
+              onClick={() => { setMode("IN"); setAwaitingCode(false); setCode(""); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${mode === "IN" ? "bg-green-500 text-white shadow" : "text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600"}`}
+            >
+              <IconLogin size={16} />
+              Entrada
+            </button>
+            <button
+              onClick={() => { setMode("OUT"); setAwaitingCode(false); setCode(""); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${mode === "OUT" ? "bg-amber-500 text-white shadow" : "text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600"}`}
+            >
+              <IconLogout size={16} />
+              Salida
+            </button>
+          </div>
 
-        {awaitingCode && (
-          <div className="mb-3 sm:mb-4 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 sm:p-4 shadow flex flex-col items-center">
-            <div className="mb-3 sm:mb-4 text-sm sm:text-base text-gray-700 dark:text-slate-300 font-semibold text-center">
-              Modo: <span className={mode === "IN" ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}>{mode === "IN" ? "Entrada" : "Salida"}</span>
+          {/* Banner */}
+          {banner && (
+            <div
+              className={`mb-3 w-full text-center text-sm font-semibold rounded-lg px-3 py-2.5 flex items-center justify-between gap-2 ${
+                banner.variant === "success"
+                  ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700"
+                  : "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700"
+              }`}
+            >
+              <span className="flex-1 text-left">{banner.message}</span>
+              <button onClick={() => setBanner(null)} className="flex-shrink-0 opacity-60 hover:opacity-100">
+                <IconX size={16} />
+              </button>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="Código de persona"
-                className="input w-full sm:max-w-xs text-base sm:text-lg font-bold text-center border-gray-300 dark:border-slate-600 focus:border-blue-500 focus:ring-blue-400 dark:bg-slate-700 dark:text-slate-100 px-3 py-2"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitCode();
-                  }
-                }}
-              />
-              <div className="flex gap-2 w-full sm:w-auto justify-center">
+          )}
+
+          {/* Code entry from GLOBAL QR */}
+          {awaitingCode && (
+            <div className="mb-3 w-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow">
+              <div className="mb-2 text-sm text-gray-600 dark:text-slate-400 font-medium text-center">
+                Ingresa código manualmente
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  placeholder="Código"
+                  className="flex-1 text-center text-base font-bold rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:border-teal-500 focus:ring-1 focus:ring-teal-400 outline-none"
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCode(); } }}
+                />
                 <button
-                  className="btn bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-blue-700 flex-1 sm:flex-none"
-                  disabled={code.trim().toUpperCase().length < 4}
+                  className="px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold text-sm shadow hover:bg-teal-700 disabled:opacity-40 transition-colors"
+                  disabled={code.trim().length < 4}
                   onClick={submitCode}
                 >
-                  Registrar
+                  OK
                 </button>
                 <button
-                  className="btn-outline border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 flex-1 sm:flex-none"
-                  onClick={() => {
-                    setAwaitingCode(false);
-                    setCode("");
-                  }}
+                  className="px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-500 dark:text-slate-400 text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => { setAwaitingCode(false); setCode(""); }}
                 >
-                  Cancelar
+                  <IconX size={16} />
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Camera viewport */}
+          <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl border-2 border-gray-200 dark:border-slate-600 bg-black shadow-lg">
+            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
+
+            {/* Scanning guides */}
+            {!overlay && !offerOverlay && !cameraError && cameraActive && (
+              <div className="pointer-events-none absolute inset-0">
+                {/* Corner brackets */}
+                <div className="absolute left-4 top-4 h-8 w-8 border-l-[3px] border-t-[3px] border-teal-400 rounded-tl-lg" />
+                <div className="absolute right-4 top-4 h-8 w-8 border-r-[3px] border-t-[3px] border-teal-400 rounded-tr-lg" />
+                <div className="absolute left-4 bottom-4 h-8 w-8 border-l-[3px] border-b-[3px] border-teal-400 rounded-bl-lg" />
+                <div className="absolute right-4 bottom-4 h-8 w-8 border-r-[3px] border-b-[3px] border-teal-400 rounded-br-lg" />
+                {/* Scan line animation */}
+                <div className="absolute left-6 right-6 top-1/2 h-0.5 bg-teal-400/50 animate-pulse" />
+                {/* Mode badge */}
+                <div className={`absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${mode === "IN" ? "bg-green-500/80 text-white" : "bg-amber-500/80 text-white"}`}>
+                  {mode === "IN" ? "ENTRADA" : "SALIDA"}
+                </div>
+              </div>
+            )}
+
+            {/* Camera off state */}
+            {!cameraActive && !cameraError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white">
+                <IconCameraOff size={48} className="opacity-40 mb-3" />
+                <p className="text-sm opacity-60">Cámara pausada</p>
+              </div>
+            )}
+
+            {/* Person overlay */}
+            {overlay && (
+              <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-4 px-4 pt-4 text-white rounded-2xl">
+                <div className="min-w-0 flex-1">
+                  <div className="text-lg font-bold leading-tight drop-shadow-lg truncate">{overlay.person.name}</div>
+                  <div className="text-sm opacity-90 font-mono truncate">{overlay.person.code}</div>
+                </div>
+                {overlay.lastScanAt && (
+                  <div className="text-right text-xs opacity-90 ml-2 flex-shrink-0">
+                    Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Offer overlay */}
+            {offerOverlay && (
+              <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent pb-4 px-4 pt-4 text-white rounded-2xl">
+                <div className="text-center max-w-full">
+                  <div className="text-base font-bold leading-tight drop-shadow-lg mb-1">
+                    🎁 {offerOverlay.offer.title}
+                  </div>
+                  <div className="text-sm opacity-90 truncate">{offerOverlay.purchase.customerName}</div>
+                  <div className="text-xs opacity-80">S/ {offerOverlay.purchase.amount.toFixed(2)}</div>
+                  <div className="text-xs opacity-70 mt-1">{new Date(offerOverlay.purchase.createdAt).toLocaleDateString()}</div>
+                  {offerOverlay.canComplete && (
+                    <button
+                      className="pointer-events-auto mt-3 px-4 py-2 bg-white text-green-800 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors text-sm"
+                      onClick={async () => {
+                        if (!offerOverlay.purchaseId) return;
+                        try {
+                          const res = await fetch("/api/offers/complete-delivery", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ purchaseId: offerOverlay.purchaseId }),
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setBanner({ variant: "success", message: "✅ Entrega completada exitosamente" });
+                            setOfferOverlay(null);
+                            beep(880, 120, "sine");
+                            vibrate(60);
+                          } else {
+                            setBanner({ variant: "error", message: `Error: ${data.error}` });
+                            beep(220, 150, "square");
+                            vibrate(120);
+                          }
+                        } catch (e: any) {
+                          setBanner({ variant: "error", message: `Error al completar entrega: ${String(e?.message || e)}` });
+                          beep(220, 150, "square");
+                          vibrate(120);
+                        }
+                      }}
+                    >
+                      Completar Entrega
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Camera error */}
+            {cameraError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 p-4 text-center text-white rounded-2xl">
+                <IconCameraOff size={40} className="opacity-50 mb-3" />
+                <p className="mb-1 font-bold text-sm">No se pudo acceder a la cámara</p>
+                <p className="text-xs opacity-80 mb-3">Concede permiso de cámara al navegador.</p>
+                <button onClick={retryCamera} className="flex items-center gap-1.5 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors">
+                  <IconRefresh size={16} /> Reintentar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={toggleCamera}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                cameraActive
+                  ? "border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  : "border-teal-300 dark:border-teal-600 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30"
+              }`}
+            >
+              {cameraActive ? <><IconCameraOff size={16} /> Pausar</> : <><IconCamera size={16} /> Activar</>}
+            </button>
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+              <IconPhoto size={16} />
+              Imagen
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => onFileSelect(e.target.files?.[0] || null)}
+              />
+            </label>
+            <div className="flex-1" />
+            {/* Session stats */}
+            <div className="flex items-center gap-2 text-xs">
+              {scanCount.success > 0 && (
+                <span className="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">
+                  ✓ {scanCount.success}
+                </span>
+              )}
+              {scanCount.error > 0 && (
+                <span className="px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold">
+                  ✗ {scanCount.error}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Supported QR types info */}
+          <div className="mt-3 px-1">
+            <div className="flex flex-wrap gap-1.5 justify-center text-[10px] font-medium text-gray-500 dark:text-slate-500">
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">👤 Asistencia</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎁 Ofertas</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎂 Cumpleaños</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎟️ Invitaciones</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎫 Reutilizables</span>
+            </div>
+          </div>
+        </div>
+
+        {/* History panel — inline on lg, slide-up on mobile */}
+        {showHistory && (
+          <div className="w-full lg:w-72 lg:flex-shrink-0">
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-slate-700">
+                <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">Historial</span>
+                <div className="flex items-center gap-1">
+                  {scanHistory.length > 0 && (
+                    <button onClick={clearHistory} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 flex items-center gap-0.5 px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                      <IconTrash size={12} /> Limpiar
+                    </button>
+                  )}
+                  <button onClick={() => setShowHistory(false)} className="lg:hidden p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+                    <IconX size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-64 lg:max-h-[60vh] overflow-y-auto">
+                {scanHistory.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-gray-400 dark:text-slate-500">
+                    Sin escaneos aún
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50 dark:divide-slate-700/50">
+                    {scanHistory.map((entry) => (
+                      <div key={entry.id} className="px-3 py-2 flex items-start gap-2">
+                        <span className={`mt-0.5 flex-shrink-0 w-2 h-2 rounded-full ${entry.variant === "success" ? "bg-green-500" : entry.variant === "error" ? "bg-red-500" : "bg-blue-400"}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-medium text-gray-800 dark:text-slate-200 truncate">{entry.label}</div>
+                          {entry.detail && <div className="text-[10px] text-gray-500 dark:text-slate-500 truncate">{entry.detail}</div>}
+                        </div>
+                        <span className="text-[10px] text-gray-400 dark:text-slate-600 flex-shrink-0 tabular-nums">
+                          {new Date(entry.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
-
-        <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg aspect-square sm:aspect-video overflow-hidden rounded-2xl border-2 border-gray-300 dark:border-slate-600 bg-black shadow-lg mx-auto">
-          <video ref={videoRef} className="h-full w-full object-cover" muted playsInline autoPlay />
-
-          {/* Guías de encuadre (solo si no hay overlay de resultado ni error) */}
-          {!overlay && !cameraError && (
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-3 sm:left-4 top-3 sm:top-4 h-6 w-6 sm:h-8 sm:w-8 border-l-3 sm:border-l-4 border-t-3 sm:border-t-4 border-blue-400 rounded-tl-xl"></div>
-              <div className="absolute right-3 sm:right-4 top-3 sm:top-4 h-6 w-6 sm:h-8 sm:w-8 border-r-3 sm:border-r-4 border-t-3 sm:border-t-4 border-blue-400 rounded-tr-xl"></div>
-              <div className="absolute left-3 sm:left-4 bottom-3 sm:bottom-4 h-6 w-6 sm:h-8 sm:w-8 border-l-3 sm:border-l-4 border-b-3 sm:border-b-4 border-blue-400 rounded-bl-xl"></div>
-              <div className="absolute right-3 sm:right-4 bottom-3 sm:bottom-4 h-6 w-6 sm:h-8 sm:w-8 border-r-3 sm:border-r-4 border-b-3 sm:border-b-4 border-blue-400 rounded-br-xl"></div>
-            </div>
-          )}
-
-          {overlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/30 to-transparent pb-3 sm:pb-4 px-3 sm:px-4 pt-3 sm:pt-4 text-white rounded-2xl">
-              <div className="min-w-0 flex-1">
-                <div className="text-lg sm:text-xl font-bold leading-tight drop-shadow-lg truncate">{overlay.person.name}</div>
-                <div className="text-sm sm:text-base opacity-90 font-mono truncate">{overlay.person.code}</div>
-              </div>
-              {overlay.lastScanAt && (
-                <div className="text-right text-xs sm:text-sm opacity-90 ml-2 flex-shrink-0">
-                  Último: {new Date(overlay.lastScanAt).toLocaleTimeString()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {offerOverlay && (
-            <div className="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-green-900/90 via-green-800/50 to-transparent pb-3 sm:pb-4 px-3 sm:px-4 pt-3 sm:pt-4 text-white rounded-2xl">
-              <div className="text-center max-w-full">
-                <div className="text-base sm:text-lg font-bold leading-tight drop-shadow-lg mb-1 sm:mb-2">
-                  🎁 {offerOverlay.offer.title}
-                </div>
-                <div className="text-sm sm:text-base opacity-90 truncate">
-                  {offerOverlay.purchase.customerName}
-                </div>
-                <div className="text-xs sm:text-sm opacity-80">
-                  S/ {offerOverlay.purchase.amount.toFixed(2)}
-                </div>
-                <div className="text-xs opacity-70 mt-1">
-                  {new Date(offerOverlay.purchase.createdAt).toLocaleDateString()}
-                </div>
-                {offerOverlay.canComplete && (
-                  <button
-                    className="pointer-events-auto mt-3 px-3 sm:px-4 py-2 bg-white text-green-800 font-semibold rounded-lg shadow-lg hover:bg-gray-100 transition-colors text-sm sm:text-base"
-                    onClick={async () => {
-                      if (!offerOverlay.purchaseId) return;
-
-                      try {
-                        const res = await fetch('/api/offers/complete-delivery', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ purchaseId: offerOverlay.purchaseId }),
-                        });
-
-                        const data = await res.json();
-
-                        if (data.success) {
-                          setBanner({ variant: "success", message: "✅ Entrega completada exitosamente" });
-                          setOfferOverlay(null);
-                          beep(880, 120, "sine");
-                          vibrate(60);
-                        } else {
-                          setBanner({ variant: "error", message: `Error: ${data.error}` });
-                          beep(220, 150, "square");
-                          vibrate(120);
-                        }
-                      } catch (e: any) {
-                        setBanner({ variant: "error", message: `Error al completar entrega: ${String(e?.message || e)}` });
-                        beep(220, 150, "square");
-                        vibrate(120);
-                      }
-                    }}
-                  >
-                    Completar Entrega
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {cameraError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-3 sm:p-4 text-center text-white rounded-2xl">
-              <div className="max-w-full">
-                <p className="mb-2 font-bold text-base sm:text-lg">No se pudo acceder a la cámara</p>
-                <p className="text-sm sm:text-base opacity-90 px-2">
-                  Concede permiso de cámara al navegador o sube una imagen del QR.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 w-full items-center">
-          <label className="inline-flex w-full sm:w-fit cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 active:shadow transition-colors">
-            📷 Subir imagen
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => onFileSelect(e.target.files?.[0] || null)}
-            />
-          </label>
-          {cameraError && (
-            <button
-              className="w-full sm:w-fit rounded-xl border-2 border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-slate-300 shadow hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
-              onClick={() => {
-                setCameraError(null);
-                readerRef.current?.reset();
-                const v = videoRef.current;
-                if (v) {
-                  try {
-                    const s = v.srcObject as MediaStream | undefined;
-                    s?.getTracks().forEach((t) => t.stop());
-                  } catch {}
-                }
-                setCooldownUntil((c) => c);
-              }}
-            >
-              🔄 Reintentar cámara
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

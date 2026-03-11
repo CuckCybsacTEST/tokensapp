@@ -1,6 +1,17 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { verifyBirthdayClaim, type BirthdayClaim } from '@/lib/birthdays/token';
+import {
+  IconArrowLeft,
+  IconCamera,
+  IconCameraOff,
+  IconCopy,
+  IconExternalLink,
+  IconPhoto,
+  IconQrcode,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-react';
 
 interface ScanResult { 
   text: string; 
@@ -101,14 +112,12 @@ export default function ScannerClient() {
   // Function to navigate to birthday pages
   const maybeNavigate = useCallback((raw: string): boolean => {
     if (redirectedRef.current) return false;
-    console.log('maybeNavigate called with:', raw);
     
     // Detect reusable tokens: /reusable/rt_... or reusable/rt_... 
     const reusableTokenRegex = /(?:^|\/)reusable\/(rt_[A-Za-z0-9]+)/i;
     const reusableMatch = raw.match(reusableTokenRegex);
     if (reusableMatch) {
       const tokenId = reusableMatch[1];
-      console.log('Detected reusable token, ID:', tokenId, 'from text:', raw);
       redirectedRef.current = true;
       setActive(false);
       setTimeout(()=>{ window.location.href = `/reusable/${tokenId}`; }, 120);
@@ -120,7 +129,6 @@ export default function ScannerClient() {
     const staticMatch = raw.match(staticTokenRegex);
     if (staticMatch) {
       const tokenId = staticMatch[1];
-      console.log('Detected static token, ID:', tokenId, 'from text:', raw);
       redirectedRef.current = true;
       setActive(false); // detener cámara antes de salir
       // pequeña pausa para permitir sonido/flash visual
@@ -130,10 +138,8 @@ export default function ScannerClient() {
     
     try {
       const url = new URL(raw);
-      console.log('Parsed URL:', url.href, 'pathname:', url.pathname);
       // Patrón principal: /b/<code> (tanto relativo como absoluto)
       if (/^\/b\/[^/]{4,}$/.test(url.pathname)) {
-        console.log('Detected birthday URL:', url.pathname);
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
@@ -142,7 +148,6 @@ export default function ScannerClient() {
       }
       // Patrón para invitaciones: /i/<code>
       if (/^\/i\/[^/]{4,}$/.test(url.pathname)) {
-        console.log('Detected invitation URL:', url.pathname);
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
         // pequeña pausa para permitir sonido/flash visual
@@ -151,7 +156,6 @@ export default function ScannerClient() {
       }
       // Alternativos (por si en futuro los QR apuntan a marketing birthdays)
       if (/^\/marketing\/birthdays\//.test(url.pathname)) {
-        console.log('Detected marketing birthday URL:', url.pathname);
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.pathname + url.search + url.hash; }, 120);
@@ -159,17 +163,14 @@ export default function ScannerClient() {
       }
       // Para cualquier otra URL del mismo origen, redirigir
       if (url.origin === window.location.origin) {
-        console.log('Detected same-origin URL:', url.href);
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = url.href; }, 120);
         return true;
       }
     } catch (e) {
-      console.log('URL parsing failed:', (e as Error).message, 'for text:', raw);
       // no es URL absoluta; verificar si es ruta relativa
       if (/^\/b\/[^/]{4,}$/.test(raw)) {
-        console.log('Detected relative birthday path:', raw);
         // Es una ruta relativa de cumpleaños
         redirectedRef.current = true;
         setActive(false); // detener cámara antes de salir
@@ -179,7 +180,6 @@ export default function ScannerClient() {
       }
       // Para cualquier otra ruta relativa, redirigir
       if (/^\//.test(raw)) {
-        console.log('Detected relative path:', raw);
         redirectedRef.current = true;
         setActive(false);
         setTimeout(()=>{ window.location.href = raw; }, 120);
@@ -190,7 +190,6 @@ export default function ScannerClient() {
         // Formato hipotético bday:<code>
         const code = raw.split(':')[1];
         if (code && code.length >= 4 && !redirectedRef.current) {
-          console.log('Detected bday code:', code);
           redirectedRef.current = true;
           setActive(false);
           setTimeout(()=>{ window.location.href = `/b/${encodeURIComponent(code)}`; }, 120);
@@ -204,7 +203,6 @@ export default function ScannerClient() {
   // Function to process QR text (extracted for reuse)
   const processQrText = useCallback(async (raw: string) => {
     if (!raw) return;
-    console.log('processQrText called with:', raw);
 
     // First, check if it's a URL that should trigger navigation (static tokens, birthday codes, etc.)
     if (maybeNavigate(raw)) return;
@@ -213,7 +211,6 @@ export default function ScannerClient() {
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && parsed.type === 'offer_purchase') {
-        console.log('Detected offer QR');
         // It's an offer QR - redirect to validation page
         if (!redirectedRef.current) {
           redirectedRef.current = true;
@@ -233,7 +230,6 @@ export default function ScannerClient() {
     // Check if it's a birthday QR token
     const birthdayClaim = decodeBirthdayQrFromText(raw);
     if (birthdayClaim) {
-      console.log('Detected birthday QR token');
       // It's a birthday QR - redirect to appropriate interface
       if (!redirectedRef.current) {
         redirectedRef.current = true;
@@ -263,7 +259,6 @@ export default function ScannerClient() {
     }
 
     // Normal QR processing
-    console.log('Normal QR processing for:', raw);
     if (!resultsRef.current.some(r=>r.text===raw)) {
       const newResult: ScanResult = { text: raw, ts: Date.now() };
       setResults(prev => [newResult, ...prev].slice(0,25));
@@ -312,9 +307,8 @@ export default function ScannerClient() {
                 } else {
                   setErr('No se encontró código QR en la imagen');
                 }
-              } catch (detErr) {
+              } catch {
                 // BarcodeDetector failed, will fallback to ZXing
-                console.warn('BarcodeDetector failed, trying ZXing fallback:', detErr);
               }
             };
             img.src = dataUrl;
@@ -338,7 +332,6 @@ export default function ScannerClient() {
                   errorMessage.includes('NotFoundException')) {
                 setErr('No se pudo detectar un código QR válido en la imagen. Verifica que la imagen sea clara y contenga un código QR legible.');
               } else {
-                console.error('ZXing error:', zxingError);
                 setErr('Error al procesar la imagen. Intenta con una imagen más clara.');
               }
             }
@@ -497,108 +490,199 @@ export default function ScannerClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] px-4 py-6">
-      <div className="max-w-7xl mx-auto space-y-5">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Escaner Multiusos</h1>
-        <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
-        {notice && <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 text-[11px] px-3 py-2 flex items-start gap-2"><span className="mt-0.5">⚠</span><span>{notice}</span></div>}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 shadow-sm">
+    <div className="min-h-screen bg-[var(--color-bg)] px-3 py-3 sm:px-4 sm:py-5 md:px-6 md:py-6">
+      <audio ref={audioOkRef} src="/sounds/scan-ok.mp3" preload="auto" />
+
+      {/* Header */}
+      <div className="w-full max-w-5xl mx-auto mb-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+          >
+            <IconArrowLeft size={18} />
+            <span className="hidden sm:inline">Volver</span>
+          </button>
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <IconQrcode size={20} className="text-teal-500" />
+            Escáner Multiusos
+          </h1>
+          <div className="w-12" />
+        </div>
+      </div>
+
+      {/* Notice (IN/OUT warning) */}
+      {notice && (
+        <div className="max-w-5xl mx-auto mb-3">
+          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-200 text-xs px-3 py-2 flex items-center gap-2">
+            <span>⚠️</span>
+            <span className="flex-1">{notice}</span>
+            <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100 flex-shrink-0"><IconX size={14} /></button>
+          </div>
+        </div>
+      )}
+      <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-4">
+        {/* Scanner column */}
+        <div className="flex-1 min-w-0">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+            {/* Viewport */}
             <div className="relative">
-              <video ref={videoRef} className="w-full aspect-square object-cover rounded-lg bg-black" muted playsInline />
+              <video ref={videoRef} className="w-full aspect-[4/3] object-cover bg-black" muted playsInline />
               {active && (
-                <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="w-[82%] aspect-square relative">
-                    <div className="absolute top-0 left-0 h-10 w-10 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
-                    <div className="absolute top-0 right-0 h-10 w-10 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
-                    <div className="absolute bottom-0 left-0 h-10 w-10 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
-                    <div className="absolute bottom-0 right-0 h-10 w-10 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                    <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-blue-400 to-transparent animate-scanline" />
+                <div aria-hidden className="pointer-events-none absolute inset-0">
+                  {/* Corner brackets */}
+                  <div className="absolute left-4 top-4 h-8 w-8 border-l-[3px] border-t-[3px] border-teal-400 rounded-tl-lg" />
+                  <div className="absolute right-4 top-4 h-8 w-8 border-r-[3px] border-t-[3px] border-teal-400 rounded-tr-lg" />
+                  <div className="absolute left-4 bottom-4 h-8 w-8 border-l-[3px] border-b-[3px] border-teal-400 rounded-bl-lg" />
+                  <div className="absolute right-4 bottom-4 h-8 w-8 border-r-[3px] border-b-[3px] border-teal-400 rounded-br-lg" />
+                  {/* Scan line */}
+                  <div className="absolute left-6 right-6 top-1/2 h-0.5 bg-teal-400/50 animate-scanline" />
+                  {/* Status badge */}
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold bg-teal-500/80 text-white backdrop-blur-sm flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    Escaneando
                   </div>
                 </div>
               )}
+              {/* Camera off state */}
+              {!active && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-white">
+                  <IconCameraOff size={48} className="opacity-40 mb-3" />
+                  <p className="text-sm opacity-60">Cámara pausada</p>
+                  <button
+                    onClick={() => setActive(true)}
+                    className="mt-3 flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <IconCamera size={16} /> Iniciar
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="mt-3 flex flex-wrap gap-3 items-center">
-              <button onClick={()=>setActive(a=>!a)} className="btn h-9 px-4">{active?'Pausar':'Iniciar Escaneo'}</button>
-              {active && <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400"><span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />Escaneando…</div>}
-              {!active && <div className="text-[11px] text-gray-500 dark:text-slate-400">Escáner pausado</div>}
-              <button disabled={!results.length} onClick={()=>setResults([])} className="text-[11px] underline text-slate-500 disabled:opacity-40">Limpiar</button>
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-[11px] font-medium text-gray-700 dark:text-slate-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600">
-                Subir imagen
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
+
+            {/* Controls bar */}
+            <div className="p-3 flex flex-wrap items-center gap-2 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={() => setActive(a => !a)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  active
+                    ? "border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                    : "border-teal-300 dark:border-teal-600 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100"
+                }`}
+              >
+                {active ? <><IconCameraOff size={16} /> Pausar</> : <><IconCamera size={16} /> Escanear</>}
+              </button>
+              <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+                <IconPhoto size={16} />
+                Imagen
+                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
               </label>
+              <div className="flex-1" />
+              {results.length > 0 && (
+                <button
+                  onClick={() => setResults([])}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 dark:text-red-400 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <IconTrash size={12} /> Limpiar sesión
+                </button>
+              )}
             </div>
-            {err && <div className="mt-2 text-xs text-rose-600 dark:text-rose-400 font-medium">{err}</div>}
           </div>
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Códigos Escaneados</h2>
+
+          {err && (
+            <div className="mt-2 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-xs px-3 py-2 flex items-center justify-between">
+              <span>{err}</span>
+              <button onClick={() => setErr(null)} className="ml-2 opacity-60 hover:opacity-100"><IconX size={14} /></button>
+            </div>
+          )}
+
+          {/* Supported formats */}
+          <div className="mt-3 px-1">
+            <div className="flex flex-wrap gap-1.5 justify-center text-[10px] font-medium text-gray-500 dark:text-slate-500">
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">QR Code</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">EAN-13</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">Code 128</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎁 Ofertas</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎂 Cumpleaños</span>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700">🎟️ Invitaciones</span>
+            </div>
+          </div>
+        </div>
+        {/* Results panel */}
+        <div className="w-full lg:w-80 lg:flex-shrink-0">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-200">Códigos Escaneados</h2>
               {(() => {
                 const combined = [...results, ...history.filter(h => !results.some(r => r.text === h.text))];
-                return combined.length > 0 && <span className="text-[11px] text-gray-400 dark:text-slate-500">{combined.length}</span>;
+                return combined.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-semibold">
+                    {combined.length}
+                  </span>
+                );
               })()}
             </div>
-            {(() => {
-              const combined = [...results, ...history.filter(h => !results.some(r => r.text === h.text))];
-              return combined.length === 0 ? (
-                <div className="text-xs text-gray-500 dark:text-slate-400">No se han escaneado códigos aún.</div>
-              ) : (
-                <ul className="space-y-1 max-h-96 overflow-auto text-[13px] pr-1">
-                  {combined.map(r => (
-                    <li key={`${r.text}-${r.ts}`} className="group flex flex-col gap-2 rounded border border-slate-200 dark:border-slate-600 px-3 py-2 bg-slate-50 dark:bg-slate-700/40">
-                      {r.type === 'offer' && r.data ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded">Oferta QR</span>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                              <button 
-                                onClick={() => {
-                                  const isAdminContext = window.location.pathname.startsWith('/admin');
-                                  const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
-                                  sessionStorage.setItem('scannedQRData', r.text);
-                                  window.location.href = validationUrl;
-                                }} 
-                                className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
-                              >
-                                Validar
-                              </button>
-                              <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
+            <div className="max-h-64 lg:max-h-[60vh] overflow-y-auto">
+              {(() => {
+                const combined = [...results, ...history.filter(h => !results.some(r => r.text === h.text))];
+                return combined.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-gray-400 dark:text-slate-500">
+                    <IconQrcode size={32} className="mx-auto mb-2 opacity-30" />
+                    Sin códigos escaneados
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                    {combined.map(r => (
+                      <div key={`${r.text}-${r.ts}`} className="group px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                        {r.type === 'offer' && r.data ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/30 px-2 py-0.5 rounded-full">Oferta</span>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <button
+                                  onClick={() => {
+                                    const isAdminContext = window.location.pathname.startsWith('/admin');
+                                    const validationUrl = isAdminContext ? '/admin/offers/validate-qr' : '/validate-qr';
+                                    sessionStorage.setItem('scannedQRData', r.text);
+                                    window.location.href = validationUrl;
+                                  }}
+                                  className="text-[10px] px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-0.5"
+                                >
+                                  <IconExternalLink size={10} /> Validar
+                                </button>
+                                <button onClick={() => copy(r.text)} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-slate-400">
+                                  <IconCopy size={12} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-700 dark:text-slate-300 space-y-0.5">
+                              <div className="font-medium truncate">{r.data.customerName}</div>
+                              <div className="text-gray-500 dark:text-slate-400">{r.data.offer?.title || 'N/A'} · S/ {r.data.amount?.toFixed(2) || '?'}</div>
                             </div>
                           </div>
-                          <div className="space-y-1 text-xs">
-                            <div><strong>Cliente:</strong> {r.data.customerName}</div>
-                            <div><strong>Oferta:</strong> {r.data.offer?.title || 'N/A'}</div>
-                            <div><strong>Monto:</strong> S/ {r.data.amount?.toFixed(2) || 'N/A'}</div>
-                            <div><strong>Fecha:</strong> {r.data.createdAt ? new Date(r.data.createdAt).toLocaleString('es-PE') : 'N/A'}</div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-800 dark:text-slate-200 truncate font-mono" title={r.text}>{r.text}</span>
+                            <button onClick={() => copy(r.text)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-500 dark:text-slate-400 flex-shrink-0 transition">
+                              <IconCopy size={12} />
+                            </button>
                           </div>
+                        )}
+                        <div className="text-[10px] text-gray-400 dark:text-slate-600 mt-0.5 tabular-nums">
+                          {new Date(r.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate" title={r.text}>{r.text}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <button onClick={()=>copy(r.text)} className="text-[10px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Copiar</button>
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              );
-            })()}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
-        <div>
-          <a href="/u" className="text-blue-600 dark:text-blue-400 text-sm hover:underline">← Volver al panel</a>
-        </div>
       </div>
-      {flashRef.current && Date.now()-flashRef.current.ts < 550 && (
+      {/* Flash overlay */}
+      {flashRef.current && Date.now() - flashRef.current.ts < 550 && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-40">
-          <div className="h-24 w-24 rounded-full bg-blue-500/80 ring-4 ring-blue-300 flex items-center justify-center animate-scanpop">
+          <div className="h-24 w-24 rounded-full bg-teal-500/80 ring-4 ring-teal-300 flex items-center justify-center animate-scanpop">
             <svg viewBox="0 0 24 24" className="h-14 w-14 text-white" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
           </div>
         </div>
