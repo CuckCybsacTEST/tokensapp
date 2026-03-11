@@ -89,6 +89,12 @@ export async function GET(req: Request) {
       redeem_url: `${baseUrl}${urlPrefix}${t.id}` 
     }));
 
+    // Fisher-Yates shuffle: distribute tokens randomly so they don't appear grouped by prize
+    for (let i = tokenData.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tokenData[i], tokenData[j]] = [tokenData[j], tokenData[i]];
+    }
+
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.
     const originalTokenCount = tokenData.length;
     if (tokenData.length > maxTokens) {

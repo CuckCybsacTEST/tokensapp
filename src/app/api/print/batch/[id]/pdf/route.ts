@@ -128,6 +128,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return apiError('NOT_FOUND','No se encontraron tokens',undefined,404);
     }
 
+    // Fisher-Yates shuffle: distribute tokens randomly so they don't appear grouped by prize
+    for (let i = tokens.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tokens[i], tokens[j]] = [tokens[j], tokens[i]];
+    }
+
     // Enforce the per-request limit to avoid processing an unbounded batch in one request.
     // If the batch is larger than maxTokens the endpoint will only process the first maxTokens
     // and return the partial PDF. Clients should page through the batch (pagination) or
