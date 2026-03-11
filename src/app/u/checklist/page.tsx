@@ -473,6 +473,15 @@ function ChecklistPageInner() {
             </div>
           </div>
 
+          {/* Banner acceso rápido al scanner */}
+          <Link
+            href="/u/scanner"
+            className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white px-4 py-2.5 shadow-sm transition-all"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 15h4.01M12 21h4.01" /></svg>
+            <span className="text-sm font-semibold">Abrir Escáner QR</span>
+          </Link>
+
           {/* Pestañas */}
           <div className="flex border-b border-slate-200 dark:border-slate-700 mt-4">
             <button

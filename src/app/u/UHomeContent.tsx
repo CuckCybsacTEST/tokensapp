@@ -200,6 +200,18 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
         </div>
       </div>
       
+      {/* FAB Scanner — siempre visible para staff */}
+      {session.role === 'STAFF' && (
+        <Link
+          href="/u/scanner"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
+          aria-label="Abrir escáner QR"
+        >
+          <IconQrcode className="w-6 h-6" />
+          <span className="text-sm font-semibold hidden sm:inline">Escáner</span>
+        </Link>
+      )}
+
       {/* Modal de Reset de Contraseña */}
       {showPasswordResetModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
