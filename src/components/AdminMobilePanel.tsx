@@ -264,6 +264,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         items: [
           { href: `${pathPrefix}/prizesstatics`, label: "Premios", icon: ICONS.star },
           { href: `${pathPrefix}/static-batches`, label: "Lotes", icon: ICONS.box },
+          { href: `${pathPrefix}/static-batches/metrics`, label: "Métricas", icon: ICONS.chart },
           { href: `${pathPrefix}/printstatics`, label: "Imprimir Pulseras", icon: ICONS.check }
         ]
       }] : []),
@@ -348,11 +349,44 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "INVITACIONES ESPECIALES",
+        icon: ICONS.star,
+        items: [
+          { href: `${pathPrefix}/generadorinvitaciones`, label: "Eventos", icon: ICONS.star },
+          { href: `${pathPrefix}/generadorinvitaciones/create`, label: "Crear evento", icon: ICONS.check },
+          { href: `${pathPrefix}/generadorinvitaciones/stats`, label: "Estadísticas", icon: ICONS.chart }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "GESTIÓN DE SHOWS",
         icon: ICONS.film,
         items: [
           { href: `${pathPrefix}/shows`, label: "Shows", icon: ICONS.film },
           { href: "/marketing#shows", label: "Ver en marketing", icon: ICONS.star }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "PEDIDOS MUSICALES",
+        icon: ICONS.music,
+        items: [
+          { href: `${pathPrefix}/music-orders`, label: "Pedidos Musicales", icon: ICONS.music },
+          { href: `${pathPrefix}/dj/console`, label: "Consola DJ", icon: ICONS.settings }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "GESTIÓN DE CLIENTES",
+        icon: ICONS.users,
+        items: [
+          { href: `${pathPrefix}/customers`, label: "Clientes", icon: ICONS.users },
+          { href: `${pathPrefix}/customers/visits`, label: "Visitas", icon: ICONS.chart },
+          { href: `${pathPrefix}/customers/analytics`, label: "Analíticas", icon: ICONS.chart }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "NOTICIAS INTERNAS",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -385,7 +419,6 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         items: [
           { href: "#", label: "Personalización de la App", icon: ICONS.star },
           { href: "#", label: "Gestión de Trivias", icon: ICONS.check },
-          { href: "#", label: "Pedidos Musicales", icon: ICONS.music },
           { href: "#", label: "Gestión de Fidelidad", icon: ICONS.star },
           { href: "#", label: "Gestión Wifi", icon: ICONS.qr }
         ]

@@ -186,6 +186,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: [
           { href: `${pathPrefix}/prizesstatics`, label: "Premios", icon: ICONS.starSmall },
           { href: `${pathPrefix}/static-batches`, label: "Lotes", icon: ICONS.box },
+          { href: `${pathPrefix}/static-batches/metrics`, label: "Métricas", icon: ICONS.chart },
           { href: `${pathPrefix}/printstatics`, label: "Imprimir Pulseras", icon: ICONS.checkSmall }
         ]
       }] : []),
@@ -290,6 +291,30 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "PEDIDOS MUSICALES",
+        icon: ICONS.music,
+        items: [
+          { href: `${pathPrefix}/music-orders`, label: "Pedidos Musicales", icon: ICONS.music },
+          { href: `${pathPrefix}/dj/console`, label: "Consola DJ", icon: ICONS.settings }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "GESTIÓN DE CLIENTES",
+        icon: ICONS.users,
+        items: [
+          { href: `${pathPrefix}/customers`, label: "Clientes", icon: ICONS.usersSmall },
+          { href: `${pathPrefix}/customers/visits`, label: "Visitas", icon: ICONS.chart },
+          { href: `${pathPrefix}/customers/analytics`, label: "Analíticas", icon: ICONS.chart }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "NOTICIAS INTERNAS",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "CONTENIDO VISUAL",
         icon: ICONS.film,
         items: [
@@ -319,7 +344,6 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: [
           { href: "#", label: "Personalización de la App", icon: ICONS.star },
           { href: "#", label: "Gestión de Trivias", icon: ICONS.checkSmall },
-          { href: "#", label: "Pedidos Musicales", icon: ICONS.music },
           { href: "#", label: "Gestión de Fidelidad", icon: ICONS.star },
           { href: "#", label: "Gestión Wifi", icon: ICONS.qr }
         ]
