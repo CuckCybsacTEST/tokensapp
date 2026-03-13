@@ -69,6 +69,7 @@ model ReusableToken {
   startTime         DateTime?
   prize             ReusablePrize @relation(fields: [prizeId], references: [id])
   group             TokenGroup?   @relation(fields: [groupId], references: [id])
+  redemptions       ReusableTokenRedemption[]
 
   @@index([prizeId])
   @@index([groupId])
@@ -77,6 +78,19 @@ model ReusableToken {
   @@index([deliveredAt])
   @@index([startTime])
   @@index([endTime])
+}
+
+model ReusableTokenRedemption {
+  id        String   @id @default(cuid())
+  tokenId   String
+  type      String   // "redeem" or "deliver"
+  userId    String?
+  note      String?
+  createdAt DateTime @default(now())
+  token     ReusableToken @relation(fields: [tokenId], references: [id])
+
+  @@index([tokenId])
+  @@index([createdAt])
 }
 
 model Batch {

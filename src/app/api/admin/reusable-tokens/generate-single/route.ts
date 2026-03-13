@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prizeId, maxUses, description, validity } = body;
+    const { prizeId, maxUses, description, validity, groupId } = body;
 
     // Validation
     if (!prizeId || !maxUses || maxUses <= 0 || maxUses > 1000) {
@@ -71,11 +71,20 @@ export async function POST(req: NextRequest) {
       expiresAt = DateTime.now().setZone('America/Lima').plus({ years: 1 }).toJSDate();
     }
 
+    // Verify group exists if provided
+    if (groupId) {
+      const group = await prisma.tokenGroup.findUnique({ where: { id: groupId } });
+      if (!group) {
+        return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      }
+    }
+
     // Create reusable token directly (no batch needed)
     const token = await prisma.reusableToken.create({
       data: {
         id: fullTokenId,
         prizeId,
+        groupId: groupId || null,
         maxUses,
         usedCount: 0,
         expiresAt,

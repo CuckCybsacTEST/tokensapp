@@ -79,6 +79,15 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       }
     });
 
+    // Registrar en historial de canjes
+    await prisma.reusableTokenRedemption.create({
+      data: {
+        tokenId,
+        type: 'redeem',
+        userId: session.userId,
+      }
+    });
+
     return NextResponse.json({
       success: true,
       token: {

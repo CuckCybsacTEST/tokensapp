@@ -96,6 +96,15 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
       data: updateData
     });
 
+    // Registrar en historial de canjes
+    await prisma.reusableTokenRedemption.create({
+      data: {
+        tokenId,
+        type: 'deliver',
+        userId: session.userId,
+      }
+    });
+
     return apiOk({
       tokenId,
       prizeId: token.prizeId,

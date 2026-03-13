@@ -84,12 +84,16 @@ export default function ReusableTokensAdmin() {
     prizeId: '',
     maxUses: 1,
     description: '',
+    groupId: '',
     validityMode: 'byDays' as 'byDays' | 'expires_at' | 'time_window',
     expirationDays: 30,
     expiresAt: '',
     startTime: '18:00',
     endTime: '24:00'
   });
+
+  // History modal state
+  const [historyModal, setHistoryModal] = useState<{ tokenId: string; open: boolean; loading: boolean; data: any } | null>(null);
 
   useEffect(() => {
     fetchPrizes();
@@ -371,12 +375,15 @@ export default function ReusableTokensAdmin() {
         validity = { type: 'time_window', startTime: individualForm.startTime, endTime: individualForm.endTime };
       }
 
-      const body = {
+      const body: any = {
         prizeId: individualForm.prizeId,
         maxUses: individualForm.maxUses,
         description: individualForm.description.trim() || `Token individual generado ${new Date().toLocaleString()}`,
         validity
       };
+      if (individualForm.groupId) {
+        body.groupId = individualForm.groupId;
+      }
 
       const res = await fetch('/api/admin/reusable-tokens/generate-single', {
         method: 'POST',
@@ -398,6 +405,55 @@ export default function ReusableTokensAdmin() {
       alert('Error de red');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const assignTokenToGroup = async (tokenId: string, groupId: string) => {
+    try {
+      const res = await fetch(`/api/admin/token-groups/${groupId}/tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenIds: [tokenId] })
+      });
+      if (res.ok) {
+        fetchRecentTokens(currentPage);
+        fetchGroups();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Error asignando token al grupo');
+      }
+    } catch { alert('Error de red'); }
+  };
+
+  const removeTokenFromGroup = async (tokenId: string, groupId: string) => {
+    try {
+      const res = await fetch(`/api/admin/token-groups/${groupId}/tokens`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenIds: [tokenId] })
+      });
+      if (res.ok) {
+        fetchRecentTokens(currentPage);
+        fetchGroups();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Error removiendo token del grupo');
+      }
+    } catch { alert('Error de red'); }
+  };
+
+  const fetchHistory = async (tokenId: string) => {
+    setHistoryModal({ tokenId, open: true, loading: true, data: null });
+    try {
+      const res = await fetch(`/api/admin/reusable-tokens/${tokenId}/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryModal({ tokenId, open: true, loading: false, data });
+      } else {
+        setHistoryModal({ tokenId, open: true, loading: false, data: null });
+      }
+    } catch {
+      setHistoryModal({ tokenId, open: true, loading: false, data: null });
     }
   };
 
@@ -819,6 +875,20 @@ export default function ReusableTokensAdmin() {
                                         >
                                           👁️
                                         </a>
+                                        <button
+                                          onClick={() => fetchHistory(token.id)}
+                                          className="btn-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+                                          title="Historial de canjes"
+                                        >
+                                          📋
+                                        </button>
+                                        <button
+                                          onClick={() => removeTokenFromGroup(token.id, group.id)}
+                                          className="btn-sm bg-amber-600 hover:bg-amber-700 text-white"
+                                          title="Quitar del grupo"
+                                        >
+                                          ✕
+                                        </button>
                                       </div>
                                     </div>
                                   ))}
@@ -885,6 +955,20 @@ export default function ReusableTokensAdmin() {
                 onChange={e => setIndividualForm({ ...individualForm, description: e.target.value })}
                 placeholder="Descripción del token"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Grupo (opcional)</label>
+              <select
+                className="input w-full"
+                value={individualForm.groupId}
+                onChange={e => setIndividualForm({ ...individualForm, groupId: e.target.value })}
+              >
+                <option value="">Sin grupo</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -1093,6 +1177,12 @@ export default function ReusableTokensAdmin() {
                             <div className="text-sm text-slate-600 dark:text-slate-400">
                               ID: {token.id}
                             </div>
+                            {token.group ? (
+                              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 mt-1">
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: token.group.color || '#3b82f6' }} />
+                                {token.group.name}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         <div className="text-right">
@@ -1132,7 +1222,7 @@ export default function ReusableTokensAdmin() {
                           Nota: {token.deliveryNote}
                         </div>
                       )}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 items-center">
                         <a
                           href={token.qrUrl}
                           target="_blank"
@@ -1146,6 +1236,26 @@ export default function ReusableTokensAdmin() {
                         >
                           Copiar URL
                         </button>
+                        {token.group ? (
+                          <button
+                            onClick={() => removeTokenFromGroup(token.id, token.group!.id)}
+                            className="btn-sm bg-amber-600 hover:bg-amber-700 text-white"
+                            title={`Quitar de grupo "${token.group.name}"`}
+                          >
+                            Quitar de grupo
+                          </button>
+                        ) : (
+                          <select
+                            className="text-xs border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            value=""
+                            onChange={e => { if (e.target.value) assignTokenToGroup(token.id, e.target.value); }}
+                          >
+                            <option value="">Asignar a grupo...</option>
+                            {groups.map(g => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </div>
 
@@ -1208,6 +1318,58 @@ export default function ReusableTokensAdmin() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal Historial de Canjes */}
+      {historyModal?.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setHistoryModal(null)}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Historial de Canjes
+              </h3>
+              <button onClick={() => setHistoryModal(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">✕</button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {historyModal.loading ? (
+                <div className="text-center py-8 text-slate-500">Cargando historial...</div>
+              ) : !historyModal.data ? (
+                <div className="text-center py-8 text-slate-500">Error cargando historial</div>
+              ) : (
+                <>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Token: <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{historyModal.tokenId}</code>
+                    <span className="ml-3">Usos: <strong>{historyModal.data.usedCount}/{historyModal.data.maxUses}</strong></span>
+                  </div>
+                  {historyModal.data.redemptions.length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 dark:text-slate-400 italic">
+                      No hay registros de canjes aún.
+                      {(historyModal.data.usedCount || 0) > 0 && (
+                        <p className="mt-2 text-amber-500 text-xs">Los {historyModal.data.usedCount} canjes anteriores no tienen registro detallado (fueron antes de esta funcionalidad).</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {historyModal.data.redemptions.map((r: any) => (
+                        <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/30">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${r.type === 'deliver' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'}`}>
+                              {r.type === 'deliver' ? 'Entrega' : 'Canje'}
+                            </span>
+                            {r.userId && <span className="text-xs text-slate-500 dark:text-slate-400">por {r.userId.slice(0, 8)}...</span>}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {new Date(r.createdAt).toLocaleString('es-ES', { timeZone: 'America/Lima' })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
