@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const userSession = await verifyUserSessionCookie(userCookie);
     if (!userSession) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!userSession.role || !['ADMIN', 'STAFF', 'COLLAB'].includes(userSession.role))
+    if (!userSession.role || !['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(userSession.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const { searchParams } = new URL(req.url);
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(userCookie);
     if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!session.role || !['ADMIN', 'STAFF'].includes(session.role))
+    if (!session.role || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const body = await req.json().catch(() => ({}));

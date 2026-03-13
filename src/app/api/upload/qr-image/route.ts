@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
 
-    const roleCheck = require('@/lib/auth').requireRole(session, ['ADMIN']);
+    const roleCheck = require('@/lib/auth').requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const stats = await ImageOptimizer.getStorageStats();

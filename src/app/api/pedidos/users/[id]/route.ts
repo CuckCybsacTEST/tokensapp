@@ -8,7 +8,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['STAFF']);
+    const ok = requireRole(session, ['STAFF', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const id = params.id;

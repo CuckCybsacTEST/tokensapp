@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const users = await prisma.user.findMany({
       orderBy: { person: { code: 'asc' } },
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || session.role !== 'ADMIN') return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await req.json().catch(() => null);
     if (!body || !body.username || !body.password) {
@@ -150,9 +150,14 @@ export async function POST(req: Request) {
 
     const username = String(body.username).trim();
     const password = String(body.password);
-    // Valid roles: only the three system roles
-    const validRoles: UserRole[] = ['ADMIN', 'STAFF', 'COLLAB'];
-    const role: UserRole = validRoles.includes(body.role as UserRole) ? (body.role as UserRole) : 'COLLAB';
+    // Valid roles: system roles. COORDINATOR can only create STAFF/COLLAB.
+    const validRoles: UserRole[] = ['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'];
+    let role: UserRole = validRoles.includes(body.role as UserRole) ? (body.role as UserRole) : 'COLLAB';
+
+    // COORDINATOR cannot create ADMIN or COORDINATOR users
+    if (session.role === 'COORDINATOR' && (role === 'ADMIN' || role === 'COORDINATOR')) {
+      role = 'STAFF';
+    }
 
     if (!isValidUsername(username)) {
       return NextResponse.json({ ok: false, code: 'INVALID_USERNAME' }, { status: 400 });

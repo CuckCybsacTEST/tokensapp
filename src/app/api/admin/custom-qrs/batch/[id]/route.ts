@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const batch = await (prisma as any).customQrBatch.findUnique({
@@ -42,7 +42,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const { name, description, theme, isActive } = await req.json();
@@ -74,7 +74,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     // Verificar si el lote tiene QR asociados

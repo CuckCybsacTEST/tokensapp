@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(userCookie);
     if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!session.role || !['ADMIN', 'STAFF', 'COLLAB'].includes(session.role))
+    if (!session.role || !['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(session.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const event = await getEvent(params.eventId);
@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(userCookie);
     if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!session.role || !['ADMIN', 'STAFF'].includes(session.role))
+    if (!session.role || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const body = await req.json().catch(() => ({}));

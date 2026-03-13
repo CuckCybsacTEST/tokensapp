@@ -8,7 +8,7 @@ export async function POST(req: NextRequest, { params }: { params: { eventId: st
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(userCookie);
     if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!session.role || !['ADMIN', 'STAFF'].includes(session.role))
+    if (!session.role || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const event = await completeEvent(params.eventId);

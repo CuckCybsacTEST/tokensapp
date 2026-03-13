@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const id = params.id;
@@ -25,6 +25,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
 
     if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+
+    // COORDINATOR cannot view ADMIN users
+    if (session?.role === 'COORDINATOR' && user.role === 'ADMIN') {
+      return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+    }
 
     // Transform to React Admin format
     const result = {
@@ -51,7 +56,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN', 'STAFF']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR', 'STAFF']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const id = params.id;
@@ -60,6 +65,14 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     // Find user and their person first
     const user = await prisma.user.findUnique({ where: { id }, include: { person: true } });
     if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+
+    // COORDINATOR cannot delete ADMIN users; STAFF can only delete COLLAB
+    if (session?.role === 'COORDINATOR' && user.role === 'ADMIN') {
+      return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+    }
+    if (session?.role === 'STAFF' && user.role !== 'COLLAB') {
+      return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+    }
 
     // Cascade delete related records in a transaction
     await prisma.$transaction(async (tx) => {
@@ -102,7 +115,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const id = params.id;
@@ -113,13 +126,27 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ ok: false, code: 'NO_FIELDS' }, { status: 400 });
     }
 
+    // COORDINATOR cannot edit ADMIN users
+    if (session?.role === 'COORDINATOR') {
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (target?.role === 'ADMIN') {
+        return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+      }
+    }
+
     const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean; passwordChanged?: boolean } = {};
 
     // Role update (optional)
     if (body.role != null) {
-      const validRoles = ['ADMIN', 'STAFF', 'COLLAB', 'VIP', 'MEMBER', 'GUEST'];
+      const validRoles = ['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'];
       const role = validRoles.includes(body.role) ? body.role : null;
       if (!role) return NextResponse.json({ ok: false, code: 'INVALID_ROLE' }, { status: 400 });
+
+      // COORDINATOR cannot promote to ADMIN or COORDINATOR
+      if (session?.role === 'COORDINATOR' && (role === 'ADMIN' || role === 'COORDINATOR')) {
+        return NextResponse.json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+      }
+
       const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
       if (!user) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
       if (user.role !== role) {

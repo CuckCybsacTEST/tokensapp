@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const cookie = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(cookie);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'UNAUTHORIZED', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403);
 
   try {
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const cookie = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(cookie);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'UNAUTHORIZED', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403);
 
   try {

@@ -10,7 +10,7 @@ import { apiError, apiOk } from '@/lib/apiError';
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
   const raw = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(raw);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo ADMIN', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403);
 
   try {

@@ -21,6 +21,6 @@ export default async function AdminUsersPage({
     );
   }
 
-  // ADMIN users get tabbed interface
+  // ADMIN and COORDINATOR users get tabbed interface
   return <UsersWithTabs />;
 }

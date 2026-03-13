@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || session.role !== 'STAFF') {
+    if (!session || !['STAFF', 'COORDINATOR'].includes(session.role)) {
       return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
     }
     const users = await prisma.user.findMany({
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || session.role !== 'STAFF') return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
+    if (!session || !['STAFF', 'COORDINATOR'].includes(session.role)) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await req.json().catch(()=>({}));
     const name = typeof body.name === 'string' ? body.name.trim() : '';

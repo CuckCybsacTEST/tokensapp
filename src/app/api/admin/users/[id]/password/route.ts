@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const id = String(params?.id || '').trim();

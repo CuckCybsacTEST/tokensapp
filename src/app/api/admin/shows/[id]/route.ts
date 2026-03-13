@@ -62,7 +62,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!isShowsFeatureEnabled()) return buildErrorResponse('FEATURE_DISABLED', 'Shows feature disabled', 503);
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) {
       if (session && (session as any).role === 'STAFF') return buildErrorResponse('FORBIDDEN', 'Only ADMIN can mutate', 403);
       return buildErrorResponse('UNAUTHORIZED', 'ADMIN required', 401);

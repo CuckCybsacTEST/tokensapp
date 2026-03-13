@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const sets = await prisma.exchangeTriviaSet.findMany({
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const body = await req.json();

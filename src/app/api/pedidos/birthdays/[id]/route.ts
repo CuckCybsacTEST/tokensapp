@@ -6,7 +6,7 @@ import { getReservation } from '@/lib/birthdays/service';
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const raw = getUserSessionCookieFromRequest(req as unknown as Request);
   const session = await verifyUserSessionCookie(raw);
-  if (!session || session.role !== 'STAFF') return apiError('UNAUTHORIZED', undefined, undefined, 401);
+  if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) return apiError('UNAUTHORIZED', undefined, undefined, 401);
   const r = await getReservation(params.id);
   if (!r) return apiError('NOT_FOUND', 'Reservation not found', undefined, 404);
   const dto = {

@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req as any);
     const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) return err('FORBIDDEN', 'ADMIN required', 403);
 
     const limit = Math.min(200, Math.max(1, parseInt((req.nextUrl.searchParams.get('limit') || '50'), 10)));
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req as any);
     const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) return err('FORBIDDEN', 'ADMIN required', 403);
 
     const body = await req.json().catch(() => ({}));

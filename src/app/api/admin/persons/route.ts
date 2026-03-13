@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
   if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
-    const role = requireRole(session, ['ADMIN']);
+    const role = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     // Rate limit by IP
@@ -92,7 +92,7 @@ export async function PUT(req: Request) {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
-    const role = requireRole(session, ['ADMIN']);
+    const role = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     const body = await req.json().catch(() => null);
@@ -146,7 +146,7 @@ export async function DELETE(req: Request) {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
-    const role = requireRole(session, ['ADMIN']);
+    const role = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!role.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
 
     const url = new URL(req.url);

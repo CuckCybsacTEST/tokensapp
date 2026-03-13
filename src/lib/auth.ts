@@ -5,13 +5,26 @@ const COOKIE_NAME = "user_session";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 horas
 
 // Tipo común para roles de usuario
-export type UserRole = 'COLLAB' | 'STAFF' | 'ADMIN';
+// Jerarquía: ADMIN > COORDINATOR > STAFF > COLLAB
+export type UserRole = 'COLLAB' | 'STAFF' | 'COORDINATOR' | 'ADMIN';
+
+/** Orden jerárquico de roles (mayor = más permisos) */
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  COLLAB: 0,
+  STAFF: 1,
+  COORDINATOR: 2,
+  ADMIN: 3,
+};
+
+/** Todas las áreas válidas del sistema (replica de areas.ts para evitar import circular) */
+export const ALL_USER_ROLES: readonly UserRole[] = ['COLLAB', 'STAFF', 'COORDINATOR', 'ADMIN'] as const;
 
 export interface UserSessionData {
   iat: number; // issued at (ms)
   exp: number; // expiry (ms)
   userId: string;
   role: UserRole; // default 'COLLAB'
+  area?: string; // área funcional del colaborador (DJs, Animación, etc.)
 }
 
 // NOTA: Para evitar warnings en Edge Runtime, dividimos la obtención del secreto
@@ -75,10 +88,9 @@ function base64urlDecodeToString(b64u: string): string {
   return Buffer.from(padded, 'base64').toString('utf8');
 }
 
-export async function createUserSessionCookie(userId: string, role: UserRole = 'COLLAB'): Promise<string> {
-  console.log('DEBUG createUserSessionCookie: received role:', role, 'type:', typeof role);
+export async function createUserSessionCookie(userId: string, role: UserRole = 'COLLAB', area?: string): Promise<string> {
   const now = Date.now();
-  const data: UserSessionData = { iat: now, exp: now + SESSION_TTL_MS, userId, role };
+  const data: UserSessionData = { iat: now, exp: now + SESSION_TTL_MS, userId, role, ...(area ? { area } : {}) };
   const payload = (() => {
     const json = JSON.stringify(data);
     if (typeof Buffer !== 'undefined') {
@@ -157,9 +169,15 @@ export function requireRole(session: UserSessionData | null | undefined, roles: 
   return { ok: true, hasAccess: true };
 }
 
-// Helper para saber si un rol es administrativo
+// Helper para saber si un rol es administrativo (COORDINATOR incluido)
 export function isAdminLike(role: UserRole | null | undefined) {
-  return role === 'ADMIN' || role === 'STAFF';
+  return role === 'ADMIN' || role === 'COORDINATOR' || role === 'STAFF';
+}
+
+/** Verifica si roleA tiene nivel >= roleB en la jerarquía */
+export function roleAtLeast(role: UserRole | null | undefined, minRole: UserRole): boolean {
+  if (!role) return false;
+  return (ROLE_HIERARCHY[role] ?? -1) >= (ROLE_HIERARCHY[minRole] ?? 99);
 }
 
 // Helpers simplificados para refactors en rutas
@@ -168,14 +186,14 @@ export function hasRole(session: UserSessionData | null | undefined, roles: Read
 }
 
 export function isStaffOrAdmin(session: UserSessionData | null | undefined): boolean {
-  return !!session && (session.role === 'STAFF' || session.role === 'ADMIN');
+  return !!session && roleAtLeast(session.role, 'STAFF');
 }
 
 // Legacy helper solicitado por algunos endpoints antiguos.
 export async function verifyStaffAccess(req: Request): Promise<{ ok: boolean; hasAccess: boolean; role?: UserRole; error?: string }> {
   const raw = getUserSessionCookieFromRequest(req);
   const session = await verifyUserSessionCookie(raw);
-  if (session && (session.role === 'ADMIN' || session.role === 'STAFF')) {
+  if (session && roleAtLeast(session.role, 'STAFF')) {
     return { ok: true, hasAccess: true, role: session.role };
   }
   return { ok: false, hasAccess: false, error: 'FORBIDDEN' };

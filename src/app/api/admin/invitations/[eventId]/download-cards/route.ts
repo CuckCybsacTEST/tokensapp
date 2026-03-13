@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     const userCookie = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(userCookie);
     if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
-    if (!session.role || !['ADMIN', 'STAFF'].includes(session.role))
+    if (!session.role || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role))
       return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const event = await getEvent(params.eventId);
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
         format: 'png',
       });
       const safeName = inv.guestName.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').replace(/\s+/g, '_');
-      return new Response(cardBuf, {
+      return new Response(new Uint8Array(cardBuf), {
         status: 200,
         headers: {
           'Content-Type': 'image/png',
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     // ── All guests → ZIP ─────────────────────────────────────────────
     const chunks: Uint8Array[] = [];
     const archive = archiver('zip', { zlib: { level: 6 } });
-    archive.on('data', (chunk) => chunks.push(chunk));
+    archive.on('data', (chunk: Buffer) => chunks.push(new Uint8Array(chunk)));
 
     const done = new Promise<void>((resolve, reject) => {
       archive.on('end', resolve);
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest, { params }: { params: { eventId: str
     await done;
 
     const zipBuffer = Buffer.concat(chunks);
-    return new Response(zipBuffer, {
+    return new Response(new Uint8Array(zipBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',

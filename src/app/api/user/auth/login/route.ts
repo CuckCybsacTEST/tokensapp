@@ -18,13 +18,13 @@ export async function POST(req: Request) {
     }
 
     const normDni = (s: string | undefined | null) => String(s || '').replace(/\D+/g, '');
-    let user: { id: string; username: string; passwordHash: string; role: string; personId: string; forcePasswordChange?: boolean } | null = null;
+    let user: { id: string; username: string; passwordHash: string; role: string; personId: string; forcePasswordChange?: boolean; person?: { area: string | null } } | null = null;
 
     // 1) Intentar por username si está presente
     if (username) {
       const byUsername = await prisma.user.findUnique({
         where: { username },
-        select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true },
+        select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true, person: { select: { area: true } } },
       });
       if (byUsername) user = byUsername;
     }
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       if (dniInput) {
         const byDni = await prisma.user.findFirst({
           where: { person: { dni: dniInput } },
-          select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true },
+          select: { id: true, username: true, passwordHash: true, role: true, personId: true, forcePasswordChange: true, person: { select: { area: true } } },
         });
         if (byDni) user = byDni;
       }
@@ -60,14 +60,15 @@ export async function POST(req: Request) {
       return apiError('INVALID_CREDENTIALS', 'Credenciales inválidas', undefined, 401);
     }
 
-    // Validar rol - ahora incluye ADMIN
-    if (!['ADMIN', 'STAFF', 'COLLAB'].includes(user.role)) {
+    // Validar rol
+    if (!['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(user.role)) {
       await logEvent("USER_AUTH_FAIL", "Login colaborador: rol inválido", { userId: user.id, role: user.role });
       return apiError('INVALID_CREDENTIALS', 'Rol de usuario inválido', undefined, 401);
     }
 
-    // Crear sesión
-    const sessionCookie = await createUserSessionCookie(user.id, user.role as 'ADMIN' | 'STAFF' | 'COLLAB');
+    // Crear sesión (incluye área para permisos funcionales en middleware)
+    const userArea = user.person?.area ?? undefined;
+    const sessionCookie = await createUserSessionCookie(user.id, user.role as 'ADMIN' | 'COORDINATOR' | 'STAFF' | 'COLLAB', userArea);
 
     await logEvent("USER_AUTH_SUCCESS", "Login colaborador exitoso", {
       userId: user.id,

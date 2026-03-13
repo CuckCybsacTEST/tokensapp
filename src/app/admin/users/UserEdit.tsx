@@ -11,8 +11,9 @@ import {
 } from 'react-admin';
 
 const roleChoices = [
-  { id: 'COLLAB', name: 'Collaborator' },
+  { id: 'COLLAB', name: 'Colaborador' },
   { id: 'STAFF', name: 'Staff' },
+  { id: 'COORDINATOR', name: 'Coordinador' },
   { id: 'ADMIN', name: 'Admin' },
 ];
 

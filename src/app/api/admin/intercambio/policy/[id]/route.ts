@@ -12,7 +12,7 @@ export async function GET(
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const policy = await (prisma as any).clientExchangePolicy.findUnique({
@@ -35,7 +35,7 @@ export async function PUT(
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const body = await req.json();
@@ -94,7 +94,7 @@ export async function DELETE(
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     await (prisma as any).clientExchangePolicy.delete({

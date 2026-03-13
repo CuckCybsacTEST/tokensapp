@@ -10,7 +10,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     const {
@@ -117,7 +117,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
     if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
-    const roleCheck = requireRole(session, ['ADMIN']);
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     // Verificar si es política por defecto

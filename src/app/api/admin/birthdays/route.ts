@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const userSession = await verifyUserSessionCookie(userCookie);
     if (!userSession) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
     // Allow ADMIN/STAFF/COLLAB from user session
-    const isAllowed = userSession.role && ['ADMIN', 'STAFF', 'COLLAB'].includes(userSession.role);
+    const isAllowed = userSession.role && ['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(userSession.role);
     if (!isAllowed) return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 
     const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
   const session = adminSession || userSession;
   if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
   // Allow ADMIN/STAFF from admin session, or COLLAB/STAFF from user session
-  const isAdmin = adminSession?.role && ['ADMIN', 'STAFF'].includes(adminSession.role);
+  const isAdmin = adminSession?.role && ['ADMIN', 'COORDINATOR', 'STAFF'].includes(adminSession.role);
   const isUser = userSession?.role && ['COLLAB', 'STAFF'].includes(userSession.role);
   if (!isAdmin && !isUser) return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 

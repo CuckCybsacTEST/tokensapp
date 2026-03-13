@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   // Require admin session to avoid misuse even in dev
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const r = requireRole(session, ['ADMIN']);
+  const r = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!r.ok) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
 
   let body: any = null;

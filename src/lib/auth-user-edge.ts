@@ -7,6 +7,7 @@ export interface UserSessionData {
   exp: number;
   userId: string;
   role: UserRole;
+  area?: string;
 }
 
 function base64urlEncode(bytes: Uint8Array) {

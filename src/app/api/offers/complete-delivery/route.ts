@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await verifyUserSessionCookie(cookie);
-    if (!session || session.role !== 'STAFF') {
+    if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) {
       return NextResponse.json(
         { error: 'No autorizado - se requiere rol de staff' },
         { status: 403 }

@@ -26,58 +26,42 @@ export const SYSTEM_FUNCTIONS = [
   'MANAGE_OFFERS',           // Gestionar ofertas
   'MANAGE_INVENTORY',        // Gestionar inventario
   'MANAGE_PRINT',            // Gestionar impresión
+  'MANAGE_MUSIC',            // Gestionar sistema de música / DJ console
+  'MANAGE_USERS',            // Gestionar usuarios del sistema
   'ACCESS_ADMIN_PANEL',      // Acceso general al panel de admin
 ] as const;
 
 export type SystemFunction = typeof SYSTEM_FUNCTIONS[number];
 
-// Permisos por función mapeados a roles de staff
+/** Todos los StaffRoles existentes */
+const ALL_STAFF: StaffRole[] = ['WAITER', 'CASHIER', 'ADMIN', 'BARTENDER', 'SECURITY', 'ANIMATION', 'DJ', 'MULTIMEDIA', 'GENERAL_STAFF'];
+
+// Permisos por función mapeados a roles de staff (área funcional)
 export const FUNCTION_PERMISSIONS: Record<SystemFunction, StaffRole[]> = {
-  // Solo animadores pueden gestionar trivia
   MANAGE_TRIVIA: ['ANIMATION'],
-
-  // Animadores y multimedia pueden gestionar shows
   MANAGE_SHOWS: ['ANIMATION', 'MULTIMEDIA'],
-
-  // Solo administradores pueden controlar tokens
   CONTROL_TOKENS: ['ADMIN'],
-
-  // Administradores y animadores pueden gestionar lotes
   MANAGE_BATCHES: ['ADMIN', 'ANIMATION'],
-
-  // Animadores y multimedia pueden gestionar lotes estáticos (QR)
   MANAGE_STATIC_BATCHES: ['ANIMATION', 'MULTIMEDIA'],
-
-  // Todos pueden ver asistencia (excepto mozos)
-  VIEW_ATTENDANCE: ['ADMIN', 'CASHIER', 'BARTENDER', 'SECURITY', 'ANIMATION', 'DJ', 'MULTIMEDIA', 'GENERAL_STAFF'],
-
-  // Todos pueden gestionar tareas
-  MANAGE_TASKS: ['WAITER', 'CASHIER', 'ADMIN', 'BARTENDER', 'SECURITY', 'ANIMATION', 'DJ', 'MULTIMEDIA', 'GENERAL_STAFF'],
-
-  // Administradores y animadores pueden gestionar premios
+  VIEW_ATTENDANCE: ALL_STAFF.filter(r => r !== 'WAITER'),
+  MANAGE_TASKS: ALL_STAFF,
   MANAGE_PRIZES: ['ADMIN', 'ANIMATION'],
-
-  // Todos pueden ver métricas
-  VIEW_METRICS: ['WAITER', 'CASHIER', 'ADMIN', 'BARTENDER', 'SECURITY', 'ANIMATION', 'DJ', 'MULTIMEDIA', 'GENERAL_STAFF'],
-
-  // Caja y administradores gestionan clientes
+  VIEW_METRICS: ALL_STAFF,
   MANAGE_CUSTOMERS: ['CASHIER', 'ADMIN'],
-
-  // Caja y administradores gestionan tickets
   MANAGE_TICKETS: ['CASHIER', 'ADMIN'],
-
-  // Administradores y animadores gestionan ofertas
   MANAGE_OFFERS: ['ADMIN', 'ANIMATION'],
-
-  // Administradores y bartenders gestionan inventario
   MANAGE_INVENTORY: ['ADMIN', 'BARTENDER'],
-
-  // Administradores y multimedia gestionan impresión
   MANAGE_PRINT: ['ADMIN', 'MULTIMEDIA'],
-
-  // Acceso general al panel admin
+  MANAGE_MUSIC: ['DJ', 'ADMIN'],
+  MANAGE_USERS: ['ADMIN'],
   ACCESS_ADMIN_PANEL: ['ADMIN'],
 };
+
+/** Verifica si un staffRole tiene permiso para una función */
+export function hasPermission(staffRole: StaffRole | null | undefined, fn: SystemFunction): boolean {
+  if (!staffRole) return false;
+  return FUNCTION_PERMISSIONS[fn]?.includes(staffRole) ?? false;
+}
 
 /**
  * Verifica si un rol de staff tiene permiso para acceder a una función específica

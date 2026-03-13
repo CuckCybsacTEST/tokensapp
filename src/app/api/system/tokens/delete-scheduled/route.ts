@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   // Auth estricto: solo ADMIN via cookie admin
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: 'FORBIDDEN', message: 'ADMIN only' }, { status: 403 });
   }

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req as unknown as Request);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || session.role !== 'STAFF') return apiError('UNAUTHORIZED', undefined, undefined, 401);
+    if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) return apiError('UNAUTHORIZED', undefined, undefined, 401);
     const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
     const rl = checkRateLimit(`staff:birthdays:list:${ip}`);
     if (!rl.ok) return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { 'Retry-After': String(rl.retryAfterSeconds) });
@@ -63,7 +63,7 @@ const CreateSchema = z.object({
 export async function POST(req: NextRequest) {
   const raw = getUserSessionCookieFromRequest(req as unknown as Request);
   const session = await verifyUserSessionCookie(raw);
-  if (!session || session.role !== 'STAFF') return apiError('UNAUTHORIZED', undefined, undefined, 401);
+  if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) return apiError('UNAUTHORIZED', undefined, undefined, 401);
   const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
   const rl = checkRateLimit(`staff:birthdays:create:${ip}`);
   if (!rl.ok) return apiError('RATE_LIMITED', 'Too many requests', undefined, 429, { 'Retry-After': String(rl.retryAfterSeconds) });

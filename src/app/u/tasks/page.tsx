@@ -31,7 +31,7 @@ async function loadTasks(day: string) {
 export default async function TasksReadonlyPage({ searchParams }: { searchParams: { day?: string } }) {
   const raw = cookies().get('user_session')?.value;
   const session = await verifyUserSessionCookie(raw);
-  if (!session || session.role !== 'STAFF') {
+  if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) {
     // Solo STAFF puede ver este panel global de referencia
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-600 dark:text-slate-300">

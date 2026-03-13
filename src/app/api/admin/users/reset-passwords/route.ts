@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']); // Only ADMIN can reset all passwords
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']); // Only ADMIN can reset all passwords
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));

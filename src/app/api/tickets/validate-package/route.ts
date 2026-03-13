@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await verifyUserSessionCookie(cookie);
-    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
       return NextResponse.json(
         { error: 'No autorizado. Se requiere rol de admin o staff.' },
         { status: 401 }
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
     }
 
     const session = await verifyUserSessionCookie(cookie);
-    if (!session || !['ADMIN', 'STAFF'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
       return NextResponse.json(
         { error: 'No autorizado' },
         { status: 401 }

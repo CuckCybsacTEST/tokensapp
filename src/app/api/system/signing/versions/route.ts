@@ -8,7 +8,7 @@ import { CURRENT_SIGNATURE_VERSION, SECRET_MAP } from '@/lib/signing';
 export async function GET(req: Request) {
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Acceso restringido', undefined, auth.error === 'FORBIDDEN' ? 403 : 401);
 
   const loaded = Object.keys(SECRET_MAP).map(v => Number(v)).sort((a,b)=>a-b);

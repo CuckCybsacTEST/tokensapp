@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   // Require ADMIN session
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const r = requireRole(session, ['ADMIN']);
+  const r = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!r.ok) {
     return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
   // Require ADMIN session
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const r = requireRole(session, ['ADMIN']);
+  const r = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!r.ok) {
     return apiError(r.error || 'UNAUTHORIZED', r.error || 'UNAUTHORIZED', undefined, r.error === 'FORBIDDEN' ? 403 : 401);
   }

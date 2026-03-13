@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { tokenId: st
   // Simple admin check: presence of valid session cookie
   const rawCookie = getSessionCookieFromRequest(req as any);
   const session = await verifySessionCookie(rawCookie);
-  const auth = requireRole(session, ['ADMIN']);
+  const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
   if (!auth.ok) {
     const code = auth.error || 'UNAUTHORIZED';
     return apiError(code, code, undefined, code === 'UNAUTHORIZED' ? 401 : 403);

@@ -17,8 +17,9 @@ import { Box, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const roleChoices = [
-  { id: 'COLLAB', name: 'Collaborator' },
+  { id: 'COLLAB', name: 'Colaborador' },
   { id: 'STAFF', name: 'Staff' },
+  { id: 'COORDINATOR', name: 'Coordinador' },
   { id: 'ADMIN', name: 'Admin' },
 ];
 

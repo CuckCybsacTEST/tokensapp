@@ -111,7 +111,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm ml-8 sm:ml-9">Ver perfil →</div>
               </Link>
 
-              {session.role === 'STAFF' && (
+              {isStaff && (
                 <Link href="/u/attendance" className="block rounded-lg border border-indigo-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-indigo-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
@@ -135,7 +135,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
 
           {activeTab === 'work' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
-              {session.role === 'STAFF' && (
+              {isStaff && (
                 <Link href="/u/scanner" className="block rounded-lg border border-teal-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-teal-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconQrcode className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
@@ -153,7 +153,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
               </Link>
-              {session.role === 'STAFF' && (
+              {isStaff && (
                 <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconCake className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
@@ -173,7 +173,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm ml-8 sm:ml-9">Administrar ruleta →</div>
                 </Link>
               )}
-              {session.role === 'STAFF' && (
+              {isStaff && (
                 <Link href="/u/statics-batches" className="block rounded-lg border border-violet-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-violet-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconPackage className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600 dark:text-violet-400 flex-shrink-0" />
@@ -183,7 +183,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-violet-600 dark:text-violet-400 text-sm ml-8 sm:ml-9">Gestionar lotes →</div>
                 </Link>
               )}
-              {session.role === 'STAFF' && (
+              {isStaff && (
                 <Link href="/u/sorteos-qr?tab=batches" className="block rounded-lg border border-cyan-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-cyan-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconQrcode className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
@@ -193,7 +193,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-sm ml-8 sm:ml-9">Ver sorteos →</div>
                 </Link>
               )}
-              {session.role === 'STAFF' && hasCartaAccess && (
+              {isStaff && hasCartaAccess && (
                 <Link href="/u/menu" className="block rounded-lg border border-orange-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-orange-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconGlass className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400 flex-shrink-0" />
@@ -209,7 +209,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
       </div>
       
       {/* FAB Scanner — siempre visible para staff */}
-      {session.role === 'STAFF' && (
+      {isStaff && (
         <Link
           href="/u/scanner"
           className="fab-scanner fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"

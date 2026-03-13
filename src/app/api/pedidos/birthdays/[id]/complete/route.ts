@@ -6,7 +6,7 @@ import { completeReservation } from '@/lib/birthdays/service';
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const raw = getUserSessionCookieFromRequest(req as unknown as Request);
   const session = await verifyUserSessionCookie(raw);
-  if (!session || session.role !== 'STAFF') return apiError('UNAUTHORIZED', undefined, undefined, 401);
+  if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) return apiError('UNAUTHORIZED', undefined, undefined, 401);
   const r = await completeReservation(params.id, session.userId);
   return apiOk(r);
 }

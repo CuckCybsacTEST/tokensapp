@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     // Auth & role check
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) {
       // STAFF no puede crear; devolver 403 si está autenticado como STAFF
       if (session && (session as any).role === 'STAFF') return buildErrorResponse('FORBIDDEN', 'Only ADMIN can mutate', 403);

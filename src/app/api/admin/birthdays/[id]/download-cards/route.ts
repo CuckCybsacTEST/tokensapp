@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const session = adminSession || userSession;
   if (!session) return apiError('UNAUTHORIZED', 'No session', undefined, 401);
   // Allow ADMIN/STAFF from admin session, or COLLAB/STAFF from user session
-  const isAdmin = adminSession?.role && ['ADMIN', 'STAFF'].includes(adminSession.role);
+  const isAdmin = adminSession?.role && ['ADMIN', 'COORDINATOR', 'STAFF'].includes(adminSession.role);
   const isUser = userSession?.role && ['COLLAB', 'STAFF'].includes(userSession.role);
   if (!isAdmin && !isUser) return apiError('FORBIDDEN', 'Insufficient permissions', undefined, 403);
 

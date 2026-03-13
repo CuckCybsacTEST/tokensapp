@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     // Preview diagnostic without changing data
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const ok = requireRole(session, ['ADMIN']);
+    const ok = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
     const res = await reconcileAllPrizes();

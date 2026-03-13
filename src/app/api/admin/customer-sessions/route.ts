@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     // Verificar autenticación de admin
     const rawCookie = getUserSessionCookieFromRequest(req);
     const session = await verifySessionCookie(rawCookie);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -66,7 +66,7 @@ export async function DELETE(req: NextRequest) {
     // Verificar autenticación de admin
     const rawCookie = getUserSessionCookieFromRequest(req);
     const session = await verifySessionCookie(rawCookie);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

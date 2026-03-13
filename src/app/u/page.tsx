@@ -19,8 +19,8 @@ export default async function UHome() {
     redirect(`/u/login?next=${encodeURIComponent('/u')}`);
   }
 
-  // Mostrar control de tokens a cualquier STAFF (antes solo Caja)
-  const isStaff = session.role === 'STAFF';
+  // STAFF, COORDINATOR, ADMIN: acceso a funciones avanzadas
+  const isStaff = ['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role);
 
   // Verificar acceso a la carta y determinar rol específico
   let hasCartaAccess = false;
@@ -33,7 +33,7 @@ export default async function UHome() {
     const userArea = user?.person?.area;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
     staffRole = mapAreaToStaffRole(validArea);
-    hasCartaAccess = !!staffRole || session.role === 'STAFF';
+    hasCartaAccess = !!staffRole || ['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role);
   } catch {}
 
   // Calcular próxima acción para hoy según última marca real (día laboral)

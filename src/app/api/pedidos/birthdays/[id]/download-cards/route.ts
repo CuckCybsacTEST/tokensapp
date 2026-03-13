@@ -7,7 +7,7 @@ import { generateQrPngDataUrl } from '@/lib/qr';
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const raw = getUserSessionCookieFromRequest(req as unknown as Request);
   const session = await verifyUserSessionCookie(raw);
-  if (!session || session.role !== 'STAFF') return new NextResponse('UNAUTHORIZED', { status: 401 });
+  if (!session || !['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role)) return new NextResponse('UNAUTHORIZED', { status: 401 });
   const id = params.id;
   const resv = await prisma.birthdayReservation.findUnique({ where: { id }, include: { inviteTokens: true } });
   if (!resv) return new NextResponse('NOT_FOUND', { status: 404 });

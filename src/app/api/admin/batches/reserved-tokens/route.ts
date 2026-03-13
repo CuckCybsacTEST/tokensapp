@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-    const auth = requireRole(session, ['ADMIN']);
+    const auth = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!auth.ok) return NextResponse.json({ ok: false, message: 'ADMIN required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
