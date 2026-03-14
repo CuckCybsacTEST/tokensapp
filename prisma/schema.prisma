@@ -224,6 +224,7 @@ model Person {
   scans            Scan[]
   user             User?
   BriefAcceptance  BriefAcceptance[]
+  dailyRatings     PersonDailyRating[]
 
   @@index([code])
 }
@@ -1740,4 +1741,34 @@ model ExchangeTriviaProgress {
   @@unique([sessionId, questionId])
   @@index([sessionId])
   @@index([questionId])
+}
+
+model DailyEvaluation {
+  id              String    @id @default(cuid())
+  businessDay     String    @unique
+  rating          String?   // MALO, REGULAR, BUENO, MUY_BUENO
+  comment         String?
+  evaluatedByUserId String?
+  closedAt        DateTime?
+  closedByUserId  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([businessDay])
+}
+
+model PersonDailyRating {
+  id              String   @id @default(cuid())
+  businessDay     String
+  personId        String
+  rating          String   // MALO, REGULAR, BUENO, MUY_BUENO
+  note            String?
+  ratedByUserId   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  person          Person   @relation(fields: [personId], references: [id])
+
+  @@unique([businessDay, personId])
+  @@index([businessDay])
+  @@index([personId])
 }

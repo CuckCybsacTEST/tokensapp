@@ -237,7 +237,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         items: basePath === 'admin' ? [
           // Reordered: Colaboradores first, then Control de Asistencia
           { href: `${pathPrefix}/users`, label: "Colaboradores", icon: ICONS.usersSmall },
-          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart }
+          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart },
+          { href: `${pathPrefix}/daily-evaluation`, label: "Resumen de Jornada", icon: ICONS.checkSmall }
         ] : [
           { href: `${pathPrefix}/attendance`, label: "Mi Asistencia", icon: ICONS.chart }
         ]

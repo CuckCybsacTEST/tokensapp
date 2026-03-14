@@ -68,6 +68,8 @@ export default function ReusableTokensAdmin() {
   const [recentTokens, setRecentTokens] = useState<IndividualToken[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [prizesDropdownOpen, setPrizesDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'premios' | 'grupos' | 'tokens'>('premios');
   const [groupForm, setGroupForm] = useState({ name: '', description: '', color: '' });
@@ -405,6 +407,48 @@ export default function ReusableTokensAdmin() {
       alert('Error de red');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const toggleTokenSelection = (tokenId: string) => {
+    setSelectedTokenIds(prev => {
+      const next = new Set(prev);
+      if (next.has(tokenId)) next.delete(tokenId);
+      else next.add(tokenId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTokenIds.size === recentTokens.length) {
+      setSelectedTokenIds(new Set());
+    } else {
+      setSelectedTokenIds(new Set(recentTokens.map(t => t.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTokenIds.size === 0) return;
+    if (!confirm(`¿Eliminar ${selectedTokenIds.size} token(es) seleccionado(s)? Los tokens con canjes serán omitidos.`)) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch('/api/admin/reusable-tokens/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenIds: Array.from(selectedTokenIds) }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        setSelectedTokenIds(new Set());
+        fetchRecentTokens(currentPage);
+      } else {
+        alert(data.error || 'Error al eliminar');
+      }
+    } catch {
+      alert('Error de conexión');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -1149,8 +1193,34 @@ export default function ReusableTokensAdmin() {
       {/* Todos los Tokens */}
       <div className="card">
         <div className="card-header">
-          <h2 className="text-lg font-semibold">Todos los Tokens</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Lista completa de tokens generados con paginación</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Todos los Tokens</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Lista completa de tokens generados con paginación</p>
+            </div>
+            {recentTokens.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedTokenIds.size === recentTokens.length && recentTokens.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded border-slate-300"
+                  />
+                  Seleccionar todos
+                </label>
+                {selectedTokenIds.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={bulkDeleting}
+                    className="btn-sm bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                  >
+                    {bulkDeleting ? 'Eliminando...' : `Eliminar (${selectedTokenIds.size})`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="card-body">
           {recentTokens.length === 0 ? (
@@ -1158,8 +1228,17 @@ export default function ReusableTokensAdmin() {
           ) : (
             <div className="space-y-4">
               {recentTokens.map(token => (
-                <div key={token.id} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+                <div key={token.id} className={`p-4 border rounded-lg bg-white dark:bg-slate-800 ${selectedTokenIds.has(token.id) ? 'border-blue-400 dark:border-blue-500 ring-1 ring-blue-400' : 'border-slate-200 dark:border-slate-700'}`}>
                   <div className="flex flex-col md:flex-row gap-4">
+                    {/* Checkbox */}
+                    <div className="flex items-start pt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedTokenIds.has(token.id)}
+                        onChange={() => toggleTokenSelection(token.id)}
+                        className="rounded border-slate-300 cursor-pointer"
+                      />
+                    </div>
                     {/* Token Info */}
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
