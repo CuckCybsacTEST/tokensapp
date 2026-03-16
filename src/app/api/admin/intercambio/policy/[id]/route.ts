@@ -15,7 +15,7 @@ export async function GET(
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const policy = await (prisma as any).clientExchangePolicy.findUnique({
+    const policy = await prisma.clientExchangePolicy.findUnique({
       where: { id: params.id }
     });
 
@@ -41,20 +41,20 @@ export async function PUT(
     const body = await req.json();
 
     if (body.isDefault) {
-      await (prisma as any).clientExchangePolicy.updateMany({
+      await prisma.clientExchangePolicy.updateMany({
         where: { isDefault: true, id: { not: params.id } },
         data: { isDefault: false }
       });
     }
 
     if (body.isActive === true) {
-      await (prisma as any).clientExchangePolicy.updateMany({
+      await prisma.clientExchangePolicy.updateMany({
         where: { isActive: true, id: { not: params.id } },
         data: { isActive: false }
       });
     }
 
-    const policy = await (prisma as any).clientExchangePolicy.update({
+    const policy = await prisma.clientExchangePolicy.update({
       where: { id: params.id },
       data: {
         ...(body.name !== undefined && { name: body.name.trim() }),
@@ -97,7 +97,7 @@ export async function DELETE(
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    await (prisma as any).clientExchangePolicy.delete({
+    await prisma.clientExchangePolicy.delete({
       where: { id: params.id }
     });
 

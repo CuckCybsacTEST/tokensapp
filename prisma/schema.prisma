@@ -43,6 +43,8 @@ model TokenGroup {
   name        String
   description String?
   color       String?
+  locked      Boolean         @default(false)
+  sortOrder   Int             @default(0)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   tokens      ReusableToken[]

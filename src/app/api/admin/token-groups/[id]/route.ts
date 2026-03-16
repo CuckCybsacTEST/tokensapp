@@ -52,7 +52,18 @@ export async function PATCH(
       return NextResponse.json({ error: auth.error || 'No autorizado' }, { status: 401 });
     }
 
-    const { name, description, color } = await request.json();
+    const body = await request.json();
+
+    // Toggle lock only
+    if (typeof body.locked === 'boolean' && Object.keys(body).length === 1) {
+      const group = await prisma.tokenGroup.update({
+        where: { id: params.id },
+        data: { locked: body.locked }
+      });
+      return NextResponse.json(group);
+    }
+
+    const { name, description, color } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });

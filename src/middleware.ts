@@ -36,8 +36,8 @@ const AREA_ADMIN_ROUTES: Record<string, string[]> = {
 
 const AREA_ADMIN_APIS: Record<string, string[]> = {
   'DJs':        ['/api/admin/music-system'],
-  'Animación':  ['/api/admin/tokens', '/api/admin/reusable-tokens', '/api/admin/reusable-prizes'],
-  'Multimedia': ['/api/admin/reusable-tokens', '/api/admin/reusable-prizes'],
+  'Animación':  ['/api/admin/tokens', '/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
+  'Multimedia': ['/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
 };
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {

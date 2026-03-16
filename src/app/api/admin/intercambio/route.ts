@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (exchangeType) where.exchangeType = exchangeType;
 
     const [exchanges, total] = await Promise.all([
-      (prisma as any).clientExchange.findMany({
+      prisma.clientExchange.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         skip,
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           batch: { select: { id: true, name: true } }
         }
       }),
-      (prisma as any).clientExchange.count({ where })
+      prisma.clientExchange.count({ where })
     ]);
 
     return NextResponse.json({

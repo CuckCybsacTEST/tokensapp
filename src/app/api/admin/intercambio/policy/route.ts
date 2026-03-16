@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const policies = await (prisma as any).clientExchangePolicy.findMany({
+    const policies = await prisma.clientExchangePolicy.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50
     });
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     // Si es default, quitar flag de otras
     if (body.isDefault) {
-      await (prisma as any).clientExchangePolicy.updateMany({
+      await prisma.clientExchangePolicy.updateMany({
         where: { isDefault: true },
         data: { isDefault: false }
       });
@@ -49,13 +49,13 @@ export async function POST(req: Request) {
 
     // Si es activa, desactivar las demás
     if (body.isActive === true) {
-      await (prisma as any).clientExchangePolicy.updateMany({
+      await prisma.clientExchangePolicy.updateMany({
         where: { isActive: true },
         data: { isActive: false }
       });
     }
 
-    const policy = await (prisma as any).clientExchangePolicy.create({
+    const policy = await prisma.clientExchangePolicy.create({
       data: {
         name: name.trim(),
         description: body.description?.trim() || null,

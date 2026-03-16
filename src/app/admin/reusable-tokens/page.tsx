@@ -17,6 +17,8 @@ interface TokenGroup {
   name: string;
   description: string | null;
   color: string | null;
+  locked?: boolean;
+  sortOrder?: number;
   createdAt: string;
   tokens: GroupToken[];
   _count: { tokens: number };
@@ -144,6 +146,23 @@ export default function ReusableTokensAdmin() {
       }
     } catch (error) {
       console.error('Error fetching groups:', error);
+    }
+  };
+
+  const moveGroup = async (index: number, direction: 'up' | 'down') => {
+    const newGroups = [...groups];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newGroups.length) return;
+    [newGroups[index], newGroups[targetIndex]] = [newGroups[targetIndex], newGroups[index]];
+    setGroups(newGroups);
+    const res = await fetch('/api/admin/token-groups', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: newGroups.map(g => g.id) })
+    });
+    if (!res.ok) {
+      alert('Error al reordenar');
+      fetchGroups();
     }
   };
 
@@ -520,17 +539,7 @@ export default function ReusableTokensAdmin() {
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
             }`}
           >
-            🏆 Gestión de Premios
-          </button>
-          <button
-            onClick={() => setActiveTab('grupos')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'grupos'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
-            }`}
-          >
-            📁 Gestión de Grupos
+            🏆 Premios
           </button>
           <button
             onClick={() => setActiveTab('tokens')}
@@ -540,7 +549,17 @@ export default function ReusableTokensAdmin() {
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
             }`}
           >
-            🎫 Gestión de Tokens
+            🎫 TOKENS
+          </button>
+          <button
+            onClick={() => setActiveTab('grupos')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'grupos'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
+            }`}
+          >
+            📁 Grupos
           </button>
         </nav>
       </div>
@@ -791,7 +810,7 @@ export default function ReusableTokensAdmin() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {groups.map(group => {
+                    {groups.map((group, groupIndex) => {
                       const isExpanded = expandedGroups.has(group.id);
                       return (
                         <div 
@@ -828,10 +847,49 @@ export default function ReusableTokensAdmin() {
                                 <h4 className="font-medium text-slate-900 dark:text-slate-100">{group.name}</h4>
                                 <span className="text-sm text-slate-500 dark:text-slate-400">
                                   {group._count?.tokens || group.tokens?.length || 0} tokens
+                                  {' · '}
+                                  {(() => {
+                                    const tokens = group.tokens || [];
+                                    const totalUsed = tokens.reduce((s, t) => s + (t.usedCount || 0), 0);
+                                    const totalMax = tokens.reduce((s, t) => s + (t.maxUses || 0), 0);
+                                    return `${totalUsed} de ${totalMax} escaneos`;
+                                  })()}
                                 </span>
                               </div>
                             </div>
                             <div className="flex gap-1">
+                              <button
+                                onClick={() => moveGroup(groupIndex, 'up')}
+                                disabled={groupIndex === 0}
+                                className="btn-sm bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Mover arriba"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                onClick={() => moveGroup(groupIndex, 'down')}
+                                disabled={groupIndex === groups.length - 1}
+                                className="btn-sm bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Mover abajo"
+                              >
+                                ▼
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const newLocked = !group.locked;
+                                  const res = await fetch(`/api/admin/token-groups/${group.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ locked: newLocked })
+                                  });
+                                  if (res.ok) fetchGroups();
+                                  else alert('Error al cambiar bloqueo');
+                                }}
+                                className={`btn-sm text-white ${group.locked ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-500 hover:bg-slate-600'}`}
+                                title={group.locked ? 'Desbloquear grupo (visible en /u)' : 'Bloquear grupo (oculto en /u)'}
+                              >
+                                {group.locked ? '🔒' : '🔓'}
+                              </button>
                               <button
                                 onClick={() => editGroup(group)}
                                 className="btn-sm bg-blue-600 hover:bg-blue-700 text-white"

@@ -85,7 +85,8 @@ function PrizeManager({ prizes: initialPrizes, onPrizesUpdated }: { prizes: Priz
     try {
       const res = await fetch('/api/prizes');
       if (res.ok) {
-        const list = await res.json();
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []);
         setPrizes(list);
         onPrizesUpdated?.(list);
       }

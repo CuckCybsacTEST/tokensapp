@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Collect all media URLs before deleting
-    const exchanges = await (prisma as any).clientExchange.findMany({
+    const exchanges = await prisma.clientExchange.findMany({
       where: exchangeWhere,
       include: { media: true }
     });
@@ -126,19 +126,19 @@ export async function POST(req: NextRequest) {
     const exchangeIds = exchanges.map((e: any) => e.id);
 
     // Delete media records first
-    await (prisma as any).clientExchangeMedia.deleteMany({
+    await prisma.clientExchangeMedia.deleteMany({
       where: { exchangeId: { in: exchangeIds } }
     });
 
     // Delete exchanges
-    const deleteResult = await (prisma as any).clientExchange.deleteMany({
+    const deleteResult = await prisma.clientExchange.deleteMany({
       where: { id: { in: exchangeIds } }
     });
 
     // Delete batches if batch IDs provided and not orphan-only
     let batchesDeleted = 0;
     if (!purgeOrphansOnly && batchIds && batchIds.length > 0) {
-      const batchResult = await (prisma as any).clientExchangeBatch.deleteMany({
+      const batchResult = await prisma.clientExchangeBatch.deleteMany({
         where: { id: { in: batchIds } }
       });
       batchesDeleted = batchResult.count;

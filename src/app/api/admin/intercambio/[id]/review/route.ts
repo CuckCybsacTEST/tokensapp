@@ -26,7 +26,7 @@ export async function POST(
       return apiError('BAD_REQUEST', 'Acción inválida. Debe ser "approve" o "reject"', undefined, 400);
     }
 
-    const exchange = await (prisma as any).clientExchange.findUnique({
+    const exchange = await prisma.clientExchange.findUnique({
       where: { id: params.id },
       include: { batch: true }
     });
@@ -50,7 +50,7 @@ export async function POST(
         }
       }
 
-      const updated = await (prisma as any).clientExchange.update({
+      const updated = await prisma.clientExchange.update({
         where: { id: params.id },
         data: {
           status: 'approved',
@@ -72,7 +72,7 @@ export async function POST(
       });
     } else {
       // Reject
-      const updated = await (prisma as any).clientExchange.update({
+      const updated = await prisma.clientExchange.update({
         where: { id: params.id },
         data: {
           status: 'rejected',
@@ -101,8 +101,8 @@ async function assignRewardToken(batch: any): Promise<{ tokenId: string } | null
   try {
     // Prefer specific prize, fallback to group
     const where: any = {
-      isActive: true,
-      usedAt: null,
+      disabled: false,
+      usedCount: { lt: prisma.reusableToken.fields?.maxUses ?? 1 },
     };
 
     if (batch.rewardPrizeId) {
@@ -114,19 +114,23 @@ async function assignRewardToken(batch: any): Promise<{ tokenId: string } | null
     }
 
     // Find first available token (FIFO by creation date)
-    const token = await (prisma as any).reusableToken.findFirst({
+    // Use raw filtering: token is available if usedCount < maxUses
+    delete where.usedCount; // remove, we'll filter in-app
+    const candidates = await prisma.reusableToken.findMany({
       where,
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      take: 10,
     });
+    const token = candidates.find(t => t.usedCount < t.maxUses);
 
     if (!token) return null;
 
-    // Mark the token as used
-    await (prisma as any).reusableToken.update({
+    // Mark the token as used (increment usedCount)
+    await prisma.reusableToken.update({
       where: { id: token.id },
       data: {
-        isActive: false,
-        usedAt: new Date(),
+        usedCount: { increment: 1 },
+        redeemedAt: new Date(),
       }
     });
 

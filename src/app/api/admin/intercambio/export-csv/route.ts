@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     if (batchId) where.batchId = batchId;
     if (status) where.status = status;
 
-    const exchanges = await (prisma as any).clientExchange.findMany({
+    const exchanges = await prisma.clientExchange.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       include: {

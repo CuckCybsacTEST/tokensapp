@@ -15,7 +15,7 @@ export async function GET(
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const batch = await (prisma as any).clientExchangeBatch.findUnique({
+    const batch = await prisma.clientExchangeBatch.findUnique({
       where: { id: params.id },
       include: {
         _count: { select: { exchanges: true } },
@@ -48,7 +48,7 @@ export async function PUT(
 
     const body = await req.json();
 
-    const batch = await (prisma as any).clientExchangeBatch.update({
+    const batch = await prisma.clientExchangeBatch.update({
       where: { id: params.id },
       data: {
         ...(body.name !== undefined && { name: body.name.trim() }),
@@ -81,11 +81,11 @@ export async function DELETE(
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
     // Delete exchanges and media first (cascade handles media)
-    await (prisma as any).clientExchange.deleteMany({
+    await prisma.clientExchange.deleteMany({
       where: { batchId: params.id }
     });
 
-    await (prisma as any).clientExchangeBatch.delete({
+    await prisma.clientExchangeBatch.delete({
       where: { id: params.id }
     });
 

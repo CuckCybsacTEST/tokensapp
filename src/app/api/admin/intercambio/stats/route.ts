@@ -22,23 +22,23 @@ export async function GET(req: Request) {
       activeBatches,
       recentExchanges
     ] = await Promise.all([
-      (prisma as any).clientExchange.count(),
-      (prisma as any).clientExchange.count({ where: { status: 'pending' } }),
-      (prisma as any).clientExchange.count({ where: { status: 'approved' } }),
-      (prisma as any).clientExchange.count({ where: { status: 'rejected' } }),
-      (prisma as any).clientExchange.groupBy({
+      prisma.clientExchange.count(),
+      prisma.clientExchange.count({ where: { status: 'pending' } }),
+      prisma.clientExchange.count({ where: { status: 'approved' } }),
+      prisma.clientExchange.count({ where: { status: 'rejected' } }),
+      prisma.clientExchange.groupBy({
         by: ['exchangeType'],
         _count: { id: true }
       }),
-      (prisma as any).clientExchange.count({
+      prisma.clientExchange.count({
         where: {
           createdAt: {
             gte: new Date(new Date().setHours(0, 0, 0, 0))
           }
         }
       }),
-      (prisma as any).clientExchangeBatch.count({ where: { isActive: true } }),
-      (prisma as any).clientExchange.findMany({
+      prisma.clientExchangeBatch.count({ where: { isActive: true } }),
+      prisma.clientExchange.findMany({
         orderBy: { createdAt: 'desc' },
         take: 10,
         include: {

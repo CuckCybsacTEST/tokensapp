@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const batches = await (prisma as any).clientExchangeBatch.findMany({
+    const batches = await prisma.clientExchangeBatch.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       return apiError('BAD_REQUEST', 'El nombre del lote es requerido', undefined, 400);
     }
 
-    const batch = await (prisma as any).clientExchangeBatch.create({
+    const batch = await prisma.clientExchangeBatch.create({
       data: {
         name: name.trim(),
         description: body.description?.trim() || null,

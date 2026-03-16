@@ -151,7 +151,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
   const isNavigatingRef = useRef(false);
 
   // Configuración dinámica basada en basePath
-  const getSidebarGroups = (basePath: 'admin' | 'u'): SidebarGroup[] => {
+  const getSidebarGroups = (basePath: 'admin' | 'u', userRole?: string): SidebarGroup[] => {
     const pathPrefix = basePath === 'admin' ? '/admin' : '/u';
 
     return [
@@ -167,6 +167,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         icon: ICONS.book,
         items: [
           { href: `${pathPrefix}/regulations`, label: "Reglamento Interno", icon: ICONS.book }
+        ]
+      }] : []),
+      ...(basePath === 'admin' || ['ADMIN', 'COORDINATOR'].includes(userRole || '') ? [{
+        title: "RESUMEN DE JORNADA",
+        icon: ICONS.checkSmall,
+        items: [
+          { href: `${pathPrefix}/daily-evaluation`, label: "Resumen de Jornada", icon: ICONS.checkSmall }
         ]
       }] : []),
       {
@@ -235,10 +242,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         title: "GESTIÓN DE PERSONAL",
         icon: ICONS.users,
         items: basePath === 'admin' ? [
-          // Reordered: Colaboradores first, then Control de Asistencia
           { href: `${pathPrefix}/users`, label: "Colaboradores", icon: ICONS.usersSmall },
-          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart },
-          { href: `${pathPrefix}/daily-evaluation`, label: "Resumen de Jornada", icon: ICONS.checkSmall }
+          { href: `${pathPrefix}/attendance`, label: "Control de Asistencia", icon: ICONS.chart }
         ] : [
           { href: `${pathPrefix}/attendance`, label: "Mi Asistencia", icon: ICONS.chart }
         ]
@@ -355,7 +360,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
     ];
   };
 
-  const sidebarGroups = getSidebarGroups(basePath);
+  const sidebarGroups = getSidebarGroups(basePath, userInfo?.role);
 
   const toggleGroup = (groupTitle: string) => {
     const newExpanded = new Set(expandedGroups);

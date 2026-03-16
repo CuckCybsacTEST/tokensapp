@@ -181,20 +181,28 @@ export class ImageOptimizer {
       const metadata = await sharp(buffer).metadata();
       const allowedFormats = policy.allowedImageFormats.split(',').map((f: string) => f.trim().toLowerCase());
 
-      if (!allowedFormats.includes(metadata.format?.toLowerCase() || '')) {
+      // Normalize format aliases (sharp returns 'jpeg', user may specify 'jpg')
+      const format = metadata.format?.toLowerCase() || '';
+      const formatAliases: Record<string, string[]> = {
+        jpeg: ['jpeg', 'jpg'],
+        png: ['png'],
+        webp: ['webp'],
+        gif: ['gif'],
+        avif: ['avif'],
+        tiff: ['tiff', 'tif'],
+      };
+      const aliases = formatAliases[format] || [format];
+      const formatAllowed = aliases.some(a => allowedFormats.includes(a)) ||
+                            allowedFormats.includes(format);
+
+      if (!formatAllowed) {
         return {
           valid: false,
           error: `Formato no permitido. Formatos aceptados: ${policy.allowedImageFormats}`
         };
       }
 
-      // Validar dimensiones
-      if (metadata.width! > policy.maxImageWidth || metadata.height! > policy.maxImageHeight) {
-        return {
-          valid: false,
-          error: `Dimensiones demasiado grandes. Máximo ${policy.maxImageWidth}x${policy.maxImageHeight}px.`
-        };
-      }
+      // No rechazar por dimensiones: el optimizer las redimensiona después
 
     } catch (error) {
       return {

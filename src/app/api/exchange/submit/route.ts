@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     // Get batch (if provided)
     let batch: any = null;
     if (batchId) {
-      batch = await (prisma as any).clientExchangeBatch.findUnique({
+      batch = await prisma.clientExchangeBatch.findUnique({
         where: { id: batchId }
       });
       if (!batch || !batch.isActive) {
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 
       // Check max exchanges if set
       if (batch.maxExchanges) {
-        const count = await (prisma as any).clientExchange.count({
+        const count = await prisma.clientExchange.count({
           where: { batchId: batch.id }
         });
         if (count >= batch.maxExchanges) {
@@ -92,12 +92,12 @@ export async function POST(req: NextRequest) {
     // Get policy for validations
     let policy: any = null;
     if (batch?.policyId) {
-      policy = await (prisma as any).clientExchangePolicy.findUnique({
+      policy = await prisma.clientExchangePolicy.findUnique({
         where: { id: batch.policyId }
       });
     }
     if (!policy) {
-      policy = await (prisma as any).clientExchangePolicy.findFirst({
+      policy = await prisma.clientExchangePolicy.findFirst({
         where: { isActive: true },
         orderBy: { isDefault: 'desc' }
       });
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
 
       // Check per-user limits by whatsapp
       if (policy.maxExchangesPerUser && customerWhatsapp) {
-        const userCount = await (prisma as any).clientExchange.count({
+        const userCount = await prisma.clientExchange.count({
           where: { customerWhatsapp: customerWhatsapp.trim() }
         });
         if (userCount >= policy.maxExchangesPerUser) {
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       // Rate limit per hour from policy
       if (policy.rateLimitPerHour) {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const recentCount = await (prisma as any).clientExchange.count({
+        const recentCount = await prisma.clientExchange.count({
           where: {
             ipAddress: ip,
             createdAt: { gte: oneHourAgo }
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         return apiError('BAD_REQUEST', 'Se requiere completar la trivia', undefined, 400);
       }
       // Verify the trivia session was completed successfully
-      const triviaSession = await (prisma as any).exchangeTriviaSession.findUnique({
+      const triviaSession = await prisma.exchangeTriviaSession.findUnique({
         where: { id: triviaSessionId }
       });
       if (!triviaSession || !triviaSession.completed) {
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest) {
     // --- Create the exchange ---
     const shouldAutoReward = policy?.autoReward !== false;
 
-    const exchange = await (prisma as any).clientExchange.create({
+    const exchange = await prisma.clientExchange.create({
       data: {
         customerName: customerName.trim(),
         customerWhatsapp: customerWhatsapp?.trim() || '',
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
 
     // Create media records
     if (media && Array.isArray(media) && media.length > 0) {
-      await (prisma as any).clientExchangeMedia.createMany({
+      await prisma.clientExchangeMedia.createMany({
         data: media.map((m: any) => ({
           exchangeId: exchange.id,
           mediaType: m.mediaType || exchangeType,
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Re-fetch with media included
-    const result = await (prisma as any).clientExchange.findUnique({
+    const result = await prisma.clientExchange.findUnique({
       where: { id: exchange.id },
       include: {
         media: true,
@@ -249,7 +249,7 @@ export async function GET(req: NextRequest) {
     const batchId = url.searchParams.get('batchId');
 
     if (batchId) {
-      const batch = await (prisma as any).clientExchangeBatch.findUnique({
+      const batch = await prisma.clientExchangeBatch.findUnique({
         where: { id: batchId, isActive: true },
         select: {
           id: true,
@@ -267,16 +267,16 @@ export async function GET(req: NextRequest) {
 
       // Get associated policy
       let policy: any = null;
-      const fullBatch = await (prisma as any).clientExchangeBatch.findUnique({
+      const fullBatch = await prisma.clientExchangeBatch.findUnique({
         where: { id: batchId }
       });
       if (fullBatch?.policyId) {
-        policy = await (prisma as any).clientExchangePolicy.findUnique({
+        policy = await prisma.clientExchangePolicy.findUnique({
           where: { id: fullBatch.policyId }
         });
       }
       if (!policy) {
-        policy = await (prisma as any).clientExchangePolicy.findFirst({
+        policy = await prisma.clientExchangePolicy.findFirst({
           where: { isActive: true },
           orderBy: { isDefault: 'desc' }
         });
@@ -302,7 +302,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Return list of active batches
-    const batches = await (prisma as any).clientExchangeBatch.findMany({
+    const batches = await prisma.clientExchangeBatch.findMany({
       where: { isActive: true },
       select: {
         id: true,
@@ -338,7 +338,7 @@ async function assignRewardToken(batch: any, exchangeId: string): Promise<{ toke
     }
 
     // Also filter: usedCount < maxUses, not expired
-    const token = await (prisma as any).reusableToken.findFirst({
+    const token = await prisma.reusableToken.findFirst({
       where: {
         ...where,
         expiresAt: { gt: new Date() },
@@ -350,7 +350,7 @@ async function assignRewardToken(batch: any, exchangeId: string): Promise<{ toke
     if (!token) return null;
 
     // Mark token as delivered & link to exchange
-    await (prisma as any).reusableToken.update({
+    await prisma.reusableToken.update({
       where: { id: token.id },
       data: {
         deliveredAt: new Date(),
@@ -359,7 +359,7 @@ async function assignRewardToken(batch: any, exchangeId: string): Promise<{ toke
     });
 
     // Update exchange with reward info
-    await (prisma as any).clientExchange.update({
+    await prisma.clientExchange.update({
       where: { id: exchangeId },
       data: {
         rewardTokenId: token.id,

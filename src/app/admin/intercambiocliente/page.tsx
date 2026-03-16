@@ -258,7 +258,7 @@ export default function IntercambioClientePage() {
         body: JSON.stringify({ action, reviewNote: note || undefined }),
       });
       const data = await res.json();
-      if (!res.ok) { alert(data.error || 'Error'); return; }
+      if (!res.ok) { alert(data.message || 'Error'); return; }
       alert(data.message);
       fetchExchanges(exchangePage);
       fetchStats();
@@ -283,7 +283,7 @@ export default function IntercambioClientePage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Error');
+        alert(data.message || 'Error');
         return;
       }
       alert(editingBatch ? 'Lote actualizado' : 'Lote creado');
@@ -324,7 +324,7 @@ export default function IntercambioClientePage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || 'Error');
+        alert(data.message || 'Error');
         return;
       }
       alert(editingPolicy ? 'Política actualizada' : 'Política creada');
@@ -1147,7 +1147,7 @@ function TriviaTab({ triviaSets, onRefresh }: { triviaSets: TriviaSet[]; onRefre
         : '/api/admin/intercambio/trivia-sets';
       const method = editingSet ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      if (!res.ok) { const d = await res.json(); alert(d.message || 'Error'); return; }
       alert(editingSet ? 'Set actualizado' : 'Set creado');
       setShowSetForm(false);
       setEditingSet(null);
@@ -1159,7 +1159,7 @@ function TriviaTab({ triviaSets, onRefresh }: { triviaSets: TriviaSet[]; onRefre
     if (!confirm('¿Eliminar este set de trivia?')) return;
     try {
       const res = await fetch(`/api/admin/intercambio/trivia-sets/${id}`, { method: 'DELETE' });
-      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      if (!res.ok) { const d = await res.json(); alert(d.message || 'Error'); return; }
       alert('Set eliminado');
       if (expandedSetId === id) { setExpandedSetId(null); setSetDetail(null); }
       onRefresh();
@@ -1188,7 +1188,7 @@ function TriviaTab({ triviaSets, onRefresh }: { triviaSets: TriviaSet[]; onRefre
         : `/api/admin/intercambio/trivia-sets/${expandedSetId}/questions`;
       const method = editingQuestion ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(qData) });
-      if (!res.ok) { const d = await res.json(); alert(d.error || 'Error'); return; }
+      if (!res.ok) { const d = await res.json(); alert(d.message || 'Error'); return; }
       alert(editingQuestion ? 'Pregunta actualizada' : 'Pregunta creada');
       setShowQuestionForm(false);
       setEditingQuestion(null);

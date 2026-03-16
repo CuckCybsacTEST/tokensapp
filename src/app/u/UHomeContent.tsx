@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import SharedAutoAttendanceCard from '@/components/attendance/SharedAutoAttendanceCard';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -18,9 +18,12 @@ type PageProps = {
   personName?: string;
   commitmentAcceptedVersion: number;
   hasDefaultPassword?: boolean;
+  userArea?: string | null;
 };
 
-export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false }: PageProps) {
+export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false, userArea }: PageProps) {
+  const isCoordinator = ['COORDINATOR', 'ADMIN'].includes(session.role);
+  const hasReusableTokensAccess = isCoordinator || (isStaff && (userArea === 'Animación' || userArea === 'Multimedia'));
   const [activeTab, setActiveTab] = useState<'personal' | 'work'>('personal');
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
 
@@ -130,6 +133,17 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-red-800 dark:text-red-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
               </Link>
+
+              {isCoordinator && (
+                <Link href="/u/daily-evaluation" className="block rounded-lg border border-emerald-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Resumen de Jornada</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa el resumen del día: asistencia, premios, cumpleaños y evaluaciones.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm ml-8 sm:ml-9">Ver resumen →</div>
+                </Link>
+              )}
             </div>
           )}
 
@@ -191,6 +205,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Visualiza los sorteos QR personalizados y sus detalles.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-sm ml-8 sm:ml-9">Ver sorteos →</div>
+                </Link>
+              )}
+              {hasReusableTokensAccess && (
+                <Link href="/u/reusable-tokens" className="block rounded-lg border border-purple-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-purple-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconRefresh className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Tokens Reutilizables</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Visualiza grupos de tokens con QR para descargar, compartir y previsualizar.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 text-sm ml-8 sm:ml-9">Ver tokens →</div>
                 </Link>
               )}
               {isStaff && hasCartaAccess && (

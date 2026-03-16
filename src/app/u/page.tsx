@@ -25,12 +25,13 @@ export default async function UHome() {
   // Verificar acceso a la carta y determinar rol específico
   let hasCartaAccess = false;
   let staffRole: StaffRole | null = null;
+  let userArea: string | null = null;
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
       include: { person: { select: { area: true } } }
     });
-    const userArea = user?.person?.area;
+    userArea = user?.person?.area || null;
     const validArea = userArea && isValidArea(userArea) ? userArea : null;
     staffRole = mapAreaToStaffRole(validArea);
     hasCartaAccess = !!staffRole || ['STAFF', 'COORDINATOR', 'ADMIN'].includes(session.role);
@@ -75,6 +76,7 @@ export default async function UHome() {
       personName={personName}
       commitmentAcceptedVersion={commitmentAcceptedVersion}
       hasDefaultPassword={hasDefaultPassword}
+      userArea={userArea}
     />
   );
 }

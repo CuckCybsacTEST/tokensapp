@@ -15,7 +15,7 @@ export async function GET(
     const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
     if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
 
-    const exchange = await (prisma as any).clientExchange.findUnique({
+    const exchange = await prisma.clientExchange.findUnique({
       where: { id: params.id },
       include: {
         media: true,
@@ -44,7 +44,7 @@ export async function PUT(
 
     const body = await req.json();
 
-    const exchange = await (prisma as any).clientExchange.update({
+    const exchange = await prisma.clientExchange.update({
       where: { id: params.id },
       data: {
         ...(body.status !== undefined && { status: body.status }),

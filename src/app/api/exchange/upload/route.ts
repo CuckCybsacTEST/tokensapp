@@ -51,17 +51,17 @@ export async function POST(req: NextRequest) {
     // Look up active policy
     let policy: any = null;
     if (batchId) {
-      const batch = await (prisma as any).clientExchangeBatch.findUnique({
+      const batch = await prisma.clientExchangeBatch.findUnique({
         where: { id: batchId }
       });
       if (batch?.policyId) {
-        policy = await (prisma as any).clientExchangePolicy.findUnique({
+        policy = await prisma.clientExchangePolicy.findUnique({
           where: { id: batch.policyId }
         });
       }
     }
     if (!policy) {
-      policy = await (prisma as any).clientExchangePolicy.findFirst({
+      policy = await prisma.clientExchangePolicy.findFirst({
         where: { isActive: true },
         orderBy: { isDefault: 'desc' }
       });
@@ -119,9 +119,9 @@ export async function POST(req: NextRequest) {
       // Image handling — validate, optimize, save 3 variants
       const policyForValidation = {
         maxImageSize: policy?.maxMediaSize || 5242880,
-        allowedFormats: (policy?.allowedMediaFormats || 'jpg,jpeg,png,webp').split(','),
-        maxWidth: policy?.maxMediaWidth || 1200,
-        maxHeight: policy?.maxMediaHeight || 1200,
+        allowedImageFormats: policy?.allowedMediaFormats || 'jpg,jpeg,png,webp',
+        maxImageWidth: policy?.maxMediaWidth || 1200,
+        maxImageHeight: policy?.maxMediaHeight || 1200,
       };
 
       const validation = await ImageOptimizer.validateImage(buffer, policyForValidation);
