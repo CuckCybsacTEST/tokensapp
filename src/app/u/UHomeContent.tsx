@@ -24,7 +24,7 @@ type PageProps = {
 export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false, userArea }: PageProps) {
   const isCoordinator = ['COORDINATOR', 'ADMIN'].includes(session.role);
   const hasReusableTokensAccess = isCoordinator || (isStaff && (userArea === 'Animación' || userArea === 'Multimedia'));
-  const [activeTab, setActiveTab] = useState<'personal' | 'work'>('personal');
+  const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work'>('today');
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
 
   // Mostrar modal de reset de contraseña si es necesario
@@ -78,6 +78,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="-mb-px flex justify-center space-x-4 sm:space-x-8">
               <button
+                onClick={() => setActiveTab('today')}
+                className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-base sm:text-sm transition-colors ${
+                  activeTab === 'today'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                Hoy
+              </button>
+              <button
                 onClick={() => setActiveTab('personal')}
                 className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-base sm:text-sm transition-colors ${
                   activeTab === 'personal'
@@ -85,7 +95,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
-                Personal
+                Mi Perfil
               </button>
               <button
                 onClick={() => setActiveTab('work')}
@@ -101,9 +111,36 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           </div>
 
           {/* Contenido de las pestañas */}
-          {activeTab === 'personal' && (
+          {activeTab === 'today' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
               <SharedAutoAttendanceCard initialLastType={lastType} basePath="/u" />
+
+              {(isCoordinator || isStaff) && (
+                <Link href="/u/daily-evaluation" className="block rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-5 shadow-md hover:shadow-lg transition-all ring-1 ring-emerald-200/50 dark:border-emerald-600 dark:from-emerald-900/20 dark:to-teal-900/20 dark:ring-emerald-700/30">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/40">
+                      <IconClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="text-lg sm:text-xl font-semibold text-emerald-900 dark:text-emerald-100">Jornada</div>
+                  </div>
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300 ml-12 sm:ml-[52px]">Revisa lo que tenemos hoy o verifica datos de jornadas pasadas.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver jornada →</div>
+                </Link>
+              )}
+
+              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
+                <div className="flex items-center gap-3 mb-2">
+                  <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
+              </Link>
+            </div>
+          )}
+
+          {activeTab === 'personal' && (
+            <div className="grid grid-cols-1 gap-3 sm:gap-6">
 
               <Link href="/u/profile" className="block rounded-lg border border-blue-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-blue-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
@@ -133,17 +170,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-red-800 dark:text-red-200 ml-8 sm:ml-9">Lee el reglamento interno y firma tu compromiso de cumplimiento.</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm ml-8 sm:ml-9">Abrir reglamento →</div>
               </Link>
-
-              {isCoordinator && (
-                <Link href="/u/daily-evaluation" className="block rounded-lg border border-emerald-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-emerald-800/60 dark:bg-slate-800">
-                  <div className="flex items-center gap-3 mb-2">
-                    <IconClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Resumen de Jornada</div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa el resumen del día: asistencia, premios, cumpleaños y evaluaciones.</p>
-                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm ml-8 sm:ml-9">Ver resumen →</div>
-                </Link>
-              )}
             </div>
           )}
 
@@ -159,14 +185,6 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
                 </Link>
               )}
-              <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition highlight-bounce dark:border-amber-800/60 dark:bg-slate-800">
-                <div className="flex items-center gap-3 mb-2">
-                  <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Ver mi lista de tareas</div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
-              </Link>
               {isStaff && (
                 <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">

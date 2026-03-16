@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -218,6 +218,47 @@ export async function GET(req: NextRequest) {
       })),
     };
 
+    // Reusable token groups — count deliveries for THIS business day
+    const reusableGroups = await prisma.tokenGroup.findMany({
+      where: { locked: false },
+      include: {
+        tokens: {
+          include: {
+            prize: { select: { id: true, label: true } },
+            redemptions: {
+              where: {
+                type: 'deliver',
+                createdAt: { gte: startUtc, lt: endUtc },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+
+    const reusableGroupsSummary = reusableGroups.map(g => {
+      let daySales = 0;
+      const prizeAcc: Record<string, { label: string; total: number; daySales: number }> = {};
+      for (const t of g.tokens) {
+        const key = t.prize.id;
+        if (!prizeAcc[key]) prizeAcc[key] = { label: t.prize.label, total: 0, daySales: 0 };
+        prizeAcc[key].total++;
+        const tokenDaySales = t.redemptions.length; // already filtered by day+type in query
+        prizeAcc[key].daySales += tokenDaySales;
+        daySales += tokenDaySales;
+      }
+      return {
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        totalTokens: g.tokens.length,
+        activeTokens: g.tokens.filter(t => !t.disabled).length,
+        daySales,
+        prizes: Object.values(prizeAcc),
+      };
+    });
+
     return NextResponse.json({
       attendance,
       deliveredPrizes,
@@ -226,6 +267,7 @@ export async function GET(req: NextRequest) {
       totalTokensInBatches: batchTokens.length,
       birthdays: birthdaySummary,
       specialGuests: specialGuestsSummary,
+      reusableGroups: reusableGroupsSummary,
     });
   } catch (error) {
     console.error('Error fetching daily summary:', error);

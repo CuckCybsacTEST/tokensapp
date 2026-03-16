@@ -238,6 +238,13 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "NOTICIAS INTERNAS",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "ESCÁNER MULTI-USO",
         icon: ICONS.qr,
         items: [
@@ -245,7 +252,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       {
-        title: "TOKENS RULETA",
+        title: "PULSERAS DIARIAS",
         icon: ICONS.roulette,
         items: basePath === 'admin' ? [
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart },
@@ -259,7 +266,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       },
       ...(basePath === 'admin' ? [{
-        title: "LOTES INDIVIDUALES",
+        title: "PULSERAS VIP",
         icon: ICONS.box,
         items: [
           { href: `${pathPrefix}/prizesstatics`, label: "Premios", icon: ICONS.star },
@@ -288,7 +295,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "INTERCAMBIO CLIENTE",
+        title: "DINÁMICAS PÚBLICAS",
         icon: ICONS.qr,
         items: [
           { href: `${pathPrefix}/intercambiocliente`, label: "Intercambios", icon: ICONS.qr },
@@ -383,13 +390,6 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "NOTICIAS INTERNAS",
-        icon: ICONS.book,
-        items: [
-          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
         title: "CONTENIDO VISUAL",
         icon: ICONS.film,
         items: [
@@ -439,7 +439,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
     return group.title !== 'UPGRADE';
   }).map(group => {
     if (activeTab === 'purge') {
-      if (group.title === 'TOKENS RULETA') {
+      if (group.title === 'PULSERAS DIARIAS') {
         return { ...group, title: 'Eliminar LOTES RULETAS/ESTÁTICOS' };
       }
       if (group.title === 'GESTIÓN DE CUMPLEAÑOS') {

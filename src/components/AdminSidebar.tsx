@@ -144,7 +144,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin', userInfo }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["TOKENS RULETA"]));
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["PULSERAS DIARIAS"]));
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const scrollPosRef = useRef<number>(0);
@@ -169,6 +169,13 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/regulations`, label: "Reglamento Interno", icon: ICONS.book }
         ]
       }] : []),
+      ...(basePath === 'admin' ? [{
+        title: "NOTICIAS INTERNAS",
+        icon: ICONS.book,
+        items: [
+          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
+        ]
+      }] : []),
       ...(basePath === 'admin' || ['ADMIN', 'COORDINATOR'].includes(userRole || '') ? [{
         title: "RESUMEN DE JORNADA",
         icon: ICONS.checkSmall,
@@ -177,7 +184,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       {
-        title: "TOKENS RULETA",
+        title: "PULSERAS DIARIAS",
         icon: ICONS.roulette,
         items: basePath === 'admin' ? [
           { href: `${pathPrefix}/tokens`, label: "Panel de Control", icon: ICONS.chart },
@@ -191,7 +198,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       },
       ...(basePath === 'admin' ? [{
-        title: "LOTES INDIVIDUALES",
+        title: "PULSERAS VIP",
         icon: ICONS.box,
         items: [
           { href: `${pathPrefix}/prizesstatics`, label: "Premios", icon: ICONS.starSmall },
@@ -220,7 +227,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
-        title: "INTERCAMBIO CLIENTE",
+        title: "DINÁMICAS PÚBLICAS",
         icon: ICONS.qr,
         items: [
           { href: `${pathPrefix}/intercambiocliente`, label: "Intercambios", icon: ICONS.qr },
@@ -314,13 +321,6 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/customers`, label: "Clientes", icon: ICONS.usersSmall },
           { href: `${pathPrefix}/customers/visits`, label: "Visitas", icon: ICONS.chart },
           { href: `${pathPrefix}/customers/analytics`, label: "Analíticas", icon: ICONS.chart }
-        ]
-      }] : []),
-      ...(basePath === 'admin' ? [{
-        title: "NOTICIAS INTERNAS",
-        icon: ICONS.book,
-        items: [
-          { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{

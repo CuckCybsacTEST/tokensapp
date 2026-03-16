@@ -15,7 +15,7 @@ export const metadata = {
 
 export default async function ULayout({ children }: { children: React.ReactNode }) {
   // Cargar datos del colaborador (si hay sesión activa)
-  let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; role?: string | null } | null = null;
+  let me: { personName?: string | null; dni?: string | null; jobTitle?: string | null; area?: string | null; role?: string | null } | null = null;
   let mustChangePassword = false;
   let userId: string | null = null;
   let commitmentAcceptedVersion = 0;
@@ -43,10 +43,12 @@ export default async function ULayout({ children }: { children: React.ReactNode 
       const mapRoleLabel = (r: string | null | undefined) => {
         if (!r) return null;
         switch (r) {
-          case 'WAITER': return 'Mozos';
+          case 'WAITER': return 'Mozo';
           case 'BARTENDER': return 'Barra';
           case 'CASHIER': return 'Caja';
           case 'ADMIN': return 'Administrador';
+          case 'COORDINATOR': return 'Coordinador';
+          case 'STAFF': return 'Staff';
           default: return r;
         }
       };
@@ -57,6 +59,7 @@ export default async function ULayout({ children }: { children: React.ReactNode 
         personName: u?.person?.name ?? null,
         dni: u?.person?.dni ?? null,
         jobTitle: u?.person?.jobTitle ?? null,
+        area: u?.person?.area ?? null,
         role: roleLabel ?? null
       };
     }
@@ -75,9 +78,9 @@ export default async function ULayout({ children }: { children: React.ReactNode 
                 {typeof me.dni === 'string' && me.dni.trim() !== '' && (
                   <div className="opacity-80">DNI: <span className="font-mono">{me.dni}</span></div>
                 )}
-                {(me.jobTitle || me.role) && (
+                {(me.area || me.jobTitle || me.role) && (
                   <div className="opacity-80">
-                    {me.role ? me.role : (me.jobTitle || 'Sin puesto')}
+                    {[me.area || me.jobTitle, me.role].filter(Boolean).join(' · ')}
                   </div>
                 )}
               </div>

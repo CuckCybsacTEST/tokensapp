@@ -125,7 +125,7 @@ export const ADMIN_CATEGORIES = {
         href: "/admin/prizesstatics"
       },
       {
-        title: "Lotes Individuales",
+        title: "Pulseras VIP",
         description: "Lotes de tokens estáticos",
         icon: <IconBox className="w-5 h-5" />,
         href: "/admin/static-batches"
