@@ -334,9 +334,135 @@ export default function DailyEvaluationPage() {
   const canClose = ['ADMIN', 'COORDINATOR'].includes(userRole);
   const isEvalFinalized = !!evaluation?.rating;
   const isMultimedia = userArea.toUpperCase() === 'MULTIMEDIA';
+  const isSecurity = userArea.toUpperCase() === 'SEGURIDAD';
 
   // Modal detail sections state
   const [modalSection, setModalSection] = useState<string | null>(null);
+
+  // QR's Disponibles section (reusable)
+  const qrSection = summary && summary.reusableGroups && summary.reusableGroups.length > 0 ? (
+    <>
+      <div className="relative flex items-center gap-3 pt-2">
+        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
+          🔄 QR&apos;s Disponibles
+        </span>
+        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {summary.reusableGroups.map(g => (
+            <button
+              key={g.id}
+              onClick={() => setModalGroup(g)}
+              className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-300 dark:hover:border-teal-600"
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                {g.color && (
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                )}
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{g.name}</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{g.daySales}</div>
+              <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Utilizados</div>
+              {g.totalTokens > 0 && (
+                <div className="text-[10px] text-teal-600 dark:text-teal-400 mt-1">{g.totalTokens} tokens en grupo</div>
+              )}
+            </button>
+        ))}
+      </div>
+    </>
+  ) : null;
+
+  // Special Guests section (reusable)
+  const specialGuestsSection = summary ? (
+    <>
+      <div className="relative flex items-center gap-3 pt-2">
+        <div className="flex-1 h-px bg-violet-200 dark:bg-violet-700" />
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider">
+          🎟️ Invitados Especiales
+        </span>
+        <div className="flex-1 h-px bg-violet-200 dark:bg-violet-700" />
+      </div>
+
+      <button
+        onClick={() => setModalSection('guests')}
+        className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-violet-300 dark:hover:border-violet-600"
+      >
+        <div className="flex items-center gap-3">
+          <div className="text-xl sm:text-2xl">🎟️</div>
+          <div>
+            <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{summary.specialGuests?.total ?? 0}</div>
+            <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Invitados</div>
+          </div>
+          {summary.specialGuests && summary.specialGuests.total > 0 && (
+            <div className="ml-auto text-[10px] text-violet-600 dark:text-violet-400">{summary.specialGuests.arrived} llegaron</div>
+          )}
+        </div>
+      </button>
+
+      {summary.specialGuests && summary.specialGuests.total > 0 && (
+        <button
+          onClick={() => setModalSection('guests')}
+          className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-violet-200 dark:border-violet-700 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/10 dark:to-purple-900/10 hover:shadow-violet-100 dark:hover:shadow-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="text-xl sm:text-2xl">✅</div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-bold text-violet-800 dark:text-violet-200">{summary.specialGuests.arrived}/{summary.specialGuests.total}</div>
+              <div className="text-[10px] sm:text-xs text-violet-600 dark:text-violet-400 font-medium">Invitados llegaron</div>
+            </div>
+          </div>
+        </button>
+      )}
+
+      {modalSection === 'guests' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                🎟️ Invitados Especiales — {summary.specialGuests?.total ?? 0}
+              </h3>
+              <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                <span className="text-lg text-slate-400">&times;</span>
+              </button>
+            </div>
+            {summary.specialGuests && summary.specialGuests.total > 0 && (
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                {summary.specialGuests.arrived} llegaron
+              </div>
+            )}
+            {!summary.specialGuests || summary.specialGuests.total === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">No hay invitados especiales para este día.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                {summary.specialGuests.events.map(ev => (
+                  <div key={ev.id} className="text-[10px] sm:text-xs font-medium text-violet-700 dark:text-violet-300 px-1">
+                    {ev.name} ({ev.timeSlot}) — {ev.arrivedGuests}/{ev.totalGuests}
+                  </div>
+                ))}
+                {summary.specialGuests.guests.map(g => (
+                  <div key={g.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-violet-50 dark:bg-violet-900/10">
+                    <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 flex-shrink-0 w-10 text-center">{g.eventTime}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">{g.guestName}</div>
+                      <div className="text-[10px] text-slate-500">{g.eventName}{g.guestCategory ? ` · ${g.guestCategory}` : ''}</div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {g.status === 'arrived' ? (
+                        <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ {formatTime(g.arrivedAt)}</span>
+                      ) : (
+                        <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  ) : null;
 
   // Birthdays section (reusable to avoid duplication)
   const birthdaysSection = summary ? (
@@ -493,42 +619,14 @@ export default function DailyEvaluationPage() {
         </div>
       ) : (
         <>
-          {/* ====== QR's DISPONIBLES — primero para multimedia ====== */}
-          {userArea.toUpperCase() === 'MULTIMEDIA' && summary && summary.reusableGroups && summary.reusableGroups.length > 0 && (
-            <>
-              <div className="relative flex items-center gap-3 pt-2">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
-                  🔄 QR&apos;s Disponibles
-                </span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {summary.reusableGroups.map(g => (
-                    <button
-                      key={g.id}
-                      onClick={() => setModalGroup(g)}
-                      className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-300 dark:hover:border-teal-600"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {g.color && (
-                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                        )}
-                        <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{g.name}</span>
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{g.daySales}</div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Utilizados</div>
-                      {g.totalTokens > 0 && (
-                        <div className="text-[10px] text-teal-600 dark:text-teal-400 mt-1">{g.totalTokens} tokens en grupo</div>
-                      )}
-                    </button>
-                ))}
-              </div>
-            </>
-          )}
+          {/* ====== SECCIONES ORDENADAS POR ÁREA ====== */}
+          {/* Multimedia: QR's → Cumpleaños → Ruleta → Invitados */}
+          {/* Seguridad:  Cumpleaños → Invitados → Ruleta → QR's */}
+          {/* Default:    Ruleta → Cumpleaños → Invitados → QR's */}
 
-          {/* ====== CUMPLEAÑOS — segundo para multimedia (después de QR's) ====== */}
-          {isMultimedia && birthdaysSection}
+          {isMultimedia && qrSection}
+          {(isMultimedia || isSecurity) && birthdaysSection}
+          {isSecurity && specialGuestsSection}
 
           {/* ====== SECCIÓN: RULETA ====== */}
           {summary && (
@@ -631,101 +729,11 @@ export default function DailyEvaluationPage() {
             </>
           )}
 
-          {/* ====== SECCIÓN: CUMPLEAÑOS (no multimedia, ya se renderizó arriba) ====== */}
-          {!isMultimedia && birthdaysSection}
+          {/* ====== CUMPLEAÑOS (para áreas que no lo mostraron arriba) ====== */}
+          {!isMultimedia && !isSecurity && birthdaysSection}
 
-          {/* ====== SECCIÓN: INVITADOS ESPECIALES ====== */}
-          {summary && (
-            <>
-              <div className="relative flex items-center gap-3 pt-2">
-                <div className="flex-1 h-px bg-violet-200 dark:bg-violet-700" />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider">
-                  🎟️ Invitados Especiales
-                </span>
-                <div className="flex-1 h-px bg-violet-200 dark:bg-violet-700" />
-              </div>
-
-              <button
-                onClick={() => setModalSection('guests')}
-                className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-violet-300 dark:hover:border-violet-600"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-xl sm:text-2xl">🎟️</div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{summary.specialGuests?.total ?? 0}</div>
-                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Invitados</div>
-                  </div>
-                  {summary.specialGuests && summary.specialGuests.total > 0 && (
-                    <div className="ml-auto text-[10px] text-violet-600 dark:text-violet-400">{summary.specialGuests.arrived} llegaron</div>
-                  )}
-                </div>
-              </button>
-
-              {/* Tarjeta: Invitados especiales que llegaron */}
-              {summary.specialGuests && summary.specialGuests.total > 0 && (
-                <button
-                  onClick={() => setModalSection('guests')}
-                  className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-violet-200 dark:border-violet-700 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/10 dark:to-purple-900/10 hover:shadow-violet-100 dark:hover:shadow-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-xl sm:text-2xl">✅</div>
-                    <div>
-                      <div className="text-2xl sm:text-3xl font-bold text-violet-800 dark:text-violet-200">{summary.specialGuests.arrived}/{summary.specialGuests.total}</div>
-                      <div className="text-[10px] sm:text-xs text-violet-600 dark:text-violet-400 font-medium">Invitados llegaron</div>
-                    </div>
-                  </div>
-                </button>
-              )}
-
-              {/* Special Guests Modal */}
-              {modalSection === 'guests' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
-                  <div className="w-full max-w-sm rounded-2xl border border-violet-200 dark:border-violet-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        🎟️ Invitados Especiales — {summary.specialGuests?.total ?? 0}
-                      </h3>
-                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        <span className="text-lg text-slate-400">&times;</span>
-                      </button>
-                    </div>
-                    {summary.specialGuests && summary.specialGuests.total > 0 && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                        {summary.specialGuests.arrived} llegaron
-                      </div>
-                    )}
-                    {!summary.specialGuests || summary.specialGuests.total === 0 ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">No hay invitados especiales para este día.</p>
-                    ) : (
-                      <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                        {summary.specialGuests.events.map(ev => (
-                          <div key={ev.id} className="text-[10px] sm:text-xs font-medium text-violet-700 dark:text-violet-300 px-1">
-                            {ev.name} ({ev.timeSlot}) — {ev.arrivedGuests}/{ev.totalGuests}
-                          </div>
-                        ))}
-                        {summary.specialGuests.guests.map(g => (
-                          <div key={g.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-violet-50 dark:bg-violet-900/10">
-                            <span className="text-xs font-semibold text-violet-700 dark:text-violet-300 flex-shrink-0 w-10 text-center">{g.eventTime}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium truncate">{g.guestName}</div>
-                              <div className="text-[10px] text-slate-500">{g.eventName}{g.guestCategory ? ` · ${g.guestCategory}` : ''}</div>
-                            </div>
-                            <div className="flex-shrink-0">
-                              {g.status === 'arrived' ? (
-                                <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ {formatTime(g.arrivedAt)}</span>
-                              ) : (
-                                <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+          {/* ====== INVITADOS ESPECIALES (para áreas que no lo mostraron arriba) ====== */}
+          {!isSecurity && specialGuestsSection}
 
           {/* ====== SECCIÓN: COLABORADORES (solo ADMIN/COORDINATOR) ====== */}
           {canManage && summary && (
@@ -789,42 +797,10 @@ export default function DailyEvaluationPage() {
             </>
           )}
 
-          {/* ====== TOKENS REUTILIZABLES — sección separada (no multimedia) ====== */}
-          {userArea.toUpperCase() !== 'MULTIMEDIA' && summary && summary.reusableGroups && summary.reusableGroups.length > 0 && (
-            <>
-              <div className="relative flex items-center gap-3 pt-2">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
-                  🔄 QR&apos;s Disponibles
-                </span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {summary.reusableGroups.map(g => (
-                    <button
-                      key={g.id}
-                      onClick={() => setModalGroup(g)}
-                      className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-300 dark:hover:border-teal-600"
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {g.color && (
-                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                        )}
-                        <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{g.name}</span>
-                      </div>
-                      <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{g.daySales}</div>
-                      <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Utilizados</div>
-                      {g.totalTokens > 0 && (
-                        <div className="text-[10px] text-teal-600 dark:text-teal-400 mt-1">{g.totalTokens} tokens en grupo</div>
-                      )}
-                    </button>
-                ))}
-              </div>
+          {/* ====== QR's DISPONIBLES (para áreas que no lo mostraron arriba) ====== */}
+          {!isMultimedia && qrSection}
 
-            </>
-          )}
-
-          {/* Modal for reusable group detail (shared by both multimedia and non-multimedia) */}
+          {/* Modal for reusable group detail (shared) */}
           {modalGroup && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalGroup(null)}>
               <div className="w-full max-w-sm rounded-2xl border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
