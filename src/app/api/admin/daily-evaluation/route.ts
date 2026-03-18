@@ -40,11 +40,19 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/admin/daily-evaluation  — save rating + comment
+/** Resolve current DB role for a verified session (cookie role may be stale). */
+async function resolveRole(session: { userId: string; role: string }) {
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
+  return user?.role ?? session.role;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) {
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const currentRole = await resolveRole(session);
+    if (!['ADMIN', 'COORDINATOR'].includes(currentRole)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -90,7 +98,9 @@ export async function PATCH(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) {
+    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    const currentRole = await resolveRole(session);
+    if (!['ADMIN', 'COORDINATOR'].includes(currentRole)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -125,7 +135,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ evaluation });
     } else {
       // reopen — only ADMIN can reopen
-      if (session.role !== 'ADMIN') {
+      if (currentRole !== 'ADMIN') {
         return NextResponse.json({ error: 'Solo ADMIN puede reabrir una jornada' }, { status: 403 });
       }
       // Delete individual ratings for this day

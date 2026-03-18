@@ -10,7 +10,7 @@ function isValidDay(day: string | null): day is string { return !!day && /^\d{4}
 export async function GET(req: Request) {
   const raw = getSessionCookieFromRequest(req);
   const session = await verifySessionCookie(raw);
-  const ok = requireRole(session, ['ADMIN', 'STAFF']);
+  const ok = requireRole(session, ['ADMIN', 'STAFF', 'COORDINATOR', 'COLLAB']);
   if (!ok.ok) return NextResponse.json({ ok: false, code: ok.error || 'UNAUTHORIZED' }, { status: 401 });
 
   const url = new URL(req.url);

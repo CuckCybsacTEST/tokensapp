@@ -147,6 +147,7 @@ export default function AdminDailyEvaluationPage() {
 
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [evaluation, setEvaluation] = useState<DailyEvaluation | null>(null);
+  const [dayBrief, setDayBrief] = useState<{ title?: string | null; show?: string | null; promos?: string | null; notes?: string | null } | null>(null);
 
   // Form state
   const [evalRating, setEvalRating] = useState<Rating>('REGULAR');
@@ -177,15 +178,17 @@ export default function AdminDailyEvaluationPage() {
     setLoading(true);
     setSummary(null);
     setEvaluation(null);
+    setDayBrief(null);
     setEvalRating('REGULAR');
     setEvalComment('');
     setPersonRatingsMap(new Map());
     setRatingsLocked(false);
     try {
-      const [summaryRes, evalRes, ratingsRes] = await Promise.all([
+      const [summaryRes, evalRes, ratingsRes, briefRes] = await Promise.all([
         fetch(`/api/admin/daily-evaluation/summary?day=${selectedDay}`),
         fetch(`/api/admin/daily-evaluation?day=${selectedDay}`),
         fetch(`/api/admin/daily-evaluation/ratings?day=${selectedDay}`),
+        fetch(`/api/admin/day-brief?day=${selectedDay}`),
       ]);
 
       if (summaryRes.ok) setSummary(await summaryRes.json());
@@ -205,6 +208,10 @@ export default function AdminDailyEvaluationPage() {
         }
         setPersonRatingsMap(map);
         setRatingsLocked(map.size > 0);
+      }
+      if (briefRes.ok) {
+        const bData = await briefRes.json();
+        if (bData.brief) setDayBrief(bData.brief);
       }
     } catch (err) {
       console.error('Error loading daily evaluation data:', err);
@@ -387,6 +394,57 @@ export default function AdminDailyEvaluationPage() {
               )}
             </div>
           </div>
+
+          {/* ===== BRIEF DEL DÍA ===== */}
+          {dayBrief && (dayBrief.title || dayBrief.show || dayBrief.promos || dayBrief.notes) && (
+            <div className="rounded-xl border border-cyan-200 dark:border-cyan-800 bg-gradient-to-r from-cyan-50 to-sky-50 dark:from-cyan-900/10 dark:to-sky-900/10 p-3 sm:p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📝</span>
+                <h3 className="text-sm font-semibold text-cyan-800 dark:text-cyan-200">
+                  Brief del Día
+                </h3>
+                <a
+                  href={`/admin/day-brief?day=${selectedDay}`}
+                  className="ml-auto px-2 py-0.5 rounded text-[10px] font-medium text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors"
+                >
+                  Editar
+                </a>
+              </div>
+              {dayBrief.title && (
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{dayBrief.title}</p>
+              )}
+              {dayBrief.show && (
+                <div>
+                  <span className="text-[10px] font-semibold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider">🎤 Shows / Eventos</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {dayBrief.show.split(/\n|;|•/).filter(Boolean).map((s, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-700">
+                        {s.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {dayBrief.promos && (
+                <div>
+                  <span className="text-[10px] font-semibold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider">🏷️ Promos</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {dayBrief.promos.split(/\n|;|•/).filter(Boolean).map((p, i) => (
+                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300 border border-sky-200 dark:border-sky-700">
+                        {p.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {dayBrief.notes && (
+                <div>
+                  <span className="text-[10px] font-semibold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider">📋 Notas</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 whitespace-pre-line">{dayBrief.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ===== TAB BAR ===== */}
           <div className="flex rounded-lg bg-slate-100 dark:bg-slate-700/50 p-1">
