@@ -115,18 +115,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
               <SharedAutoAttendanceCard initialLastType={lastType} basePath="/u" />
 
-              {(isCoordinator || isStaff) && (
-                <Link href="/u/daily-evaluation" className="block rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-5 shadow-md hover:shadow-lg transition-all ring-1 ring-emerald-200/50 dark:border-emerald-600 dark:from-emerald-900/20 dark:to-teal-900/20 dark:ring-emerald-700/30">
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/40">
-                      <IconClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div className="text-lg sm:text-xl font-semibold text-emerald-900 dark:text-emerald-100">Jornada</div>
+              <Link href="/u/daily-evaluation" className="block rounded-xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 sm:p-5 shadow-md hover:shadow-lg transition-all ring-1 ring-emerald-200/50 dark:border-emerald-600 dark:from-emerald-900/20 dark:to-teal-900/20 dark:ring-emerald-700/30">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-100 dark:bg-emerald-800/40">
+                    <IconClipboardCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <p className="text-sm text-emerald-700 dark:text-emerald-300 ml-12 sm:ml-[52px]">Revisa lo que tenemos hoy o verifica datos de jornadas pasadas.</p>
-                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver jornada →</div>
-                </Link>
-              )}
+                  <div className="text-lg sm:text-xl font-semibold text-emerald-900 dark:text-emerald-100">Jornada</div>
+                </div>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 ml-12 sm:ml-[52px]">Revisa lo que tenemos hoy o verifica datos de jornadas pasadas.</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver jornada →</div>
+              </Link>
 
               <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
@@ -175,16 +173,14 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
 
           {activeTab === 'work' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
-              {isStaff && (
-                <Link href="/u/scanner" className="block rounded-lg border border-teal-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-teal-800/60 dark:bg-slate-800">
-                  <div className="flex items-center gap-3 mb-2">
-                    <IconQrcode className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Escáner QR</div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
-                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
-                </Link>
-              )}
+              <Link href="/u/scanner" className="block rounded-lg border border-teal-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-teal-800/60 dark:bg-slate-800">
+                <div className="flex items-center gap-3 mb-2">
+                  <IconQrcode className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                  <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Escáner QR</div>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
+                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
+              </Link>
               {isStaff && (
                 <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -250,19 +246,17 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
         </div>
       </div>
       
-      {/* FAB Scanner — siempre visible para staff */}
-      {isStaff && (
-        <Link
-          href="/u/scanner"
-          className="fab-scanner fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
-          aria-label="Abrir escáner QR"
-        >
-          <IconQrcode className="w-6 h-6" />
-          <span className="text-sm font-semibold hidden sm:inline">Escáner</span>
-          {/* Ping ring micro-animation */}
-          <span className="pointer-events-none absolute inset-0 rounded-full animate-fab-ping bg-teal-400/40" aria-hidden="true" />
-        </Link>
-      )}
+      {/* FAB Scanner — siempre visible para todos */}
+      <Link
+        href="/u/scanner"
+        className="fab-scanner fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-teal-600 px-5 py-3.5 text-white shadow-lg hover:bg-teal-700 active:scale-95 transition-all duration-150 ring-2 ring-teal-400/30"
+        aria-label="Abrir escáner QR"
+      >
+        <IconQrcode className="w-6 h-6" />
+        <span className="text-sm font-semibold hidden sm:inline">Escáner</span>
+        {/* Ping ring micro-animation */}
+        <span className="pointer-events-none absolute inset-0 rounded-full animate-fab-ping bg-teal-400/40" aria-hidden="true" />
+      </Link>
 
       {/* Modal de Reset de Contraseña */}
       {showPasswordResetModal && (

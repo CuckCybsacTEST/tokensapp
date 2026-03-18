@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(session.role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -20,7 +20,19 @@ export async function GET(req: NextRequest) {
       where: { businessDay: day }
     });
 
-    return NextResponse.json({ evaluation });
+    // Resolve user names for closedBy and evaluatedBy
+    let closedByName: string | null = null;
+    let evaluatedByName: string | null = null;
+    if (evaluation?.closedByUserId) {
+      const u = await prisma.user.findUnique({ where: { id: evaluation.closedByUserId }, select: { person: { select: { name: true } }, username: true } });
+      closedByName = u?.person?.name || u?.username || null;
+    }
+    if (evaluation?.evaluatedByUserId) {
+      const u = await prisma.user.findUnique({ where: { id: evaluation.evaluatedByUserId }, select: { person: { select: { name: true } }, username: true } });
+      evaluatedByName = u?.person?.name || u?.username || null;
+    }
+
+    return NextResponse.json({ evaluation: evaluation ? { ...evaluation, closedByName, evaluatedByName } : null });
   } catch (error) {
     console.error('Error fetching daily evaluation:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -73,7 +85,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -106,6 +118,9 @@ export async function PATCH(req: NextRequest) {
         data: {
           closedAt: null,
           closedByUserId: null,
+          rating: null,
+          comment: null,
+          evaluatedByUserId: null,
         },
       });
       return NextResponse.json({ evaluation });

@@ -6,7 +6,7 @@ export default async function DailyEvaluationLayout({ children }: { children: Re
   const raw = cookies().get('user_session')?.value;
   const session = await verifyUserSessionCookie(raw);
 
-  if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
+  if (!session || !['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(session.role)) {
     redirect('/u');
   }
 

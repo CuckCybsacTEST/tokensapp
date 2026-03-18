@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(session.role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 

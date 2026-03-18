@@ -25,6 +25,7 @@ const STAFF_ALLOWED_ADMIN_APIS = [
   '/api/admin/reusable-prizes',
   '/api/admin/music-system',
   '/api/admin/invitations',
+  '/api/admin/daily-evaluation',
 ];
 
 // ── Acceso por área: un COLLAB con cierta área puede acceder a rutas admin específicas ──
@@ -131,6 +132,9 @@ export async function middleware(req: NextRequest) {
 
     // STAFF: acceso limitado a APIs configuradas
     if (role === 'STAFF' && matchesAny(pathname, STAFF_ALLOWED_ADMIN_APIS)) return NextResponse.next();
+
+    // COLLAB: acceso a daily-evaluation (solo lectura, la ruta valida permisos de escritura)
+    if (role === 'COLLAB' && pathname.startsWith('/api/admin/daily-evaluation')) return NextResponse.next();
 
     // Cualquier rol: acceso por área funcional a APIs específicas
     if (areaAllowsAdminAPI(area, pathname)) return NextResponse.next();

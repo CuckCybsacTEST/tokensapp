@@ -97,6 +97,8 @@ interface DailyEvaluation {
   comment: string | null;
   closedAt: string | null;
   closedByUserId: string | null;
+  closedByName?: string | null;
+  evaluatedByName?: string | null;
 }
 
 interface PersonRating {
@@ -322,6 +324,7 @@ export default function DailyEvaluationPage() {
   const isToday = selectedDay === getBusinessDay();
   const isClosed = !!evaluation?.closedAt;
   const canManage = ['ADMIN', 'COORDINATOR'].includes(userRole);
+  const canClose = ['ADMIN', 'COORDINATOR', 'STAFF'].includes(userRole);
 
   // Modal detail sections state
   const [modalSection, setModalSection] = useState<string | null>(null);
@@ -776,8 +779,8 @@ export default function DailyEvaluationPage() {
             </>
           )}
 
-          {/* ===== CLOSE DAY SECTION (only ADMIN/COORDINATOR) ===== */}
-          {canManage && (
+          {/* ===== CLOSE DAY SECTION ===== */}
+          {canClose && (
           <>
           <div className="relative flex items-center gap-3 pt-3">
             <div className="flex-1 h-px bg-red-200 dark:bg-red-800" />
@@ -791,7 +794,7 @@ export default function DailyEvaluationPage() {
               <div className="text-2xl">🔓</div>
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Jornada Abierta</h3>
               <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                Cierra la jornada para habilitar las evaluaciones.
+                Cierra la jornada cuando termine el día operativo.
               </p>
               <div className="flex items-center justify-center gap-2">
                 <button
@@ -810,27 +813,31 @@ export default function DailyEvaluationPage() {
             </div>
           ) : (
             <>
-              {/* Reopen button (small, secondary) */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  🔒 Cerrada el {new Date(evaluation!.closedAt!).toLocaleString('es-PE')}
-                </span>
-                <div className="flex items-center gap-2 sm:ml-auto">
-                  <button
-                    onClick={() => handleCloseDay('reopen')}
-                    disabled={closingDay}
-                    className="px-3 py-1 rounded border border-slate-300 dark:border-slate-600 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                  >
-                    {closingDay ? '...' : 'Reabrir jornada'}
-                  </button>
-                  {closeMsg && (
-                    <span className={`text-xs font-medium ${closeMsg.includes('Error') || closeMsg.includes('Solo') ? 'text-red-600' : 'text-green-600'}`}>
-                      {closeMsg}
+              {/* Closed status — no reopen from /u, only from /admin */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 text-center space-y-1">
+                <div className="text-2xl">🔒</div>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Jornada Cerrada</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Cerrada el {new Date(evaluation!.closedAt!).toLocaleString('es-PE')}
+                  {evaluation?.closedByName && <> por <span className="font-medium text-slate-700 dark:text-slate-300">{evaluation.closedByName}</span></>}
+                </p>
+                {evaluation?.rating && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Evaluación: <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getRatingOption(evaluation.rating as Rating).color}`}>
+                      {getRatingOption(evaluation.rating as Rating).emoji} {getRatingOption(evaluation.rating as Rating).label}
                     </span>
-                  )}
-                </div>
+                    {evaluation.evaluatedByName && <> por {evaluation.evaluatedByName}</>}
+                  </p>
+                )}
+                {evaluation?.comment && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-1">&ldquo;{evaluation.comment}&rdquo;</p>
+                )}
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">Solo un administrador puede reabrir la jornada.</p>
               </div>
 
+              {/* ===== EVALUATION FORMS (only ADMIN/COORDINATOR) ===== */}
+              {canManage && (
+              <>
               {/* ===== EVALUATION GENERAL ===== */}
               <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 sm:p-4 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -953,6 +960,8 @@ export default function DailyEvaluationPage() {
           )}
           </>
           )}
+        </>
+      )}
         </>
       )}
     </div>
