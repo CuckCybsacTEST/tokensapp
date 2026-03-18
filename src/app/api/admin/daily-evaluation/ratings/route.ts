@@ -43,6 +43,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'businessDay and ratings[] required' }, { status: 400 });
     }
 
+    // Block if individual ratings already saved
+    const existingCount = await prisma.personDailyRating.count({ where: { businessDay } });
+    if (existingCount > 0) {
+      return NextResponse.json({ error: 'Calificaciones ya guardadas. Reabra la jornada para volver a evaluar.' }, { status: 403 });
+    }
+
     const validRatings = ['MALO', 'REGULAR', 'BUENO', 'MUY_BUENO'];
 
     const results = await prisma.$transaction(

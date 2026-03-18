@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'La jornada debe estar cerrada para evaluar' }, { status: 400 });
     }
 
+    // Block if already evaluated (finalized)
+    if (existing.rating) {
+      return NextResponse.json({ error: 'Evaluación ya finalizada. Reabra la jornada para volver a evaluar.' }, { status: 403 });
+    }
+
     const evaluation = await prisma.dailyEvaluation.update({
       where: { businessDay },
       data: {
@@ -85,7 +90,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const raw = getUserSessionCookieFromRequest(req);
     const session = await verifyUserSessionCookie(raw);
-    if (!session || !['ADMIN', 'COORDINATOR', 'STAFF'].includes(session.role)) {
+    if (!session || !['ADMIN', 'COORDINATOR'].includes(session.role)) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -95,6 +100,16 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (action === 'close') {
+      // Prevent closing a future day
+      const now = new Date();
+      const limaOffset = -5;
+      const limaHour = (now.getUTCHours() + limaOffset + 24) % 24;
+      const ref = limaHour < 10 ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
+      const todayBusiness = ref.toISOString().split('T')[0];
+      if (businessDay > todayBusiness) {
+        return NextResponse.json({ error: 'No se puede cerrar una jornada futura' }, { status: 400 });
+      }
+
       const evaluation = await prisma.dailyEvaluation.upsert({
         where: { businessDay },
         create: {
@@ -113,6 +128,9 @@ export async function PATCH(req: NextRequest) {
       if (session.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Solo ADMIN puede reabrir una jornada' }, { status: 403 });
       }
+      // Delete individual ratings for this day
+      await prisma.personDailyRating.deleteMany({ where: { businessDay } });
+
       const evaluation = await prisma.dailyEvaluation.update({
         where: { businessDay },
         data: {
