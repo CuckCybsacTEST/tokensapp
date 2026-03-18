@@ -22,14 +22,16 @@ export async function POST(req: Request) {
     }
 
     await prisma.$transaction(async (tx) => {
-      // Actualizar usuario
-      await tx.user.update({
-        where: { id: session.userId },
-        data: {
-          commitmentVersionAccepted: version,
-          commitmentAcceptedAt: new Date()
-        }
-      });
+      // Only update regulation version when accepting the base regulation (no specific assignment)
+      if (!assignmentId) {
+        await tx.user.update({
+          where: { id: session.userId },
+          data: {
+            commitmentVersionAccepted: version,
+            commitmentAcceptedAt: new Date()
+          }
+        });
+      }
 
       // Si hay una asignación específica y NO es acceptOnly, marcarla como completada
       if (assignmentId && !acceptOnly) {

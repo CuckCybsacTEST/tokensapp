@@ -39,6 +39,10 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const [assignmentQueue, setAssignmentQueue] = useState<AssignmentData[]>([]);
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const totalInQueue = assignmentQueue.length;
+
+  // Regulation-first flow: store pending comunicados while showing regulation
+  const [storedPendingAssignments, setStoredPendingAssignments] = useState<AssignmentData[]>([]);
+  const [regulationAcceptedThisSession, setRegulationAcceptedThisSession] = useState(false);
   
   // Trivia state
   const [selectedQuestions, setSelectedQuestions] = useState<TriviaQuestion[]>([]);
@@ -51,6 +55,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const searchParams = useSearchParams();
 
   const needsByVersion = (initialAcceptedVersion || 0) < requiredVersion;
+  const isRegulationPhase = !assignmentId && needsByVersion && !regulationAcceptedThisSession;
 
   const loadQuestionsFromAssignment = (assignment: any) => {
     const qSet = assignment.questionSet;
@@ -118,36 +123,32 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
         const res = await fetch('/api/user/commitment/pending');
         const data = await res.json();
         
-        if (data.ok && data.assignments && data.assignments.length > 0) {
-          const pending = data.assignments.filter((a: any) => a.status === 'PENDING');
-          
-          if (pending.length === 0) {
-            // No mandatory pending — check version
-            if (needsByVersion) {
-              setOpen(true);
-              const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
-              setSelectedQuestions(shuffled.slice(0, 2));
-              setStep('READING');
-            }
-            return;
-          }
-          
-          // Store the full queue and activate the first one
-          setAssignmentQueue(pending);
-          setCurrentQueueIndex(0);
-          activateAssignment(pending[0]);
-          
-          setManuallyClosed(false);
-          setOpen(true);
-          return;
-        }
+        const pending = (data.ok && data.assignments)
+          ? data.assignments.filter((a: any) => a.status === 'PENDING')
+          : [];
         
-        // Sin asignaciones dinámicas pendientes, verificar si necesita aceptar versión del reglamento base
-        if (needsByVersion) {
+        // Phase 1: Regulation FIRST (if version not yet accepted)
+        if (needsByVersion && !regulationAcceptedThisSession) {
+          setStoredPendingAssignments(pending);
+          setDynamicContent(null);
+          setAssignmentId(null);
+          setAssignmentData(null);
+          setIncludeTrivia(false);
+          setHasScrolledToBottom(false);
           setOpen(true);
           const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
           setSelectedQuestions(shuffled.slice(0, 2));
           setStep('READING');
+          return;
+        }
+        
+        // Phase 2: Mandatory comunicados queue
+        if (pending.length > 0) {
+          setAssignmentQueue(pending);
+          setCurrentQueueIndex(0);
+          activateAssignment(pending[0]);
+          setManuallyClosed(false);
+          setOpen(true);
         }
       } catch (err) {
         console.error("Assignment check failed", err);
@@ -165,7 +166,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     }, 30000);
 
     return () => clearInterval(pollInterval);
-  }, [needsByVersion, requiredVersion, searchParams, manuallyClosed]);
+  }, [needsByVersion, requiredVersion, searchParams, manuallyClosed, regulationAcceptedThisSession]);
 
   useEffect(() => {
     const handleOpen = () => {
@@ -477,19 +478,30 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
               </div>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white">¡Excelente!</h3>
               <p className="text-slate-600 dark:text-slate-400">
-                {includeTrivia 
-                  ? "Has demostrado conocer las normas. Tu compromiso ha sido registrado correctamente."
-                  : "Has aceptado el reglamento. Tu compromiso ha sido registrado correctamente."}
+                {isRegulationPhase
+                  ? "Has aceptado el reglamento interno. Tu compromiso ha sido registrado correctamente."
+                  : includeTrivia 
+                    ? "Has demostrado conocer las normas. Tu compromiso ha sido registrado correctamente."
+                    : "Has aceptado el comunicado. Tu confirmación ha sido registrada correctamente."}
               </p>
-              {totalInQueue > 1 && currentQueueIndex < totalInQueue - 1 && (
+              {isRegulationPhase && storedPendingAssignments.length > 0 && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mt-4">
+                  Tienes {storedPendingAssignments.length} comunicado{storedPendingAssignments.length > 1 ? 's' : ''} pendiente{storedPendingAssignments.length > 1 ? 's' : ''} por leer.
+                </p>
+              )}
+              {!isRegulationPhase && totalInQueue > 1 && currentQueueIndex < totalInQueue - 1 && (
                 <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mt-4">
                   Tienes {totalInQueue - currentQueueIndex - 1} comunicado{totalInQueue - currentQueueIndex - 1 > 1 ? 's' : ''} más por leer.
                 </p>
               )}
               <p className="text-sm text-slate-500 dark:text-slate-500 mt-8">
-                {currentQueueIndex < totalInQueue - 1
-                  ? "Haz clic abajo para continuar al siguiente comunicado."
-                  : "Haz clic abajo para guardar y acceder a tu panel."}
+                {isRegulationPhase
+                  ? (storedPendingAssignments.length > 0
+                    ? "Haz clic abajo para continuar a los comunicados pendientes."
+                    : "Haz clic abajo para acceder a tu panel.")
+                  : currentQueueIndex < totalInQueue - 1
+                    ? "Haz clic abajo para continuar al siguiente comunicado."
+                    : "Haz clic abajo para guardar y acceder a tu panel."}
               </p>
             </div>
           )}
@@ -633,7 +645,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 disabled={loading}
                 className="flex-[2] py-3 px-4 rounded-lg font-bold text-center transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-50"
               >
-                {loading ? 'Aceptando...' : 'ACEPTO el Comunicado'}
+                {loading ? 'Aceptando...' : (assignmentId ? 'ACEPTO el Comunicado' : 'ACEPTO el Reglamento')}
               </button>
             </div>
           )}
@@ -680,9 +692,11 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Comunicado Aceptado</h4>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{isRegulationPhase ? 'Reglamento Aceptado' : 'Comunicado Aceptado'}</h4>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">
-                      Has leído y aceptado este comunicado correctamente. Tu confirmación ha sido registrada.
+                      {isRegulationPhase
+                        ? "Has leído y aceptado el reglamento interno. Tu compromiso ha sido registrado."
+                        : "Has leído y aceptado este comunicado correctamente. Tu confirmación ha sido registrada."}
                     </p>
                   </div>
                 </div>
@@ -690,7 +704,19 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
               
               <button
                 onClick={() => {
-                  if (currentQueueIndex < totalInQueue - 1) {
+                  if (isRegulationPhase) {
+                    // Just finished base regulation — transition to comunicados if any
+                    setRegulationAcceptedThisSession(true);
+                    if (storedPendingAssignments.length > 0) {
+                      setAssignmentQueue(storedPendingAssignments);
+                      setCurrentQueueIndex(0);
+                      activateAssignment(storedPendingAssignments[0]);
+                    } else {
+                      setManuallyClosed(true);
+                      setOpen(false);
+                      window.location.reload();
+                    }
+                  } else if (currentQueueIndex < totalInQueue - 1) {
                     // Advance to next assignment in queue
                     const nextIdx = currentQueueIndex + 1;
                     setCurrentQueueIndex(nextIdx);
@@ -705,9 +731,13 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                 className="w-full py-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 group"
               >
                 <span>
-                  {currentQueueIndex < totalInQueue - 1
-                    ? `Siguiente comunicado (${currentQueueIndex + 2} de ${totalInQueue})`
-                    : 'Continuar a mi panel'}
+                  {isRegulationPhase
+                    ? (storedPendingAssignments.length > 0
+                      ? `Continuar a comunicados (${storedPendingAssignments.length})`
+                      : 'Continuar a mi panel')
+                    : currentQueueIndex < totalInQueue - 1
+                      ? `Siguiente comunicado (${currentQueueIndex + 2} de ${totalInQueue})`
+                      : 'Continuar a mi panel'}
                 </span>
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
