@@ -23,15 +23,13 @@ type TabType = "contenido" | "aceptacion";
 
 interface Props {
   regulationName: string;
-  regulationDate: string;
-  regulationHtml: string;
+  regulationParagraphs: string[];
   requiredVersion: number;
 }
 
 export default function RegulationsClient({
   regulationName,
-  regulationDate,
-  regulationHtml,
+  regulationParagraphs,
   requiredVersion,
 }: Props) {
   const [tab, setTab] = useState<TabType>("contenido");
@@ -94,7 +92,6 @@ export default function RegulationsClient({
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Versión requerida: <span className="font-semibold">v{requiredVersion}</span>
-            {regulationDate && <> · Actualizado: {regulationDate}</>}
           </p>
         </div>
 
@@ -136,10 +133,13 @@ export default function RegulationsClient({
               </h2>
             </div>
             <div className="prose prose-slate dark:prose-invert max-w-none">
-              <div
-                className="text-slate-700 dark:text-slate-300 leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: regulationHtml }}
-              />
+              <div className="space-y-3">
+                {regulationParagraphs.map((p, i) => (
+                  <p key={i} className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    {p}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         )}

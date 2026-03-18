@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { verifyUserSessionCookie } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { CURRENT_REGULATION } from '@/lib/regulations/constants';
 import RegulationsClient from './RegulationsClient';
 
@@ -15,27 +14,10 @@ export default async function RegulationsPage() {
   if (!session) redirect('/u/login');
   if (session.role !== 'ADMIN') redirect('/u');
 
-  const regulationSet = await prisma.triviaQuestionSet.findUnique({
-    where: { id: 'cmkcqtdtl0001hfh8nvysntxz' },
-    select: {
-      id: true,
-      name: true,
-      regulationContent: true,
-      createdAt: true,
-    },
-  });
-
-  const regulationHtml = regulationSet?.regulationContent ?? '';
-  const regulationName = regulationSet?.name ?? 'Reglamento Interno';
-  const regulationDate = regulationSet?.createdAt
-    ? regulationSet.createdAt.toLocaleDateString('es-ES')
-    : '';
-
   return (
     <RegulationsClient
-      regulationName={regulationName}
-      regulationDate={regulationDate}
-      regulationHtml={regulationHtml}
+      regulationName={CURRENT_REGULATION.title}
+      regulationParagraphs={CURRENT_REGULATION.content}
       requiredVersion={CURRENT_REGULATION.version}
     />
   );
