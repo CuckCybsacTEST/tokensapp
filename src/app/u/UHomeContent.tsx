@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import SharedAutoAttendanceCard from '@/components/attendance/SharedAutoAttendanceCard';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh, IconBell } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -24,8 +24,73 @@ type PageProps = {
 export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false, userArea }: PageProps) {
   const isCoordinator = ['COORDINATOR', 'ADMIN'].includes(session.role);
   const hasReusableTokensAccess = isCoordinator || (isStaff && (userArea === 'Animación' || userArea === 'Multimedia'));
-  const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work' | 'novedades'>('today');
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+
+  // Novedades (inbox) state
+  interface InboxItem {
+    id: string;
+    title: string;
+    status: string;
+    mandatory: boolean;
+    assignedAt: string;
+    completedAt: string | null;
+    preview: string;
+    content: string | null;
+  }
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxLoaded, setInboxLoaded] = useState(false);
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Fetch pending count on mount for badge
+  useEffect(() => {
+    fetch('/api/user/commitment/inbox')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.ok) setPendingCount(d.items.filter((i: InboxItem) => i.status === 'PENDING').length);
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchInbox = async () => {
+    if (inboxLoaded) return;
+    setInboxLoading(true);
+    try {
+      const res = await fetch('/api/user/commitment/inbox');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          setInboxItems(data.items);
+          setPendingCount(data.items.filter((i: InboxItem) => i.status === 'PENDING').length);
+        }
+      }
+    } catch {}
+    finally {
+      setInboxLoading(false);
+      setInboxLoaded(true);
+    }
+  };
+
+  // Mark a non-mandatory comunicado as read when expanded
+  const markAsRead = async (item: InboxItem) => {
+    if (item.status !== 'PENDING' || item.mandatory) return;
+    try {
+      const res = await fetch('/api/user/commitment/inbox/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId: item.id }),
+      });
+      if (res.ok) {
+        const now = new Date().toISOString();
+        setInboxItems(prev =>
+          prev.map(i => i.id === item.id ? { ...i, status: 'COMPLETED', completedAt: now } : i)
+        );
+        setPendingCount(prev => Math.max(0, prev - 1));
+      }
+    } catch {}
+  };
 
   // Mostrar modal de reset de contraseña si es necesario
   useEffect(() => {
@@ -106,6 +171,31 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 }`}
               >
                 Herramientas
+              </button>
+              <button
+                onClick={() => { setActiveTab('novedades'); fetchInbox(); }}
+                className={`py-2 px-2 sm:px-1 border-b-2 font-medium text-base sm:text-sm transition-colors relative ${
+                  activeTab === 'novedades'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : pendingCount > 0
+                      ? 'border-transparent text-amber-600 dark:text-amber-400 hover:border-amber-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center gap-1">
+                  {pendingCount > 0 && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                    </span>
+                  )}
+                  Novedades
+                </span>
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm animate-bounce" style={{ animationDuration: '2s', animationIterationCount: 3 }}>
+                    {pendingCount}
+                  </span>
+                )}
               </button>
             </nav>
           </div>
@@ -243,9 +333,96 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
               )}
             </div>
           )}
+
+          {/* ====== PESTAÑA NOVEDADES ====== */}
+          {activeTab === 'novedades' && (
+            <div className="space-y-3">
+              {inboxLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                </div>
+              ) : inboxItems.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <IconBell className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No tienes comunicados aún.</p>
+                </div>
+              ) : (
+                inboxItems.map(item => (
+                  <div key={item.id}>
+                    <button
+                      onClick={() => {
+                        const isOpening = openItemId !== item.id;
+                        setOpenItemId(isOpening ? item.id : null);
+                        if (isOpening) markAsRead(item);
+                      }}
+                      className="w-full text-left rounded-xl border bg-white dark:bg-slate-800 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all border-slate-200 dark:border-slate-700"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`flex-shrink-0 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                          item.status === 'PENDING'
+                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                            : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                          {item.status === 'PENDING' ? '📢' : '✅'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{item.title}</h4>
+                            {item.status === 'PENDING' && (
+                              <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                Pendiente
+                              </span>
+                            )}
+                            {item.mandatory && (
+                              <span className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                Obligatorio
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{item.preview}</p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {new Date(item.assignedAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                            {item.completedAt && (
+                              <span className="text-[10px] text-green-600 dark:text-green-400">
+                                Leído {new Date(item.completedAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 mt-1 transition-transform ${openItemId === item.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {openItemId === item.id && item.content && (
+                      <div className="mt-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4 sm:p-5">
+                        <style jsx global>{`
+                          .inbox-content ul { padding-left: 1.5rem; margin: 0.5rem 0; list-style-type: disc; }
+                          .inbox-content ol { padding-left: 1.5rem; margin: 0.5rem 0; list-style-type: decimal; }
+                          .inbox-content li { margin: 0.25rem 0; }
+                          .inbox-content p { margin: 0.5rem 0; }
+                          .inbox-content strong, .inbox-content b { font-weight: 700; }
+                          .inbox-content em, .inbox-content i { font-style: italic; }
+                          .inbox-content u { text-decoration: underline; }
+                          .inbox-content br { display: block; content: ""; margin: 0.25rem 0; }
+                        `}</style>
+                        <div
+                          className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 inbox-content"
+                          dangerouslySetInnerHTML={{ __html: item.content }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
-      
+
       {/* FAB Scanner — siempre visible para todos */}
       <Link
         href="/u/scanner"

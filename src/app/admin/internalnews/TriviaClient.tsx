@@ -89,6 +89,7 @@ type TriviaAssignment = {
   questionSetId: string;
   status: 'PENDING' | 'COMPLETED' | 'SKIPPED';
   includeTrivia: boolean;
+  mandatory: boolean;
   assignedAt: string;
   completedAt: string | null;
   user: {
@@ -144,6 +145,7 @@ export default function TriviaClient({
     questionSetId: '',
     area: '',
     includeTrivia: false,
+    mandatory: true,
     assignToAll: false
   });
 
@@ -866,6 +868,7 @@ export default function TriviaClient({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Colaborador</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Contenido</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Trivia?</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Obligat.</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Fecha Asignación</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Completado</th>
@@ -885,6 +888,13 @@ export default function TriviaClient({
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {assignment.includeTrivia ? (
                           <span className="text-indigo-600 dark:text-indigo-400 text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">SÍ</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">NO</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {assignment.mandatory ? (
+                          <span className="text-amber-600 dark:text-amber-400 text-xs font-bold bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded">SÍ</span>
                         ) : (
                           <span className="text-slate-400 text-xs">NO</span>
                         )}
@@ -920,7 +930,7 @@ export default function TriviaClient({
                   ))}
                   {assignments.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400 italic">
+                      <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-slate-400 italic">
                         No hay asignaciones registradas
                       </td>
                     </tr>
@@ -1723,6 +1733,26 @@ export default function TriviaClient({
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         assignForm.includeTrivia ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex-1">
+                    <label className="text-sm font-semibold text-amber-800 dark:text-amber-200">Lectura obligatoria al iniciar sesión</label>
+                    <p className="text-xs text-amber-600 dark:text-amber-300">Si se desactiva, el comunicado solo aparecerá en la bandeja de Novedades (no bloqueará el login).</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAssignForm({ ...assignForm, mandatory: !assignForm.mandatory })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      assignForm.mandatory ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        assignForm.mandatory ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>

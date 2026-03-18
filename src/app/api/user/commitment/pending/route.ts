@@ -15,33 +15,49 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const viewRegulation = url.searchParams.get('view-regulation') === '1';
 
-    // Buscar asignaciones para este usuario
-    // Si es view-regulation, buscar cualquier assignment, si no, solo PENDING
-    const whereClause = viewRegulation ? {
-      userId: session.userId
-    } : {
-      userId: session.userId,
-      status: 'PENDING'
-    };
+    // view-regulation: devuelve UNA asignación cualquiera (para re-lectura)
+    if (viewRegulation) {
+      const assignment = await prisma.commitmentAssignment.findFirst({
+        where: { userId: session.userId },
+        include: {
+          questionSet: {
+            include: {
+              questions: {
+                where: { active: true },
+                include: { answers: true }
+              }
+            }
+          }
+        },
+        orderBy: { assignedAt: 'desc' }
+      });
+      return NextResponse.json({ ok: true, assignment, assignments: assignment ? [assignment] : [] });
+    }
 
-    const assignment = await prisma.commitmentAssignment.findFirst({
-      where: whereClause,
+    // Normal: devolver TODAS las asignaciones obligatorias pendientes (cola)
+    const assignments = await prisma.commitmentAssignment.findMany({
+      where: {
+        userId: session.userId,
+        status: 'PENDING',
+        mandatory: true
+      },
       include: {
         questionSet: {
           include: {
             questions: {
               where: { active: true },
-              include: {
-                answers: true
-              }
+              include: { answers: true }
             }
           }
         }
       },
-      orderBy: { assignedAt: 'desc' }
+      orderBy: { assignedAt: 'asc' } // oldest first = chronological queue
     });
 
-    return NextResponse.json({ ok: true, assignment });
+    // Backwards-compatible: also return single `assignment` (first in queue)
+    const assignment = assignments.length > 0 ? assignments[0] : null;
+
+    return NextResponse.json({ ok: true, assignment, assignments });
   } catch (error: any) {
     console.error('[COMMITMENT_ASSIGNMENT_GET_ERROR]', error);
     return NextResponse.json({ ok: false, code: 'INTERNAL_ERROR' }, { status: 500 });

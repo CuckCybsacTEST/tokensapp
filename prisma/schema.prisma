@@ -281,6 +281,7 @@ model CommitmentAssignment {
   requiredVersion Int               @default(1)
   status          String            @default("PENDING") // PENDING, COMPLETED, SKIPPED
   includeTrivia   Boolean           @default(false)
+  mandatory       Boolean           @default(true)
   assignedAt      DateTime          @default(now())
   completedAt     DateTime?
   

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const { userIds, questionSetId, area, includeTrivia, assignToAll } = await req.json();
+    const { userIds, questionSetId, area, includeTrivia, mandatory, assignToAll } = await req.json();
 
     let targetUserIds = userIds || [];
 
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
       questionSetId: questionSetId,
       status: 'PENDING',
       includeTrivia: !!includeTrivia,
+      mandatory: mandatory !== false, // default true
       assignedAt: new Date()
     }));
 

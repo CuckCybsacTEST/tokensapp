@@ -35,6 +35,11 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
   const [dynamicContent, setDynamicContent] = useState<DynamicContent | null>(null);
   const [manuallyClosed, setManuallyClosed] = useState(false);
   
+  // Queue state for multiple mandatory assignments
+  const [assignmentQueue, setAssignmentQueue] = useState<AssignmentData[]>([]);
+  const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
+  const totalInQueue = assignmentQueue.length;
+  
   // Trivia state
   const [selectedQuestions, setSelectedQuestions] = useState<TriviaQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -69,6 +74,19 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     setSelectedQuestions(questions);
   };
 
+  // Load a specific assignment from the queue into modal state
+  const activateAssignment = (assignment: AssignmentData) => {
+    setAssignmentId(assignment.id);
+    setAssignmentData(assignment);
+    setIncludeTrivia(!!assignment.includeTrivia);
+    loadQuestionsFromAssignment(assignment);
+    setHasScrolledToBottom(false);
+    setAnswers({});
+    setTriviaError(null);
+    setError(null);
+    setStep('READING');
+  };
+
   useEffect(() => {
     // Acceso directo al reglamento base (REGLAMENTO INTERNO 2026)
     if (searchParams && searchParams.get('view-regulation') === '1') {
@@ -100,25 +118,27 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
         const res = await fetch('/api/user/commitment/pending');
         const data = await res.json();
         
-        if (data.ok && data.assignment) {
-          const assignment = data.assignment;
+        if (data.ok && data.assignments && data.assignments.length > 0) {
+          const pending = data.assignments.filter((a: any) => a.status === 'PENDING');
           
-          // Solo procesar asignaciones PENDIENTES
-          if (assignment.status !== 'PENDING') {
+          if (pending.length === 0) {
+            // No mandatory pending — check version
+            if (needsByVersion) {
+              setOpen(true);
+              const shuffled = [...CURRENT_REGULATION.trivia].sort(() => 0.5 - Math.random());
+              setSelectedQuestions(shuffled.slice(0, 2));
+              setStep('READING');
+            }
             return;
           }
           
-          // Cargar datos de la asignación
-          setAssignmentId(assignment.id);
-          setAssignmentData(assignment);
-          setIncludeTrivia(!!assignment.includeTrivia);
-          loadQuestionsFromAssignment(assignment);
+          // Store the full queue and activate the first one
+          setAssignmentQueue(pending);
+          setCurrentQueueIndex(0);
+          activateAssignment(pending[0]);
           
-          // Mostrar el comunicado
           setManuallyClosed(false);
-          setHasScrolledToBottom(false);
           setOpen(true);
-          setStep('READING');
           return;
         }
         
@@ -167,6 +187,16 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
       setHasScrolledToBottom(true);
     }
   };
+
+  // Auto-enable if content doesn't overflow (e.g. on desktop with short content)
+  useEffect(() => {
+    if (step === 'READING' && scrollRef.current && !hasScrolledToBottom) {
+      const el = scrollRef.current;
+      if (el.scrollHeight <= el.clientHeight + 50) {
+        setHasScrolledToBottom(true);
+      }
+    }
+  }, [step, hasScrolledToBottom, dynamicContent]);
 
   async function finishCommitment() {
     setLoading(true); setError(null);
@@ -266,7 +296,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
         aria-modal="true"
         className="w-full max-w-xl max-h-[92dvh] sm:max-h-[85dvh] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col relative overflow-hidden"
       >
-        {(!assignmentId && !needsByVersion) && (
+        {(!assignmentId && !needsByVersion && totalInQueue === 0) && (
           <button 
             onClick={() => {
               setManuallyClosed(true);
@@ -290,6 +320,28 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
             {step === 'RESULT' && (assignmentId ? "✅ ¡Comunicado Aceptado!" : "✅ ¡Reglamento Aceptado!")}
             {step === 'ALREADY_COMPLETED' && (assignmentId ? "✅ Comunicado Ya Leído" : "✅ Reglamento Ya Aceptado")}
           </h2>
+          {/* Queue progress indicator */}
+          {totalInQueue > 1 && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Comunicado {currentQueueIndex + 1} de {totalInQueue}
+              </span>
+              <div className="flex gap-1">
+                {assignmentQueue.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      i < currentQueueIndex
+                        ? 'bg-green-500'
+                        : i === currentQueueIndex
+                        ? 'bg-indigo-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -392,20 +444,6 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
           {step === 'ACCEPT' && (
             <div className="space-y-6">
-              {/* Resumen del reglamento */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-lg text-indigo-600 dark:text-indigo-400">
-                  {dynamicContent ? dynamicContent.title : CURRENT_REGULATION.title}
-                </h3>
-                
-                <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).slice(0, 1).join(' ')}
-                    {(dynamicContent ? dynamicContent.paragraphs : CURRENT_REGULATION.content).length > 1 && '...'}
-                  </p>
-                </div>
-              </div>
-
               {/* Declaración de compromiso */}
               <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-4 sm:p-5">
                 <div className="flex items-start gap-4">
@@ -443,8 +481,15 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                   ? "Has demostrado conocer las normas. Tu compromiso ha sido registrado correctamente."
                   : "Has aceptado el reglamento. Tu compromiso ha sido registrado correctamente."}
               </p>
+              {totalInQueue > 1 && currentQueueIndex < totalInQueue - 1 && (
+                <p className="text-sm text-amber-600 dark:text-amber-400 font-medium mt-4">
+                  Tienes {totalInQueue - currentQueueIndex - 1} comunicado{totalInQueue - currentQueueIndex - 1 > 1 ? 's' : ''} más por leer.
+                </p>
+              )}
               <p className="text-sm text-slate-500 dark:text-slate-500 mt-8">
-                Haz clic abajo para guardar y acceder a tu panel.
+                {currentQueueIndex < totalInQueue - 1
+                  ? "Haz clic abajo para continuar al siguiente comunicado."
+                  : "Haz clic abajo para guardar y acceder a tu panel."}
               </p>
             </div>
           )}
@@ -645,14 +690,25 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
               
               <button
                 onClick={() => {
-                  setManuallyClosed(true);
-                  setOpen(false);
-                  // Recargar para reflejar el estado actualizado
-                  window.location.reload();
+                  if (currentQueueIndex < totalInQueue - 1) {
+                    // Advance to next assignment in queue
+                    const nextIdx = currentQueueIndex + 1;
+                    setCurrentQueueIndex(nextIdx);
+                    activateAssignment(assignmentQueue[nextIdx]);
+                  } else {
+                    // All done — close and reload
+                    setManuallyClosed(true);
+                    setOpen(false);
+                    window.location.reload();
+                  }
                 }}
                 className="w-full py-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 group"
               >
-                <span>Continuar a mi panel</span>
+                <span>
+                  {currentQueueIndex < totalInQueue - 1
+                    ? `Siguiente comunicado (${currentQueueIndex + 2} de ${totalInQueue})`
+                    : 'Continuar a mi panel'}
+                </span>
                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
