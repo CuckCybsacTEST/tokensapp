@@ -65,6 +65,29 @@ const faq = [
 
 // Componente principal de la landing page
 export default function MarketingPage() {
+  const [config, setConfig] = React.useState({
+    marketingHeroEnabled: true,
+    marketingShowsEnabled: true,
+    marketingBirthdayEnabled: true,
+    marketingSpotifyEnabled: true,
+    marketingGalleryEnabled: true,
+    marketingFaqEnabled: true,
+    marketingBlogEnabled: true,
+    marketingMapEnabled: true,
+    marketingFooterEnabled: true,
+    marketingBackToTopEnabled: true,
+    marketingUpDownDotsEnabled: true,
+    marketingMobilePagerEnabled: true,
+  });
+
+  // Load config
+  React.useEffect(() => {
+    fetch('/api/admin/marketing/status')
+      .then(res => res.json())
+      .then(setConfig)
+      .catch(() => {}); // Ignore errors, use defaults
+  }, []);
+
   // Fuerza ocultar scrollbar en mobile (algunos navegadores aún muestran una barra tenue)
   useEffect(() => {
     const apply = () => {
@@ -316,12 +339,12 @@ export default function MarketingPage() {
       {/* Navegación flotante de secciones (dots) y barra superior fija */}
       <TopNavBar />
       {/* Hero: en desktop se muestra como portada vertical; en móvil vive dentro del pager horizontal */}
-      {isDesktop && <Hero />}
+      {isDesktop && config.marketingHeroEnabled && <Hero />}
 
       {/* Componentes de secciones principales */}
       <div id="mobile-pager">
         {/* Mobile: incluir hero como primer slide del pager horizontal */}
-        {!isDesktop && (
+        {!isDesktop && config.marketingHeroEnabled && (
           <div
             id="hero"
             data-section="hero"
@@ -334,93 +357,107 @@ export default function MarketingPage() {
           </div>
         )}
         {/* Sección dinámica de shows (reemplaza la sección estática eliminada) */}
-        <div
-          id="shows"
-          data-section="shows"
-          tabIndex={-1}
-          role="region"
-          aria-label="Estelares"
-          className="snap-section"
-        >
-          <DynamicShowsSection />
-        </div>
+        {config.marketingShowsEnabled && (
+          <div
+            id="shows"
+            data-section="shows"
+            tabIndex={-1}
+            role="region"
+            aria-label="Estelares"
+            className="snap-section"
+          >
+            <DynamicShowsSection />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="cumple"
-          data-section="cumple"
-          tabIndex={-1}
-          role="region"
-          aria-label="Cumpleaños"
-          className="snap-section"
-        >
-          <BirthdaySection />
-        </div>
+        {config.marketingBirthdayEnabled && (
+          <div
+            id="cumple"
+            data-section="cumple"
+            tabIndex={-1}
+            role="region"
+            aria-label="Cumpleaños"
+            className="snap-section"
+          >
+            <BirthdaySection />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="spotify"
-          data-section="spotify"
-          tabIndex={-1}
-          role="region"
-          aria-label="Spotify"
-          className="snap-section"
-        >
-          <SpotifySection />
-        </div>
+        {config.marketingSpotifyEnabled && (
+          <div
+            id="spotify"
+            data-section="spotify"
+            tabIndex={-1}
+            role="region"
+            aria-label="Spotify"
+            className="snap-section"
+          >
+            <SpotifySection />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="galeria"
-          data-section="galeria"
-          tabIndex={-1}
-          role="region"
-          aria-label="Galería"
-          className="snap-section"
-        >
-          <GallerySection gallery={gallery} />
-        </div>
+        {config.marketingGalleryEnabled && (
+          <div
+            id="galeria"
+            data-section="galeria"
+            tabIndex={-1}
+            role="region"
+            aria-label="Galería"
+            className="snap-section"
+          >
+            <GallerySection gallery={gallery} />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="faq"
-          data-section="faq"
-          tabIndex={-1}
-          role="region"
-          aria-label="Preguntas frecuentes"
-          className="snap-section"
-        >
-          <FaqSection faq={faq} />
-        </div>
+        {config.marketingFaqEnabled && (
+          <div
+            id="faq"
+            data-section="faq"
+            tabIndex={-1}
+            role="region"
+            aria-label="Preguntas frecuentes"
+            className="snap-section"
+          >
+            <FaqSection faq={faq} />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="blog"
-          data-section="blog"
-          tabIndex={-1}
-          role="region"
-          aria-label="Blog"
-          className="snap-section"
-        >
-          <BlogSection blogPosts={blogPosts} />
-        </div>
+        {config.marketingBlogEnabled && (
+          <div
+            id="blog"
+            data-section="blog"
+            tabIndex={-1}
+            role="region"
+            aria-label="Blog"
+            className="snap-section"
+          >
+            <BlogSection blogPosts={blogPosts} />
+          </div>
+        )}
   {/* Divider eliminado en desktop para pantalla completa por sección */}
-        <div
-          id="mapa"
-          data-section="mapa"
-          tabIndex={-1}
-          role="region"
-          aria-label="Mapa"
-          className="snap-section"
-        >
-          <MapSection />
-        </div>
+        {config.marketingMapEnabled && (
+          <div
+            id="mapa"
+            data-section="mapa"
+            tabIndex={-1}
+            role="region"
+            aria-label="Mapa"
+            className="snap-section"
+          >
+            <MapSection />
+          </div>
+        )}
       </div>
 
   {/* Indicador de sección fijo abajo (solo móvil) */}
-  {!isDesktop && <MobileIndicatorDock />}
+  {!isDesktop && config.marketingMobilePagerEnabled && <MobileIndicatorDock />}
 
   {/* Footer Component: solo desktop */}
-  {isDesktop && <Footer />}
+  {isDesktop && config.marketingFooterEnabled && <Footer />}
   {/* Floating Back to Top button (solo desktop) */}
-  {isDesktop && <BackToTop />}
+  {isDesktop && config.marketingBackToTopEnabled && <BackToTop />}
       {/* Mantener dots sólo en desktop/tablet; en móvil usamos la barra de iconos */}
-      {showNavButtons && isDesktop && <UpDownDots />}
+      {showNavButtons && isDesktop && config.marketingUpDownDotsEnabled && <UpDownDots />}
       {/* Navegación por iconos móvil eliminada para dejar scroll intuitivo */}
     </div>
   );

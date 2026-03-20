@@ -327,7 +327,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         title: "CONTENIDO VISUAL",
         icon: ICONS.film,
         items: [
-          { href: `${pathPrefix}/marketing/gallery`, label: "Galería de Fotos", icon: ICONS.filmSmall }
+          { href: `${pathPrefix}/marketing/gallery`, label: "Galería de Fotos", icon: ICONS.filmSmall },
+          { href: `${pathPrefix}/marketing-controls`, label: "Controles Marketing", icon: ICONS.starSmall }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
