@@ -112,10 +112,9 @@ export async function PATCH(req: NextRequest) {
     if (action === 'close') {
       // Prevent closing a future day
       const now = new Date();
-      const limaOffset = -5;
-      const limaHour = (now.getUTCHours() + limaOffset + 24) % 24;
+      const limaHour = Number(now.toLocaleString('en-US', { timeZone: 'America/Lima', hour: 'numeric', hour12: false }));
       const ref = limaHour < 10 ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
-      const todayBusiness = ref.toISOString().split('T')[0];
+      const todayBusiness = ref.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
       if (businessDay > todayBusiness) {
         return NextResponse.json({ error: 'No se puede cerrar una jornada futura' }, { status: 400 });
       }

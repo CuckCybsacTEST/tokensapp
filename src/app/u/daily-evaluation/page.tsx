@@ -125,19 +125,21 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 }
 
+function toLimaDateStr(date: Date): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+}
+
 function getBusinessDay(): string {
   const now = new Date();
-  const limaOffset = -5;
-  const utcHour = now.getUTCHours();
-  const limaHour = (utcHour + limaOffset + 24) % 24;
+  const limaHour = Number(now.toLocaleString('en-US', { timeZone: 'America/Lima', hour: 'numeric', hour12: false }));
   const d = limaHour < 10 ? new Date(now.getTime() - 24 * 60 * 60 * 1000) : now;
-  return d.toISOString().split('T')[0];
+  return toLimaDateStr(d);
 }
 
 function shiftDay(dayStr: string, delta: number): string {
-  const d = new Date(dayStr + 'T12:00:00');
+  const d = new Date(dayStr + 'T12:00:00Z');
   d.setDate(d.getDate() + delta);
-  return d.toISOString().split('T')[0];
+  return toLimaDateStr(d);
 }
 
 export default function DailyEvaluationPage() {
