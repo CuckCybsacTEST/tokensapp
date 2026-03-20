@@ -227,6 +227,7 @@ model Person {
   user             User?
   BriefAcceptance  BriefAcceptance[]
   dailyRatings     PersonDailyRating[]
+  productionsAssigned Production[]       @relation("ProductionAssignee")
 
   @@index([code])
 }
@@ -270,6 +271,8 @@ model User {
   ticketPurchases           TicketPurchase[]
   person                    Person                 @relation(fields: [personId], references: [id])
   commitmentAssignments     CommitmentAssignment[]
+  productionsRequested      Production[]           @relation("ProductionRequester")
+  productionComments        ProductionComment[]    @relation("ProductionCommentAuthor")
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
@@ -1774,4 +1777,116 @@ model PersonDailyRating {
   @@unique([businessDay, personId])
   @@index([businessDay])
   @@index([personId])
+}
+
+// ─── PRODUCCIÓN MULTIMEDIA ───────────────────────────────────────────
+
+enum ProductionType {
+  VIDEO_REEL
+  VIDEO_TIKTOK
+  VIDEO_PROMO
+  VIDEO_RECAP
+  PHOTO_SESSION
+  PHOTO_PRODUCT
+  PHOTO_STAFF
+  DESIGN_GRAPHIC
+  OTHER
+}
+
+enum ProductionStatus {
+  IDEA
+  BRIEFED
+  SCHEDULED
+  IN_PRODUCTION
+  IN_EDITING
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  CANCELLED
+}
+
+enum ProductionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Production {
+  id              String             @id @default(cuid())
+  title           String
+  type            ProductionType
+  status          ProductionStatus   @default(IDEA)
+  priority        ProductionPriority @default(MEDIUM)
+
+  // Brief creativo
+  objective       String?
+  context         String?
+  message         String?
+  references      String?
+  targetAudience  String?
+  platform        String?
+
+  // Formato y specs
+  format          String?
+  duration        String?
+  deliverables    String?
+
+  // Fechas
+  deadline        DateTime?
+  scheduledDate   DateTime?
+  completedAt     DateTime?
+  publishedAt     DateTime?
+  publishUrl      String?
+
+  // Asignación
+  requestedById   String?
+  requestedBy     User?              @relation("ProductionRequester", fields: [requestedById], references: [id])
+  assignedToId    String?
+  assignedTo      Person?            @relation("ProductionAssignee", fields: [assignedToId], references: [id])
+
+  notes           String?
+  tags            String?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  comments        ProductionComment[]
+  links           ProductionLink[]
+
+  @@index([status])
+  @@index([type])
+  @@index([assignedToId])
+  @@index([requestedById])
+  @@index([deadline])
+}
+
+model ProductionComment {
+  id            String     @id @default(cuid())
+  productionId  String
+  production    Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User       @relation("ProductionCommentAuthor", fields: [authorId], references: [id])
+  content       String
+  createdAt     DateTime   @default(now())
+
+  @@index([productionId])
+}
+
+enum ProductionLinkType {
+  REFERENCE
+  DELIVERABLE
+  PUBLISHED
+}
+
+model ProductionLink {
+  id            String             @id @default(cuid())
+  productionId  String
+  production    Production         @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  label         String
+  url           String
+  type          ProductionLinkType @default(DELIVERABLE)
+  createdAt     DateTime           @default(now())
+
+  @@index([productionId])
 }

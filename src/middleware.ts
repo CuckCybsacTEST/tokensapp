@@ -26,6 +26,7 @@ const STAFF_ALLOWED_ADMIN_APIS = [
   '/api/admin/music-system',
   '/api/admin/invitations',
   '/api/admin/daily-evaluation',
+  '/api/admin/producciones',
 ];
 
 // ── Acceso por área: un COLLAB con cierta área puede acceder a rutas admin específicas ──
@@ -38,7 +39,7 @@ const AREA_ADMIN_ROUTES: Record<string, string[]> = {
 const AREA_ADMIN_APIS: Record<string, string[]> = {
   'DJs':        ['/api/admin/music-system'],
   'Animación':  ['/api/admin/tokens', '/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
-  'Multimedia': ['/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
+  'Multimedia': ['/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups', '/api/admin/producciones'],
 };
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {

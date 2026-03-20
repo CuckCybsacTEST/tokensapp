@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import SharedAutoAttendanceCard from '@/components/attendance/SharedAutoAttendanceCard';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh, IconBell } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh, IconBell, IconVideo } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -329,6 +329,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Accede al menú y controla pedidos.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-orange-600 dark:text-orange-400 text-sm ml-8 sm:ml-9">Gestionar carta →</div>
+                </Link>
+              )}
+              {isStaff && (
+                <Link href="/u/producciones" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconVideo className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Producción Multimedia</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Solicita, consulta y da seguimiento a reels, videos, fotos y diseños.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Ver producciones →</div>
                 </Link>
               )}
             </div>

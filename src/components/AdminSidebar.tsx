@@ -331,6 +331,14 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
+        title: "PRODUCCIÓN MULTIMEDIA",
+        icon: ICONS.clock,
+        items: [
+          { href: `${pathPrefix}/producciones`, label: "Tablero", icon: ICONS.filmSmall },
+          { href: `${pathPrefix}/producciones?view=list`, label: "Lista", icon: ICONS.checkSmall }
+        ]
+      }] : []),
+      ...(basePath === 'admin' ? [{
         title: "VENTA DE TICKETS",
         icon: ICONS.check,
         items: [
