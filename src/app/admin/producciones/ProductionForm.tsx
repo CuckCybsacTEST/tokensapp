@@ -32,7 +32,7 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
   const [deliverables, setDeliverables] = useState("");
   const [deadline, setDeadline] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
-  const [assignedToId, setAssignedToId] = useState("");
+  const [assignedToIds, setAssignedToIds] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
   const [publishUrl, setPublishUrl] = useState("");
@@ -53,7 +53,7 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
           setPublishUrl(p.publishUrl || "");
           setDeadline(p.deadline ? p.deadline.slice(0, 10) : "");
           setScheduledDate(p.scheduledDate ? p.scheduledDate.slice(0, 10) : "");
-          setAssignedToId(p.assignedToId || "");
+          setAssignedToIds(p.assignedTo?.map(a => a.person.id) || []);
         }
       } catch { /* ignore */ }
       setLoadingData(false);
@@ -69,7 +69,7 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
       title: title.trim(), type, priority, status, objective, context, message, references,
       targetAudience, platform, format, duration, deliverables,
       deadline: deadline || null, scheduledDate: scheduledDate || null,
-      assignedToId: assignedToId || null, notes, tags, publishUrl,
+      assignedToIds, notes, tags, publishUrl,
     };
 
     try {
@@ -227,12 +227,19 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asignar a</label>
-              <select value={assignedToId} onChange={e => setAssignedToId(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100">
-                <option value="">Sin asignar</option>
-                {persons.map(p => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ""}</option>)}
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asignar a (máx 3)</label>
+              <select multiple value={assignedToIds} onChange={e => {
+                const selected = Array.from(e.target.selectedOptions, option => option.value);
+                if (selected.length <= 3) setAssignedToIds(selected);
+              }}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100" size={4}>
+                {persons.map(p => (
+                  <option key={p.id} value={p.id} disabled={assignedToIds.length >= 3 && !assignedToIds.includes(p.id)}>
+                    {p.name}{p.area ? ` (${p.area})` : ""}
+                  </option>
+                ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">Selecciona hasta 3 personas. Mantén Ctrl para múltiples.</p>
             </div>
           </div>
         </section>

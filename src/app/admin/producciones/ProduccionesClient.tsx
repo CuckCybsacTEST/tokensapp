@@ -11,6 +11,7 @@ export type ProductionStatus = "IDEA"|"BRIEFED"|"SCHEDULED"|"IN_PRODUCTION"|"IN_
 export type ProductionPriority = "LOW"|"MEDIUM"|"HIGH"|"URGENT";
 
 export interface PersonRef { id: string; name: string; area?: string | null; jobTitle?: string | null }
+export interface AssigneeRef { id: string; personId: string; person: PersonRef }
 export interface UserRef { id: string; username: string; person?: { name: string } | null }
 export interface ProductionLink { id: string; label: string; url: string; type: string; createdAt: string }
 export interface ProductionComment { id: string; content: string; createdAt: string; author: UserRef }
@@ -19,8 +20,8 @@ export interface Production {
   objective?: string|null; context?: string|null; message?: string|null; references?: string|null;
   targetAudience?: string|null; platform?: string|null; format?: string|null; duration?: string|null;
   deliverables?: string|null; deadline?: string|null; scheduledDate?: string|null; completedAt?: string|null;
-  publishedAt?: string|null; publishUrl?: string|null; requestedBy?: UserRef|null; assignedTo?: PersonRef|null;
-  assignedToId?: string|null; requestedById?: string|null; notes?: string|null; tags?: string|null;
+  publishedAt?: string|null; publishUrl?: string|null; requestedBy?: UserRef|null; assignedTo?: AssigneeRef[];
+  requestedById?: string|null; notes?: string|null; tags?: string|null;
   createdAt: string; updatedAt: string;
   comments?: ProductionComment[]; links?: ProductionLink[];
   _count?: { comments: number; links: number };
@@ -226,8 +227,8 @@ function KanbanBoard({ productions, onSelect, onStatusChange }: {
                     <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded px-1.5 py-0.5">{TYPE_LABELS[p.type]}</span>
                     <span className={`text-[10px] rounded px-1.5 py-0.5 ${PRIORITY_COLORS[p.priority]}`}>{PRIORITY_LABELS[p.priority]}</span>
                   </div>
-                  {p.assignedTo && (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 truncate">→ {p.assignedTo.name}</p>
+                  {p.assignedTo && p.assignedTo.length > 0 && (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 truncate">→ {p.assignedTo.map(a => a.person?.name).join(", ")}</p>
                   )}
                   {p.deadline && (
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
@@ -282,7 +283,7 @@ function ListView({ productions, onSelect, onEdit }: {
               <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{TYPE_LABELS[p.type]}</td>
               <td className="px-4 py-3"><span className="text-xs bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-1">{STATUS_LABELS[p.status]}</span></td>
               <td className="px-4 py-3"><span className={`text-xs rounded-full px-2 py-1 ${PRIORITY_COLORS[p.priority]}`}>{PRIORITY_LABELS[p.priority]}</span></td>
-              <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{p.assignedTo?.name || "—"}</td>
+              <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{p.assignedTo?.length ? p.assignedTo.map(a => a.person?.name).join(", ") : "—"}</td>
               <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                 {p.deadline ? new Date(p.deadline).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
               </td>

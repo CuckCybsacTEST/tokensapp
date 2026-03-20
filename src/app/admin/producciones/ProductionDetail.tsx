@@ -241,7 +241,7 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
           <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-3">
             <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Detalles</h2>
             <InfoRow label="Solicitado por" value={production.requestedBy?.person?.name || production.requestedBy?.username || "—"} />
-            <InfoRow label="Asignado a" value={production.assignedTo?.name || "Sin asignar"} />
+            <InfoRow label="Asignado a" value={production.assignedTo?.length ? production.assignedTo.map(a => a.person.name).join(", ") : "Sin asignar"} />
             {production.platform && <InfoRow label="Plataforma(s)" value={production.platform} />}
             {production.format && <InfoRow label="Formato" value={production.format} />}
             {production.duration && <InfoRow label="Duración" value={production.duration} />}

@@ -153,6 +153,19 @@ model SystemConfig {
   id                      Int      @id @default(autoincrement())
   tokensEnabled           Boolean  @default(true)
   wednesdaySpecialBottle  String?
+  // Marketing section toggles
+  marketingHeroEnabled         Boolean @default(true)
+  marketingShowsEnabled        Boolean @default(true)
+  marketingBirthdayEnabled     Boolean @default(true)
+  marketingSpotifyEnabled      Boolean @default(true)
+  marketingGalleryEnabled      Boolean @default(true)
+  marketingFaqEnabled          Boolean @default(true)
+  marketingBlogEnabled         Boolean @default(true)
+  marketingMapEnabled          Boolean @default(true)
+  marketingFooterEnabled       Boolean @default(true)
+  marketingBackToTopEnabled    Boolean @default(true)
+  marketingUpDownDotsEnabled   Boolean @default(true)
+  marketingMobilePagerEnabled  Boolean @default(true)
   updatedAt               DateTime @updatedAt
 }
 
@@ -227,7 +240,7 @@ model Person {
   user             User?
   BriefAcceptance  BriefAcceptance[]
   dailyRatings     PersonDailyRating[]
-  productionsAssigned Production[]       @relation("ProductionAssignee")
+  productionAssignments ProductionAssignee[]
 
   @@index([code])
 }
@@ -1842,8 +1855,7 @@ model Production {
   // Asignación
   requestedById   String?
   requestedBy     User?              @relation("ProductionRequester", fields: [requestedById], references: [id])
-  assignedToId    String?
-  assignedTo      Person?            @relation("ProductionAssignee", fields: [assignedToId], references: [id])
+  assignedTo      ProductionAssignee[]
 
   notes           String?
   tags            String?
@@ -1856,9 +1868,21 @@ model Production {
 
   @@index([status])
   @@index([type])
-  @@index([assignedToId])
   @@index([requestedById])
   @@index([deadline])
+}
+
+model ProductionAssignee {
+  id           String     @id @default(cuid())
+  productionId String
+  production   Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  personId     String
+  person       Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+
+  @@unique([productionId, personId])
+  @@index([productionId])
+  @@index([personId])
 }
 
 model ProductionComment {

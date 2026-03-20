@@ -37,7 +37,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     where: { id: params.id },
     include: {
       requestedBy: { select: { id: true, username: true, person: { select: { name: true } } } },
-      assignedTo: { select: { id: true, name: true } },
+      assignedTo: { include: { person: { select: { id: true, name: true, area: true } } } },
       comments: {
         include: { author: { select: { id: true, username: true, person: { select: { name: true } } } } },
         orderBy: { createdAt: 'asc' },
@@ -64,7 +64,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // STAFF can only modify productions they are assigned to or requested
   if (!isAdmin) {
     const myPersonId = await resolvePersonIdForUser(session!.userId);
-    const isAssigned = myPersonId && existing.assignedToId === myPersonId;
+    const assignees = await prisma.productionAssignee.findMany({ where: { productionId: params.id }, select: { personId: true } });
+    const isAssigned = myPersonId && assignees.some(a => a.personId === myPersonId);
     const isRequester = existing.requestedById === session!.userId;
     if (!isAssigned && !isRequester) {
       return apiError('FORBIDDEN', 'Solo puedes modificar producciones asignadas a ti o que solicitaste', undefined, 403);
@@ -91,9 +92,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof body.notes === 'string') data.notes = body.notes || null;
   if (typeof body.tags === 'string') data.tags = body.tags || null;
   if (typeof body.publishUrl === 'string') data.publishUrl = body.publishUrl || null;
-  if (body.assignedToId !== undefined) data.assignedToId = body.assignedToId || null;
   if (body.deadline !== undefined) data.deadline = body.deadline ? new Date(body.deadline as string) : null;
   if (body.scheduledDate !== undefined) data.scheduledDate = body.scheduledDate ? new Date(body.scheduledDate as string) : null;
+
+  // Handle assignedToIds
+  if (body.assignedToIds !== undefined) {
+    const assignedToIds = Array.isArray(body.assignedToIds) ? body.assignedToIds.filter((id: any) => typeof id === 'string') : [];
+    // Delete existing assignments
+    await prisma.productionAssignee.deleteMany({ where: { productionId: params.id } });
+    // Create new ones
+    if (assignedToIds.length > 0) {
+      await prisma.productionAssignee.createMany({
+        data: assignedToIds.map((personId: string) => ({ productionId: params.id, personId })),
+      });
+    }
+  }
 
   // Status changes with flow validation + automatic timestamps
   if (typeof body.status === 'string' && VALID_STATUSES.includes(body.status as any)) {

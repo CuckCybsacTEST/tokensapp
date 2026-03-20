@@ -22,13 +22,13 @@ export async function GET(req: Request) {
   if (status) where.status = status;
   if (type) where.type = type;
   if (priority) where.priority = priority;
-  if (assignedToId) where.assignedToId = assignedToId;
+  if (assignedToId) where.assignedTo = { some: { personId: assignedToId } };
 
   const productions = await prisma.production.findMany({
     where,
     include: {
       requestedBy: { select: { id: true, username: true, person: { select: { name: true } } } },
-      assignedTo: { select: { id: true, name: true } },
+      assignedTo: { include: { person: { select: { id: true, name: true, area: true } } } },
       _count: { select: { comments: true, links: true } },
     },
     orderBy: [{ priority: 'desc' }, { deadline: 'asc' }, { createdAt: 'desc' }],
@@ -80,11 +80,18 @@ export async function POST(req: Request) {
       deadline: body.deadline ? new Date(body.deadline as string) : null,
       scheduledDate: body.scheduledDate ? new Date(body.scheduledDate as string) : null,
       requestedById: session!.userId,
-      assignedToId: typeof body.assignedToId === 'string' ? body.assignedToId : null,
       notes: typeof body.notes === 'string' ? body.notes : null,
       tags: typeof body.tags === 'string' ? body.tags : null,
     },
   });
+
+  // Handle assignedToIds
+  const assignedToIds = Array.isArray(body.assignedToIds) ? body.assignedToIds.filter((id: any) => typeof id === 'string') : [];
+  if (assignedToIds.length > 0) {
+    await prisma.productionAssignee.createMany({
+      data: assignedToIds.map((personId: string) => ({ productionId: production.id, personId })),
+    });
+  }
 
   return apiOk({ production }, 201);
 }

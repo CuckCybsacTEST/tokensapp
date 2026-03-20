@@ -9,12 +9,13 @@ type ProductionStatus = "IDEA"|"BRIEFED"|"SCHEDULED"|"IN_PRODUCTION"|"IN_EDITING
 type ProductionPriority = "LOW"|"MEDIUM"|"HIGH"|"URGENT";
 
 interface PersonRef { id: string; name: string; area: string | null }
+interface AssigneeRef { id: string; personId: string; person: PersonRef }
 interface Production {
   id: string; title: string; type: ProductionType; status: ProductionStatus; priority: ProductionPriority;
   objective?: string|null; context?: string|null; message?: string|null;
   deadline?: string|null; scheduledDate?: string|null; completedAt?: string|null;
   publishedAt?: string|null; publishUrl?: string|null;
-  assignedTo?: { id: string; name: string } | null; assignedToId?: string|null;
+  assignedTo?: AssigneeRef[];
   requestedBy?: { id: string; username: string; person?: { name: string } | null } | null;
   tags?: string|null; createdAt: string;
   _count?: { comments: number; links: number };
@@ -75,7 +76,7 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
 
   useEffect(() => { load(); }, [load]);
 
-  const mine = productions.filter(p => p.assignedToId === personId || p.requestedBy?.id === userId);
+  const mine = productions.filter(p => p.assignedTo?.some(a => a.person.id === personId) || p.requestedBy?.id === userId);
   const base = tab === "mine" ? mine : productions;
 
   // Apply filters
@@ -205,7 +206,7 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
                   <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-500 dark:text-slate-400">
                     <span className="bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">{TYPE_LABELS[p.type]}</span>
                     <span className="bg-slate-100 dark:bg-slate-700 rounded px-1.5 py-0.5">{STATUS_LABELS[p.status]}</span>
-                    {p.assignedTo && <span>→ {p.assignedTo.name}</span>}
+                    {p.assignedTo && p.assignedTo.length > 0 && <span>→ {p.assignedTo.map(a => a.person.name).join(", ")}</span>}
                     {p.deadline && (
                       <span className="text-orange-600 dark:text-orange-400">
                         Límite: {new Date(p.deadline).toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}
@@ -255,7 +256,7 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
   const [deliverables, setDeliverables] = useState("");
   const [deadline, setDeadline] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
-  const [assignedToId, setAssignedToId] = useState("");
+  const [assignedToIds, setAssignedToIds] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
 
@@ -270,7 +271,7 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
           title: title.trim(), type, priority, objective, context, message, references,
           targetAudience, platform, format, duration, deliverables,
           deadline: deadline || null, scheduledDate: scheduledDate || null,
-          assignedToId: assignedToId || null, notes, tags,
+          assignedToIds, notes, tags,
         }),
       });
       const json = await res.json();
@@ -410,7 +411,7 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
           {isStaffPlus && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Asignar a</label>
-              <select value={assignedToId} onChange={e => setAssignedToId(e.target.value)}
+              <select value={assignedToIds[0] || ""} onChange={e => setAssignedToIds(e.target.value ? [e.target.value] : [])}
                 className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 dark:border-slate-600 dark:text-slate-100">
                 <option value="">Sin asignar</option>
                 {persons.map(p => <option key={p.id} value={p.id}>{p.name}{p.area ? ` (${p.area})` : ""}</option>)}
@@ -540,7 +541,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
 
   const currentIdx = STATUS_FLOW.indexOf(prod.status as ProductionStatus);
   const next = nextStatus();
-  const isAssignedToMe = prod.assignedToId === personId;
+  const isAssignedToMe = prod.assignedTo?.some((a: AssigneeRef) => a.person?.id === personId || a.personId === personId);
   const isMyRequest = prod.requestedById === userId;
   const canChangeStatus = (isStaffPlus || isAssignedToMe) && next !== null;
 
