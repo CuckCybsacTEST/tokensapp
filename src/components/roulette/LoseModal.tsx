@@ -6,7 +6,7 @@ export default function LoseModal({ open }: { open: boolean }) {
   useEffect(() => {
     if (open) {
       const t = setTimeout(() => {
-        window.location.href = "/marketing";
+        window.location.href = "/";
       }, 3200);
       return () => clearTimeout(t);
     }

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "es_PE",
-    url: "https://golounge.pe/marketing",
+    url: "https://golounge.pe",
     title: "Go Lounge! - Experiencias interactivas",
     description:
       "Un espacio donde tecnología y ambiente social se combinan para vivir algo distinto.",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   },
   // Aseguramos que los motores de búsqueda entienden que esta es una página independiente
   alternates: {
-    canonical: "https://golounge.pe/marketing",
+    canonical: "https://golounge.pe",
   },
 };
 
@@ -104,8 +104,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 --dark-color-a: #0E0606;
                 --dark-color-b: #07070C;
               }
-              html, body { background: var(--dark-color-a); color: white; margin:0; padding:0; min-height:100%; font-family: var(--font-family-primary); scroll-behavior:smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-              body { background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b)); }
+              html, body { background: var(--dark-color-a) !important; color: white !important; margin:0; padding:0; min-height:100%; font-family: var(--font-family-primary); scroll-behavior:smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color-scheme: dark !important; }
+              body { background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b)) !important; }
               header.admin-header { display: none !important; }
               ::-webkit-scrollbar { width: 8px; height: 8px; }
               ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }

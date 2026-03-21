@@ -63,14 +63,20 @@ function areaAllowsAdminAPI(area: string | undefined, pathname: string): boolean
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Redirect root to marketing
+  // Serve marketing content at / (URL stays as /)
   if (pathname === "/") {
-    return NextResponse.redirect(new URL("/marketing", req.url));
+    return NextResponse.rewrite(new URL("/marketing", req.url));
+  }
+
+  // Backwards-compatible: old /marketing URL redirects to /
+  if (pathname === "/marketing") {
+    return NextResponse.redirect(new URL("/", req.url), 301);
   }
 
   // Public routes - no authentication required
   const publicRoutes = [
-    "/marketing",
+    "/marketing/",
+    "/reservatucumple",
     "/u/login",
     "/u/reset-password",
     "/u/register",

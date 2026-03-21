@@ -252,7 +252,7 @@ function ReservarCumplePageInner() {
         </p>
       </div>
 
-      <a href="/marketing#dynamic-shows-section" className="pt-2 scroll-mt-24 md:scroll-mt-32 block">
+      <a href="/#dynamic-shows-section" className="pt-2 scroll-mt-24 md:scroll-mt-32 block">
         <div id="form" />
       </a>
 

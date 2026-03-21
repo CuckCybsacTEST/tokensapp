@@ -98,7 +98,7 @@ export default function CustomerLogin() {
 
         <div className="mt-4 text-center">
           <a
-            href="/marketing"
+            href="/"
             className="text-white/60 hover:text-white/80 text-sm underline"
           >
             ← Volver al inicio

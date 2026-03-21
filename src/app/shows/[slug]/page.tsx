@@ -86,7 +86,7 @@ export default function ShowDetailsPage() {
         <div className="text-center text-white">
           <h1 className="text-2xl font-bold mb-4">Show no encontrado</h1>
           <Link
-            href="/marketing"
+            href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF4D2E] text-white rounded-lg hover:bg-[#FF4D2E]/90 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -119,7 +119,7 @@ export default function ShowDetailsPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Link
-              href="/marketing"
+              href="/"
               className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />

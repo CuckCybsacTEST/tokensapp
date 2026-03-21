@@ -113,7 +113,7 @@ export default function PublicBirthdayStatusPage() {
               Esta vista no muestra datos sensibles. Conserva tu enlace.
             </div>
             <div className="flex gap-3 pt-1">
-              <a href="/marketing" className="text-xs underline opacity-80 hover:opacity-100">
+              <a href="/" className="text-xs underline opacity-80 hover:opacity-100">
                 Volver al inicio
               </a>
             </div>

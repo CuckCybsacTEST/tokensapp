@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className="h-full theme-hydrated" suppressHydrationWarning>
       <head>
-        <style>{`html{background:#ffffff;color-scheme:light}`}</style>
+        <style>{`html{background:var(--color-bg,#ffffff);color-scheme:dark light}`}</style>
         <ThemeScript />
   <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
   {/* Theme colors (light/dark) usando la paleta brand */}

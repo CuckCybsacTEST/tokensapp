@@ -92,7 +92,7 @@ export default function UserTicketsPage() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No tienes tickets aún</h3>
             <p className="text-gray-600 mb-6">¡Explora nuestros shows y compra tus tickets!</p>
             <a
-              href="/marketing"
+              href="/"
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Ver Shows Disponibles

@@ -22,7 +22,15 @@ const nextConfig = {
       {
         source: '/redeem/:path*',
         destination: '/r/:path*',
-        permanent: false, // 307/308 temporary to avoid caching wrong path forever
+        permanent: false,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/reservatucumple',
+        destination: '/marketing/birthdays/reservar',
       },
     ];
   },

@@ -404,7 +404,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Reserva Cancelada</h1>
         <p className="text-base opacity-80 mb-4">Esta reserva ha sido cancelada y ya no es válida.</p>
         <div className="text-sm opacity-70 mb-2">Si crees que esto es un error, contacta al soporte.</div>
-        <a href={isPublic ? "/marketing" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
+        <a href={isPublic ? "/" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
       </div>
     );
   }
@@ -458,7 +458,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         <a
           href={
             isPublic
-              ? "/marketing"
+              ? "/"
               : (data.isAdmin ? "/admin/scanner" : "/u/scanner")
           }
           className="inline-block text-xs opacity-70 hover:opacity-100 mb-2 text-white/70 hover:text-white"
