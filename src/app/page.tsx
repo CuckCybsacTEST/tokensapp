@@ -1,7 +1,5 @@
-// Fallback: middleware rewrites / → /marketing internamente.
-// Si por alguna razón middleware no corre, esto redirige.
-import { redirect } from 'next/navigation';
-
+// Middleware rewrites / → /marketing internamente.
+// Esta página nunca se renderiza en condiciones normales.
 export default function HomePage() {
-  redirect('/marketing');
+  return null;
 }

@@ -104,8 +104,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 --dark-color-a: #0E0606;
                 --dark-color-b: #07070C;
               }
-              html, body { background: var(--dark-color-a) !important; color: white !important; margin:0; padding:0; min-height:100%; font-family: var(--font-family-primary); scroll-behavior:smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color-scheme: dark !important; }
-              body { background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b)) !important; }
+              html, body { background: var(--dark-color-a) !important; color: white !important; margin:0; padding:0; min-height:100%; font-family: var(--font-family-primary); scroll-behavior:smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color-scheme: dark !important; transition: none !important; }
+              body { background: linear-gradient(180deg, var(--dark-color-a), var(--dark-color-b)) !important; transition: none !important; }
               header.admin-header { display: none !important; }
               ::-webkit-scrollbar { width: 8px; height: 8px; }
               ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }

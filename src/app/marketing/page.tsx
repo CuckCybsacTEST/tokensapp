@@ -80,11 +80,11 @@ export default function MarketingPage() {
     marketingMobilePagerEnabled: true,
   });
 
-  // Load config
+  // Load config (merge with defaults; ignore HTTP errors to keep defaults)
   React.useEffect(() => {
     fetch('/api/admin/marketing/status')
-      .then(res => res.json())
-      .then(setConfig)
+      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
+      .then(data => setConfig(prev => ({ ...prev, ...data })))
       .catch(() => {}); // Ignore errors, use defaults
   }, []);
 
