@@ -5,7 +5,7 @@
   "description": "Experiencias con tecnología QR: shows, rewards y más.",
   "lang": "es",
   "dir": "ltr",
-  "start_url": "/marketing?src=pwa",
+  "start_url": "/?src=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
