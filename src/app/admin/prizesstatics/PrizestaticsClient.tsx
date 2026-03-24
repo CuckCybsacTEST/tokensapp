@@ -735,10 +735,10 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
               {triviaQuestions.map((q, qi) => (
                 <div key={qi} className="p-2 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 space-y-2">
                   <div className="flex gap-2 items-center">
-                    <span className="text-[10px] text-slate-500">P{qi+1}</span>
-                    <input className="input flex-1 text-xs" placeholder="Pregunta..." value={q.question} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], question: e.target.value }; setTriviaQuestions(nq); }} />
-                    <input type="number" min={1} max={100} className="input w-16 text-xs" placeholder="Pts" value={q.points} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], points: Number(e.target.value)||10 }; setTriviaQuestions(nq); }} />
-                    {triviaQuestions.length > 1 && <button type="button" className="text-rose-500 text-xs" onClick={()=>setTriviaQuestions(triviaQuestions.filter((_,i)=>i!==qi))}>✕</button>}
+                    <span className="text-[10px] text-slate-500 shrink-0">P{qi+1}</span>
+                    <input className="input !w-auto flex-1 min-w-0 text-xs" placeholder="Escribe la pregunta aquí..." value={q.question} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], question: e.target.value }; setTriviaQuestions(nq); }} />
+                    <input type="number" min={1} max={100} className="input !w-16 shrink-0 text-xs text-center" placeholder="Pts" title="Puntos por respuesta correcta" value={q.points} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], points: Number(e.target.value)||10 }; setTriviaQuestions(nq); }} />
+                    {triviaQuestions.length > 1 && <button type="button" className="text-rose-500 text-xs shrink-0" onClick={()=>setTriviaQuestions(triviaQuestions.filter((_,i)=>i!==qi))}>✕</button>}
                   </div>
                   <div className="grid grid-cols-2 gap-1">
                     {q.answers.map((a, ai) => (
