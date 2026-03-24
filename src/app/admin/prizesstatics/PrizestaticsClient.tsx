@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState, useTransition } from 'react';
+import { ACTION_LABELS, ACTION_DESCRIPTIONS } from '@/components/token-actions/types';
+import type { ActionType } from '@/components/token-actions/types';
 
 interface Prize {
   id: string;
@@ -502,6 +504,60 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
   const [postGen, setPostGen] = useState<null | { batchId: string; blobUrl: string; filename: string; displayName?: string }>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
+  // --- Action Type state ---
+  const [actionType, setActionType] = useState<ActionType>('prize');
+  const [triviaQuestions, setTriviaQuestions] = useState<Array<{ question: string; answers: Array<{ text: string; correct: boolean }>; points: number }>>(
+    [{ question: '', answers: [{ text: '', correct: true }, { text: '', correct: false }, { text: '', correct: false }, { text: '', correct: false }], points: 10 }]
+  );
+  const [triviaSuccessMsg, setTriviaSuccessMsg] = useState('¡Respuesta correcta! Muestra esta pantalla al animador.');
+  const [triviaFailMsg, setTriviaFailMsg] = useState('¡Casi! Mejor suerte la próxima.');
+  const [triviaPrizeOnSuccess, setTriviaPrizeOnSuccess] = useState('');
+  const [phrases, setPhrases] = useState<string[]>(['']);
+  const [phraseStyle, setPhraseStyle] = useState<'motivational' | 'funny' | 'wisdom' | 'custom'>('motivational');
+  const [challenges, setChallenges] = useState<string[]>(['']);
+  const [challengeDifficulty, setChallengeDifficulty] = useState<'easy'|'medium'|'hard'>('medium');
+  const [challengeRewardLabel, setChallengeRewardLabel] = useState('');
+  const [challengeRequiresValidation, setChallengeRequiresValidation] = useState(true);
+  const [raffleName, setRaffleName] = useState('');
+  const [raffleMaxParticipants, setRaffleMaxParticipants] = useState(999);
+  const [messageHtml, setMessageHtml] = useState('');
+  const [messageCtaLabel, setMessageCtaLabel] = useState('');
+  const [messageCtaUrl, setMessageCtaUrl] = useState('');
+
+  function buildActionPayload(): string | undefined {
+    if (actionType === 'prize') return undefined;
+    if (actionType === 'trivia') {
+      return JSON.stringify({
+        questions: triviaQuestions.filter(q => q.question.trim()),
+        successMessage: triviaSuccessMsg,
+        failMessage: triviaFailMsg,
+        prizeOnSuccess: triviaPrizeOnSuccess || undefined,
+      });
+    }
+    if (actionType === 'phrase') {
+      return JSON.stringify({ phrases: phrases.filter(p => p.trim()), style: phraseStyle });
+    }
+    if (actionType === 'challenge') {
+      return JSON.stringify({
+        challenges: challenges.filter(c => c.trim()),
+        difficulty: challengeDifficulty,
+        rewardLabel: challengeRewardLabel || undefined,
+        requiresValidation: challengeRequiresValidation,
+      });
+    }
+    if (actionType === 'raffle') {
+      return JSON.stringify({ raffleName, autoNumber: true, maxParticipants: raffleMaxParticipants });
+    }
+    if (actionType === 'message') {
+      return JSON.stringify({
+        htmlContent: messageHtml,
+        ctaLabel: messageCtaLabel || undefined,
+        ctaUrl: messageCtaUrl || undefined,
+      });
+    }
+    return undefined;
+  }
+
   // Derived
   // Solo mostrar premios activos con stock numérico disponible > 0 (evitar premios ya emitidos o ilimitados/null)
   const activePrizeList = useMemo(() => prizes.filter(p => p.active && typeof p.stock === 'number' && p.stock > 0), [prizes]);
@@ -535,7 +591,9 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
         ...(trimmedUrl && { targetUrl: trimmedUrl }),
         includeQr,
         lazyQr: false,
-        prizes: Object.entries(counts).filter(([,v]) => v>0).map(([prizeId,v]) => ({ prizeId, count: v }))
+        prizes: Object.entries(counts).filter(([,v]) => v>0).map(([prizeId,v]) => ({ prizeId, count: v })),
+        actionType,
+        actionPayload: buildActionPayload(),
       };
       if (mode === 'byDays') {
         payload = { ...base, validity: { mode: 'byDays', expirationDays } } as PayloadByDays;
@@ -655,6 +713,115 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
             <label className="text-xs font-medium">Incluye QR</label>
             <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={includeQr} onChange={e=>setIncludeQr(e.target.checked)} /><span>Sí</span></label>
           </div>
+
+          {/* Tipo de Acción */}
+          <div className="form-row col-span-full">
+            <label className="text-xs font-medium">Tipo de Acción del Token</label>
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
+              {(Object.keys(ACTION_LABELS) as ActionType[]).map(t => (
+                <label key={t} className="inline-flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="action-type" value={t} checked={actionType===t} onChange={()=>setActionType(t)} />
+                  <span>{ACTION_LABELS[t]}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">{ACTION_DESCRIPTIONS[actionType]}</p>
+          </div>
+
+          {/* Payload editors */}
+          {actionType === 'trivia' && (
+            <div className="col-span-full space-y-3 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="text-xs font-medium text-blue-700 dark:text-blue-300">🧩 Configuración de Trivia Rápida</div>
+              {triviaQuestions.map((q, qi) => (
+                <div key={qi} className="p-2 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <span className="text-[10px] text-slate-500">P{qi+1}</span>
+                    <input className="input flex-1 text-xs" placeholder="Pregunta..." value={q.question} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], question: e.target.value }; setTriviaQuestions(nq); }} />
+                    <input type="number" min={1} max={100} className="input w-16 text-xs" placeholder="Pts" value={q.points} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], points: Number(e.target.value)||10 }; setTriviaQuestions(nq); }} />
+                    {triviaQuestions.length > 1 && <button type="button" className="text-rose-500 text-xs" onClick={()=>setTriviaQuestions(triviaQuestions.filter((_,i)=>i!==qi))}>✕</button>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {q.answers.map((a, ai) => (
+                      <div key={ai} className="flex items-center gap-1">
+                        <input type="radio" name={`correct-${qi}`} checked={a.correct} onChange={()=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], answers: nq[qi].answers.map((x,j)=>({...x, correct: j===ai})) }; setTriviaQuestions(nq); }} title="Correcta" />
+                        <input className="input flex-1 text-[10px]" placeholder={`Opción ${ai+1}`} value={a.text} onChange={e=>{ const nq = [...triviaQuestions]; nq[qi] = { ...nq[qi], answers: nq[qi].answers.map((x,j)=> j===ai ? {...x, text: e.target.value} : x) }; setTriviaQuestions(nq); }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="btn-outline !py-1 !px-2 text-[10px]" onClick={()=>setTriviaQuestions([...triviaQuestions, { question: '', answers: [{text:'',correct:true},{text:'',correct:false},{text:'',correct:false},{text:'',correct:false}], points: 10 }])}>+ Agregar pregunta</button>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-600">Mensaje si acierta</label><input className="input text-xs" value={triviaSuccessMsg} onChange={e=>setTriviaSuccessMsg(e.target.value)} /></div>
+                <div><label className="text-[10px] text-slate-600">Mensaje si falla</label><input className="input text-xs" value={triviaFailMsg} onChange={e=>setTriviaFailMsg(e.target.value)} /></div>
+              </div>
+              <div><label className="text-[10px] text-slate-600">Premio si acierta (opcional)</label><input className="input text-xs" placeholder="Ej: Trago gratis" value={triviaPrizeOnSuccess} onChange={e=>setTriviaPrizeOnSuccess(e.target.value)} /></div>
+            </div>
+          )}
+
+          {actionType === 'phrase' && (
+            <div className="col-span-full space-y-3 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">💬 Configuración de Frases</div>
+              <div className="flex gap-3 text-[11px]">
+                {(['motivational','funny','wisdom','custom'] as const).map(s => (
+                  <label key={s} className="inline-flex items-center gap-1"><input type="radio" name="phrase-style" value={s} checked={phraseStyle===s} onChange={()=>setPhraseStyle(s)} /><span>{s === 'motivational' ? 'Motivacional' : s === 'funny' ? 'Divertida' : s === 'wisdom' ? 'Sabiduría' : 'Personalizada'}</span></label>
+                ))}
+              </div>
+              {phrases.map((p, i) => (
+                <div key={i} className="flex gap-1 items-center">
+                  <input className="input flex-1 text-xs" placeholder={`Frase ${i+1}...`} value={p} onChange={e=>{ const np=[...phrases]; np[i]=e.target.value; setPhrases(np); }} />
+                  {phrases.length > 1 && <button type="button" className="text-rose-500 text-xs" onClick={()=>setPhrases(phrases.filter((_,j)=>j!==i))}>✕</button>}
+                </div>
+              ))}
+              <button type="button" className="btn-outline !py-1 !px-2 text-[10px]" onClick={()=>setPhrases([...phrases,''])}>+ Agregar frase</button>
+              <p className="text-[10px] text-slate-500">Cada token mostrará una frase aleatoria del pool.</p>
+            </div>
+          )}
+
+          {actionType === 'challenge' && (
+            <div className="col-span-full space-y-3 p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="text-xs font-medium text-green-700 dark:text-green-300">🎯 Configuración de Retos</div>
+              <div className="flex gap-3 text-[11px]">
+                {(['easy','medium','hard'] as const).map(d => (
+                  <label key={d} className="inline-flex items-center gap-1"><input type="radio" name="challenge-diff" value={d} checked={challengeDifficulty===d} onChange={()=>setChallengeDifficulty(d)} /><span>{d==='easy'?'🟢 Fácil':d==='medium'?'🟡 Medio':'🔴 Difícil'}</span></label>
+                ))}
+              </div>
+              {challenges.map((c, i) => (
+                <div key={i} className="flex gap-1 items-center">
+                  <input className="input flex-1 text-xs" placeholder={`Reto ${i+1}...`} value={c} onChange={e=>{ const nc=[...challenges]; nc[i]=e.target.value; setChallenges(nc); }} />
+                  {challenges.length > 1 && <button type="button" className="text-rose-500 text-xs" onClick={()=>setChallenges(challenges.filter((_,j)=>j!==i))}>✕</button>}
+                </div>
+              ))}
+              <button type="button" className="btn-outline !py-1 !px-2 text-[10px]" onClick={()=>setChallenges([...challenges,''])}>+ Agregar reto</button>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-600">Premio al completar (opcional)</label><input className="input text-xs" placeholder="Ej: Shot gratis" value={challengeRewardLabel} onChange={e=>setChallengeRewardLabel(e.target.value)} /></div>
+                <div className="flex items-center gap-2 pt-4"><label className="text-[10px] text-slate-600"><input type="checkbox" checked={challengeRequiresValidation} onChange={e=>setChallengeRequiresValidation(e.target.checked)} className="mr-1" />Requiere validación del animador</label></div>
+              </div>
+            </div>
+          )}
+
+          {actionType === 'raffle' && (
+            <div className="col-span-full space-y-3 p-3 bg-purple-50 dark:bg-purple-900/10 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="text-xs font-medium text-purple-700 dark:text-purple-300">🎰 Configuración de Sorteo</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-600">Nombre del sorteo</label><input className="input text-xs" placeholder="Ej: Sorteo Gran Premio 10pm" value={raffleName} onChange={e=>setRaffleName(e.target.value)} /></div>
+                <div><label className="text-[10px] text-slate-600">Máximo participantes</label><input type="number" min={10} max={9999} className="input text-xs" value={raffleMaxParticipants} onChange={e=>setRaffleMaxParticipants(Number(e.target.value)||999)} /></div>
+              </div>
+              <p className="text-[10px] text-slate-500">Cada token genera un número único de participación automáticamente.</p>
+            </div>
+          )}
+
+          {actionType === 'message' && (
+            <div className="col-span-full space-y-3 p-3 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-200 dark:border-orange-800">
+              <div className="text-xs font-medium text-orange-700 dark:text-orange-300">📢 Configuración de Mensaje</div>
+              <div><label className="text-[10px] text-slate-600">Contenido HTML</label><textarea className="input text-xs" rows={4} placeholder="<h2>¡Bienvenidos!</h2><p>Disfruten la noche...</p>" value={messageHtml} onChange={e=>setMessageHtml(e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-slate-600">Botón CTA (opcional)</label><input className="input text-xs" placeholder="Ver menú" value={messageCtaLabel} onChange={e=>setMessageCtaLabel(e.target.value)} /></div>
+                <div><label className="text-[10px] text-slate-600">URL del CTA</label><input className="input text-xs" placeholder="https://..." value={messageCtaUrl} onChange={e=>setMessageCtaUrl(e.target.value)} /></div>
+              </div>
+            </div>
+          )}
+
           <div className="form-row col-span-full">
             <label className="text-xs font-medium">Modo de validez</label>
             <div className="flex flex-wrap items-center gap-4 text-[11px]">
@@ -707,7 +874,7 @@ export default function PrizestaticsClient({ prizes: initialPrizes, lastBatch, b
             {error && <span className="text-[11px] text-rose-600">{error}</span>}
             {success && <span className="text-[11px] text-emerald-600">{success}</span>}
           </div>
-          <p className="col-span-full text-[10px] text-slate-500">Los tokens muestran una interfaz interna con información del premio. Si se proporciona una URL, el usuario puede reclamar el premio haciendo clic en el botón. Si no se proporciona URL, se muestra un mensaje de premio disponible.</p>
+          <p className="col-span-full text-[10px] text-slate-500">Los tokens muestran la interfaz según el tipo de acción seleccionado. Tipo "Premio" muestra la interfaz clásica de canje. Los demás tipos muestran experiencias interactivas.</p>
         </div>
       </div>
 

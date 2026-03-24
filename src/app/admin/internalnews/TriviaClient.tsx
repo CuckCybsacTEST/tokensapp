@@ -212,19 +212,100 @@ export default function TriviaClient({
   const regulationContentRef = React.useRef<HTMLDivElement>(null);
   const editRegulationContentRef = React.useRef<HTMLDivElement>(null);
 
-  // Set initial content when modal opens or form changes
-  React.useEffect(() => {
-    if (regulationContentRef.current && showCreateQuestionSetModal) {
-      regulationContentRef.current.innerHTML = questionSetForm.regulationContent;
-    }
-  }, [showCreateQuestionSetModal, questionSetForm.regulationContent]);
+  // Saved selection for restoring focus after toolbar click
+  const savedSelectionRef = React.useRef<Range | null>(null);
 
-  // Set initial content for edit modal
-  React.useEffect(() => {
-    if (editRegulationContentRef.current && showEditQuestionSetModal) {
-      editRegulationContentRef.current.innerHTML = questionSetForm.regulationContent;
+  // Emoji picker state
+  const [showEmojiPicker, setShowEmojiPicker] = useState<'create' | 'edit' | null>(null);
+  const emojiPickerRef = React.useRef<HTMLDivElement>(null);
+
+  const EMOJI_CATEGORIES: Record<string, string[]> = {
+    'Caras': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐'],
+    'Gestos': ['👍','👎','👊','✊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✌️','🤞','🫰','🤟','🤘','👌','🤌','🤏','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','🫲','🫱','👋','🤙','💪','🦾','🖕'],
+    'Corazones': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🩷','🩵','🩶'],
+    'Objetos': ['⭐','🌟','✨','💫','🔥','💥','🎉','🎊','🎈','🎁','🏆','🥇','🥈','🥉','🎯','🎮','🎲','🎵','🎶','🔔','📢','📣','💡','📌','📍','🔑','🔒','📋','📝','✏️','📎','📊','📈','📉'],
+    'Flechas': ['⬆️','⬇️','⬅️','➡️','↗️','↘️','↙️','↖️','↕️','↔️','🔄','🔃','▶️','◀️','🔼','🔽','⏩','⏪','⏫','⏬'],
+    'Símbolos': ['✅','❌','⚠️','🚫','⛔','🔴','🟠','🟡','🟢','🔵','🟣','⚪','⚫','🟤','💯','‼️','⁉️','❓','❗','〽️','⚡','♻️','🔰','🔱','⭕','✳️','❇️','🔆','🔅','♾️']
+  };
+
+  // Helper: save current selection from a contentEditable
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedSelectionRef.current = sel.getRangeAt(0).cloneRange();
     }
-  }, [showEditQuestionSetModal, questionSetForm.regulationContent]);
+  };
+
+  // Helper: restore selection to a contentEditable
+  const restoreSelection = () => {
+    const sel = window.getSelection();
+    if (sel && savedSelectionRef.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedSelectionRef.current);
+    }
+  };
+
+  // Helper: execute formatting command preserving focus
+  const execFormatCommand = (editorRef: React.RefObject<HTMLDivElement | null>, command: string) => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    restoreSelection();
+    document.execCommand(command, false);
+    saveSelection();
+    // Sync state
+    updateQuestionSetForm('regulationContent', el.innerHTML);
+  };
+
+  // Helper: insert emoji at cursor in contentEditable
+  const insertEmoji = (editorRef: React.RefObject<HTMLDivElement | null>, emoji: string) => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    restoreSelection();
+    document.execCommand('insertText', false, emoji);
+    saveSelection();
+    updateQuestionSetForm('regulationContent', el.innerHTML);
+    setShowEmojiPicker(null);
+  };
+
+  // Close emoji picker on outside click
+  React.useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
+
+  // Set initial content ONLY when modal first opens
+  const createModalInitialized = React.useRef(false);
+  React.useEffect(() => {
+    if (showCreateQuestionSetModal) {
+      if (regulationContentRef.current && !createModalInitialized.current) {
+        regulationContentRef.current.innerHTML = questionSetForm.regulationContent;
+        createModalInitialized.current = true;
+      }
+    } else {
+      createModalInitialized.current = false;
+    }
+  }, [showCreateQuestionSetModal]);
+
+  // Set initial content for edit modal ONLY when it first opens
+  const editModalInitialized = React.useRef(false);
+  React.useEffect(() => {
+    if (showEditQuestionSetModal) {
+      if (editRegulationContentRef.current && !editModalInitialized.current) {
+        editRegulationContentRef.current.innerHTML = questionSetForm.regulationContent;
+        editModalInitialized.current = true;
+      }
+    } else {
+      editModalInitialized.current = false;
+    }
+  }, [showEditQuestionSetModal]);
 
   const refreshData = async () => {
     setLoading(true);
@@ -1002,13 +1083,11 @@ export default function TriviaClient({
                   </label>
                   
                   {/* Barra de herramientas de formato */}
-                  <div className="mb-2 flex flex-wrap gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
+                  <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.execCommand('bold', false);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'bold')}
                       className="px-2 py-1 text-xs font-bold bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Negrita"
                     >
@@ -1016,10 +1095,8 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.execCommand('italic', false);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'italic')}
                       className="px-2 py-1 text-xs italic bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Cursiva"
                     >
@@ -1027,22 +1104,27 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.execCommand('underline', false);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'underline')}
                       className="px-2 py-1 text-xs underline bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Subrayado"
                     >
                       U
                     </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'strikeThrough')}
+                      className="px-2 py-1 text-xs line-through bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Tachado"
+                    >
+                      S
+                    </button>
                     <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.execCommand('insertUnorderedList', false);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'insertUnorderedList')}
                       className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Viñetas"
                     >
@@ -1050,22 +1132,58 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        document.execCommand('insertOrderedList', false);
-                      }}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(regulationContentRef, 'insertOrderedList')}
                       className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Numeración"
                     >
                       1.
                     </button>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    {/* Emoji picker toggle */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { saveSelection(); setShowEmojiPicker(showEmojiPicker === 'create' ? null : 'create'); }}
+                        className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                        title="Insertar emoji"
+                      >
+                        😀
+                      </button>
+                      {showEmojiPicker === 'create' && (
+                        <div ref={emojiPickerRef} className="absolute left-0 top-full mt-1 z-[60] w-72 max-h-64 overflow-y-auto bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-xl p-2">
+                          {Object.entries(EMOJI_CATEGORIES).map(([cat, emojis]) => (
+                            <div key={cat} className="mb-2">
+                              <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 mb-1 px-1">{cat}</p>
+                              <div className="flex flex-wrap gap-0.5">
+                                {emojis.map(em => (
+                                  <button
+                                    key={em}
+                                    type="button"
+                                    onClick={() => insertEmoji(regulationContentRef, em)}
+                                    className="w-7 h-7 flex items-center justify-center text-base hover:bg-gray-100 dark:hover:bg-slate-600 rounded cursor-pointer"
+                                  >
+                                    {em}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div
                     ref={regulationContentRef}
                     contentEditable
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
-                    onBlur={(e) => updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML)}
+                    className="w-full px-3 py-2 border border-t-0 border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
+                    onInput={(e) => updateQuestionSetForm('regulationContent', (e.target as HTMLDivElement).innerHTML)}
+                    onBlur={(e) => { saveSelection(); updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML); }}
+                    onFocus={() => restoreSelection()}
+                    onMouseUp={() => saveSelection()}
+                    onKeyUp={() => saveSelection()}
                     data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
                     suppressContentEditableWarning={true}
                   />
@@ -1203,10 +1321,11 @@ export default function TriviaClient({
                   </label>
                   
                   {/* Barra de herramientas de formato */}
-                  <div className="mb-2 flex flex-wrap gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
+                  <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-slate-700 rounded-t-md border border-gray-300 dark:border-slate-600">
                     <button
                       type="button"
-                      onClick={() => document.execCommand('bold', false)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'bold')}
                       className="px-2 py-1 text-xs font-bold bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Negrita"
                     >
@@ -1214,7 +1333,8 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => document.execCommand('italic', false)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'italic')}
                       className="px-2 py-1 text-xs italic bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Cursiva"
                     >
@@ -1222,16 +1342,27 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => document.execCommand('underline', false)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'underline')}
                       className="px-2 py-1 text-xs underline bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Subrayado"
                     >
                       U
                     </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'strikeThrough')}
+                      className="px-2 py-1 text-xs line-through bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                      title="Tachado"
+                    >
+                      S
+                    </button>
                     <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
                     <button
                       type="button"
-                      onClick={() => document.execCommand('insertUnorderedList', false)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'insertUnorderedList')}
                       className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Viñetas"
                     >
@@ -1239,20 +1370,60 @@ export default function TriviaClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => document.execCommand('insertOrderedList', false)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => execFormatCommand(editRegulationContentRef, 'insertOrderedList')}
                       className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
                       title="Numeración"
                     >
                       1.
                     </button>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    {/* Emoji picker toggle */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { saveSelection(); setShowEmojiPicker(showEmojiPicker === 'edit' ? null : 'edit'); }}
+                        className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                        title="Insertar emoji"
+                      >
+                        😀
+                      </button>
+                      {showEmojiPicker === 'edit' && (
+                        <div ref={emojiPickerRef} className="absolute left-0 top-full mt-1 z-[60] w-72 max-h-64 overflow-y-auto bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-xl p-2">
+                          {Object.entries(EMOJI_CATEGORIES).map(([cat, emojis]) => (
+                            <div key={cat} className="mb-2">
+                              <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 mb-1 px-1">{cat}</p>
+                              <div className="flex flex-wrap gap-0.5">
+                                {emojis.map(em => (
+                                  <button
+                                    key={em}
+                                    type="button"
+                                    onClick={() => insertEmoji(editRegulationContentRef, em)}
+                                    className="w-7 h-7 flex items-center justify-center text-base hover:bg-gray-100 dark:hover:bg-slate-600 rounded cursor-pointer"
+                                  >
+                                    {em}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div
                     ref={editRegulationContentRef}
                     contentEditable
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
-                    onBlur={(e) => updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML)}
+                    className="w-full px-3 py-2 border border-t-0 border-gray-300 dark:border-slate-600 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 font-sans min-h-[120px] max-h-[300px] overflow-y-auto"
+                    onInput={(e) => updateQuestionSetForm('regulationContent', (e.target as HTMLDivElement).innerHTML)}
+                    onBlur={(e) => { saveSelection(); updateQuestionSetForm('regulationContent', e.currentTarget.innerHTML); }}
+                    onFocus={() => restoreSelection()}
+                    onMouseUp={() => saveSelection()}
+                    onKeyUp={() => saveSelection()}
                     data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                    suppressContentEditableWarning={true}
                   />
                   <style jsx>{`
                     div[contenteditable]:empty:before {

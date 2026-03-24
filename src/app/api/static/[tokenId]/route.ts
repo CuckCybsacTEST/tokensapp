@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT
       t.id, t.disabled, t."expiresAt", t."validFrom", t."batchId", t."deliveredAt", t."revealedAt",
-      b."staticTargetUrl", b.description, b."createdAt",
+      b."staticTargetUrl", b.description, b."createdAt", b."actionType", b."actionPayload",
       p.key, p.label, p.color
     FROM "Token" t
     JOIN "Batch" b ON b.id = t."batchId"
@@ -53,6 +53,12 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
     }
   }
 
+  // Parse actionPayload safely
+  let parsedActionPayload: any = null;
+  if (rec.actionPayload) {
+    try { parsedActionPayload = JSON.parse(rec.actionPayload); } catch { parsedActionPayload = null; }
+  }
+
   const tokenData = {
     id: rec.id,
     prize: {
@@ -64,7 +70,9 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
       id: rec.batchId,
       description: rec.description,
       staticTargetUrl: rec.staticTargetUrl,
-      createdAt: rec.createdAt
+      createdAt: rec.createdAt,
+      actionType: rec.actionType || 'prize',
+      actionPayload: parsedActionPayload,
     },
     expiresAt: rec.expiresAt,
     validFrom: rec.validFrom,

@@ -29,13 +29,17 @@ const singleHourValidity = z.object({
 
 const validitySchema = z.union([byDaysValidity, singleDayValidity, singleHourValidity]);
 
+const ACTION_TYPES = ['prize', 'trivia', 'phrase', 'challenge', 'raffle', 'message'] as const;
+
 const bodySchema = z.object({
   name: z.string().min(1).max(120),
   targetUrl: z.string().url().refine(u => /^https?:\/\//.test(u), 'TARGET_URL_PROTOCOL').optional(),
   prizes: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().positive().max(100000) })).min(1),
   validity: validitySchema,
   includeQr: z.boolean().optional().default(true),
-  lazyQr: z.boolean().optional().default(false)
+  lazyQr: z.boolean().optional().default(false),
+  actionType: z.enum(ACTION_TYPES).optional().default('prize'),
+  actionPayload: z.string().max(50000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -49,7 +53,14 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return apiError('BAD_REQUEST', 'Datos inválidos', { issues: parsed.error.issues }, 400);
   }
-  const { name, targetUrl, prizes, validity, includeQr, lazyQr } = parsed.data;
+  const { name, targetUrl, prizes, validity, includeQr, lazyQr, actionType, actionPayload } = parsed.data;
+
+  // Validate actionPayload is valid JSON if provided
+  if (actionPayload) {
+    try { JSON.parse(actionPayload); } catch {
+      return apiError('BAD_REQUEST', 'actionPayload debe ser JSON válido', undefined, 400);
+    }
+  }
 
   // Validate prizes existence & fetch minimal info
   const prizeIds = [...new Set(prizes.map(p => p.prizeId))];
@@ -80,10 +91,17 @@ export async function POST(req: Request) {
     return apiError('STATIC_GEN_FAIL', 'Fallo generación', { message: e?.message }, 500);
   }
 
-  // Anotar batch como estático con URL destino ANTES del post-proceso
-  console.log(`[GENERATE-STATIC] Setting staticTargetUrl for batch ${result.batch.id}, targetUrl: ${targetUrl}`);
-  await prisma.batch.update({ where: { id: result.batch.id }, data: { staticTargetUrl: targetUrl || '' } as any });
-  console.log(`[GENERATE-STATIC] staticTargetUrl set successfully`);
+  // Anotar batch como estático con URL destino + action type ANTES del post-proceso
+  console.log(`[GENERATE-STATIC] Setting staticTargetUrl for batch ${result.batch.id}, targetUrl: ${targetUrl}, actionType: ${actionType}`);
+  await prisma.batch.update({
+    where: { id: result.batch.id },
+    data: {
+      staticTargetUrl: targetUrl || '',
+      actionType: actionType || 'prize',
+      actionPayload: actionPayload || null,
+    } as any
+  });
+  console.log(`[GENERATE-STATIC] batch metadata set successfully`);
 
   // Post-processing validity
   console.log(`[GENERATE-STATIC] Starting post-processing for batch ${result.batch.id}, validity mode: ${validity.mode}`);
@@ -143,6 +161,7 @@ export async function POST(req: Request) {
       mode: 'static',
       static: true,
       staticTargetUrl: targetUrl,
+      actionType: actionType || 'prize',
       validityMode: validity.mode,
       windowStartIso: windowStart?.toISOString() || null,
       windowEndIso: windowEnd?.toISOString() || null,

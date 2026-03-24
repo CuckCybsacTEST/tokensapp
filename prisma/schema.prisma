@@ -103,11 +103,14 @@ model Batch {
   functionalDate   DateTime?
   staticTargetUrl  String?
   isReusable       Boolean           @default(false)
+  actionType       String?           // 'prize' | 'trivia' | 'phrase' | 'challenge' | 'raffle' | 'message'
+  actionPayload    String?           // JSON with content per actionType
   rouletteSessions RouletteSession[]
   tokens           Token[]
 
   @@index([functionalDate])
   @@index([staticTargetUrl])
+  @@index([actionType])
 }
 
 model Token {

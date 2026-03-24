@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { DateTime } from "luxon";
+import DynamicTokenAction from "@/components/token-actions";
 
 type TokenData = {
   id: string;
@@ -14,6 +15,8 @@ type TokenData = {
     description: string;
     staticTargetUrl: string;
     createdAt: string;
+    actionType?: string;
+    actionPayload?: any;
   };
   expiresAt: string;
   validFrom: string | null;
@@ -434,26 +437,39 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center text-center relative overflow-hidden group">
             {/* Card shine effect */}
             <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            
-            <div className="mb-6 relative">
-                <div className="absolute inset-0 bg-[#FF4D2E] blur-2xl opacity-20 rounded-full" />
-                <h1 className="relative text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                  ¡TOKEN<br/><span className="text-[#FF4D2E]">DISPONIBLE!</span>
-                </h1>
-            </div>
 
-            <div className="w-full bg-gradient-to-b from-white/10 to-transparent rounded-2xl p-6 border border-white/5 mb-6">
-                <div className="text-sm text-white/60 uppercase tracking-wider font-medium mb-2">Ganaste</div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
-                  {tokenData.prize.label}
-                </h2>
-                <div className="h-1 w-16 bg-[#FF4D2E] mx-auto rounded-full my-4" />
-                <p className="text-white/80 text-sm leading-relaxed">
-                  {isStaff 
-                    ? 'Token válido. Procede a marcar la entrega.' 
-                    : '¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.'}
-                </p>
-            </div>
+            {/* Dynamic Action or Prize display */}
+            {tokenData.batch.actionType && tokenData.batch.actionType !== 'prize' ? (
+              <DynamicTokenAction
+                actionType={tokenData.batch.actionType as any}
+                payload={tokenData.batch.actionPayload}
+                tokenId={tokenData.id}
+                prizeLabel={tokenData.prize.label}
+                prizeColor={tokenData.prize.color}
+              />
+            ) : (
+              <>
+                <div className="mb-6 relative">
+                    <div className="absolute inset-0 bg-[#FF4D2E] blur-2xl opacity-20 rounded-full" />
+                    <h1 className="relative text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm">
+                      ¡TOKEN<br/><span className="text-[#FF4D2E]">DISPONIBLE!</span>
+                    </h1>
+                </div>
+
+                <div className="w-full bg-gradient-to-b from-white/10 to-transparent rounded-2xl p-6 border border-white/5 mb-6">
+                    <div className="text-sm text-white/60 uppercase tracking-wider font-medium mb-2">Ganaste</div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">
+                      {tokenData.prize.label}
+                    </h2>
+                    <div className="h-1 w-16 bg-[#FF4D2E] mx-auto rounded-full my-4" />
+                    <p className="text-white/80 text-sm leading-relaxed">
+                      {isStaff 
+                        ? 'Token válido. Procede a marcar la entrega.' 
+                        : '¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.'}
+                    </p>
+                </div>
+              </>
+            )}
 
             {/* QR Code Section */}
             {qrSrc && !isStaff && (
