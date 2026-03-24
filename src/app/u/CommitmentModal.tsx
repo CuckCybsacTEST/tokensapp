@@ -445,7 +445,7 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
 
           {step === 'ACCEPT' && (
             <div className="space-y-6">
-              {/* Declaración de compromiso */}
+              {/* Declaración de compromiso / Confirmación de lectura */}
               <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl p-4 sm:p-5">
                 <div className="flex items-start gap-4">
                   <div className="mt-1">
@@ -454,15 +454,18 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Declaración de Compromiso</h4>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-2">
+                      {assignmentId ? 'Confirmación de Lectura' : 'Declaración de Compromiso'}
+                    </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">
-                      "Confirmo que he leído y comprendido el reglamento presentado. Me comprometo a cumplir con todas las normas 
-                      establecidas, actuar con responsabilidad en la plataforma y reportar cualquier anomalía. Entiendo que la 
-                      aceptación de este reglamento es obligatoria para el desempeño de mis funciones."
+                      {assignmentId
+                        ? '"Confirmo que he leído y comprendido el comunicado presentado. Me doy por enterado(a) de la información compartida y me comprometo a tenerla en cuenta en el desempeño de mis funciones."'
+                        : '"Confirmo que he leído y comprendido el reglamento presentado. Me comprometo a cumplir con todas las normas establecidas, actuar con responsabilidad en la plataforma y reportar cualquier anomalía. Entiendo que la aceptación de este reglamento es obligatoria para el desempeño de mis funciones."'
+                      }
                     </p>
                     {includeTrivia && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 font-medium">
-                        ⚠️ Después de aceptar, deberás completar una trivia de conocimiento sobre el reglamento.
+                        ⚠️ Después de aceptar, deberás completar una trivia de conocimiento sobre el {assignmentId ? 'comunicado' : 'reglamento'}.
                       </p>
                     )}
                   </div>
