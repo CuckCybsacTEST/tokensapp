@@ -105,8 +105,8 @@ export const UserCreate = (props: any) => (
           mb: { xs: 2, sm: 2.5 },
         }}
       >
-        <TextInput source="personName" label="Name" validate={required()} fullWidth />
-        <TextInput source="dni" fullWidth />
+        <TextInput source="personName" label="Nombre completo" validate={required()} fullWidth />
+        <TextInput source="dni" label="DNI" validate={required()} fullWidth />
       </Box>
 
       {/* Tercera fila: Role y Area */}
@@ -120,7 +120,7 @@ export const UserCreate = (props: any) => (
         }}
       >
         <SelectInput source="role" choices={roleChoices} validate={required()} fullWidth />
-        <SelectInput source="area" choices={areaChoices} fullWidth />
+        <SelectInput source="area" choices={areaChoices} validate={required()} fullWidth />
       </Box>
 
       {/* Cuarta fila: WhatsApp y Birthday */}
@@ -132,8 +132,8 @@ export const UserCreate = (props: any) => (
           width: '100%',
         }}
       >
-        <TextInput source="whatsapp" fullWidth />
-        <DateInput source="birthday" label="Birthday" fullWidth />
+        <TextInput source="whatsapp" label="WhatsApp" validate={required()} fullWidth />
+        <DateInput source="birthday" label="Cumpleaños" validate={required()} fullWidth />
       </Box>
     </SimpleForm>
   </Create>

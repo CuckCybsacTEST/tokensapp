@@ -118,14 +118,34 @@ export const dataProvider: DataProvider = {
       };
     }
 
-    const { json } = await fetchUtils.fetchJson(url, {
-      method: 'POST',
-      body: JSON.stringify(dataToSend),
-      headers: new Headers({
-        'Content-Type': 'application/json',
-      }),
-      credentials: 'include',
-    });
+    let json: any;
+    try {
+      const res = await fetchUtils.fetchJson(url, {
+        method: 'POST',
+        body: JSON.stringify(dataToSend),
+        headers: new Headers({
+          'Content-Type': 'application/json',
+        }),
+        credentials: 'include',
+      });
+      json = res.json;
+    } catch (err: any) {
+      const code = err?.body?.code || err?.body?.error || '';
+      const messages: Record<string, string> = {
+        USERNAME_TAKEN: 'El nombre de usuario ya existe',
+        DNI_TAKEN: 'Ya existe una persona con ese DNI',
+        CODE_TAKEN: 'Ya existe el código de persona',
+        INVALID_USERNAME: 'El username es inválido (3-50 chars, sin espacios)',
+        INVALID_PASSWORD: 'La contraseña debe tener al menos 8 caracteres',
+        INVALID_NAME: 'El nombre es inválido',
+        INVALID_DNI: 'El DNI es inválido',
+        INVALID_AREA: 'El área es inválida',
+        INVALID_WHATSAPP: 'El WhatsApp es inválido',
+        INVALID_BIRTHDAY: 'La fecha de cumpleaños es inválida',
+        UNAUTHORIZED: 'No autorizado',
+      };
+      throw new Error(messages[code] || `Error al crear: ${code || err?.message || 'Error desconocido'}`);
+    }
 
     return {
       data: json.user || json.data || json,
