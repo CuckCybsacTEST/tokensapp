@@ -1,7 +1,8 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { DateTime } from "luxon";
-import DynamicTokenAction from "@/components/token-actions";
+import DynamicTokenAction, { GATED_ACTIONS, PRIZELESS_ACTIONS } from "@/components/token-actions";
+import type { ActionType } from "@/components/token-actions/types";
 
 type TokenData = {
   id: string;
@@ -22,6 +23,7 @@ type TokenData = {
   validFrom: string | null;
   disabled: boolean;
   deliveredAt?: string | null;
+  clientResponse?: string | null;
 };
 
 type StaticTokenPageProps = {
@@ -148,6 +150,10 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   const [deliveryError, setDeliveryError] = useState<string|null>(null);
   const [deliverySuccess, setDeliverySuccess] = useState(false);
   const [qrSrc, setQrSrc] = useState('');
+  const [actionCompleted, setActionCompleted] = useState(false);
+  const handleActionComplete = useCallback((passed: boolean) => {
+    setActionCompleted(passed);
+  }, []);
 
   useEffect(() => {
     async function loadTokenData() {
@@ -245,6 +251,8 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
   const expiresAt = DateTime.fromISO(tokenData.expiresAt).setZone('America/Lima');
   const isExpired = expiresAt < DateTime.now();
   const isValidFromFuture = tokenData.validFrom && DateTime.fromISO(tokenData.validFrom) > DateTime.now();
+  const actionType = (tokenData.batch.actionType || 'prize') as ActionType;
+  const isPrizeless = PRIZELESS_ACTIONS.has(actionType);
 
   // @ts-ignore - toFormat method exists in Luxon DateTime
   const formattedExpiry = expiresAt.toFormat('dd/MM/yyyy HH:mm');
@@ -441,11 +449,14 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
             {/* Dynamic Action or Prize display */}
             {tokenData.batch.actionType && tokenData.batch.actionType !== 'prize' ? (
               <DynamicTokenAction
-                actionType={tokenData.batch.actionType as any}
+                actionType={tokenData.batch.actionType as ActionType}
                 payload={tokenData.batch.actionPayload}
                 tokenId={tokenData.id}
                 prizeLabel={tokenData.prize.label}
                 prizeColor={tokenData.prize.color}
+                onComplete={handleActionComplete}
+                isStaff={isStaff}
+                clientResponse={tokenData.clientResponse}
               />
             ) : (
               <>
@@ -471,8 +482,13 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
               </>
             )}
 
-            {/* QR Code Section */}
-            {qrSrc && !isStaff && (
+            {/* QR Code Section — hidden for prizeless (phrase, message) and gated until completed */}
+            {qrSrc && !isPrizeless && (
+              // Staff sees QR only for challenge type after completion
+              // Client sees QR for non-gated actions, or gated actions after completion
+              (isStaff && actionType === 'challenge' && actionCompleted) ||
+              (!isStaff && (!GATED_ACTIONS.has(actionType) || actionCompleted))
+            ) && (
                 <div className="bg-white p-4 rounded-xl shadow-lg mb-6 transform transition-transform hover:scale-105 duration-300">
                     <img 
                         src={qrSrc} 
@@ -522,8 +538,11 @@ export default function StaticTokenPage({ params }: StaticTokenPageProps) {
                 })()}</span>
             </div>
 
-            {/* Staff Actions */}
-            {isStaff && !tokenData.deliveredAt && !tokenData.disabled && !isExpired && !isValidFromFuture && (
+            {/* Staff Actions — hidden for prizeless actions (no physical prize to deliver) */}
+            {/* For challenge type, delivery button only shows after staff marks challenge completed */}
+            {isStaff && !isPrizeless && !tokenData.deliveredAt && !tokenData.disabled && !isExpired && !isValidFromFuture && (
+              actionType !== 'challenge' || actionCompleted
+            ) && (
                 <div className="w-full mt-8 pt-6 border-t border-white/10">
                     <button
                     onClick={handleMarkDelivered}

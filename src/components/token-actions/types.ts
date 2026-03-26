@@ -1,6 +1,6 @@
 // Shared types for Dynamic Token Actions
 
-export type ActionType = 'prize' | 'trivia' | 'phrase' | 'challenge' | 'raffle' | 'message';
+export type ActionType = 'prize' | 'trivia' | 'phrase' | 'challenge' | 'raffle' | 'message' | 'feedback';
 
 export interface TriviaPayload {
   questions: Array<{
@@ -10,7 +10,6 @@ export interface TriviaPayload {
   }>;
   successMessage: string;
   failMessage: string;
-  prizeOnSuccess?: string;
 }
 
 export interface PhrasePayload {
@@ -22,7 +21,6 @@ export interface PhrasePayload {
 export interface ChallengePayload {
   challenges: string[];
   difficulty: 'easy' | 'medium' | 'hard';
-  rewardLabel?: string;
   requiresValidation: boolean;
 }
 
@@ -38,12 +36,29 @@ export interface MessagePayload {
   ctaUrl?: string;
 }
 
+export interface FeedbackPayload {
+  prompt: string;
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+  thankYouMessage?: string;
+}
+
 export interface ActionComponentProps {
   payload: any;
   tokenId: string;
   prizeLabel: string;
   prizeColor: string | null;
+  onComplete?: (passed: boolean) => void;
+  isStaff?: boolean;
+  clientResponse?: string | null;
 }
+
+/** Action types that gate the QR behind a completion step */
+export const GATED_ACTIONS: ReadonlySet<ActionType> = new Set(['trivia', 'challenge', 'feedback']);
+
+/** Action types that never award prizes (no QR, no stock consumption) */
+export const PRIZELESS_ACTIONS: ReadonlySet<ActionType> = new Set(['phrase', 'message']);
 
 export const ACTION_LABELS: Record<ActionType, string> = {
   prize: '🎁 Premio',
@@ -52,6 +67,7 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   challenge: '🎯 Reto / Desafío',
   raffle: '🎰 Sorteo',
   message: '📢 Mensaje / Anuncio',
+  feedback: '✉️ Feedback del Cliente',
 };
 
 export const ACTION_DESCRIPTIONS: Record<ActionType, string> = {
@@ -61,4 +77,5 @@ export const ACTION_DESCRIPTIONS: Record<ActionType, string> = {
   challenge: 'Un reto o desafío que el cliente debe completar.',
   raffle: 'Genera un número/código de participación para sorteo en vivo.',
   message: 'Muestra un mensaje HTML personalizado con formato.',
+  feedback: 'El cliente escribe un mensaje/texto y al enviarlo obtiene su premio.',
 };

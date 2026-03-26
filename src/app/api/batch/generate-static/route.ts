@@ -29,12 +29,13 @@ const singleHourValidity = z.object({
 
 const validitySchema = z.union([byDaysValidity, singleDayValidity, singleHourValidity]);
 
-const ACTION_TYPES = ['prize', 'trivia', 'phrase', 'challenge', 'raffle', 'message'] as const;
+const ACTION_TYPES = ['prize', 'trivia', 'phrase', 'challenge', 'raffle', 'message', 'feedback'] as const;
 
 const bodySchema = z.object({
   name: z.string().min(1).max(120),
   targetUrl: z.string().url().refine(u => /^https?:\/\//.test(u), 'TARGET_URL_PROTOCOL').optional(),
-  prizes: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().positive().max(100000) })).min(1),
+  prizes: z.array(z.object({ prizeId: z.string().min(1), count: z.number().int().positive().max(100000) })).min(0).default([]),
+  tokenCount: z.number().int().positive().max(100000).optional(),
   validity: validitySchema,
   includeQr: z.boolean().optional().default(true),
   lazyQr: z.boolean().optional().default(false),
@@ -53,7 +54,27 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return apiError('BAD_REQUEST', 'Datos inválidos', { issues: parsed.error.issues }, 400);
   }
-  const { name, targetUrl, prizes, validity, includeQr, lazyQr, actionType, actionPayload } = parsed.data;
+  const { name, targetUrl, prizes: rawPrizes, tokenCount, validity, includeQr, lazyQr, actionType, actionPayload } = parsed.data;
+
+  // Prizeless actions (phrase, message) don't consume stock
+  const PRIZELESS = new Set(['phrase', 'message']);
+  const skipStock = PRIZELESS.has(actionType);
+
+  // For prizeless actions with no prizes specified, resolve a placeholder prize
+  let prizes = rawPrizes;
+  if (skipStock && prizes.length === 0) {
+    if (!tokenCount || tokenCount <= 0) {
+      return apiError('BAD_REQUEST', 'tokenCount requerido para acciones sin premio', undefined, 400);
+    }
+    // Pick any active prize as a carrier (stock won't be consumed)
+    const placeholder = await prisma.prize.findFirst({ where: { active: true }, select: { id: true } });
+    if (!placeholder) {
+      return apiError('NO_ACTIVE_PRIZE', 'Se requiere al menos un premio activo como referencia', undefined, 400);
+    }
+    prizes = [{ prizeId: placeholder.id, count: tokenCount }];
+  } else if (prizes.length === 0) {
+    return apiError('BAD_REQUEST', 'Se requiere al menos un premio', undefined, 400);
+  }
 
   // Validate actionPayload is valid JSON if provided
   if (actionPayload) {
@@ -69,11 +90,13 @@ export async function POST(req: Request) {
     return apiError('PRIZE_NOT_FOUND', 'Algún premio no existe o está inactivo', { prizeIds }, 400);
   }
 
-  // Validate sufficient stock for each prize
-  for (const reqP of prizes) {
-    const dbp = dbPrizes.find(p => p.id === reqP.prizeId)!;
-    if (typeof dbp.stock !== 'number' || dbp.stock < reqP.count) {
-      return apiError('INSUFFICIENT_STOCK', 'Stock insuficiente', { prizeId: dbp.id, have: dbp.stock, need: reqP.count }, 400);
+  // Validate sufficient stock for each prize (skip for prizeless actions)
+  if (!skipStock) {
+    for (const reqP of prizes) {
+      const dbp = dbPrizes.find(p => p.id === reqP.prizeId)!;
+      if (typeof dbp.stock !== 'number' || dbp.stock < reqP.count) {
+        return apiError('INSUFFICIENT_STOCK', 'Stock insuficiente', { prizeId: dbp.id, have: dbp.stock, need: reqP.count }, 400);
+      }
     }
   }
 
@@ -86,7 +109,7 @@ export async function POST(req: Request) {
 
   let result;
   try {
-    result = await generateBatchStatic(prizeRequests, { description: name, includeQr, lazyQr, expirationDays: baseExpirationDays });
+    result = await generateBatchStatic(prizeRequests, { description: name, includeQr, lazyQr, expirationDays: baseExpirationDays, skipStock });
   } catch (e: any) {
     return apiError('STATIC_GEN_FAIL', 'Fallo generación', { message: e?.message }, 500);
   }

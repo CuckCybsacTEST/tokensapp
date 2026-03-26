@@ -103,7 +103,7 @@ model Batch {
   functionalDate   DateTime?
   staticTargetUrl  String?
   isReusable       Boolean           @default(false)
-  actionType       String?           // 'prize' | 'trivia' | 'phrase' | 'challenge' | 'raffle' | 'message'
+  actionType       String?           // 'prize' | 'trivia' | 'phrase' | 'challenge' | 'raffle' | 'message' | 'feedback'
   actionPayload    String?           // JSON with content per actionType
   rouletteSessions RouletteSession[]
   tokens           Token[]
@@ -128,6 +128,7 @@ model Token {
   deliveredAt       DateTime?
   deliveredByUserId String?
   deliveryNote      String?
+  clientResponse    String?   // Stores client-submitted text (e.g. feedback)
   ingestedAt        DateTime  @default(now())
   validFrom         DateTime?
   pairedNextTokenId String?

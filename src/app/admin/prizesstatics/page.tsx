@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import PrizestaticsClient from "./PrizestaticsClient";
 
-export const metadata = { title: 'Premios' };
+export const metadata = { title: 'Tokens Estáticos' };
 export const dynamic = "force-dynamic";
 
 async function getPrizesWithStats() {
+  // Excluir premios del sistema de ruleta (retry, lose)
   const prizes = await prisma.prize.findMany({
+    where: { key: { notIn: ['retry', 'lose'] } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -18,9 +20,12 @@ async function getPrizesWithStats() {
     }
   });
 
-  // Último lote por premio
+  // Último lote estático por premio (solo batches con actionType definido)
   const lastTokens = await prisma.token.findMany({
-    where: { prizeId: { in: prizes.map(p => p.id) } },
+    where: {
+      prizeId: { in: prizes.map(p => p.id) },
+      batch: { actionType: { not: null } },
+    },
     orderBy: [{ prizeId: 'asc' }, { createdAt: 'desc' }],
     distinct: ['prizeId'],
     select: { prizeId: true, batch: { select: { id: true, description: true, createdAt: true } } },
@@ -36,8 +41,9 @@ async function getPrizesWithStats() {
     }
   }
 
-  // Estadísticas recientes por batch
+  // Solo lotes estáticos (actionType definido) — excluye lotes de ruleta
   const recentBatches = await prisma.batch.findMany({
+    where: { actionType: { not: null } },
     orderBy: { createdAt: 'desc' },
     take: 12,
     select: { id: true, description: true, createdAt: true }

@@ -2,14 +2,49 @@
 import React, { useState, useMemo } from "react";
 import type { ActionComponentProps, TriviaPayload } from "./types";
 
-export default function TriviaAction({ payload, tokenId }: ActionComponentProps) {
+export default function TriviaAction({ payload, tokenId, prizeLabel, onComplete, isStaff }: ActionComponentProps) {
   const data = payload as TriviaPayload;
+
+  // ── Staff / Admin view: show answer key, no interaction ──
+  if (isStaff) {
+    const questions = data?.questions || [];
+    return (
+      <div className="text-center">
+        <div className="text-5xl mb-4">🧩</div>
+        <h2 className="text-xl font-bold text-white mb-4">Trivia — Vista Staff</h2>
+        {questions.length === 0 ? (
+          <p className="text-white/60 text-sm">No hay preguntas configuradas.</p>
+        ) : (
+          <div className="space-y-3 text-left mb-4">
+            {questions.map((q, i) => {
+              const correct = q.answers.find(a => a.correct);
+              return (
+                <div key={i} className="bg-white/10 border border-white/10 rounded-xl p-4">
+                  <p className="text-white text-sm font-bold mb-1">{i + 1}. {q.question}</p>
+                  <p className="text-green-400 text-xs">✅ {correct?.text || '—'}</p>
+                  <p className="text-white/30 text-[10px] mt-1">+{q.points || 10} pts</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {prizeLabel && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+            <p className="text-white/60 text-xs">🎁 Premio asignado: <span className="font-bold text-white">{prizeLabel}</span></p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Client interactive trivia ──
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [notified, setNotified] = useState(false);
 
   // Shuffle answers once per question using tokenId as seed-like stability
   const questions = useMemo(() => data?.questions || [], [data]);
@@ -26,6 +61,7 @@ export default function TriviaAction({ payload, tokenId }: ActionComponentProps)
 
   if (finished) {
     const passed = correctCount > questions.length / 2;
+    if (!notified) { setNotified(true); onComplete?.(passed); }
     return (
       <div className="text-center">
         <div className="text-6xl mb-4">{passed ? "🎉" : "😅"}</div>
@@ -45,9 +81,9 @@ export default function TriviaAction({ payload, tokenId }: ActionComponentProps)
             <div className="text-[10px] text-white/50 uppercase">Correctas</div>
           </div>
         </div>
-        {passed && data.prizeOnSuccess && (
+        {passed && prizeLabel && (
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-4">
-            <p className="text-green-300 text-sm font-bold">🎁 {data.prizeOnSuccess}</p>
+            <p className="text-green-300 text-sm font-bold">🎁 {prizeLabel}</p>
             <p className="text-green-300/60 text-xs mt-1">Muestra esta pantalla al animador</p>
           </div>
         )}

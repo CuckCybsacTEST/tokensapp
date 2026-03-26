@@ -2,12 +2,14 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import type { ActionType, ActionComponentProps } from "./types";
+export { GATED_ACTIONS, PRIZELESS_ACTIONS } from "./types";
 
 const TriviaAction = dynamic(() => import("./TriviaAction"), { ssr: false });
 const PhraseAction = dynamic(() => import("./PhraseAction"), { ssr: false });
 const ChallengeAction = dynamic(() => import("./ChallengeAction"), { ssr: false });
 const RaffleAction = dynamic(() => import("./RaffleAction"), { ssr: false });
 const MessageAction = dynamic(() => import("./MessageAction"), { ssr: false });
+const FeedbackAction = dynamic(() => import("./FeedbackAction"), { ssr: false });
 
 const ACTION_COMPONENTS: Record<string, React.ComponentType<ActionComponentProps>> = {
   trivia: TriviaAction,
@@ -15,6 +17,7 @@ const ACTION_COMPONENTS: Record<string, React.ComponentType<ActionComponentProps
   challenge: ChallengeAction,
   raffle: RaffleAction,
   message: MessageAction,
+  feedback: FeedbackAction,
 };
 
 const ACTION_TITLES: Record<string, string> = {
@@ -23,6 +26,7 @@ const ACTION_TITLES: Record<string, string> = {
   challenge: "🎯 ¡Reto!",
   raffle: "🎰 Sorteo",
   message: "📢 Mensaje",
+  feedback: "✉️ Tu Opinión",
 };
 
 export default function DynamicTokenAction({
@@ -31,12 +35,18 @@ export default function DynamicTokenAction({
   tokenId,
   prizeLabel,
   prizeColor,
+  onComplete,
+  isStaff,
+  clientResponse,
 }: {
   actionType: ActionType;
   payload: any;
   tokenId: string;
   prizeLabel: string;
   prizeColor: string | null;
+  onComplete?: (passed: boolean) => void;
+  isStaff?: boolean;
+  clientResponse?: string | null;
 }) {
   // 'prize' type = no special action, handled by the parent page
   if (!actionType || actionType === "prize") return null;
@@ -56,6 +66,9 @@ export default function DynamicTokenAction({
         tokenId={tokenId}
         prizeLabel={prizeLabel}
         prizeColor={prizeColor}
+        onComplete={onComplete}
+        isStaff={isStaff}
+        clientResponse={clientResponse}
       />
     </div>
   );

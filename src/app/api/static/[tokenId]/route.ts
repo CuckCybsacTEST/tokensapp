@@ -10,6 +10,7 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT
       t.id, t.disabled, t."expiresAt", t."validFrom", t."batchId", t."deliveredAt", t."revealedAt",
+      t."clientResponse",
       b."staticTargetUrl", b.description, b."createdAt", b."actionType", b."actionPayload",
       p.key, p.label, p.color
     FROM "Token" t
@@ -79,6 +80,7 @@ export async function GET(_: Request, { params }: { params: { tokenId: string } 
     disabled: rec.disabled,
     deliveredAt: rec.deliveredAt,
     revealedAt: rec.revealedAt,
+    clientResponse: rec.clientResponse || null,
     wasJustRevealed
   };
 

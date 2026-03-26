@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import type { ActionComponentProps, RafflePayload } from "./types";
 
-export default function RaffleAction({ payload, tokenId }: ActionComponentProps) {
+export default function RaffleAction({ payload, tokenId, prizeLabel, isStaff }: ActionComponentProps) {
   const data = payload as RafflePayload;
 
   // Generate a deterministic raffle number from tokenId
@@ -16,6 +16,30 @@ export default function RaffleAction({ payload, tokenId }: ActionComponentProps)
     const num = (Math.abs(hash) % max) + 1;
     return String(num).padStart(String(max).length, "0");
   }, [data, tokenId]);
+
+  // ── Staff / Admin view ──
+  if (isStaff) {
+    return (
+      <div className="text-center">
+        <div className="text-5xl mb-4">🎰</div>
+        <h2 className="text-xl font-bold text-white mb-2">Sorteo — Vista Staff</h2>
+        {data?.raffleName && (
+          <p className="text-white/60 text-sm mb-4">{data.raffleName}</p>
+        )}
+        {raffleNumber && (
+          <div className="bg-white/10 border border-white/20 rounded-2xl p-6 mb-4">
+            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Número asignado</div>
+            <div className="text-4xl font-black text-[#FF4D2E] tracking-[0.2em] font-mono">{raffleNumber}</div>
+          </div>
+        )}
+        {prizeLabel && (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+            <p className="text-white/60 text-xs">🎁 Premio asignado: <span className="font-bold text-white">{prizeLabel}</span></p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="text-center">

@@ -15,6 +15,8 @@ export interface GenerateBatchOptions {
   expirationDays?: number;
   overrideExpiresAt?: Date;
   overrideDisabled?: boolean;
+  /** When true, tokens are created without decrementing prize stock (e.g. phrase/message). */
+  skipStock?: boolean;
 }
 
 export interface GeneratedToken {
@@ -199,16 +201,18 @@ export async function generateBatchStatic(
     }
     if (count === 0) continue;
 
-    // Consume exactly the requested stock
-    const upd = await prisma.prize.updateMany({
-      where: { id: prize.id, stock: { gte: count } },
-      data: {
-        stock: { decrement: count },
-        emittedTotal: { increment: count },
-        lastEmittedAt: new Date(),
-      } as any,
-    });
-    if (upd.count === 0) throw new InsufficientStockError(prize.id);
+    // Consume stock unless explicitly skipped (e.g. phrase/message actions)
+    if (!options.skipStock) {
+      const upd = await prisma.prize.updateMany({
+        where: { id: prize.id, stock: { gte: count } },
+        data: {
+          stock: { decrement: count },
+          emittedTotal: { increment: count },
+          lastEmittedAt: new Date(),
+        } as any,
+      });
+      if (upd.count === 0) throw new InsufficientStockError(prize.id);
+    }
 
     const { rows, tokens } = buildPrizeTokens({
       prize,

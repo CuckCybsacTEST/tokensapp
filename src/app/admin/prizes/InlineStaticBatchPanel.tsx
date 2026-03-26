@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from 'react';
-import { ACTION_LABELS, ACTION_DESCRIPTIONS } from '@/components/token-actions/types';
+import { ACTION_LABELS, ACTION_DESCRIPTIONS, PRIZELESS_ACTIONS } from '@/components/token-actions/types';
 import type { ActionType } from '@/components/token-actions/types';
 
 interface Props { prizes: any[]; }
@@ -30,6 +30,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
   const [success, setSuccess] = useState<string|null>(null);
   const [postGen, setPostGen] = useState<null | { batchId: string; blobUrl: string; filename: string; displayName?: string }>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [tokenCount, setTokenCount] = useState(50);
 
   // --- Action Type state ---
   const [actionType, setActionType] = useState<ActionType>('prize');
@@ -39,14 +40,12 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
   );
   const [triviaSuccessMsg, setTriviaSuccessMsg] = useState('¡Respuesta correcta! Muestra esta pantalla al animador.');
   const [triviaFailMsg, setTriviaFailMsg] = useState('¡Casi! Mejor suerte la próxima.');
-  const [triviaPrizeOnSuccess, setTriviaPrizeOnSuccess] = useState('');
   // Phrase payload
   const [phrases, setPhrases] = useState<string[]>(['']);
   const [phraseStyle, setPhraseStyle] = useState<'motivational' | 'funny' | 'wisdom' | 'custom'>('motivational');
   // Challenge payload
   const [challenges, setChallenges] = useState<string[]>(['']);
   const [challengeDifficulty, setChallengeDifficulty] = useState<'easy'|'medium'|'hard'>('medium');
-  const [challengeRewardLabel, setChallengeRewardLabel] = useState('');
   const [challengeRequiresValidation, setChallengeRequiresValidation] = useState(true);
   // Raffle payload
   const [raffleName, setRaffleName] = useState('');
@@ -55,6 +54,12 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
   const [messageHtml, setMessageHtml] = useState('');
   const [messageCtaLabel, setMessageCtaLabel] = useState('');
   const [messageCtaUrl, setMessageCtaUrl] = useState('');
+  // Feedback payload
+  const [feedbackPrompt, setFeedbackPrompt] = useState('¿Qué te pareció la noche?');
+  const [feedbackPlaceholder, setFeedbackPlaceholder] = useState('Escribe aquí tu mensaje…');
+  const [feedbackMinLength, setFeedbackMinLength] = useState(5);
+  const [feedbackMaxLength, setFeedbackMaxLength] = useState(500);
+  const [feedbackThankYou, setFeedbackThankYou] = useState('¡Gracias por tu mensaje!');
 
   function buildActionPayload(): string | undefined {
     if (actionType === 'prize') return undefined;
@@ -63,7 +68,6 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
         questions: triviaQuestions.filter(q => q.question.trim()),
         successMessage: triviaSuccessMsg,
         failMessage: triviaFailMsg,
-        prizeOnSuccess: triviaPrizeOnSuccess || undefined,
       });
     }
     if (actionType === 'phrase') {
@@ -73,7 +77,6 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
       return JSON.stringify({
         challenges: challenges.filter(c => c.trim()),
         difficulty: challengeDifficulty,
-        rewardLabel: challengeRewardLabel || undefined,
         requiresValidation: challengeRequiresValidation,
       });
     }
@@ -87,13 +90,23 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
         ctaUrl: messageCtaUrl || undefined,
       });
     }
+    if (actionType === 'feedback') {
+      return JSON.stringify({
+        prompt: feedbackPrompt,
+        placeholder: feedbackPlaceholder || undefined,
+        minLength: feedbackMinLength,
+        maxLength: feedbackMaxLength,
+        thankYouMessage: feedbackThankYou || undefined,
+      });
+    }
     return undefined;
   }
 
   // Derived
   // Solo mostrar premios activos con stock numérico disponible > 0 (evitar premios ya emitidos o ilimitados/null)
   const activePrizeList = useMemo(() => prizes.filter(p => p.active && typeof p.stock === 'number' && p.stock > 0), [prizes]);
-  const totalRequested = useMemo(() => Object.entries(counts).reduce((a,[id,v]) => a + (v||0),0), [counts]);
+  const isPrizeless = PRIZELESS_ACTIONS.has(actionType);
+  const totalRequested = useMemo(() => isPrizeless ? tokenCount : Object.entries(counts).reduce((a,[id,v]) => a + (v||0),0), [counts, isPrizeless, tokenCount]);
 
   useEffect(() => { if (success||error) { const t = setTimeout(()=>{ setSuccess(null); setError(null); }, 4000); return () => clearTimeout(t);} }, [success,error]);
   useEffect(() => () => { if (postGen?.blobUrl) { try { URL.revokeObjectURL(postGen.blobUrl); } catch {} } }, [postGen?.blobUrl]);
@@ -114,7 +127,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
     if (loading) return;
     const trimmedUrl = targetUrl.trim();
     if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) { setError('URL debe iniciar con http(s)://'); return; }
-    if (totalRequested <= 0) { setError('Define cantidades'); return; }
+    if (totalRequested <= 0) { setError(isPrizeless ? 'Define cantidad de tokens' : 'Define cantidades'); return; }
     setLoading(true); setError(null); setSuccess(null);
     try {
       let payload: StaticRequest;
@@ -123,7 +136,9 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
         ...(trimmedUrl && { targetUrl: trimmedUrl }),
         includeQr,
         lazyQr: false,
-        prizes: Object.entries(counts).filter(([,v]) => v>0).map(([prizeId,v]) => ({ prizeId, count: v })),
+        ...(isPrizeless
+          ? { prizes: [] as { prizeId: string; count: number }[], tokenCount }
+          : { prizes: Object.entries(counts).filter(([,v]) => v>0).map(([prizeId,v]) => ({ prizeId, count: v })) }),
         actionType,
         actionPayload: buildActionPayload(),
       };
@@ -178,7 +193,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
     <div className="card">
       <div className="card-header flex items-center justify-between">
         <span className="text-sm font-medium">Lote Estático (interfaz interna)</span>
-        <button type="button" className="text-[10px] underline" onClick={fillMax}>Rellenar máximos</button>
+        {!isPrizeless && <button type="button" className="text-[10px] underline" onClick={fillMax}>Rellenar máximos</button>}
       </div>
       <div className="card-body grid gap-4 md:grid-cols-4">
         {postGen && (
@@ -247,7 +262,6 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
               <div><label className="text-[10px] text-slate-600">Mensaje si acierta</label><input className="input text-xs" value={triviaSuccessMsg} onChange={e=>setTriviaSuccessMsg(e.target.value)} /></div>
               <div><label className="text-[10px] text-slate-600">Mensaje si falla</label><input className="input text-xs" value={triviaFailMsg} onChange={e=>setTriviaFailMsg(e.target.value)} /></div>
             </div>
-            <div><label className="text-[10px] text-slate-600">Premio si acierta (opcional)</label><input className="input text-xs" placeholder="Ej: Trago gratis" value={triviaPrizeOnSuccess} onChange={e=>setTriviaPrizeOnSuccess(e.target.value)} /></div>
           </div>
         )}
 
@@ -286,8 +300,7 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
             ))}
             <button type="button" className="btn-outline !py-1 !px-2 text-[10px]" onClick={()=>setChallenges([...challenges,''])}>+ Agregar reto</button>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[10px] text-slate-600">Premio al completar (opcional)</label><input className="input text-xs" placeholder="Ej: Shot gratis" value={challengeRewardLabel} onChange={e=>setChallengeRewardLabel(e.target.value)} /></div>
-              <div className="flex items-center gap-2 pt-4"><label className="text-[10px] text-slate-600"><input type="checkbox" checked={challengeRequiresValidation} onChange={e=>setChallengeRequiresValidation(e.target.checked)} className="mr-1" />Requiere validación del animador</label></div>
+              <div className="flex items-center gap-2"><label className="text-[10px] text-slate-600"><input type="checkbox" checked={challengeRequiresValidation} onChange={e=>setChallengeRequiresValidation(e.target.checked)} className="mr-1" />Requiere validación del animador</label></div>
             </div>
           </div>
         )}
@@ -311,6 +324,20 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
               <div><label className="text-[10px] text-slate-600">Botón CTA (opcional)</label><input className="input text-xs" placeholder="Ver menú" value={messageCtaLabel} onChange={e=>setMessageCtaLabel(e.target.value)} /></div>
               <div><label className="text-[10px] text-slate-600">URL del CTA</label><input className="input text-xs" placeholder="https://..." value={messageCtaUrl} onChange={e=>setMessageCtaUrl(e.target.value)} /></div>
             </div>
+          </div>
+        )}
+
+        {actionType === 'feedback' && (
+          <div className="md:col-span-4 space-y-3 p-3 bg-teal-50 dark:bg-teal-900/10 rounded-lg border border-teal-200 dark:border-teal-800">
+            <div className="text-xs font-medium text-teal-700 dark:text-teal-300">✉️ Configuración de Feedback</div>
+            <div><label className="text-[10px] text-slate-600">Pregunta / Prompt</label><input className="input text-xs" placeholder="¿Qué te pareció la noche?" value={feedbackPrompt} onChange={e=>setFeedbackPrompt(e.target.value)} /></div>
+            <div><label className="text-[10px] text-slate-600">Placeholder del campo de texto</label><input className="input text-xs" placeholder="Escribe aquí tu mensaje…" value={feedbackPlaceholder} onChange={e=>setFeedbackPlaceholder(e.target.value)} /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-slate-600">Mínimo caracteres</label><input type="number" min={1} max={200} className="input text-xs" value={feedbackMinLength} onChange={e=>setFeedbackMinLength(Number(e.target.value)||5)} /></div>
+              <div><label className="text-[10px] text-slate-600">Máximo caracteres</label><input type="number" min={10} max={2000} className="input text-xs" value={feedbackMaxLength} onChange={e=>setFeedbackMaxLength(Number(e.target.value)||500)} /></div>
+            </div>
+            <div><label className="text-[10px] text-slate-600">Mensaje de agradecimiento</label><input className="input text-xs" placeholder="¡Gracias por tu mensaje!" value={feedbackThankYou} onChange={e=>setFeedbackThankYou(e.target.value)} /></div>
+            <p className="text-[10px] text-slate-500">El cliente escribe un mensaje. Al enviarlo, obtiene el QR de su premio.</p>
           </div>
         )}
 
@@ -339,6 +366,14 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
             <div className="form-row"><label className="text-xs font-medium">Duración</label><select className="input" value={durationMinutes} onChange={e=>setDurationMinutes(Number(e.target.value))}>{[15,30,45,60,90,120,180,240,360].map(m=> <option key={m} value={m}>{m} min</option>)}</select></div>
           </>) }
         <div className="md:col-span-4">
+          {isPrizeless ? (
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Cantidad de tokens en el lote</label>
+              <input type="number" min={1} max={100000} className="input w-40 text-xs" value={tokenCount} onChange={e => setTokenCount(Math.max(1, Number(e.target.value) || 1))} />
+              <p className="text-[10px] text-slate-500">Este tipo de acción no consume premios. Los tokens se generan sin premio asociado.</p>
+            </div>
+          ) : (
+            <>
           <table className="w-full text-[11px] border-collapse">
             <thead><tr className="text-left"><th className="py-1 pr-2">Premio</th><th className="py-1 pr-2 w-20">Stock</th><th className="py-1 pr-2 w-28">Cantidad</th></tr></thead>
             <tbody>
@@ -360,13 +395,15 @@ export default function InlineStaticBatchPanel({ prizes }: Props) {
             <button type="button" className="btn-outline !py-1 !px-2 text-[10px]" onClick={clearAll}>Limpiar</button>
           </div>
           <p className="mt-1 text-[10px] text-slate-500">Sólo se listan premios con stock &gt; 0. Los agotados o ilimitados no pueden usarse en lotes estáticos.</p>
+            </>
+          )}
         </div>
         <div className="col-span-full flex items-center gap-3">
           <button type="button" className="btn text-xs" disabled={loading || totalRequested<=0} onClick={generate}>{loading ? 'Generando…' : 'Generar Lote Estático'}</button>
           {error && <span className="text-[11px] text-rose-600">{error}</span>}
           {success && <span className="text-[11px] text-emerald-600">{success}</span>}
         </div>
-        <p className="col-span-full text-[10px] text-slate-500">Los tokens muestran la interfaz según el tipo de acción seleccionado. Tipo "Premio" muestra la interfaz clásica de canje. Los demás tipos muestran experiencias interactivas (trivia, retos, frases, etc.).</p>
+        <p className="col-span-full text-[10px] text-slate-500">{isPrizeless ? 'Las frases y mensajes no consumen premios. Solo aplican las reglas de validez (expiración, fecha, ventana horaria).' : 'Los tokens muestran la interfaz según el tipo de acción seleccionado. Tipo "Premio" muestra la interfaz clásica de canje. Los demás tipos muestran experiencias interactivas (trivia, retos, frases, etc.).'}</p>
       </div>
     </div>
   );
