@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from 'react';
 
-type Period = 'today' | 'yesterday';
-
 interface TableRow {
   day: string;
   personCode: string;
@@ -29,7 +27,6 @@ function fmtTime(v: string | null) {
 }
 
 export default function StaffAttendanceLitePage() {
-  const [period, setPeriod] = useState<Period>('today');
   const [loading, setLoading] = useState(false);
   // Métricas eliminadas
   const [table, setTable] = useState<TableResp | null>(null);
@@ -38,11 +35,11 @@ export default function StaffAttendanceLitePage() {
   const pageSize = 20;
 
   const queryTable = useMemo(()=>{
-    const p = new URLSearchParams(); p.set('period', period); p.set('page', String(page)); p.set('pageSize', String(pageSize)); return p.toString();
-  }, [period, page, pageSize]);
+    const p = new URLSearchParams(); p.set('period', 'all'); p.set('page', String(page)); p.set('pageSize', String(pageSize)); return p.toString();
+  }, [page, pageSize]);
 
   // Eliminado fetch de métricas
-  useEffect(()=>{ setLoading(false); }, [period]);
+  useEffect(()=>{ setLoading(false); }, []);
   useEffect(()=>{
     fetch(`/api/user/attendance/history?${queryTable}`)
       .then(r=>r.json())
@@ -50,7 +47,7 @@ export default function StaffAttendanceLitePage() {
       .catch(()=>{});
   }, [queryTable]);
 
-  useEffect(()=>{ setPage(1); }, [period]);
+  useEffect(()=>{ setPage(1); }, []);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)]">
@@ -58,38 +55,7 @@ export default function StaffAttendanceLitePage() {
         {/* Header & filters */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">Mi Registro de Asistencia</h1>
-            <div className="flex flex-wrap items-center gap-2 text-sm -m-0.5">
-              {/* Day navigation with arrows */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Ver día anterior"
-                  onClick={()=> setPeriod(p=> p==='today' ? 'yesterday':'yesterday')}
-                  disabled={period==='yesterday'}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <select
-                  value={period}
-                  onChange={e=>setPeriod(e.target.value as Period)}
-                  className="h-8 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 min-w-[70px]"
-                >
-                  <option value="today">Hoy</option>
-                  <option value="yesterday">Ayer</option>
-                </select>
-                <button
-                  type="button"
-                  aria-label="Ver día siguiente"
-                  onClick={()=> setPeriod('today')}
-                  disabled={period==='today'}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              </div>
-            </div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">Mi Lista de Asistencia</h1>
           </div>
         </div>
 
@@ -99,43 +65,37 @@ export default function StaffAttendanceLitePage() {
         {/* Desktop table */}
         <div className="hidden md:block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <div className="p-3 text-sm font-semibold flex items-center justify-between">
-            <span>Resumen por persona</span>
+            <span>Lista de Asistencia</span>
             <span className="text-[11px] text-slate-500">{table?.total || 0} registros</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-[1000px] w-full text-sm">
+            <table className="min-w-[600px] w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-slate-200 dark:border-slate-700 text-xs">
-                  <th className="py-2 px-3">Día</th>
-                  <th className="py-2 px-3">Persona</th>
-                  <th className="py-2 px-3">Área</th>
-                  <th className="py-2 px-3">ENTRADA</th>
-                  <th className="py-2 px-3">SALIDA</th>
-                  <th className="py-2 px-3">Duración</th>
+                  <th className="py-2 px-3">Fecha</th>
+                  <th className="py-2 px-3">Entrada</th>
+                  <th className="py-2 px-3">Salida</th>
                   <th className="py-2 px-3">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {(table?.rows || []).map((r,i)=>(
-                  <tr key={`${r.day}-${r.personCode}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-danger-soft/70' : ''}`}>
+                  <tr key={`${r.day}-${i}`} className={`border-b border-slate-100 dark:border-slate-800 ${r.incomplete ? 'bg-danger-soft/70' : ''}`}>
                     <td className="py-1 px-3 whitespace-nowrap">{r.day}</td>
-                    <td className="py-1 px-3 whitespace-nowrap">{r.personName} <span className="text-xs text-slate-500">({r.personCode})</span></td>
-                    <td className="py-1 px-3 whitespace-nowrap">{r.area || '-'}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{fmtTime(r.firstIn)}</td>
                     <td className="py-1 px-3 whitespace-nowrap">{fmtTime(r.lastOut)}</td>
-                    <td className="py-1 px-3 whitespace-nowrap">{formatMinutes(r.durationMin)}</td>
                     <td className="py-1 px-3 whitespace-nowrap">
                       {r.incomplete && (
                         <span title="Jornada no completada (sin salida registrada)" className="badge-danger inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium"><span className="font-bold">!</span> Incompleta</span>
                       )}
                       {!r.incomplete && (
-                        <span className="text-[10px] text-soft">—</span>
+                        <span className="text-[10px] text-soft">Completada</span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {table && table.rows.length === 0 && (
-                  <tr><td className="py-3 px-3 text-slate-500" colSpan={7}>Sin datos</td></tr>
+                  <tr><td className="py-3 px-3 text-slate-500" colSpan={4}>Sin datos</td></tr>
                 )}
               </tbody>
             </table>
@@ -151,25 +111,22 @@ export default function StaffAttendanceLitePage() {
 
         {/* Mobile card list */}
         <div className="md:hidden space-y-3">
-          <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Resumen por persona</div>
+          <div className="text-xs font-medium text-slate-600 dark:text-slate-300">Lista de Asistencia</div>
           {(table?.rows || []).map((r,i)=>(
-            <div key={`${r.day}-${r.personCode}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-rose-300 dark:ring-rose-600/50' : ''}`}> 
+            <div key={`${r.day}-m-${i}`} className={`rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm flex flex-col gap-2 ${r.incomplete ? 'ring-1 ring-rose-300 dark:ring-rose-600/50' : ''}`}> 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">{r.personName}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{r.personCode} · {r.day}</div>
+                  <div className="text-sm font-semibold truncate">{r.day}</div>
                 </div>
                 <div>
                   {r.incomplete ? (
                     <span className="badge-danger inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium">Incompleta</span>
                   ) : (
-                    <span className="text-[10px] text-soft">—</span>
+                    <span className="text-[10px] text-soft">Completada</span>
                   )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                <div><span className="text-slate-500">Área:</span> {r.area || '-'}</div>
-                <div><span className="text-slate-500">Duración:</span> {formatMinutes(r.durationMin)}</div>
                 <div><span className="text-slate-500">ENTRADA:</span> {fmtTime(r.firstIn)}</div>
                 <div><span className="text-slate-500">SALIDA:</span> {fmtTime(r.lastOut)}</div>
               </div>

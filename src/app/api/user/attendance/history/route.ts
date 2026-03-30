@@ -24,9 +24,8 @@ export async function GET(req: Request) {
     const session = await verifyUserSessionCookie(raw);
     if (!session) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
-    const url = new URL(req.url);
-    const periodParam = (url.searchParams.get('period') || 'today').toLowerCase() as Period;
-    const allowed: Period[] = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'custom'];
+    const periodParam = (url.searchParams.get('period') || 'all').toLowerCase() as Period | 'all';
+    const allowed: Period[] | string[] = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'custom', 'all'];
     if (!allowed.includes(periodParam)) return badRequest(`Invalid period: ${periodParam}`);
     const startDate = ensureYmd(url.searchParams.get('startDate')) || undefined;
     const endDate = ensureYmd(url.searchParams.get('endDate')) || undefined;
@@ -38,7 +37,20 @@ export async function GET(req: Request) {
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10) || 20));
 
-    const { startIso, endIso, startDay, endDay } = rangeBusinessDays(periodParam, startDate, endDate);
+    let startIso: string, endIso: string, startDay: string, endDay: string;
+    if (periodParam === 'all') {
+      // For 'all', get all records, no date filter
+      startIso = '2000-01-01T00:00:00.000Z'; // arbitrary old date
+      endIso = new Date().toISOString();
+      startDay = '2000-01-01';
+      endDay = currentBusinessDay();
+    } else {
+      const range = rangeBusinessDays(periodParam as Period, startDate, endDate);
+      startIso = range.startIso;
+      endIso = range.endIso;
+      startDay = range.startDay;
+      endDay = range.endDay;
+    }
 
     // Get user data
     const user = await prisma.user.findUnique({
