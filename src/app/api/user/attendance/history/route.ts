@@ -24,6 +24,7 @@ export async function GET(req: Request) {
     const session = await verifyUserSessionCookie(raw);
     if (!session) return NextResponse.json({ ok: false, code: 'UNAUTHORIZED' }, { status: 401 });
 
+    const url = new URL(req.url);
     const periodParam = (url.searchParams.get('period') || 'all').toLowerCase() as Period | 'all';
     const allowed: Period[] | string[] = ['today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month', 'custom', 'all'];
     if (!allowed.includes(periodParam)) return badRequest(`Invalid period: ${periodParam}`);
