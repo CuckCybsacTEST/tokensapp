@@ -342,7 +342,7 @@ export default function TriviaClient({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error al crear set de preguntas');
+        throw new Error(errorData.error?.message || 'Error al crear comunicado');
       }
 
       setShowCreateQuestionSetModal(false);
@@ -399,7 +399,7 @@ export default function TriviaClient({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error al actualizar set de preguntas');
+        throw new Error(errorData.error?.message || 'Error al actualizar comunicado');
       }
 
       setShowEditQuestionSetModal(false);
@@ -434,7 +434,7 @@ export default function TriviaClient({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Error al eliminar set de preguntas');
+        throw new Error(errorData.error?.message || 'Error al eliminar comunicado');
       }
 
       await refreshData();
@@ -474,7 +474,7 @@ export default function TriviaClient({
     }
 
     if (!questionForm.questionSetId) {
-      errors.push('Debe seleccionar un set de preguntas');
+      errors.push('Debe seleccionar un comunicado');
     }
 
     const correctAnswers = questionForm.answers.filter(a => a.isCorrect);
@@ -558,7 +558,7 @@ export default function TriviaClient({
     const errors: string[] = [];
 
     if (!questionForm.questionSetId) {
-      errors.push('Debe seleccionar un set de preguntas');
+      errors.push('Debe seleccionar un comunicado');
     }
 
     if (!questionForm.question.trim()) {
@@ -672,7 +672,7 @@ export default function TriviaClient({
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow border border-slate-200 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Sets de Preguntas</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Comunicados</h3>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalQuestionSets}</p>
           <p className="text-sm text-gray-600 dark:text-slate-400">{stats.activeQuestionSets} activos</p>
         </div>
@@ -693,7 +693,7 @@ export default function TriviaClient({
         <nav className="-mb-px flex space-x-8">
           {[
             { id: 'overview', label: 'Resumen', count: null },
-            { id: 'question-sets', label: 'Sets de Preguntas', count: stats.totalQuestionSets },
+            { id: 'question-sets', label: 'Comunicados', count: stats.totalQuestionSets },
             { id: 'questions', label: 'Preguntas', count: stats.totalQuestions },
             { id: 'assignments', label: 'Asignaciones', count: assignments.length }
           ].map((tab) => (
@@ -723,7 +723,7 @@ export default function TriviaClient({
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
           {activeTab === 'overview' && 'Resumen del Sistema de Trivia'}
-          {activeTab === 'question-sets' && 'Sets de Preguntas'}
+          {activeTab === 'question-sets' && 'Comunicados'}
           {activeTab === 'questions' && 'Preguntas'}
         </h2>
         <div className="flex gap-2">
@@ -739,7 +739,7 @@ export default function TriviaClient({
               onClick={() => setShowCreateQuestionSetModal(true)}
               className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700"
             >
-              Nuevo Set
+              Nuevo Comunicado
             </button>
           )}
           {activeTab === 'questions' && (
@@ -768,7 +768,7 @@ export default function TriviaClient({
             <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">Estado del Sistema</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-slate-100 mb-2">Sets de Preguntas Recientes</h4>
+                <h4 className="font-medium text-gray-900 dark:text-slate-100 mb-2">Comunicados Recientes</h4>
                 <div className="space-y-2">
                   {questionSets.slice(0, 3).map((set) => (
                     <div key={set.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-slate-700 rounded">
@@ -781,7 +781,7 @@ export default function TriviaClient({
                     </div>
                   ))}
                   {questionSets.length === 0 && (
-                    <p className="text-sm text-gray-500 dark:text-slate-400 italic">No hay sets de preguntas</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 italic">No hay comunicados</p>
                   )}
                 </div>
               </div>
@@ -794,9 +794,9 @@ export default function TriviaClient({
         <div className="bg-white dark:bg-slate-800 shadow rounded-lg border border-slate-200 dark:border-slate-700">
           {questionSets.length === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-slate-400">
-              No hay sets de preguntas configurados aún.
+              No hay comunicados configurados aún.
               <br />
-              Crea el primer set para comenzar.
+              Crea el primero para comenzar.
             </div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-slate-700">
@@ -1029,7 +1029,7 @@ export default function TriviaClient({
           <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Nuevo Set de Preguntas</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Nuevo Comunicado</h3>
                 <button
                   onClick={() => setShowCreateQuestionSetModal(false)}
                   className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
@@ -1073,13 +1073,13 @@ export default function TriviaClient({
                     onChange={(e) => updateQuestionSetForm('description', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     rows={2}
-                    placeholder="Descripción opcional del set de preguntas"
+                    placeholder="Descripción opcional del comunicado"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Contenido del Reglamento / Mensaje
+                    Contenido del Comunicado
                   </label>
                   
                   {/* Barra de herramientas de formato */}
@@ -1184,7 +1184,7 @@ export default function TriviaClient({
                     onFocus={() => restoreSelection()}
                     onMouseUp={() => saveSelection()}
                     onKeyUp={() => saveSelection()}
-                    data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                    data-placeholder="Escribe aquí el comunicado..."
                     suppressContentEditableWarning={true}
                   />
                   <style jsx>{`
@@ -1252,13 +1252,13 @@ export default function TriviaClient({
         </div>
       )}
 
-      {/* Modal Editar Set de Preguntas */}
+      {/* Modal Editar Comunicado */}
       {showEditQuestionSetModal && (
         <div className="fixed inset-0 bg-gray-600 dark:bg-slate-900 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Editar Set de Preguntas</h3>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Editar Comunicado</h3>
                 <button
                   onClick={() => {
                     setShowEditQuestionSetModal(false);
@@ -1311,13 +1311,13 @@ export default function TriviaClient({
                     onChange={(e) => updateQuestionSetForm('description', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     rows={2}
-                    placeholder="Descripción opcional del set de preguntas"
+                    placeholder="Descripción opcional del comunicado"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Contenido del Reglamento / Mensaje
+                    Contenido del Comunicado
                   </label>
                   
                   {/* Barra de herramientas de formato */}
@@ -1422,7 +1422,7 @@ export default function TriviaClient({
                     onFocus={() => restoreSelection()}
                     onMouseUp={() => saveSelection()}
                     onKeyUp={() => saveSelection()}
-                    data-placeholder="Escribe aquí el reglamento o mensaje que el colaborador debe leer antes de la trivia..."
+                    data-placeholder="Escribe aquí el comunicado..."
                     suppressContentEditableWarning={true}
                   />
                   <style jsx>{`
@@ -1521,7 +1521,7 @@ export default function TriviaClient({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Set de Preguntas *
+                    Comunicado *
                   </label>
                   <select
                     value={questionForm.questionSetId}
@@ -1703,7 +1703,7 @@ export default function TriviaClient({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Set de Preguntas *
+                    Comunicado *
                   </label>
                   <select
                     value={questionForm.questionSetId}
@@ -1892,7 +1892,7 @@ export default function TriviaClient({
                 <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
                   <div className="flex-1">
                     <label className="text-sm font-semibold text-slate-800 dark:text-slate-200">Requerir Trivia de Conocimiento</label>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Si se desactiva, solo se les pedirá leer y firmar el reglamento.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Si se desactiva, solo se les pedirá leer y firmar el comunicado.</p>
                   </div>
                   <button
                     type="button"

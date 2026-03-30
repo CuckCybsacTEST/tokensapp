@@ -94,7 +94,7 @@ export const POST = withTriviaErrorHandler(
       return handleTriviaValidationError(parsed.error);
     }
 
-    const { name, description, active } = parsed.data;
+    const { name, description, regulationContent, active } = parsed.data;
 
     // Verificar que no exista un set con el mismo nombre
     const existingSet = await prisma.triviaQuestionSet.findFirst({
@@ -104,7 +104,7 @@ export const POST = withTriviaErrorHandler(
     if (existingSet) {
       return createTriviaErrorResponse(
         'VALIDATION_ERROR',
-        'Ya existe un set de preguntas con este nombre',
+        'Ya existe un comunicado con este nombre',
         409
       );
     }
@@ -113,6 +113,7 @@ export const POST = withTriviaErrorHandler(
       data: {
         name,
         description,
+        regulationContent,
         active
       }
     });
