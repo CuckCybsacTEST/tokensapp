@@ -318,8 +318,8 @@ function ReservarCumplePageInner() {
                 return luxonDateToYMD(now);
               })()}
               max={(() => {
-                // Limitar hasta el último día del mes actual en zona Lima
-                const maxDate: any = (DateTime as any).now().setZone("America/Lima").endOf('month');
+                // Limitar hasta 15 días en el futuro en zona Lima
+                const maxDate: any = (DateTime as any).now().setZone("America/Lima").plus({ days: 15 });
                 return luxonDateToYMD(maxDate);
               })()}
               onChange={(e) => setDate(e.target.value)}

@@ -463,11 +463,11 @@ export default function StaffBirthdaysPage() {
 				errors.date = 'La fecha no puede ser en el pasado';
 			}
 
-			// Check if date is too far (end of current month)
-			const currentMonth = new Date(limaToday.getFullYear(), limaToday.getMonth() + 1, 0);
-			const maxDate = currentMonth.toISOString().slice(0, 10);
+			// Check if date is too far (max 15 days in the future)
+			const maxFuture = new Date(limaToday.getTime() + 15 * 24 * 3600 * 1000);
+			const maxDate = maxFuture.toISOString().slice(0, 10);
 			if (cDate > maxDate) {
-				errors.date = 'La fecha no puede ser más allá del fin del mes actual';
+				errors.date = 'La fecha no puede ser más de 15 días en el futuro';
 			}
 		}
 

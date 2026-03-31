@@ -172,10 +172,10 @@ export async function createReservation(input: CreateReservationInput): Promise<
     reservaDateObj = new Date(input.date);
   }
 
-  // Validar que no sea más allá del fin de mes actual (SOLO para usuarios públicos)
+  // Validar que no sea más de 15 días en el futuro (SOLO para usuarios públicos)
   if (!input.isAdmin) {
     const nowLima = getLimaDate(new Date()) as DateTime;
-    const maxFuture = nowLima.endOf('month');
+    const maxFuture = nowLima.plus({ days: 15 }).endOf('day');
     const reservationLima = DateTime.fromJSDate(reservaDateObj).setZone('America/Lima');
 
     if (reservationLima > maxFuture) {
