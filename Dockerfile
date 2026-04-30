@@ -44,8 +44,9 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Los paquetes necesarios (openssl, ca-certificates, libc6-compat) ya están instalados en la imagen 'base'.
-# Añadimos fuentes comunes para que Sharp pueda rasterizar texto (evitar tofu squares)
-RUN apk add --no-cache font-noto font-noto-extra font-noto-emoji ttf-dejavu
+# Añadimos fuentes para que Sharp pueda rasterizar texto en español (evitar tofu squares).
+# font-noto-extra se omite intencionalmente: pesa ~100 MB y cubre scripts exóticos no usados en esta app.
+RUN apk add --no-cache font-noto font-noto-emoji ttf-dejavu
 USER root
 
 # Copy standalone output instead of full node_modules to minimize runtime image
