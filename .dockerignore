@@ -1,50 +1,133 @@
-# Node / Next.js
+# ─── Node / Next.js build output ────────────────────────────────────────────
 node_modules
 .next
-.next/cache
-.next/trace
-.next/static/cache
 dist
 out
 
-# Env files
+# ─── Environment files ────────────────────────────────────────────────────────
 .env
-*.env
 .env.*
+*.env
 
-# Logs
+# ─── Logs ────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Tests & reports
+# ─── Test & coverage output ──────────────────────────────────────────────────
 coverage
 playwright-report
 test-results
+test-results/
 
-# Local databases & junk
+# ─── VCS and editor ──────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+*.swp
+
+# ─── TypeScript build info (no útil en Docker) ────────────────────────────────
+*.tsbuildinfo
+
+# ─── Test & dev configuration ────────────────────────────────────────────────
+vitest.config.ts
+playwright.config.ts
+tsconfig.app.json
+
+# ─── Dev-only server and root lib ────────────────────────────────────────────
+# server.js is the local dev server (npm run dev), not used in Docker
+server.js
+# lib/ at root (culqi.ts, socket.ts) — dev/local utilities, not imported by Next.js
+lib/
+
+# ─── Local databases & junk ──────────────────────────────────────────────────
 prisma/*.db
 prisma/*.db-journal
 prisma/*.sqlite
 prisma/undefined
 .DS_Store
 Thumbs.db
+page.html
+migration_diff.sql
+users.csv
+temp-images/
 
-# VCS and editor
-.git
-.gitignore
-.vscode
-.idea
-*.swp
+# ─── Diagnostic / one-off scripts at repo root ───────────────────────────────
+# These are ad-hoc check/fix/test scripts used during development.
+# None are imported by Next.js; none are needed in the Docker image.
+_diag_scan_schema.mjs
+_update_rt.js
+activate-batches.ts
+apply_special_bottle.js
+check_reusable_tokens.js
+check_sessions.ts
+check_specific_reusable_token.js
+check_specific_token.js
+check_token.js
+check_wed.js
+check-batch-dates.js
+check-batch.js
+check-batch.ts
+check-future-batches.js
+check-multiple-batches.ts
+check-music-orders.js
+check-policies.js
+check-qr.js
+check-recent-batches.js
+check-recent-tokens.ts
+check-roulette-batch.ts
+check-today-batches.js
+check-token.ts
+check-tokens-without-times.js
+check-tokens.js
+correct-batches.ts
+debug-batch.ts
+extend-batch.ts
+fix-batch.ts
+fix-signatures.js
+list_reusable_tokens.js
+migrate-all-images.ts
+migrate-assignments.js
+reset-music-limits.js
+restore-sorteo-tokens.js
+temp-extend.js
+test-luxon-dates.js
+test-music-order.js
+test-phone.jpg
+test-qr.js
+test-signature.js
+test-upload.jpg
+update_reusable_token_limits.js
+update-custom-qr-dates.js
+update-sorteo-tokens.js
+update-tokens-date.js
+verify-policy-migration.js
 
-# Migrated to Supabase - exclude from build context
+# ─── Scripts directory (keep only docker-start.sh) ───────────────────────────
+# The Dockerfile only uses scripts/docker-start.sh in the final runner stage.
+scripts/
+!scripts/docker-start.sh
+
+# ─── Test suite directories ──────────────────────────────────────────────────
+tests/
+src/test/
+src/tests/
+
+# ─── Documentation ───────────────────────────────────────────────────────────
+docs/
+*.md
+
+# ─── Public assets migrated to Supabase / not served from this container ─────
 public/templates
 public/birthday-cards
 public/qr-images
 public/invite-cards
 public/uploads
-temp-images
 
-# Keep example envs, ignore actual
-!.env.example
+# ─── Duplicate icon folder (no space-name version is never referenced in code)
+# icons-golounge/ is the canonical one used in layout.tsx and marketing/layout.tsx
+public/icono go lounge

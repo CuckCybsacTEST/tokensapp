@@ -4,7 +4,6 @@ import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@
 import { isBirthdaysEnabledPublic } from '@/lib/featureFlags';
 import { apiError, apiOk } from '@/lib/apiError';
 import { redeemToken } from '@/lib/birthdays/service';
-import { DateTime } from 'luxon';
 import { corsHeadersFor } from '@/lib/cors';
 
 /*
@@ -21,38 +20,23 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   }
   const raw = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(raw);
+  // ADMIN and STAFF always get full staff view
   const isStaff = !!session && requireRole(session, ['ADMIN','STAFF']).ok;
 
-  // Also check for collaborator sessions with restaurant area
+  // COLLAB users with a restaurant area also get the staff interface
   let isCollaboratorStaff = false;
-  if (!isStaff) {
-    const userRaw = getSessionCookieFromRequest(req as unknown as Request);
-    const userSession = await verifySessionCookie(userRaw);
-
-    if (userSession) {
-      // Check if user has restaurant area
-      try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
-
-        const user = await prisma.user.findUnique({
-          where: { id: userSession.userId },
-          include: { person: true }
-        });
-
-        await prisma.$disconnect();
-
-        if (user?.person?.area) {
-          // Map area to staff role
-          const { mapAreaToStaffRole } = require('@/lib/staff-roles');
-          const restaurantRole = mapAreaToStaffRole(user.person.area);
-          if (restaurantRole) {
-            isCollaboratorStaff = true;
-          }
-        }
-      } catch (err) {
-        console.error('Error checking collaborator staff status:', err);
+  if (!isStaff && session) {
+    try {
+      const { mapAreaToStaffRole } = require('@/lib/staff-roles');
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { person: { select: { area: true } } }
+      });
+      if (user?.person?.area && mapAreaToStaffRole(user.person.area)) {
+        isCollaboratorStaff = true;
       }
+    } catch (err) {
+      console.error('Error checking collaborator staff status:', err);
     }
   }
 
@@ -204,8 +188,8 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
   const cors = corsHeadersFor(req);
   const raw = getSessionCookieFromRequest(req as unknown as Request);
   const session = await verifySessionCookie(raw);
-  const auth = requireRole(session, ['ADMIN','STAFF']);
-  if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo STAFF/ADMIN', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403, cors);
+  const auth = requireRole(session, ['ADMIN','STAFF','COLLAB']);
+  if (!auth.ok) return apiError(auth.error || 'UNAUTHORIZED', 'Solo STAFF/ADMIN/COLLAB', undefined, auth.error === 'UNAUTHORIZED' ? 401 : 403, cors);
   const code = params.code;
   let body: any = {};
   try { const txt = await req.text(); body = txt ? JSON.parse(txt) : {}; } catch { return apiError('INVALID_JSON','JSON inválido',undefined,400, cors); }
@@ -224,18 +208,8 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       if ((reservation as any).hostArrivedAt) {
         return apiError('HOST_ALREADY_ARRIVED','El cumpleañero ya fue registrado',undefined,400, cors);
       }
-      // For host, redeem the token (even if guest token, to mark as used if needed, but actually for host we don't consume use)
-      // Actually, for host, we don't redeem the token, just set hostArrivedAt
-      // But to keep consistency, perhaps redeem if it's the first time, but since single token, maybe not.
-      // For simplicity: don't redeem the token for host, just set hostArrivedAt
-      // For host, don't redeem token, just set hostArrivedAt to reservation time
-      const resForHost = await prisma.birthdayReservation.findUnique({ where: { id: resId } });
-      const reservationDate = (resForHost as any).date;
-      const timeSlot = (resForHost as any).timeSlot;
-      const [hours, minutes] = timeSlot.split(':').map(Number);
-      const reservationDateTime = DateTime.fromJSDate(reservationDate).setZone('America/Lima');
-      const hostArrivalDateTime = reservationDateTime.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
-      const hostArrivalTime = hostArrivalDateTime.toJSDate();
+      // For host: set hostArrivedAt to NOW (actual arrival time, NOT scheduled time)
+      const hostArrivalTime = new Date();
       
       await prisma.birthdayReservation.update({ 
         where: { id: resId }, 
@@ -307,7 +281,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
     const msg = String(e?.message || e);
     if (msg === 'TOKEN_EXHAUSTED') return apiError('TOKEN_EXHAUSTED','Token agotado', undefined, 400, cors);
     if (msg === 'TOKEN_ALREADY_REDEEMED') return apiError('TOKEN_ALREADY_REDEEMED','Token ya usado', undefined, 400, cors);
-    if (msg === 'TOKEN_EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado', undefined, 400, cors);
+    if (msg === 'TOKEN_EXPIRED' || msg === 'EXPIRED') return apiError('TOKEN_EXPIRED','Token expirado', undefined, 400, cors);
     if (msg === 'INVALID_SIGNATURE') return apiError('INVALID_SIGNATURE','Firma inválida', undefined, 400, cors);
     if (msg === 'RESERVATION_DATE_FUTURE') return apiError('RESERVATION_DATE_FUTURE','La fecha de la reserva es futura - los tokens solo funcionan en la fecha de la reserva o después', undefined, 400, cors);
     return apiError('INTERNAL_ERROR','Error interno', undefined, 500, cors);

@@ -564,24 +564,10 @@ export async function generateInviteTokens(
     target
   });
 
-  // Calcular fecha de expiración usando Luxon
-  // Los tokens expiran 45 minutos después de la hora de reserva
-  // Si el host llega antes, se recalcularán a 45 minutos después de la llegada del host
-  // Interpretar reservation.date como fecha que representa un día calendario en zona Lima
-  // (ya se guardó correctamente con parseDateStringToLima + limaDateTimeToJSDate)
+  // Token único de tipo 'guest' (universal: sirve para cumpleañero e invitados)
+  // Expira a las 23:59:59 del día de la reserva en zona Lima
   const reservationDateLima = DateTime.fromJSDate(reservation.date).setZone('America/Lima');
-
-  // Parsear timeSlot y calcular expiración: hora_reserva + 45 minutos
-  const [hours, minutes] = reservation.timeSlot.split(':').map(Number);
-  const reservationDateTime = reservationDateLima.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
-
-  // Calcular diferentes expiraciones según el tipo de token:
-  // - Host: hora_reserva + 45 minutos
-  // - Guest: 23:59:59 del día de la reserva
-  const hostExpirationLima = reservationDateTime.plus({ minutes: 45 });
   const guestExpirationLima = reservationDateLima.set({ hour: 23, minute: 59, second: 59, millisecond: 999 });
-
-  const hostExp = limaDateTimeToJSDate(hostExpirationLima);
   const guestExp = limaDateTimeToJSDate(guestExpirationLima);
 
   // Validar que la fecha de reserva no sea pasada (comparando solo fechas en zona Lima)
@@ -592,17 +578,14 @@ export async function generateInviteTokens(
     console.error('[BIRTHDAYS] generateInviteTokens: Fecha de reserva pasada', {
       reservaLima: reservationParts,
       actualLima: nowParts,
-      hostExpira: hostExp,
       guestExpira: guestExp
     });
     throw new Error('RESERVATION_DATE_PAST');
   }
 
-  console.log('[BIRTHDAYS] generateInviteTokens: Fechas calculadas con Luxon', {
+  console.log('[BIRTHDAYS] generateInviteTokens: Fecha de expiración calculada', {
     reservationDateLima: reservationDateLima.toISO(),
-    hostExpirationLima: hostExpirationLima.toISO(),
     guestExpirationLima: guestExpirationLima.toISO(),
-    hostExpira: hostExp,
     guestExpira: guestExp
   });
 
@@ -624,9 +607,7 @@ export async function generateInviteTokens(
       return { created: 0, tokens: existingTokens };
     }
 
-    // We now ensure exactly two tokens:
-    // - host: single-use (maxUses=1), kind='host', status='active'
-    // - guest: multi-use (maxUses=target), kind='guest', status='active'
+    // Single universal guest token (handles both cumpleañero host arrival and guest arrivals)
     const existing = await tx.inviteToken.findMany({ where: { reservationId }, orderBy: { code: 'asc' } });
 
     // If forcing regeneration, delete all existing tokens first
@@ -686,12 +667,9 @@ export async function generateInviteTokens(
   await audit('birthday.generateInviteTokens', byUserId, {
     reservationId,
     created: result.created,
-    hostExp: toIso(hostExp),
     guestExp: toIso(guestExp),
     force: Boolean(opts?.force),
-    mode: 'RES_DATE_ANCHORED_DIFFERENTIATED',
     resDate: toIso(reservation.date),
-    // Se omite ahora Lima exacto (aprox implícito en cálculo manual)
   });
 
   // If tokens were regenerated and there's already a host arrival, recalculate expirations
@@ -729,14 +707,19 @@ export async function redeemToken(code: string, context: RedeemContext = {}, byU
     if (nowLimaDt > expiresAtLima) throw new Error('TOKEN_EXPIRED');
 
     // Validate claim signature & expiration
+    let claimError: string | null = null;
     try {
       const parsed = JSON.parse(token.claim) as { payload: any; sig: string };
       const ver = verifyBirthdayClaim(parsed);
-      if (!ver.ok) throw new Error(ver.code);
-      if (ver.payload.rid !== token.reservationId || ver.payload.code !== token.code) throw new Error('INVALID_SIGNATURE');
-    } catch (e) {
-      throw new Error('INVALID_SIGNATURE');
+      if (!ver.ok) {
+        claimError = ver.code; // preserves 'EXPIRED' vs 'INVALID_SIGNATURE'
+      } else if (ver.payload.rid !== token.reservationId || ver.payload.code !== token.code) {
+        claimError = 'INVALID_SIGNATURE';
+      }
+    } catch {
+      claimError = 'INVALID_SIGNATURE';
     }
+    if (claimError) throw new Error(claimError);
 
     // Multi-use logic: if maxUses is set, increment usedCount atomically until limit, then mark exhausted
     let updated;
