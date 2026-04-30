@@ -38,11 +38,9 @@ vitest.config.ts
 playwright.config.ts
 tsconfig.app.json
 
-# ─── Dev-only server and root lib ────────────────────────────────────────────
+# ─── Dev-only server ─────────────────────────────────────────────────────────
 # server.js is the local dev server (npm run dev), not used in Docker
 server.js
-# lib/ at root (culqi.ts, socket.ts) — dev/local utilities, not imported by Next.js
-lib/
 
 # ─── Local databases & junk ──────────────────────────────────────────────────
 prisma/*.db
