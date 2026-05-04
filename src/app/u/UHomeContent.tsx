@@ -191,7 +191,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
               <button
                 title="Hoy"
                 onClick={() => setActiveTab('today')}
-                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
+                className={`py-3 px-4 border-b-2 ${
                   activeTab === 'today'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
@@ -200,14 +200,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'today' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Hoy</span>
               </button>
 
               {/* Mi Perfil */}
               <button
                 title="Mi Perfil"
                 onClick={() => setActiveTab('personal')}
-                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
+                className={`py-3 px-4 border-b-2 ${
                   activeTab === 'personal'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
@@ -216,14 +215,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'personal' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Perfil</span>
               </button>
 
               {/* Herramientas */}
               <button
                 title="Herramientas"
                 onClick={() => setActiveTab('work')}
-                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
+                className={`py-3 px-4 border-b-2 ${
                   activeTab === 'work'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
@@ -233,14 +231,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'work' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Herramientas</span>
               </button>
 
               {/* Aniversarios */}
               <button
-                title="Aniversarios"
+                title="Aniversarios del equipo"
                 onClick={() => { setActiveTab('cumpleanos'); fetchBirthdays(); }}
-                className={`py-2 px-3 border-b-2 transition-colors relative flex flex-col items-center gap-0.5 ${
+                className={`py-3 px-4 border-b-2 relative ${
                   activeTab === 'cumpleanos'
                     ? 'border-pink-500 text-pink-600 dark:text-pink-400'
                     : todayBirthdayCount > 0
@@ -248,12 +245,11 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                       : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
                 }`}
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2l2.09 6.26L20.97 9l-5.18 3.76L17.82 20 12 15.9 6.18 20l2.03-7.24L3.03 9l6.88-.74L12 2z" />
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
                 </svg>
-                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'cumpleanos' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Aniversarios</span>
                 {todayBirthdayCount > 0 && (
-                  <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                  <span className="absolute top-1.5 right-0.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500" />
                   </span>
@@ -264,7 +260,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
               <button
                 title="Novedades"
                 onClick={() => { setActiveTab('novedades'); fetchInbox(); }}
-                className={`py-2 px-3 border-b-2 transition-colors relative flex flex-col items-center gap-0.5 ${
+                className={`py-3 px-4 border-b-2 relative ${
                   activeTab === 'novedades'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : pendingCount > 0
@@ -275,9 +271,8 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'novedades' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Novedades</span>
                 {pendingCount > 0 && (
-                  <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                  <span className="absolute top-1.5 right-0.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
                   </span>
@@ -287,6 +282,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           </div>
 
           {/* Contenido de las pestañas */}
+          <div className="min-h-[420px]">
           {activeTab === 'today' && (
             <div className="grid grid-cols-1 gap-3 sm:gap-6">
               <SharedAutoAttendanceCard initialLastType={lastType} basePath="/u" />
@@ -443,6 +439,15 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           {/* ====== PESTAÑA ANIVERSARIOS ====== */}
           {activeTab === 'cumpleanos' && (
             <div className="space-y-5">
+              {/* Aviso aclaratorio */}
+              <div className="flex items-start gap-2.5 rounded-lg bg-pink-50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-800/40 px-3.5 py-2.5">
+                <svg className="w-4 h-4 text-pink-500 dark:text-pink-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-xs text-pink-700 dark:text-pink-300 leading-relaxed">
+                  Estos son los <strong>cumpleaños del equipo de trabajo</strong>. No tiene relación con las reservas o cumpleaños de clientes.
+                </p>
+              </div>
               {birthdayLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" />
@@ -598,6 +603,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
               )}
             </div>
           )}
+          </div>{/* /min-h wrapper */}
         </div>
       </div>
 

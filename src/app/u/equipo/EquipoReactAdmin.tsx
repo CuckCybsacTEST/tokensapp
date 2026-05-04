@@ -345,7 +345,7 @@ const EquipoEdit = (props: any) => (
   <Edit {...props} title="Editar usuario">
     <SimpleForm toolbar={<BackToolbar />} sx={formSx}>
       <TextInput source="username" label="Usuario" validate={required()} fullWidth />
-      <PasswordInput source="password" label="Nueva contraseña (vacío = sin cambio)" fullWidth />
+      <PasswordInput source="password" label="Nueva contraseña" helperText="Dejar vacío para no cambiarla" fullWidth />
       <TextInput source="personName" label="Nombre completo" validate={required()} fullWidth />
       <SelectInput source="role" label="Rol" choices={roleChoices} validate={required()} fullWidth />
       <SelectInput source="area" label="Área" choices={areaChoices} fullWidth />
