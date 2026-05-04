@@ -160,11 +160,18 @@ export const dataProvider: DataProvider = {
 
     if (resource === 'users') {
       // Transform React Admin data to match PATCH API expectations
+      // Normalize birthday: React Admin may send a full ISO string ("2000-05-24T00:00:00.000Z"), keep only date part
+      const rawBirthday = params.data.birthday as string | null | undefined;
+      const normalizedBirthday = rawBirthday
+        ? String(rawBirthday).trim().replace(/T.*$/, '') || null
+        : null;
+
       dataToSend = {
         personName: params.data.personName,
         role: params.data.role,
         area: params.data.area,
-        whatsapp: params.data.whatsapp,
+        whatsapp: params.data.whatsapp || null,
+        birthday: normalizedBirthday,
       };
 
       // Include password only if provided
@@ -173,7 +180,7 @@ export const dataProvider: DataProvider = {
       }
     }
 
-    const { json } = await fetchUtils.fetchJson(url, {
+    await fetchUtils.fetchJson(url, {
       method: 'PATCH',
       body: JSON.stringify(dataToSend),
       headers: new Headers({
@@ -182,8 +189,17 @@ export const dataProvider: DataProvider = {
       credentials: 'include',
     });
 
+    // After PATCH, fetch the fresh record so React Admin's cache has the correct data
+    if (resource === 'users') {
+      const { json: fresh } = await fetchUtils.fetchJson(`/api/admin/${resource}/${params.id}`, {
+        credentials: 'include',
+      });
+      const record = fresh.user || fresh.data || fresh;
+      return { data: { ...record, id: params.id } };
+    }
+
     return {
-      data: json.data || json,
+      data: { id: params.id, ...params.data },
     };
   },
 

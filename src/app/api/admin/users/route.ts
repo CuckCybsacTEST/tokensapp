@@ -152,7 +152,7 @@ export async function POST(req: Request) {
     const password = String(body.password);
     // Valid roles: system roles. COORDINATOR can only create STAFF/COLLAB.
     const validRoles: UserRole[] = ['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'];
-    let role: UserRole = validRoles.includes(body.role as UserRole) ? (body.role as UserRole) : 'COLLAB';
+    let role: UserRole = validRoles.includes(body.role as UserRole) ? (body.role as UserRole) : 'STAFF';
 
     // COORDINATOR cannot create ADMIN or COORDINATOR users
     if (session.role === 'COORDINATOR' && (role === 'ADMIN' || role === 'COORDINATOR')) {

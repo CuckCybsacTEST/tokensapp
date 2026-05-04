@@ -69,6 +69,7 @@ export const UserCreate = (props: any) => (
   <Create {...props}>
     <SimpleForm
       toolbar={<CustomToolbar />}
+      defaultValues={{ role: 'STAFF' }}
       sx={{
         maxWidth: { xs: '100%', sm: '95%', md: '85%', lg: 1200 },
         mx: 'auto',

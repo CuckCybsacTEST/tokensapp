@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import SharedAutoAttendanceCard from '@/components/attendance/SharedAutoAttendanceCard';
-import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh, IconBell, IconVideo } from '@tabler/icons-react';
+import { IconUser, IconListCheck, IconQrcode, IconDice6, IconCake, IconGlass, IconPackage, IconShieldLock, IconClipboardCheck, IconRefresh, IconBell, IconVideo, IconConfetti } from '@tabler/icons-react';
 
 type SessionData = {
   userId: string;
@@ -24,8 +24,53 @@ type PageProps = {
 export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false, userArea }: PageProps) {
   const isCoordinator = ['COORDINATOR', 'ADMIN'].includes(session.role);
   const hasReusableTokensAccess = isCoordinator || (isStaff && (userArea === 'Animación' || userArea === 'Multimedia'));
-  const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work' | 'novedades'>('today');
+  const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work' | 'cumpleanos' | 'novedades'>('today');
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+
+  // Cumpleaños state
+  interface StaffBirthday {
+    personId: string;
+    name: string;
+    area: string | null;
+    jobTitle: string | null;
+    birthdayMonth: number;
+    birthdayDay: number;
+    birthdayThisYear: string;
+    group: 'today' | 'thisWeek' | 'thisMonth';
+  }
+  const [birthdayItems, setBirthdayItems] = useState<StaffBirthday[]>([]);
+  const [birthdayLoading, setBirthdayLoading] = useState(false);
+  const [birthdayLoaded, setBirthdayLoaded] = useState(false);
+  const [todayBirthdayCount, setTodayBirthdayCount] = useState(0);
+
+  // Fetch today count on mount for badge
+  useEffect(() => {
+    fetch('/api/user/notifications/staff-birthdays')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.ok) setTodayBirthdayCount(d.meta.todayCount);
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchBirthdays = async () => {
+    if (birthdayLoaded) return;
+    setBirthdayLoading(true);
+    try {
+      const res = await fetch('/api/user/notifications/staff-birthdays');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          setBirthdayItems(data.birthdays);
+          setTodayBirthdayCount(data.meta.todayCount);
+        }
+      }
+    } catch {}
+    finally {
+      setBirthdayLoading(false);
+      setBirthdayLoaded(true);
+    }
+  };
 
   // Novedades (inbox) state
   interface InboxItem {
@@ -141,59 +186,100 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
         <div className="space-y-6 sm:space-y-8">
           {/* Pestañas */}
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="-mb-px flex justify-between sm:justify-center sm:space-x-8">
+            <nav className="-mb-px flex justify-around">
+              {/* Hoy */}
               <button
+                title="Hoy"
                 onClick={() => setActiveTab('today')}
-                className={`py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
                   activeTab === 'today'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
                 }`}
               >
-                Hoy
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'today' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Hoy</span>
               </button>
+
+              {/* Mi Perfil */}
               <button
+                title="Mi Perfil"
                 onClick={() => setActiveTab('personal')}
-                className={`py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
                   activeTab === 'personal'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
                 }`}
               >
-                Mi Perfil
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'personal' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Perfil</span>
               </button>
+
+              {/* Herramientas */}
               <button
+                title="Herramientas"
                 onClick={() => setActiveTab('work')}
-                className={`py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                className={`py-2 px-3 border-b-2 transition-colors flex flex-col items-center gap-0.5 ${
                   activeTab === 'work'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
                 }`}
               >
-                Herramientas
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'work' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Herramientas</span>
               </button>
+
+              {/* Aniversarios */}
               <button
+                title="Aniversarios"
+                onClick={() => { setActiveTab('cumpleanos'); fetchBirthdays(); }}
+                className={`py-2 px-3 border-b-2 transition-colors relative flex flex-col items-center gap-0.5 ${
+                  activeTab === 'cumpleanos'
+                    ? 'border-pink-500 text-pink-600 dark:text-pink-400'
+                    : todayBirthdayCount > 0
+                      ? 'border-transparent text-pink-500 dark:text-pink-400'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
+                }`}
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l2.09 6.26L20.97 9l-5.18 3.76L17.82 20 12 15.9 6.18 20l2.03-7.24L3.03 9l6.88-.74L12 2z" />
+                </svg>
+                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'cumpleanos' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Aniversarios</span>
+                {todayBirthdayCount > 0 && (
+                  <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500" />
+                  </span>
+                )}
+              </button>
+
+              {/* Novedades */}
+              <button
+                title="Novedades"
                 onClick={() => { setActiveTab('novedades'); fetchInbox(); }}
-                className={`py-2 px-1 sm:px-2 border-b-2 font-medium text-xs sm:text-sm transition-colors relative whitespace-nowrap ${
+                className={`py-2 px-3 border-b-2 transition-colors relative flex flex-col items-center gap-0.5 ${
                   activeTab === 'novedades'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : pendingCount > 0
-                      ? 'border-transparent text-amber-600 dark:text-amber-400 hover:border-amber-300'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                      ? 'border-transparent text-amber-500 dark:text-amber-400'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-300'
                 }`}
               >
-                <span className="flex items-center gap-1">
-                  {pendingCount > 0 && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                    </span>
-                  )}
-                  Novedades
-                </span>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span className={`text-[10px] font-medium leading-none transition-all duration-200 ${activeTab === 'novedades' ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0 overflow-hidden'}`}>Novedades</span>
                 {pendingCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm animate-bounce" style={{ animationDuration: '2s', animationIterationCount: 3 }}>
-                    {pendingCount}
+                  <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
                   </span>
                 )}
               </button>
@@ -271,6 +357,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
               </Link>
+              {isCoordinator && (
+                <Link href="/u/equipo" className="block rounded-lg border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-slate-50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-indigo-700/60 dark:from-indigo-900/20 dark:to-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconUser className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-semibold text-indigo-900 dark:text-indigo-100">Gestión de Equipo</div>
+                  </div>
+                  <p className="text-sm text-indigo-700 dark:text-indigo-300 ml-8 sm:ml-9">Edita datos, cumpleaños y áreas de colaboradores, o elimina usuarios que ya no trabajen con nosotros.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-medium text-sm ml-8 sm:ml-9">Gestionar equipo →</div>
+                </Link>
+              )}
               {isStaff && (
                 <Link href="/u/birthdays" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -340,6 +436,78 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Solicita, consulta y da seguimiento a reels, videos, fotos y diseños.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Ver producciones →</div>
                 </Link>
+              )}
+            </div>
+          )}
+
+          {/* ====== PESTAÑA ANIVERSARIOS ====== */}
+          {activeTab === 'cumpleanos' && (
+            <div className="space-y-5">
+              {birthdayLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500" />
+                </div>
+              ) : birthdayItems.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <IconCake className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No hay aniversarios de colaboradores este mes.</p>
+                </div>
+              ) : (
+                <>
+                  {/* HOY */}
+                  {birthdayItems.filter(b => b.group === 'today').length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-xl">🎂</span>
+                        <h3 className="text-sm font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wide">Hoy</h3>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
+                          {birthdayItems.filter(b => b.group === 'today').length}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {birthdayItems.filter(b => b.group === 'today').map(b => (
+                          <BirthdayCard key={b.personId} item={b} highlight />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ESTA SEMANA */}
+                  {birthdayItems.filter(b => b.group === 'thisWeek').length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-base">📅</span>
+                        <h3 className="text-sm font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Esta semana</h3>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                          {birthdayItems.filter(b => b.group === 'thisWeek').length}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {birthdayItems.filter(b => b.group === 'thisWeek').map(b => (
+                          <BirthdayCard key={b.personId} item={b} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ESTE MES */}
+                  {birthdayItems.filter(b => b.group === 'thisMonth').length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-base">🗓️</span>
+                        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Este mes</h3>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {birthdayItems.filter(b => b.group === 'thisMonth').length}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {birthdayItems.filter(b => b.group === 'thisMonth').map(b => (
+                          <BirthdayCard key={b.personId} item={b} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -492,6 +660,65 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// BirthdayCard — sub-component for rendering a single birthday entry
+// ---------------------------------------------------------------------------
+
+const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+interface BirthdayCardProps {
+  item: {
+    personId: string;
+    name: string;
+    area: string | null;
+    jobTitle: string | null;
+    birthdayMonth: number;
+    birthdayDay: number;
+    group: 'today' | 'thisWeek' | 'thisMonth';
+  };
+  highlight?: boolean;
+}
+
+function BirthdayCard({ item, highlight = false }: BirthdayCardProps) {
+  const month = MONTHS_ES[(item.birthdayMonth - 1) % 12];
+  const label = `${item.birthdayDay} de ${month}`;
+  const meta = [item.area, item.jobTitle].filter(Boolean).join(' · ');
+
+  if (highlight) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border-2 border-pink-300 bg-gradient-to-r from-pink-50 to-rose-50 dark:border-pink-700 dark:from-pink-900/20 dark:to-rose-900/20 p-3 shadow-sm">
+        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-800/40 flex items-center justify-center text-xl">
+          🎂
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-pink-900 dark:text-pink-100 truncate">{item.name}</p>
+          {meta && <p className="text-xs text-pink-700 dark:text-pink-300 truncate">{meta}</p>}
+        </div>
+        <div className="flex-shrink-0 text-right">
+          <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold bg-pink-200 text-pink-800 dark:bg-pink-800/60 dark:text-pink-200">
+            {label}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 shadow-sm">
+      <div className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-base">
+        🎁
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{item.name}</p>
+        {meta && <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{meta}</p>}
+      </div>
+      <div className="flex-shrink-0">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{label}</span>
+      </div>
     </div>
   );
 }

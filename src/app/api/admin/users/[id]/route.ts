@@ -6,6 +6,7 @@ import { mapAreaToStaffRole } from '@/lib/staff-roles';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import bcrypt from 'bcryptjs';
+import { parseBirthdayInput } from '@/lib/birthday';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -32,6 +33,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     // Transform to React Admin format
+    const bday = user.person.birthday as Date | null;
+    const birthdayDateOnly = bday
+      ? `${bday.getUTCFullYear()}-${String(bday.getUTCMonth() + 1).padStart(2, '0')}-${String(bday.getUTCDate()).padStart(2, '0')}`
+      : null;
+
     const result = {
       id: user.id,
       username: user.username,
@@ -40,7 +46,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       dni: user.person.dni,
       area: user.person.area,
       whatsapp: user.person.whatsapp,
-      birthday: user.person.birthday,
+      birthday: birthdayDateOnly,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
@@ -121,8 +127,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const id = params.id;
     if (!id) return NextResponse.json({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
-    const body = await req.json().catch(() => null) as { personName?: string; role?: string; area?: string; whatsapp?: string; password?: string } | null;
-    if (!body || (!body.personName && !body.role && !body.area && !body.whatsapp && !body.password)) {
+    const body = await req.json().catch(() => null) as { personName?: string; role?: string; area?: string; whatsapp?: string; password?: string; birthday?: string | null } | null;
+    if (!body || (!body.personName && !body.role && !body.area && !body.whatsapp && !body.password && body.birthday === undefined)) {
       return NextResponse.json({ ok: false, code: 'NO_FIELDS' }, { status: 400 });
     }
 
@@ -134,7 +140,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
 
-    const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean; passwordChanged?: boolean } = {};
+    const updates: { personNameChanged?: boolean; roleChanged?: boolean; areaChanged?: boolean; whatsappChanged?: boolean; passwordChanged?: boolean; birthdayChanged?: boolean } = {};
 
     // Role update (optional)
     if (body.role != null) {
@@ -194,7 +200,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       }
     }
 
-    if (body.whatsapp != null) {
+    if (body.whatsapp != null && body.whatsapp !== '') {
       const raw = String(body.whatsapp || '').trim();
       const digits = raw.replace(/\D+/g, '');
       if (digits.length < 8 || digits.length > 15) {
@@ -222,6 +228,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         updates.passwordChanged = true;
         await audit('ADMIN_USER_PASSWORD_CHANGE', undefined, { id, actorRole: session?.role });
       }
+    }
+
+    // Birthday update (optional)
+    if (body.birthday !== undefined) {
+      const birthdayRaw = body.birthday ? String(body.birthday).trim() : '';
+      const birthdayDate = birthdayRaw ? parseBirthdayInput(birthdayRaw) : null;
+      if (birthdayRaw && !birthdayDate) {
+        return NextResponse.json({ ok: false, code: 'INVALID_BIRTHDAY' }, { status: 400 });
+      }
+      const user = await prisma.user.findUnique({ where: { id }, select: { personId: true } });
+      if (!user?.personId) return NextResponse.json({ ok: false, code: 'NOT_FOUND' }, { status: 404 });
+      await prisma.person.update({ where: { id: user.personId }, data: { birthday: birthdayDate } });
+      updates.birthdayChanged = true;
     }
 
     return NextResponse.json({ ok: true, updates });

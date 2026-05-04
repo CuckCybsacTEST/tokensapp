@@ -156,8 +156,17 @@ export function startScheduler() {
     }
   }, { scheduled: true, timezone: TOKENS_TZ });
 
-  jobs = [job18, jobBday]; // jobMinute disabled for investigation
-  if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 03:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m' });
+  // Staff birthdays: daily check at 09:00 Lima — logs collaborators with birthday today/this week
+  const jobStaffBdays = cron.schedule('0 9 * * *', async () => {
+    try {
+      await logStaffBirthdaysToday();
+    } catch (e) {
+      if (shouldLog('error')) logError('scheduler.staff-birthdays.error', 'staff birthdays daily job failed', { error: String(e) });
+    }
+  }, { scheduled: true, timezone: TOKENS_TZ });
+
+  jobs = [job18, jobBday, jobStaffBdays]; // jobMinute disabled for investigation
+  if (shouldLog('info')) logInfo('scheduler.started', 'jobs scheduled', { boundaries: '18:00->ON 03:00->OFF', heartbeat: '1m (debug only)', birthdays: '10m', staffBirthdays: '09:00 daily' });
   started = true;
 }
 
@@ -205,6 +214,49 @@ export async function expireBirthdayTokensOnce(nowRef: Date = new Date()) {
     return { ok: true as const, expired: res.count };
   } catch (e) {
   if (shouldLog('error')) logError('scheduler.birthdays.expire.error', 'expire pass error', { error: String(e) });
+    return { ok: false as const, error: String(e) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Staff Birthdays daily log job
+// Runs every day at 09:00 Lima. Queries active Person records whose birthday
+// (month + day) matches today in Lima local time, then emits a server log.
+// No writes to DB — purely informational.
+
+const LIMA_OFFSET_MS = -5 * 60 * 60 * 1000;
+
+export async function logStaffBirthdaysToday(nowRef: Date = new Date()) {
+  try {
+    const limaMs = nowRef.getTime() + LIMA_OFFSET_MS;
+    const limaDate = new Date(limaMs);
+    const todayMonth = limaDate.getUTCMonth() + 1;
+    const todayDay = limaDate.getUTCDate();
+
+    const persons = await prisma.person.findMany({
+      where: { active: true, birthday: { not: null } },
+      select: { id: true, name: true, area: true, jobTitle: true, birthday: true },
+    });
+
+    const todayBirthdays = persons.filter(p => {
+      if (!p.birthday) return false;
+      const b = p.birthday as Date;
+      return (b.getUTCMonth() + 1) === todayMonth && b.getUTCDate() === todayDay;
+    });
+
+    if (todayBirthdays.length > 0) {
+      if (shouldLog('info')) logInfo(
+        'scheduler.staff-birthdays.today',
+        `${todayBirthdays.length} colaborador(es) cumplen años hoy (${todayDay}/${todayMonth})`,
+        { names: todayBirthdays.map(p => p.name) },
+      );
+    } else {
+      if (shouldLog('debug')) logInfo('scheduler.staff-birthdays.today', 'No staff birthdays today');
+    }
+
+    return { ok: true as const, count: todayBirthdays.length };
+  } catch (e) {
+    if (shouldLog('error')) logError('scheduler.staff-birthdays.error', 'logStaffBirthdaysToday error', { error: String(e) });
     return { ok: false as const, error: String(e) };
   }
 }

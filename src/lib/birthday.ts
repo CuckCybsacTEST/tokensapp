@@ -19,7 +19,8 @@ const MONTH_ALIASES: Record<string, number> = {
 
 export function parseBirthdayInput(raw: string): Date | null {
   if (!raw || typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
+  // Normalize: if it's a full ISO datetime like "2000-05-24T00:00:00.000Z", take only the date part
+  const trimmed = raw.trim().replace(/T.*$/, '');
   let iso = '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     iso = trimmed;
