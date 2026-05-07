@@ -13,6 +13,7 @@ type GlobalStats = {
   totalConfirmed: number;
   totalCancelled: number;
   totalWithCode: number;
+  arrivalRate: number;
 };
 
 export function StatsClient() {
@@ -24,7 +25,8 @@ export function StatsClient() {
       try {
         const res = await fetch("/api/admin/invitations?stats=1");
         const j = await res.json();
-        if (j?.globalStats) setStats(j.globalStats);
+        // apiOk spreads the data flat — access directly, not via j.globalStats
+        if (j && typeof j.totalEvents === 'number') setStats(j as GlobalStats);
       } catch { /* ignore */ }
       finally { setLoading(false); }
     })();
@@ -33,7 +35,7 @@ export function StatsClient() {
   if (loading) return <div className="p-6 text-slate-500">Cargando estadísticas...</div>;
   if (!stats) return <div className="p-6 text-red-500">No se pudieron cargar las estadísticas</div>;
 
-  const arrivalRate = stats.totalInvitations > 0 ? ((stats.totalArrived / stats.totalInvitations) * 100).toFixed(1) : '0';
+  const arrivalRate = stats.arrivalRate ?? (stats.totalInvitations > 0 ? ((stats.totalArrived / stats.totalInvitations) * 100).toFixed(1) : '0');
 
   const sections = [
     {

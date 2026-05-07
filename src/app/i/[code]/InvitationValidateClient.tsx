@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { fmtLimaDateLong, fmtLimaDateTime } from "@/lib/invitations/formatDate";
+
+// aliases matching the original local function names
+const fmtDate = fmtLimaDateLong;
+const fmtDateTime = fmtLimaDateTime;
 
 type InvitationData = {
   guestName: string;
@@ -32,37 +37,6 @@ type InvitationData = {
     } | null;
   };
 };
-
-function fmtDate(iso?: string | null) {
-  if (!iso) return "";
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
-    const day = lima.getUTCDate();
-    const months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-    return `${day} de ${months[lima.getUTCMonth()]} ${lima.getUTCFullYear()}`;
-  } catch {
-    return "";
-  }
-}
-
-function fmtDateTime(iso?: string | null) {
-  if (!iso) return "";
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
-    const y = lima.getUTCFullYear();
-    const m = String(lima.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(lima.getUTCDate()).padStart(2, "0");
-    const hh = String(lima.getUTCHours()).padStart(2, "0");
-    const mm = String(lima.getUTCMinutes()).padStart(2, "0");
-    return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch {
-    return "";
-  }
-}
 
 export function InvitationValidateClient({ code }: { code: string }) {
   const [data, setData] = useState<InvitationData | null>(null);
@@ -144,7 +118,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
   const isExpired = data.expiresAt && new Date(data.expiresAt) < new Date();
 
   return (
-    <div className="h-screen bg-gradient-to-b from-slate-950 via-black to-slate-950 text-white overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-black to-slate-950 text-white flex flex-col">
       {/* Status Banner - Fixed at top */}
       {(isArrived || isCancelled || isExpired) && (
         <div className="flex-shrink-0 px-4 pt-4">
@@ -168,11 +142,11 @@ export function InvitationValidateClient({ code }: { code: string }) {
       )}
 
       {/* Main Content - Takes remaining space */}
-      <div className="flex-1 flex items-center justify-center px-4 py-4 min-h-0">
+      <div className="flex-1 flex items-center justify-center px-4 py-4">
         <div className="w-full max-w-md space-y-6">
 
         {/* Main Card */}
-        <div className="rounded-2xl border border-slate-700 bg-slate-900/80 backdrop-blur p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-xl w-full max-h-full overflow-y-auto">
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/80 backdrop-blur p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-xl w-full">
           {/* Event Name */}
           <div className="text-center space-y-2">
             <div className="text-xs text-slate-500 uppercase tracking-widest">Invitación especial</div>

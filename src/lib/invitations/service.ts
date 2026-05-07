@@ -112,15 +112,19 @@ export async function listEvents(
     prisma.specialEvent.count({ where }),
   ]);
 
-  // Enrich with arrival stats
-  const enriched = await Promise.all(
-    items.map(async (ev) => {
-      const arrivedCount = await prisma.specialInvitation.count({
-        where: { eventId: ev.id, arrivedAt: { not: null } },
-      });
-      return { ...ev, invitationCount: ev._count.invitations, arrivedCount };
-    }),
-  );
+  // Enrich with arrival stats — single grouped query instead of N+1
+  const arrivedGroups = await prisma.specialInvitation.groupBy({
+    by: ['eventId'],
+    where: { eventId: { in: items.map((i) => i.id) }, arrivedAt: { not: null } },
+    _count: { id: true },
+  });
+  const arrivedMap = new Map(arrivedGroups.map((r) => [r.eventId, r._count.id]));
+
+  const enriched = items.map((ev) => ({
+    ...ev,
+    invitationCount: ev._count.invitations,
+    arrivedCount: arrivedMap.get(ev.id) ?? 0,
+  }));
 
   return { items: enriched, total, page, pageSize };
 }
@@ -338,10 +342,15 @@ export async function getGlobalInvitationStats() {
     prisma.specialEvent.count({ where: { status: 'cancelled' } }),
   ]);
 
-  const [totalInvitations, arrivedInvitations] = await Promise.all([
-    prisma.specialInvitation.count(),
-    prisma.specialInvitation.count({ where: { arrivedAt: { not: null } } }),
-  ]);
+  const [totalInvitations, totalArrived, totalPending, totalConfirmed, totalCancelled, totalWithCode] =
+    await Promise.all([
+      prisma.specialInvitation.count(),
+      prisma.specialInvitation.count({ where: { arrivedAt: { not: null } } }),
+      prisma.specialInvitation.count({ where: { status: 'pending' } }),
+      prisma.specialInvitation.count({ where: { status: 'confirmed' } }),
+      prisma.specialInvitation.count({ where: { status: 'cancelled' } }),
+      prisma.specialInvitation.count({ where: { code: { not: null } } }),
+    ]);
 
   // Upcoming events (next 30 days)
   const now = new Date();
@@ -359,8 +368,12 @@ export async function getGlobalInvitationStats() {
     completedEvents,
     cancelledEvents,
     totalInvitations,
-    arrivedInvitations,
-    arrivalRate: totalInvitations > 0 ? Math.round((arrivedInvitations / totalInvitations) * 100) : 0,
+    totalArrived,
+    totalPending,
+    totalConfirmed,
+    totalCancelled,
+    totalWithCode,
+    arrivalRate: totalInvitations > 0 ? Math.round((totalArrived / totalInvitations) * 100) : 0,
     upcomingEvents,
   };
 }

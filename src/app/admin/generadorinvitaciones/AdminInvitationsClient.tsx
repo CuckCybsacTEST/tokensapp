@@ -1,19 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-
-function fmtLima(iso?: string | null) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
-    const y = lima.getUTCFullYear();
-    const m = String(lima.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(lima.getUTCDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  } catch { return ''; }
-}
+import { fmtLimaDate } from "@/lib/invitations/formatDate";
 
 type EventItem = {
   id: string;
@@ -161,7 +149,7 @@ export function AdminInvitationsPage() {
               <div className="grid gap-y-1 text-[13px] sm:grid-cols-3">
                 <div className="text-slate-600 dark:text-slate-300">
                   <span className="font-semibold">Fecha:</span>{' '}
-                  <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded">{fmtLima(ev.date)}</span>
+                  <span className="font-bold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded">{fmtLimaDate(ev.date)}</span>
                 </div>
                 <div className="text-slate-600 dark:text-slate-300">
                   <span className="font-semibold">Hora:</span> {ev.timeSlot}

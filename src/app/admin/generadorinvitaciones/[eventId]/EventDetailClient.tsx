@@ -2,33 +2,11 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { generateQrPngDataUrl } from "@/lib/qr";
+import { fmtLimaDateTime, fmtLimaDateShort } from "@/lib/invitations/formatDate";
 
-function fmtLima(iso?: string | null) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
-    const y = lima.getUTCFullYear();
-    const m = String(lima.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(lima.getUTCDate()).padStart(2, '0');
-    const hh = String(lima.getUTCHours()).padStart(2, '0');
-    const mm = String(lima.getUTCMinutes()).padStart(2, '0');
-    return `${y}-${m}-${day} ${hh}:${mm}`;
-  } catch { return ''; }
-}
-
-function fmtDate(iso?: string | null) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    const lima = new Date(d.getTime() - 5 * 3600 * 1000);
-    const day = lima.getUTCDate();
-    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    return `${day} ${months[lima.getUTCMonth()]} ${lima.getUTCFullYear()}`;
-  } catch { return ''; }
-}
+// aliases kept for local usage clarity
+const fmtLima = fmtLimaDateTime;
+const fmtDate = fmtLimaDateShort;
 
 type Event = {
   id: string;
@@ -243,6 +221,18 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
     try {
       const res = await fetch(`/api/admin/invitations/${eventId}/complete`, { method: 'POST' });
       if (!res.ok) throw new Error('Error');
+      await loadData();
+    } catch (e: any) { setErr(String(e?.message || e)); }
+  }
+
+  async function handleRemoveTemplate() {
+    try {
+      const res = await fetch(`/api/admin/invitations/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateUrl: null }),
+      });
+      if (!res.ok) { const j = await res.json(); throw new Error(j?.message || 'Error quitando plantilla'); }
       await loadData();
     } catch (e: any) { setErr(String(e?.message || e)); }
   }
@@ -611,14 +601,7 @@ export function EventDetailClient({ eventId }: { eventId: string }) {
                       >{uploadingTemplate ? 'Subiendo...' : '📤 Cambiar plantilla'}</button>
                       <button
                         className="text-sm text-rose-500 hover:underline"
-                        onClick={async () => {
-                          const res = await fetch(`/api/admin/invitations/${eventId}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ templateUrl: null }),
-                          });
-                          if (res.ok) await loadData();
-                        }}
+                        onClick={handleRemoveTemplate}
                       >Quitar plantilla</button>
                     </div>
                   </div>

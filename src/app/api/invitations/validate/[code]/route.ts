@@ -2,9 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiError, apiOk } from '@/lib/apiError';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 import { findInvitationByCode, markArrival, getEventStats } from '@/lib/invitations/service';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 async function getLastArrival(eventId: string) {
   const lastArrival = await prisma.specialInvitation.findFirst({
@@ -39,6 +37,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       courtesyNote: inv.courtesyNote,
       status: inv.status,
       arrivedAt: inv.arrivedAt?.toISOString() ?? null,
+      // expiresAt is needed by the public UI to render the "expired" banner
+      expiresAt: inv.expiresAt?.toISOString() ?? null,
       isStaff: !!isStaff,
     };
 
