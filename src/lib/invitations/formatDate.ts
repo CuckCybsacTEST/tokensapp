@@ -46,6 +46,17 @@ export function fmtLimaDateShort(iso?: string | null): string {
   } catch { return ''; }
 }
 
+/** Returns "7 de Mayo" (day + full month, no year) in Lima time */
+export function fmtLimaDateDayMonth(iso?: string | null): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const lima = new Date(d.getTime() - LIMA_OFFSET_MS);
+    return `${lima.getUTCDate()} de ${MONTHS_FULL[lima.getUTCMonth()]}`;
+  } catch { return ''; }
+}
+
 /** Returns "7 de Mayo 2024" (full month) in Lima time */
 export function fmtLimaDateLong(iso?: string | null): string {
   if (!iso) return '';

@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { fmtLimaDateLong, fmtLimaDateTime } from "@/lib/invitations/formatDate";
+import { fmtLimaDateDayMonth, fmtLimaDateTime } from "@/lib/invitations/formatDate";
 
 // aliases matching the original local function names
-const fmtDate = fmtLimaDateLong;
+const fmtDate = fmtLimaDateDayMonth;
 const fmtDateTime = fmtLimaDateTime;
 
 type InvitationData = {
@@ -170,7 +170,7 @@ export function InvitationValidateClient({ code }: { code: string }) {
                 <div className="font-bold text-base sm:text-lg text-pink-300">{fmtDate(data.eventDate)}</div>
               </div>
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-800/30 rounded-xl p-3 sm:p-4 text-center border border-slate-700/30">
-                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Hora</div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest mb-1">Hora Límite</div>
                 <div className="font-bold text-base sm:text-lg text-blue-300">{data.eventTimeSlot}</div>
               </div>
             </div>
@@ -226,30 +226,6 @@ export function InvitationValidateClient({ code }: { code: string }) {
           {data.isStaff && (
             <div className="border-t border-slate-700 pt-4 space-y-3">
               <div className="text-xs text-purple-400 uppercase tracking-widest font-semibold">Info Staff</div>
-
-              {/* Event Statistics */}
-              {data.eventStats && (
-                <div className="bg-slate-800/30 rounded-lg p-3 space-y-2">
-                  <div className="text-xs text-slate-400 uppercase tracking-widest">Estadísticas del Evento</div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-emerald-400">{data.eventStats.arrived}</div>
-                      <div className="text-xs text-slate-500">Llegaron</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-blue-400">{data.eventStats.total}</div>
-                      <div className="text-xs text-slate-500">Total</div>
-                    </div>
-                  </div>
-                  {data.eventStats.lastArrival && (
-                    <div className="text-xs text-slate-400 border-t border-slate-700 pt-2 mt-2">
-                      <div className="font-medium">Última llegada:</div>
-                      <div>{data.eventStats.lastArrival.guestName}</div>
-                      <div className="text-slate-500">{fmtDateTime(data.eventStats.lastArrival.arrivedAt)}</div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Guest details */}
               {data.additionalNote && (
