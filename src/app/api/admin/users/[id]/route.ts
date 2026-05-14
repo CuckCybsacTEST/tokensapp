@@ -82,24 +82,28 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     // Cascade delete related records in a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete any password reset OTPs referencing this user (FK may block otherwise)
-      await tx.$executeRawUnsafe('DELETE FROM "PasswordResetOtp" WHERE "userId"=$1', user.id);
+      // Delete any password reset OTPs referencing this user
+      await tx.passwordResetOtp.deleteMany({ where: { userId: user.id } });
       // Delete commitment assignments
       await tx.commitmentAssignment.deleteMany({ where: { userId: user.id } });
-      // Delete ticket purchases
-      await tx.ticketPurchase.deleteMany({ where: { userId: user.id } });
-      // Delete offer purchases
-      await tx.offerPurchase.deleteMany({ where: { userId: user.id } });
-      // Delete task comments
+      // Nullify ticket/offer purchases (customer records — preserve them, just unlink the staff user)
+      await tx.ticketPurchase.updateMany({ where: { userId: user.id }, data: { userId: null } });
+      await tx.offerPurchase.updateMany({ where: { userId: user.id }, data: { userId: null } });
+      // Delete task/checklist comments (cascade via DB for ChecklistComment/ChecklistTaskComment/TaskComment
+      // but we do it explicitly to be safe)
       await tx.taskComment.deleteMany({ where: { userId: user.id } });
-      // Delete checklist task comments
       await tx.checklistTaskComment.deleteMany({ where: { userId: user.id } });
-      // Delete checklist comments
       await tx.checklistComment.deleteMany({ where: { userId: user.id } });
+      // Delete production comments authored by this user
+      await tx.productionComment.deleteMany({ where: { authorId: user.id } });
+      // Nullify productions requested by this user (preserve the production, unlink requester)
+      await tx.production.updateMany({ where: { requestedById: user.id }, data: { requestedById: null } });
       // Delete brief acceptances for the person
       await tx.briefAcceptance.deleteMany({ where: { personId: user.personId } });
-      // Delete task statuses updated by this user (foreign relation)
-      await tx.personTaskStatus.deleteMany({ where: { updatedBy: user.id } });
+      // Delete daily ratings for the person
+      await tx.personDailyRating.deleteMany({ where: { personId: user.personId } });
+      // Nullify task statuses where updatedBy points to this user
+      await tx.personTaskStatus.updateMany({ where: { updatedBy: user.id }, data: { updatedBy: null } });
       // Delete scans and task statuses for the person
       await tx.personTaskStatus.deleteMany({ where: { personId: user.personId } });
       await tx.scan.deleteMany({ where: { personId: user.personId } });

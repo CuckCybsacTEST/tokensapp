@@ -146,12 +146,13 @@ function DetailsModal({ user, onClose }: { user: UserRecord; onClose: () => void
 
 // ─── Modal Confirmar Eliminación ──────────────────────────────────────
 function DeleteModal({
-  user, onConfirm, onClose, isDeleting,
+  user, onConfirm, onClose, isDeleting, error,
 }: {
   user: UserRecord;
   onConfirm: () => void;
   onClose: () => void;
   isDeleting: boolean;
+  error?: string | null;
 }) {
   return (
     <div
@@ -177,6 +178,11 @@ function DeleteModal({
         <p className="text-sm text-slate-600 dark:text-slate-300">
           Se eliminará a <strong className="text-slate-800 dark:text-slate-100">{user.personName || user.username}</strong> del sistema y perderá acceso a la plataforma.
         </p>
+        {error && (
+          <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
         <div className="flex gap-3 pt-1">
           <button
             onClick={onClose}
@@ -211,9 +217,11 @@ function EquipoListContent() {
   const [deleteOne, { isPending: isDeleting }] = useDelete();
   const [detailsUser, setDetailsUser] = useState<UserRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserRecord | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = () => {
     if (!deleteTarget) return;
+    setDeleteError(null);
     deleteOne(
       'users',
       { id: deleteTarget.id, previousData: deleteTarget },
@@ -221,6 +229,10 @@ function EquipoListContent() {
         onSuccess: () => {
           setDeleteTarget(null);
           refresh();
+        },
+        onError: (err: any) => {
+          const msg = err?.message || err?.body?.message || 'Error al eliminar el usuario';
+          setDeleteError(String(msg));
         },
       },
     );
@@ -286,8 +298,9 @@ function EquipoListContent() {
         <DeleteModal
           user={deleteTarget}
           onConfirm={handleDelete}
-          onClose={() => setDeleteTarget(null)}
+          onClose={() => { setDeleteTarget(null); setDeleteError(null); }}
           isDeleting={isDeleting}
+          error={deleteError}
         />
       )}
     </>
