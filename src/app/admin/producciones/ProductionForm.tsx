@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PersonRef, Production, ProductionType, ProductionPriority, ProductionStatus } from "./ProduccionesClient";
-import { TYPE_LABELS, PRIORITY_LABELS, STATUS_LABELS } from "./ProduccionesClient";
+import {
+  PersonRef, Production, ProductionType, ProductionPriority, ProductionStatus,
+  TYPE_LABELS, PRIORITY_LABELS, STATUS_LABELS, PLATFORMS,
+} from "@/features/producciones/shared";
 
 interface Props {
   persons: PersonRef[];
@@ -11,11 +13,10 @@ interface Props {
   onSaved: () => void;
 }
 
-const PLATFORMS = ["Instagram", "TikTok", "YouTube", "Facebook", "Web", "WhatsApp"];
-
 export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(!!editingId);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ProductionType>("VIDEO_REEL");
@@ -62,7 +63,8 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return alert("El título es obligatorio");
+    if (!title.trim()) { setSubmitError("El título es obligatorio"); return; }
+    setSubmitError(null);
     setLoading(true);
 
     const body = {
@@ -77,8 +79,8 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
       const method = editingId ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
-      if (json.ok) { onSaved(); } else { alert(json.message || "Error al guardar"); }
-    } catch { alert("Error de red"); }
+      if (json.ok) { onSaved(); } else { setSubmitError(json.message || "Error al guardar"); }
+    } catch { setSubmitError("Error de conexión"); }
     setLoading(false);
   };
 
@@ -268,6 +270,11 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
         </section>
 
         {/* Actions */}
+        {submitError && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+            {submitError}
+          </div>
+        )}
         <div className="flex gap-3 justify-end">
           <button type="button" onClick={onClose}
             className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm transition">

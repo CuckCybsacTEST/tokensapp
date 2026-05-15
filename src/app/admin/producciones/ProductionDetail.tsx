@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PersonRef, Production, ProductionComment, ProductionLink, ProductionStatus } from "./ProduccionesClient";
-import { TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS } from "./ProduccionesClient";
-
-const STATUS_FLOW: ProductionStatus[] = ["IDEA","BRIEFED","SCHEDULED","IN_PRODUCTION","IN_EDITING","IN_REVIEW","APPROVED","PUBLISHED"];
+import {
+  PersonRef, Production, ProductionComment, ProductionLink, ProductionStatus,
+  TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS,
+  LINK_TYPE_LABELS, LINK_TYPE_COLORS, STATUS_FLOW,
+} from "@/features/producciones/shared";
 
 interface Props {
   productionId: string;
@@ -16,12 +17,15 @@ interface Props {
 export function ProductionDetail({ productionId, persons, onBack, onDelete }: Props) {
   const [production, setProduction] = useState<Production | null>(null);
   const [loading, setLoading] = useState(true);
+  const [advancing, setAdvancing] = useState(false);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkType, setLinkType] = useState("DELIVERABLE");
   const [sendingLink, setSendingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -39,10 +43,19 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
     const idx = STATUS_FLOW.indexOf(production.status);
     if (idx < 0 || idx >= STATUS_FLOW.length - 1) return;
     const next = STATUS_FLOW[idx + 1];
-    await fetch(`/api/admin/producciones/${productionId}`, {
-      method: "PATCH", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
+    setAdvancing(true);
+    setAdvanceError(null);
+    try {
+      const res = await fetch(`/api/admin/producciones/${productionId}`, {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      const json = await res.json();
+      if (!json.ok) setAdvanceError(json.message || "No se pudo cambiar el estado");
+    } catch {
+      setAdvanceError("Error de conexión");
+    }
+    setAdvancing(false);
     await load();
   };
 
@@ -63,16 +76,20 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
   const addLink = async () => {
     if (!linkLabel.trim() || !linkUrl.trim()) return;
     setSendingLink(true);
+    setLinkError(null);
     try {
       const res = await fetch(`/api/admin/producciones/${productionId}/links`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ label: linkLabel.trim(), url: linkUrl.trim(), type: linkType }),
       });
       const json = await res.json();
-      if (json.ok) { setLinkLabel(""); setLinkUrl(""); await load(); }
-      else alert(json.message || "Error");
-    } catch { /* ignore */ }
+      if (json.ok) { setLinkLabel(""); setLinkUrl(""); }
+      else setLinkError(json.message || "Error al agregar link");
+    } catch {
+      setLinkError("Error de conexión");
+    }
     setSendingLink(false);
+    await load();
   };
 
   const removeLink = async (linkId: string) => {
@@ -91,13 +108,6 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
   const currentIdx = STATUS_FLOW.indexOf(production.status);
   const canAdvance = currentIdx >= 0 && currentIdx < STATUS_FLOW.length - 1;
 
-  const LINK_TYPE_LABELS: Record<string, string> = { REFERENCE: "Referencia", DELIVERABLE: "Entregable", PUBLISHED: "Publicado" };
-  const LINK_TYPE_COLORS: Record<string, string> = {
-    REFERENCE: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-    DELIVERABLE: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-    PUBLISHED: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  };
-
   return (
     <div className="min-h-screen p-4 md:p-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -113,13 +123,14 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col items-end gap-2">
           {canAdvance && (
-            <button onClick={advanceStatus}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
-              Avanzar → {STATUS_LABELS[STATUS_FLOW[currentIdx + 1]]}
+            <button onClick={advanceStatus} disabled={advancing}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 transition">
+              {advancing ? "Avanzando..." : `Avanzar → ${STATUS_LABELS[STATUS_FLOW[currentIdx + 1]]}`}
             </button>
           )}
+          {advanceError && <p className="text-xs text-red-600 dark:text-red-400">{advanceError}</p>}
           <button onClick={() => onDelete(production.id)}
             className="px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition">
             Eliminar
@@ -133,21 +144,27 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
           {STATUS_FLOW.map((s, i) => {
             const isCurrent = production.status === s;
             const isPast = currentIdx >= 0 && i < currentIdx;
-            const isCancelled = production.status === "CANCELLED";
             return (
               <div key={s} className="flex items-center">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition ${
-                  isCancelled ? "bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400" :
                   isCurrent ? "bg-indigo-600 text-white" :
                   isPast ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
                   "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500"
                 }`}>
-                  {isPast && !isCancelled && "✓ "}{STATUS_LABELS[s]}
+                  {isPast ? "✓ " : ""}{STATUS_LABELS[s]}
                 </div>
                 {i < STATUS_FLOW.length - 1 && <div className={`w-4 h-0.5 mx-0.5 ${isPast ? "bg-green-300 dark:bg-green-700" : "bg-gray-200 dark:bg-gray-600"}`} />}
               </div>
             );
           })}
+          {production.status === "CANCELLED" && (
+            <div className="flex items-center ml-1">
+              <div className="w-4 h-0.5 bg-gray-200 dark:bg-gray-600" />
+              <div className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 whitespace-nowrap">
+                Cancelado
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -202,6 +219,7 @@ export function ProductionDetail({ productionId, persons, onBack, onDelete }: Pr
                 + Link
               </button>
             </div>
+            {linkError && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{linkError}</p>}
           </section>
 
           {/* Comentarios */}

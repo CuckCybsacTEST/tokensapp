@@ -396,6 +396,18 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
           { href: `${pathPrefix}/marketing/gallery`, label: "Galería de Fotos", icon: ICONS.film }
         ]
       }] : []),
+      {
+        title: "PRODUCCIÓN MULTIMEDIA",
+        icon: ICONS.film,
+        items: basePath === 'admin' ? [
+          { href: `${pathPrefix}/producciones`, label: "Tablero", icon: ICONS.film },
+          { href: `${pathPrefix}/producciones?view=list`, label: "Lista", icon: ICONS.check }
+        ] : [
+          { href: `${pathPrefix}/producciones`, label: "🎬 Producciones", icon: ICONS.film },
+          { href: "/u/producciones/ideas", label: "💡 Ideas", icon: ICONS.star },
+          { href: "/u/producciones/tareas", label: "🔁 Tareas", icon: ICONS.check }
+        ]
+      },
       ...(basePath === 'admin' ? [{
         title: "VENTA DE TICKETS",
         icon: ICONS.check,

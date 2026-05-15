@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   if (!r.ok) return apiError(r.error || 'UNAUTHORIZED', r.error, undefined, 401);
 
   const persons = await prisma.person.findMany({
-    where: { active: true },
+    where: { active: true, area: 'Multimedia' },
     select: { id: true, name: true, area: true, jobTitle: true },
     orderBy: { name: 'asc' },
   });

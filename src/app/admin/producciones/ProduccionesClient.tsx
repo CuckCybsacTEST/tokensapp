@@ -4,59 +4,20 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductionDetail } from "./ProductionDetail";
 import { ProductionForm } from "./ProductionForm";
+import {
+  Production, ProductionStatus, PersonRef,
+  TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, STATUS_COLORS,
+  KANBAN_COLUMNS,
+} from "@/features/producciones/shared";
 
-/* ── Types ── */
-export type ProductionType = "VIDEO_REEL"|"VIDEO_TIKTOK"|"VIDEO_PROMO"|"VIDEO_RECAP"|"PHOTO_SESSION"|"PHOTO_PRODUCT"|"PHOTO_STAFF"|"DESIGN_GRAPHIC"|"OTHER";
-export type ProductionStatus = "IDEA"|"BRIEFED"|"SCHEDULED"|"IN_PRODUCTION"|"IN_EDITING"|"IN_REVIEW"|"APPROVED"|"PUBLISHED"|"CANCELLED";
-export type ProductionPriority = "LOW"|"MEDIUM"|"HIGH"|"URGENT";
-
-export interface PersonRef { id: string; name: string; area?: string | null; jobTitle?: string | null }
-export interface AssigneeRef { id: string; personId: string; person: PersonRef }
-export interface UserRef { id: string; username: string; person?: { name: string } | null }
-export interface ProductionLink { id: string; label: string; url: string; type: string; createdAt: string }
-export interface ProductionComment { id: string; content: string; createdAt: string; author: UserRef }
-export interface Production {
-  id: string; title: string; type: ProductionType; status: ProductionStatus; priority: ProductionPriority;
-  objective?: string|null; context?: string|null; message?: string|null; references?: string|null;
-  targetAudience?: string|null; platform?: string|null; format?: string|null; duration?: string|null;
-  deliverables?: string|null; deadline?: string|null; scheduledDate?: string|null; completedAt?: string|null;
-  publishedAt?: string|null; publishUrl?: string|null; requestedBy?: UserRef|null; assignedTo?: AssigneeRef[];
-  requestedById?: string|null; notes?: string|null; tags?: string|null;
-  createdAt: string; updatedAt: string;
-  comments?: ProductionComment[]; links?: ProductionLink[];
-  _count?: { comments: number; links: number };
-}
-
-/* ── Labels / Colors ── */
-export const TYPE_LABELS: Record<ProductionType, string> = {
-  VIDEO_REEL: "Video / Reel", VIDEO_TIKTOK: "TikTok", VIDEO_PROMO: "Video Promo",
-  VIDEO_RECAP: "Video Recap", PHOTO_SESSION: "Sesión de Fotos", PHOTO_PRODUCT: "Foto Producto",
-  PHOTO_STAFF: "Foto Personal", DESIGN_GRAPHIC: "Diseño Gráfico", OTHER: "Otro",
-};
-export const STATUS_LABELS: Record<ProductionStatus, string> = {
-  IDEA: "Idea", BRIEFED: "Con Brief", SCHEDULED: "Agendado", IN_PRODUCTION: "En Producción",
-  IN_EDITING: "En Edición", IN_REVIEW: "En Revisión", APPROVED: "Aprobado", PUBLISHED: "Publicado", CANCELLED: "Cancelado",
-};
-export const PRIORITY_LABELS: Record<ProductionPriority, string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente" };
-export const PRIORITY_COLORS: Record<ProductionPriority, string> = {
-  LOW: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-  MEDIUM: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  HIGH: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  URGENT: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-};
-const STATUS_COLORS: Record<ProductionStatus, string> = {
-  IDEA: "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
-  BRIEFED: "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800",
-  SCHEDULED: "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800",
-  IN_PRODUCTION: "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-  IN_EDITING: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800",
-  IN_REVIEW: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
-  APPROVED: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-  PUBLISHED: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
-  CANCELLED: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-};
-
-const KANBAN_COLUMNS: ProductionStatus[] = ["IDEA","BRIEFED","SCHEDULED","IN_PRODUCTION","IN_EDITING","IN_REVIEW","APPROVED","PUBLISHED"];
+// Re-export types so existing imports from this file still work
+export type {
+  ProductionType, ProductionStatus, ProductionPriority,
+  PersonRef, AssigneeRef, UserRef, ProductionLink, ProductionComment, Production,
+} from "@/features/producciones/shared";
+export {
+  TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS,
+} from "@/features/producciones/shared";
 
 /* ── Main Component ── */
 export function ProduccionesClient() {
@@ -67,19 +28,29 @@ export function ProduccionesClient() {
   const [productions, setProductions] = useState<Production[]>([]);
   const [persons, setPersons] = useState<PersonRef[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filterType, setFilterType] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [filterPriority, setFilterPriority] = useState("");
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await fetch("/api/admin/producciones");
       const json = await res.json();
-      if (json.ok) setProductions(json.productions);
-    } catch { /* ignore */ }
-    setLoading(false);
+      if (json.ok) {
+        setProductions(json.productions);
+      } else {
+        setError("Error al cargar las producciones");
+      }
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const loadPersons = useCallback(async () => {
@@ -101,7 +72,7 @@ export function ProduccionesClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar esta producción?")) return;
+    if (!confirm("¿Eliminar esta producción? Esta acción no se puede deshacer.")) return;
     await fetch(`/api/admin/producciones/${id}`, { method: "DELETE" });
     setSelectedId(null);
     await load();
@@ -109,9 +80,13 @@ export function ProduccionesClient() {
 
   const filtered = productions.filter(p => {
     if (filterType && p.type !== filterType) return false;
+    if (filterStatus && p.status !== filterStatus) return false;
     if (filterPriority && p.priority !== filterPriority) return false;
     return true;
   });
+
+  const hasFilters = !!(filterType || filterStatus || filterPriority);
+  const clearFilters = () => { setFilterType(""); setFilterStatus(""); setFilterPriority(""); };
 
   if (selectedId) {
     return (
@@ -143,7 +118,9 @@ export function ProduccionesClient() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Producción Multimedia</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {productions.length} produccion{productions.length !== 1 ? "es" : ""} registrada{productions.length !== 1 ? "s" : ""}
+              {filtered.length !== productions.length
+                ? `${filtered.length} de ${productions.length} producciones`
+                : `${productions.length} produccion${productions.length !== 1 ? "es" : ""} registrada${productions.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <button
@@ -161,11 +138,21 @@ export function ProduccionesClient() {
             <option value="">Todos los tipos</option>
             {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="text-sm border rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
+            <option value="">Todos los estados</option>
+            {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
           <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
             className="text-sm border rounded-lg px-3 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
             <option value="">Todas las prioridades</option>
             {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          {hasFilters && (
+            <button onClick={clearFilters} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-2 py-1.5">
+              ✕ Limpiar
+            </button>
+          )}
           <div className="ml-auto flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
             <button onClick={() => router.push("?view=board")}
               className={`px-3 py-1 rounded-md text-sm font-medium transition ${view === "board" ? "bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"}`}>
@@ -178,6 +165,13 @@ export function ProduccionesClient() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={load} className="ml-4 underline hover:no-underline">Reintentar</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">

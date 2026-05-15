@@ -339,7 +339,15 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/producciones`, label: "Tablero", icon: ICONS.filmSmall },
           { href: `${pathPrefix}/producciones?view=list`, label: "Lista", icon: ICONS.checkSmall }
         ]
-      }] : []),
+      }] : [{
+        title: "PRODUCCIÓN MULTIMEDIA",
+        icon: ICONS.film,
+        items: [
+          { href: `${pathPrefix}/producciones`, label: "🎬 Producciones", icon: ICONS.filmSmall },
+          { href: "/u/producciones/ideas", label: "💡 Ideas", icon: ICONS.starSmall },
+          { href: "/u/producciones/tareas", label: "🔁 Tareas", icon: ICONS.checkSmall }
+        ]
+      }]),
       ...(basePath === 'admin' ? [{
         title: "VENTA DE TICKETS",
         icon: ICONS.check,

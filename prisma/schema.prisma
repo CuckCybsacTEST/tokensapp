@@ -245,6 +245,7 @@ model Person {
   BriefAcceptance  BriefAcceptance[]
   dailyRatings     PersonDailyRating[]
   productionAssignments ProductionAssignee[]
+  recurringTaskAssignments RecurringTaskAssignee[]
 
   @@index([code])
 }
@@ -290,6 +291,10 @@ model User {
   commitmentAssignments     CommitmentAssignment[]
   productionsRequested      Production[]           @relation("ProductionRequester")
   productionComments        ProductionComment[]    @relation("ProductionCommentAuthor")
+  ideasSubmitted            ProductionIdea[]       @relation("IdeaSubmitter")
+  ideaReactions             IdeaReaction[]         @relation("IdeaReactor")
+  ideaComments              IdeaComment[]          @relation("IdeaCommentAuthor")
+  recurringTaskInstances    RecurringTaskInstance[] @relation("TaskInstanceCompleter")
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
@@ -1869,6 +1874,8 @@ model Production {
 
   comments        ProductionComment[]
   links           ProductionLink[]
+  ideaConversion  ProductionIdea?    @relation("IdeaConversion")
+  taskInstance    RecurringTaskInstance? @relation("TaskInstanceProduction")
 
   @@index([status])
   @@index([type])
@@ -1917,4 +1924,157 @@ model ProductionLink {
   createdAt     DateTime           @default(now())
 
   @@index([productionId])
+}
+
+// ─── IDEAS MULTIMEDIA ────────────────────────────────────────────────
+
+enum IdeaSource {
+  TIKTOK
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  WEB
+  OTHER
+}
+
+enum IdeaStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CONVERTED
+}
+
+enum IdeaReactionType {
+  FIRE
+  LIKE
+  MEH
+}
+
+model ProductionIdea {
+  id            String           @id @default(cuid())
+  title         String
+  description   String?
+  sourceType    IdeaSource
+  sourceUrl     String?
+
+  status        IdeaStatus       @default(PENDING)
+
+  submittedById String
+  submittedBy   User             @relation("IdeaSubmitter", fields: [submittedById], references: [id])
+
+  // Si la idea fue convertida a una Producción
+  productionId  String?          @unique
+  production    Production?      @relation("IdeaConversion", fields: [productionId], references: [id])
+
+  reactions     IdeaReaction[]
+  comments      IdeaComment[]
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([status])
+  @@index([submittedById])
+  @@index([sourceType])
+}
+
+model IdeaReaction {
+  id     String           @id @default(cuid())
+  ideaId String
+  idea   ProductionIdea   @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  userId String
+  user   User             @relation("IdeaReactor", fields: [userId], references: [id])
+  type   IdeaReactionType
+
+  @@unique([ideaId, userId])
+  @@index([ideaId])
+}
+
+model IdeaComment {
+  id        String         @id @default(cuid())
+  ideaId    String
+  idea      ProductionIdea @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User           @relation("IdeaCommentAuthor", fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime       @default(now())
+
+  @@index([ideaId])
+}
+
+// ─── TAREAS RECURRENTES MULTIMEDIA ──────────────────────────────────
+
+enum RecurrenceType {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum RecurringTaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+model RecurringTask {
+  id               String                  @id @default(cuid())
+  name             String
+  description      String?
+  type             ProductionType
+  platform         String?
+  format           String?
+  deliverables     String?
+  recurrence       RecurrenceType
+  // Para WEEKLY/BIWEEKLY: "1" (lunes) o "1,3" (lun+mié). 0=dom..6=sáb
+  daysOfWeek       String?
+  // Para MONTHLY: día del mes (1-31)
+  dayOfMonth       Int?
+  aspectRatio      String?
+  defaultPriority  ProductionPriority      @default(MEDIUM)
+  active           Boolean                 @default(true)
+  notes            String?
+
+  defaultAssignees RecurringTaskAssignee[]
+  instances        RecurringTaskInstance[]
+
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([active])
+  @@index([recurrence])
+}
+
+model RecurringTaskAssignee {
+  id       String        @id @default(cuid())
+  taskId   String
+  task     RecurringTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  personId String
+  person   Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, personId])
+  @@index([taskId])
+}
+
+model RecurringTaskInstance {
+  id            String              @id @default(cuid())
+  taskId        String
+  task          RecurringTask       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  scheduledFor  DateTime
+  status        RecurringTaskStatus @default(PENDING)
+  notes         String?
+  completedAt   DateTime?
+  completedById String?
+  completedBy   User?               @relation("TaskInstanceCompleter", fields: [completedById], references: [id])
+
+  // Opcional: vincular a una Producción para tracking completo
+  productionId  String?             @unique
+  production    Production?         @relation("TaskInstanceProduction", fields: [productionId], references: [id])
+
+  createdAt     DateTime            @default(now())
+
+  @@unique([taskId, scheduledFor])
+  @@index([scheduledFor])
+  @@index([status])
+  @@index([taskId])
 }

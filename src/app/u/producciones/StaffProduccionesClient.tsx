@@ -1,49 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-
-/* ── Types (shared with admin) ── */
-type ProductionType = "VIDEO_REEL"|"VIDEO_TIKTOK"|"VIDEO_PROMO"|"VIDEO_RECAP"|"PHOTO_SESSION"|"PHOTO_PRODUCT"|"PHOTO_STAFF"|"DESIGN_GRAPHIC"|"OTHER";
-type ProductionStatus = "IDEA"|"BRIEFED"|"SCHEDULED"|"IN_PRODUCTION"|"IN_EDITING"|"IN_REVIEW"|"APPROVED"|"PUBLISHED"|"CANCELLED";
-type ProductionPriority = "LOW"|"MEDIUM"|"HIGH"|"URGENT";
-
-interface PersonRef { id: string; name: string; area: string | null }
-interface AssigneeRef { id: string; personId: string; person: PersonRef }
-interface Production {
-  id: string; title: string; type: ProductionType; status: ProductionStatus; priority: ProductionPriority;
-  objective?: string|null; context?: string|null; message?: string|null;
-  deadline?: string|null; scheduledDate?: string|null; completedAt?: string|null;
-  publishedAt?: string|null; publishUrl?: string|null;
-  assignedTo?: AssigneeRef[];
-  requestedBy?: { id: string; username: string; person?: { name: string } | null } | null;
-  tags?: string|null; createdAt: string;
-  _count?: { comments: number; links: number };
-}
-
-const TYPE_LABELS: Record<ProductionType, string> = {
-  VIDEO_REEL: "Reel", VIDEO_TIKTOK: "TikTok", VIDEO_PROMO: "Video Promo",
-  VIDEO_RECAP: "Recap", PHOTO_SESSION: "Fotos", PHOTO_PRODUCT: "Foto Producto",
-  PHOTO_STAFF: "Foto Personal", DESIGN_GRAPHIC: "Diseño", OTHER: "Otro",
-};
-const STATUS_LABELS: Record<ProductionStatus, string> = {
-  IDEA: "Idea", BRIEFED: "Con Brief", SCHEDULED: "Agendado", IN_PRODUCTION: "En Producción",
-  IN_EDITING: "En Edición", IN_REVIEW: "En Revisión", APPROVED: "Aprobado", PUBLISHED: "Publicado", CANCELLED: "Cancelado",
-};
-const PRIORITY_LABELS: Record<ProductionPriority, string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta", URGENT: "Urgente" };
-const PRIORITY_COLORS: Record<ProductionPriority, string> = {
-  LOW: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
-  MEDIUM: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  HIGH: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-  URGENT: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-};
-const STATUS_DOT: Record<ProductionStatus, string> = {
-  IDEA: "bg-gray-400", BRIEFED: "bg-indigo-400", SCHEDULED: "bg-cyan-400",
-  IN_PRODUCTION: "bg-yellow-500", IN_EDITING: "bg-purple-500", IN_REVIEW: "bg-amber-500",
-  APPROVED: "bg-green-500", PUBLISHED: "bg-emerald-600", CANCELLED: "bg-red-500",
-};
-
-const PLATFORMS = ["Instagram", "TikTok", "YouTube", "Facebook", "Web", "WhatsApp"];
+import {
+  PersonRef, AssigneeRef, Production, ProductionType, ProductionStatus, ProductionPriority,
+  TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, STATUS_DOT, PLATFORMS, STATUS_FLOW,
+} from "@/features/producciones/shared";
 
 interface Props {
   userId: string;
@@ -57,7 +19,7 @@ interface Props {
 export default function StaffProduccionesClient({ userId, userRole, personId, personName, isStaffPlus, persons }: Props) {
   const [productions, setProductions] = useState<Production[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"mine" | "all">("mine");
+  const [tab, setTab] = useState<"pending" | "completed">("pending");
   const [showForm, setShowForm] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<ProductionStatus | "">("");
@@ -76,8 +38,11 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
 
   useEffect(() => { load(); }, [load]);
 
+  const DONE_STATUSES = ["APPROVED", "PUBLISHED", "CANCELLED"];
   const mine = productions.filter(p => p.assignedTo?.some(a => a.person.id === personId) || p.requestedBy?.id === userId);
-  const base = tab === "mine" ? mine : productions;
+  const base = tab === "pending"
+    ? mine.filter(p => !DONE_STATUSES.includes(p.status))
+    : mine.filter(p => DONE_STATUSES.includes(p.status));
 
   // Apply filters
   const visible = base.filter(p => {
@@ -92,8 +57,8 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
   const clearFilters = () => { setFilterStatus(""); setFilterType(""); setFilterPriority(""); setSearch(""); };
 
   // Counts for badges
-  const myPending = mine.filter(p => !["APPROVED", "PUBLISHED", "CANCELLED"].includes(p.status)).length;
-  const allPending = productions.filter(p => !["APPROVED", "PUBLISHED", "CANCELLED"].includes(p.status)).length;
+  const pendingCount = mine.filter(p => !DONE_STATUSES.includes(p.status)).length;
+  const completedCount = mine.filter(p => DONE_STATUSES.includes(p.status)).length;
 
   if (selectedId) {
     return (
@@ -120,7 +85,7 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -129,23 +94,17 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
             Solicitudes, seguimiento y entregables
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition whitespace-nowrap"
-        >
-          + Nueva
-        </button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-        <button onClick={() => setTab("mine")}
-          className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${tab === "mine" ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
-          Mis producciones {myPending > 0 && <span className="ml-1.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">{myPending}</span>}
+        <button onClick={() => setTab("pending")}
+          className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${tab === "pending" ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
+          Pendiente {pendingCount > 0 && <span className="ml-1.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">{pendingCount}</span>}
         </button>
-        <button onClick={() => setTab("all")}
-          className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${tab === "all" ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
-          Todas {allPending > 0 && <span className="ml-1.5 bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">{allPending}</span>}
+        <button onClick={() => setTab("completed")}
+          className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition ${tab === "completed" ? "bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
+          Completadas {completedCount > 0 && <span className="ml-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">{completedCount}</span>}
         </button>
       </div>
 
@@ -185,11 +144,8 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
         <div className="text-center py-12 space-y-2">
           <div className="text-4xl">🎬</div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {tab === "mine" ? "No tienes producciones asignadas o solicitadas" : "No hay producciones registradas aún"}
+            {tab === "pending" ? "No tienes producciones activas" : "No tienes producciones completadas"}
           </p>
-          <button onClick={() => setShowForm(true)} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-            Crear primera solicitud →
-          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -242,6 +198,7 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
   persons: PersonRef[]; isStaffPlus: boolean; onClose: () => void; onSaved: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ProductionType>("VIDEO_REEL");
   const [priority, setPriority] = useState<ProductionPriority>("MEDIUM");
@@ -262,7 +219,8 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return alert("El título es obligatorio");
+    if (!title.trim()) { setSubmitError("El título es obligatorio"); return; }
+    setSubmitError(null);
     setLoading(true);
     try {
       const res = await fetch("/api/admin/producciones", {
@@ -275,8 +233,8 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
         }),
       });
       const json = await res.json();
-      if (json.ok) onSaved(); else alert(json.message || "Error al crear");
-    } catch { alert("Error de red"); }
+      if (json.ok) onSaved(); else setSubmitError(json.message || "Error al crear");
+    } catch { setSubmitError("Error de conexión"); }
     setLoading(false);
   };
 
@@ -437,6 +395,11 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
           </div>
         </section>
 
+        {submitError && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+            {submitError}
+          </div>
+        )}
         <div className="flex gap-3 justify-end">
           <button type="button" onClick={onClose}
             className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm transition">
@@ -458,6 +421,9 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
 }) {
   const [prod, setProd] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [advancing, setAdvancing] = useState(false);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
@@ -465,25 +431,25 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
   const [linkType, setLinkType] = useState("DELIVERABLE");
   const [sendingLink, setSendingLink] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/producciones/${productionId}`);
       const json = await res.json();
       if (json.ok) setProd(json.production);
     } catch { /* ignore */ }
     setLoading(false);
-  };
+  }, [productionId]);
 
-  useEffect(() => { load(); }, [productionId]);
+  useEffect(() => { load(); }, [load]);
 
-  const STATUS_FLOW: ProductionStatus[] = ["IDEA","BRIEFED","SCHEDULED","IN_PRODUCTION","IN_EDITING","IN_REVIEW","APPROVED","PUBLISHED"];
+  const STATUS_FLOW_LOCAL: ProductionStatus[] = ["IDEA","BRIEFED","SCHEDULED","IN_PRODUCTION","IN_EDITING","IN_REVIEW","APPROVED","PUBLISHED"];
 
   // Staff can't approve or publish — those require admin/coordinator
   const nextStatus = (): ProductionStatus | null => {
     if (!prod) return null;
-    const idx = STATUS_FLOW.indexOf(prod.status as ProductionStatus);
-    if (idx < 0 || idx >= STATUS_FLOW.length - 1) return null;
-    const next = STATUS_FLOW[idx + 1];
+    const idx = STATUS_FLOW_LOCAL.indexOf(prod.status as ProductionStatus);
+    if (idx < 0 || idx >= STATUS_FLOW_LOCAL.length - 1) return null;
+    const next = STATUS_FLOW_LOCAL[idx + 1];
     // STAFF can't approve or publish
     if (!isStaffPlus && (next === "APPROVED" || next === "PUBLISHED")) return null;
     return next;
@@ -492,12 +458,17 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
   const advanceStatus = async () => {
     const next = nextStatus();
     if (!next) return;
-    const res = await fetch(`/api/admin/producciones/${productionId}`, {
-      method: "PATCH", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: next }),
-    });
-    const json = await res.json();
-    if (!json.ok) alert(json.message || "No se pudo cambiar el estado");
+    setAdvancing(true);
+    setAdvanceError(null);
+    try {
+      const res = await fetch(`/api/admin/producciones/${productionId}`, {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: next }),
+      });
+      const json = await res.json();
+      if (!json.ok) setAdvanceError(json.message || "No se pudo cambiar el estado");
+    } catch { setAdvanceError("Error de conexión"); }
+    setAdvancing(false);
     await load();
   };
 
@@ -518,16 +489,18 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
   const addLink = async () => {
     if (!linkLabel.trim() || !linkUrl.trim()) return;
     setSendingLink(true);
+    setLinkError(null);
     try {
       const res = await fetch(`/api/admin/producciones/${productionId}/links`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ label: linkLabel.trim(), url: linkUrl.trim(), type: linkType }),
       });
       const json = await res.json();
-      if (json.ok) { setLinkLabel(""); setLinkUrl(""); await load(); }
-      else alert(json.message || "Error");
-    } catch { /* ignore */ }
+      if (json.ok) { setLinkLabel(""); setLinkUrl(""); }
+      else setLinkError(json.message || "Error al agregar link");
+    } catch { setLinkError("Error de conexión"); }
     setSendingLink(false);
+    await load();
   };
 
   const removeLink = async (linkId: string) => {
@@ -539,7 +512,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!prod) return <div className="p-6 text-center text-slate-500">Producción no encontrada</div>;
 
-  const currentIdx = STATUS_FLOW.indexOf(prod.status as ProductionStatus);
+  const currentIdx = STATUS_FLOW_LOCAL.indexOf(prod.status as ProductionStatus);
   const next = nextStatus();
   const isAssignedToMe = prod.assignedTo?.some((a: AssigneeRef) => a.person?.id === personId || a.personId === personId);
   const isMyRequest = prod.requestedById === userId;
@@ -568,17 +541,18 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
           </div>
         </div>
         {canChangeStatus && (
-          <button onClick={advanceStatus}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition whitespace-nowrap">
-            → {STATUS_LABELS[next!]}
+          <button onClick={advanceStatus} disabled={advancing}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-60 transition whitespace-nowrap">
+            {advancing ? "Avanzando..." : `→ ${STATUS_LABELS[next!]}`}
           </button>
         )}
       </div>
+      {advanceError && <p className="text-xs text-red-600 dark:text-red-400 mt-1 px-1">{advanceError}</p>}
 
       {/* Status Timeline */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 overflow-x-auto">
         <div className="flex items-center gap-1">
-          {STATUS_FLOW.map((s, i) => {
+          {STATUS_FLOW_LOCAL.map((s, i) => {
             const isCurrent = prod.status === s;
             const isPast = currentIdx >= 0 && i < currentIdx;
             return (
@@ -614,7 +588,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
         <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Detalles</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Solicitado por</p><p className="text-slate-800 dark:text-slate-200">{prod.requestedBy?.person?.name || prod.requestedBy?.username || "—"}</p></div>
-          <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Asignado a</p><p className="text-slate-800 dark:text-slate-200">{prod.assignedTo?.name || "Sin asignar"}</p></div>
+          <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Asignado a</p><p className="text-slate-800 dark:text-slate-200">{prod.assignedTo?.length ? prod.assignedTo.map((a: AssigneeRef) => a.person.name).join(", ") : "Sin asignar"}</p></div>
           {prod.platform && <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Plataforma</p><p className="text-slate-800 dark:text-slate-200">{prod.platform}</p></div>}
           {prod.format && <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Formato</p><p className="text-slate-800 dark:text-slate-200">{prod.format}</p></div>}
           {prod.duration && <div><p className="text-[11px] text-slate-500 dark:text-slate-400">Duración</p><p className="text-slate-800 dark:text-slate-200">{prod.duration}</p></div>}
@@ -668,6 +642,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
             + Link
           </button>
         </div>
+        {linkError && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{linkError}</p>}
       </section>
 
       {/* Comments */}

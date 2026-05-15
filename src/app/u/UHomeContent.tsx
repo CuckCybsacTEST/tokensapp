@@ -23,6 +23,7 @@ type PageProps = {
 
 export default function UHomeContent({ session, isStaff, hasCartaAccess, lastType, personName, commitmentAcceptedVersion, hasDefaultPassword = false, userArea }: PageProps) {
   const isCoordinator = ['COORDINATOR', 'ADMIN'].includes(session.role);
+  const isMultimedia = userArea === 'Multimedia';
   const hasReusableTokensAccess = isCoordinator || (isStaff && (userArea === 'Animación' || userArea === 'Multimedia'));
   const [activeTab, setActiveTab] = useState<'today' | 'personal' | 'work' | 'cumpleanos' | 'novedades'>('today');
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
@@ -298,6 +299,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver jornada →</div>
               </Link>
 
+              {!isMultimedia && (
               <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">
                   <IconListCheck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
@@ -306,6 +308,7 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Revisa tus tareas del día, marca las completadas y sigue tu progreso.</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm ml-8 sm:ml-9">Ver mis tareas →</div>
               </Link>
+              )}
             </div>
           )}
 
@@ -353,6 +356,16 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Escanea invitaciones y otros códigos operativos. (No registra entrada/salida).</p>
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-teal-600 dark:text-teal-400 text-sm ml-8 sm:ml-9">Abrir escáner →</div>
               </Link>
+              {isMultimedia && isStaff && (
+                <Link href="/u/producciones" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
+                  <div className="flex items-center gap-3 mb-2">
+                    <IconVideo className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
+                    <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Producción Multimedia</div>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Solicitudes, seguimiento de tareas e ideas del equipo multimedia.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Ver producciones →</div>
+                </Link>
+              )}
               {isCoordinator && (
                 <Link href="/u/equipo" className="block rounded-lg border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-slate-50 p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-indigo-700/60 dark:from-indigo-900/20 dark:to-slate-800">
                   <div className="flex items-center gap-3 mb-2">
@@ -423,13 +436,13 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-orange-600 dark:text-orange-400 text-sm ml-8 sm:ml-9">Gestionar carta →</div>
                 </Link>
               )}
-              {isStaff && (
+              {isStaff && !isMultimedia && (
                 <Link href="/u/producciones" className="block rounded-lg border border-pink-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-pink-800/60 dark:bg-slate-800">
                   <div className="flex items-center gap-3 mb-2">
                     <IconVideo className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600 dark:text-pink-400 flex-shrink-0" />
                     <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">Producción Multimedia</div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Solicita, consulta y da seguimiento a reels, videos, fotos y diseños.</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 ml-8 sm:ml-9">Solicitudes, seguimiento de tareas e ideas del equipo multimedia.</p>
                   <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-pink-600 dark:text-pink-400 text-sm ml-8 sm:ml-9">Ver producciones →</div>
                 </Link>
               )}
