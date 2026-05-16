@@ -1278,13 +1278,20 @@ export default function TriviaClient({
                     div[contenteditable] ul {
                       padding-left: 1.5rem;
                       margin: 0.5rem 0;
+                      list-style-type: disc;
                     }
                     div[contenteditable] ol {
                       padding-left: 1.5rem;
                       margin: 0.5rem 0;
+                      list-style-type: decimal;
                     }
                     div[contenteditable] li {
                       margin: 0.25rem 0;
+                      display: list-item;
+                    }
+                    div[contenteditable] a {
+                      color: #3b82f6;
+                      text-decoration: underline;
                     }
                     div[contenteditable] p {
                       margin: 0.5rem 0;
@@ -1559,13 +1566,20 @@ export default function TriviaClient({
                     div[contenteditable] ul {
                       padding-left: 1.5rem;
                       margin: 0.5rem 0;
+                      list-style-type: disc;
                     }
                     div[contenteditable] ol {
                       padding-left: 1.5rem;
                       margin: 0.5rem 0;
+                      list-style-type: decimal;
                     }
                     div[contenteditable] li {
                       margin: 0.25rem 0;
+                      display: list-item;
+                    }
+                    div[contenteditable] a {
+                      color: #3b82f6;
+                      text-decoration: underline;
                     }
                   `}</style>
                   <p className="text-[10px] text-gray-500 mt-1 italic">Este texto se mostrará en el primer paso del compromiso del colaborador.</p>

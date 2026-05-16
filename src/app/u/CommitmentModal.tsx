@@ -207,6 +207,9 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     container.querySelectorAll('a').forEach((a) => {
       a.setAttribute('target', '_blank');
       a.setAttribute('rel', 'noopener noreferrer');
+      (a as HTMLAnchorElement).style.color = '#3b82f6';
+      (a as HTMLAnchorElement).style.textDecoration = 'underline';
+      (a as HTMLAnchorElement).style.fontWeight = '500';
     });
   }, [step, dynamicContent]);
 
