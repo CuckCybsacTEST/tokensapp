@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   PersonRef, Production, ProductionType, ProductionPriority, ProductionStatus,
   TYPE_LABELS, PRIORITY_LABELS, STATUS_LABELS, PLATFORMS,
+  FORMATS, ASPECT_RATIOS, DURATION_UNITS, DurationUnit,
 } from "@/features/producciones/shared";
 
 interface Props {
@@ -28,8 +29,10 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
   const [references, setReferences] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [platform, setPlatform] = useState("");
-  const [format, setFormat] = useState("");
-  const [duration, setDuration] = useState("");
+  const [formatType, setFormatType] = useState("");
+  const [aspectRatio, setAspectRatio] = useState("");
+  const [durationValue, setDurationValue] = useState<number>(0);
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>("segundos");
   const [deliverables, setDeliverables] = useState("");
   const [deadline, setDeadline] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -49,7 +52,15 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
           setTitle(p.title); setType(p.type); setPriority(p.priority); setStatus(p.status);
           setObjective(p.objective || ""); setContext(p.context || ""); setMessage(p.message || "");
           setReferences(p.references || ""); setTargetAudience(p.targetAudience || "");
-          setPlatform(p.platform || ""); setFormat(p.format || ""); setDuration(p.duration || "");
+          setPlatform(p.platform || "");
+          // Parse stored format ("Stories · 9:16" or legacy free text)
+          const rawFormat = p.format || "";
+          const fparts = rawFormat.split(" · ");
+          setFormatType(FORMATS.includes(fparts[0]) ? fparts[0] : (FORMATS.includes(rawFormat) ? rawFormat : ""));
+          setAspectRatio(fparts.length > 1 && ASPECT_RATIOS.includes(fparts[1]) ? fparts[1] : (ASPECT_RATIOS.includes(rawFormat) ? rawFormat : ""));
+          // Parse stored duration ("Máx. 30 segundos" or legacy free text)
+          const dm = (p.duration || "").match(/^Máx\. (\d+) (segundos|minutos|horas)$/);
+          if (dm) { setDurationValue(parseInt(dm[1])); setDurationUnit(dm[2] as DurationUnit); }
           setDeliverables(p.deliverables || ""); setNotes(p.notes || ""); setTags(p.tags || "");
           setPublishUrl(p.publishUrl || "");
           setDeadline(p.deadline ? p.deadline.slice(0, 10) : "");
@@ -67,9 +78,12 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
     setSubmitError(null);
     setLoading(true);
 
+    const formatStr = [formatType, aspectRatio].filter(Boolean).join(" · ") || null;
+    const durationStr = durationValue > 0 ? `Máx. ${durationValue} ${durationUnit}` : null;
+
     const body = {
       title: title.trim(), type, priority, status, objective, context, message, references,
-      targetAudience, platform, format, duration, deliverables,
+      targetAudience, platform, format: formatStr, duration: durationStr, deliverables,
       deadline: deadline || null, scheduledDate: scheduledDate || null,
       assignedToIds, notes, tags, publishUrl,
     };
@@ -174,43 +188,99 @@ export function ProductionForm({ persons, editingId, onClose, onSaved }: Props) 
         {/* Formato y Specs */}
         <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
           <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Formato y Especificaciones</h2>
+
+          {/* Plataformas */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plataforma(s)</label>
+            <div className="flex flex-wrap gap-2">
+              {PLATFORMS.map(pl => {
+                const selected = platform.split(",").map(s => s.trim()).filter(Boolean).includes(pl);
+                return (
+                  <button key={pl} type="button"
+                    onClick={() => {
+                      const current = platform.split(",").map(s => s.trim()).filter(Boolean);
+                      setPlatform(selected ? current.filter(x => x !== pl).join(",") : [...current, pl].join(","));
+                    }}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition ${selected ? "bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300" : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500"}`}>
+                    {pl}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Formato + Relación de aspecto */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plataforma(s)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Formato</label>
               <div className="flex flex-wrap gap-2">
-                {PLATFORMS.map(pl => {
-                  const selected = platform.split(",").map(s => s.trim()).filter(Boolean).includes(pl);
-                  return (
-                    <button key={pl} type="button"
-                      onClick={() => {
-                        const current = platform.split(",").map(s => s.trim()).filter(Boolean);
-                        setPlatform(selected ? current.filter(x => x !== pl).join(",") : [...current, pl].join(","));
-                      }}
-                      className={`text-xs px-2.5 py-1 rounded-full border transition ${selected ? "bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300" : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400"}`}>
-                      {pl}
-                    </button>
-                  );
-                })}
+                {FORMATS.map(f => (
+                  <button key={f} type="button" onClick={() => setFormatType(formatType === f ? "" : f)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                      formatType === f
+                        ? "bg-indigo-100 dark:bg-indigo-900 border-indigo-300 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300"
+                        : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500"
+                    }`}>
+                    {f}
+                  </button>
+                ))}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formato</label>
-              <input value={format} onChange={e => setFormat(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
-                placeholder="Ej: Vertical 9:16, Horizontal 16:9, Cuadrado" />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Relación de aspecto</label>
+              <div className="flex flex-wrap gap-2">
+                {ASPECT_RATIOS.map(ar => (
+                  <button key={ar} type="button" onClick={() => setAspectRatio(aspectRatio === ar ? "" : ar)}
+                    className={`text-xs px-2.5 py-1 rounded-full border font-mono transition ${
+                      aspectRatio === ar
+                        ? "bg-violet-100 dark:bg-violet-900 border-violet-300 dark:border-violet-600 text-violet-700 dark:text-violet-300"
+                        : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500"
+                    }`}>
+                    {ar}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duración</label>
-              <input value={duration} onChange={e => setDuration(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
-                placeholder="Ej: 15s, 30s, 60s, 3min" />
+          </div>
+
+          {/* Duración máxima */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Duración máxima</label>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Máx.</span>
+              <input
+                type="number" min={1} max={9999}
+                value={durationValue || ""}
+                onChange={e => setDurationValue(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-24 border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+                placeholder="0"
+              />
+              <div className="flex gap-1">
+                {DURATION_UNITS.map(u => (
+                  <button key={u} type="button" onClick={() => setDurationUnit(u)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition ${
+                      durationUnit === u
+                        ? "bg-teal-100 dark:bg-teal-900 border-teal-300 dark:border-teal-600 text-teal-700 dark:text-teal-300"
+                        : "border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500"
+                    }`}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+              {durationValue > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  → &quot;Máx. {durationValue} {durationUnit}&quot;
+                </span>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entregables esperados</label>
-              <input value={deliverables} onChange={e => setDeliverables(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
-                placeholder="Ej: 1 reel editado + 3 stories + fotos raw" />
-            </div>
+          </div>
+
+          {/* Entregables */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entregables esperados</label>
+            <input value={deliverables} onChange={e => setDeliverables(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 dark:border-gray-600 dark:text-gray-100"
+              placeholder="Ej: 1 reel editado + 3 stories + fotos raw" />
           </div>
         </section>
 

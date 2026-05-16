@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   PersonRef, AssigneeRef, Production, ProductionType, ProductionStatus, ProductionPriority,
   TYPE_LABELS, STATUS_LABELS, PRIORITY_LABELS, PRIORITY_COLORS, STATUS_DOT, PLATFORMS, STATUS_FLOW,
+  STATUS_ADVANCE_ROLE,
 } from "@/features/producciones/shared";
 
 interface Props {
@@ -65,6 +66,7 @@ export default function StaffProduccionesClient({ userId, userRole, personId, pe
       <StaffDetailView
         productionId={selectedId}
         userId={userId}
+        userRole={userRole}
         personId={personId}
         isStaffPlus={isStaffPlus}
         persons={persons}
@@ -416,8 +418,8 @@ function StaffCreateForm({ persons, isStaffPlus, onClose, onSaved }: {
 }
 
 /* ── Staff Detail View ── */
-function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons, onBack }: {
-  productionId: string; userId: string; personId: string; isStaffPlus: boolean; persons: PersonRef[]; onBack: () => void;
+function StaffDetailView({ productionId, userId, userRole, personId, isStaffPlus, persons, onBack }: {
+  productionId: string; userId: string; userRole: string; personId: string; isStaffPlus: boolean; persons: PersonRef[]; onBack: () => void;
 }) {
   const [prod, setProd] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -442,17 +444,17 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
 
   useEffect(() => { load(); }, [load]);
 
-  const STATUS_FLOW_LOCAL: ProductionStatus[] = ["IDEA","BRIEFED","SCHEDULED","IN_PRODUCTION","IN_EDITING","IN_REVIEW","APPROVED","PUBLISHED"];
+  const isAdmin = userRole === "ADMIN" || userRole === "COORDINATOR";
 
-  // Staff can't approve or publish — those require admin/coordinator
+  // Returns the next status the current user is allowed to advance to, or null
   const nextStatus = (): ProductionStatus | null => {
     if (!prod) return null;
-    const idx = STATUS_FLOW_LOCAL.indexOf(prod.status as ProductionStatus);
-    if (idx < 0 || idx >= STATUS_FLOW_LOCAL.length - 1) return null;
-    const next = STATUS_FLOW_LOCAL[idx + 1];
-    // STAFF can't approve or publish
-    if (!isStaffPlus && (next === "APPROVED" || next === "PUBLISHED")) return null;
-    return next;
+    const idx = STATUS_FLOW.indexOf(prod.status as ProductionStatus);
+    if (idx < 0 || idx >= STATUS_FLOW.length - 1) return null;
+    const requiredRole = STATUS_ADVANCE_ROLE[prod.status as ProductionStatus];
+    if (!requiredRole) return null; // status not advanceable (e.g. PUBLISHED)
+    if (requiredRole === "admin" && !isAdmin) return null;
+    return STATUS_FLOW[idx + 1];
   };
 
   const advanceStatus = async () => {
@@ -512,7 +514,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
   if (loading) return <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!prod) return <div className="p-6 text-center text-slate-500">Producción no encontrada</div>;
 
-  const currentIdx = STATUS_FLOW_LOCAL.indexOf(prod.status as ProductionStatus);
+  const currentIdx = STATUS_FLOW.indexOf(prod.status as ProductionStatus);
   const next = nextStatus();
   const isAssignedToMe = prod.assignedTo?.some((a: AssigneeRef) => a.person?.id === personId || a.personId === personId);
   const isMyRequest = prod.requestedById === userId;
@@ -552,7 +554,7 @@ function StaffDetailView({ productionId, userId, personId, isStaffPlus, persons,
       {/* Status Timeline */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 overflow-x-auto">
         <div className="flex items-center gap-1">
-          {STATUS_FLOW_LOCAL.map((s, i) => {
+          {STATUS_FLOW.map((s, i) => {
             const isCurrent = prod.status === s;
             const isPast = currentIdx >= 0 && i < currentIdx;
             return (

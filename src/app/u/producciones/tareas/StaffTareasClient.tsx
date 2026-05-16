@@ -65,6 +65,11 @@ function addDays(d: Date, n: number): Date {
 function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
+// Parsea un ISO string de fecha como fecha local evitando desfase UTC (ej: UTC-5 Perú)
+function parseLocalDate(isoString: string): Date {
+  const [y, m, d] = isoString.split("T")[0].split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 function fmtShort(d: Date) {
   return d.toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short" });
 }
@@ -117,7 +122,7 @@ export function StaffTareasClient({ userId: _userId, userRole: _userRole }: Prop
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const activeDays = weekDays.filter(day =>
-    instances.some(inst => isSameDay(new Date(inst.scheduledFor), day))
+    instances.some(inst => isSameDay(parseLocalDate(inst.scheduledFor), day))
   );
 
   return (
@@ -170,7 +175,7 @@ export function StaffTareasClient({ userId: _userId, userRole: _userRole }: Prop
         <div className="space-y-4">
           {activeDays.map((day) => {
             const isToday = isSameDay(day, new Date());
-            const dayInstances = instances.filter(inst => isSameDay(new Date(inst.scheduledFor), day));
+            const dayInstances = instances.filter(inst => isSameDay(parseLocalDate(inst.scheduledFor), day));
             return (
               <div key={day.toISOString()} className={`rounded-xl border-2 overflow-hidden ${
                 isToday
@@ -268,7 +273,7 @@ function InstanceDetail({ instance, onBack, onUpdateStatus }: {
   };
 
   const task = instance.task;
-  const scheduledDate = new Date(instance.scheduledFor);
+  const scheduledDate = parseLocalDate(instance.scheduledFor);
 
   return (
     <div className="space-y-4">

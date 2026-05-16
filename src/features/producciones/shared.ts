@@ -168,6 +168,22 @@ export const STATUS_FLOW: ProductionStatus[] = [
   "IN_EDITING", "IN_REVIEW", "APPROVED", "PUBLISHED",
 ];
 
+/**
+ * Role required to advance a production from each status to the next in STATUS_FLOW.
+ * - "admin"  → only ADMIN or COORDINATOR can make this transition
+ * - "staff"  → any staff member can make this transition (admins included)
+ * Statuses absent from this map (PUBLISHED, CANCELLED) cannot be advanced further.
+ */
+export const STATUS_ADVANCE_ROLE: Partial<Record<ProductionStatus, "admin" | "staff">> = {
+  IDEA:          "admin",  // → BRIEFED
+  BRIEFED:       "admin",  // → SCHEDULED
+  SCHEDULED:     "staff",  // → IN_PRODUCTION
+  IN_PRODUCTION: "staff",  // → IN_EDITING
+  IN_EDITING:    "staff",  // → IN_REVIEW
+  IN_REVIEW:     "admin",  // → APPROVED
+  APPROVED:      "staff",  // → PUBLISHED (admin and staff)
+};
+
 /** Columns shown in the Kanban board */
 export const KANBAN_COLUMNS: ProductionStatus[] = [
   "IDEA", "BRIEFED", "SCHEDULED", "IN_PRODUCTION",
@@ -177,3 +193,10 @@ export const KANBAN_COLUMNS: ProductionStatus[] = [
 // ── Misc constants ──────────────────────────────────────────────────────────
 
 export const PLATFORMS = ["Instagram", "TikTok", "YouTube", "Facebook", "Web", "WhatsApp"];
+
+export const FORMATS = ["Stories", "Reels", "Feed", "Carrusel", "Short", "Video largo", "Live", "Miniatura", "Banner", "Flyer"];
+
+export const ASPECT_RATIOS = ["9:16", "16:9", "1:1", "4:5", "4:3", "3:4", "21:9", "2:3"];
+
+export const DURATION_UNITS = ["segundos", "minutos", "horas"] as const;
+export type DurationUnit = typeof DURATION_UNITS[number];

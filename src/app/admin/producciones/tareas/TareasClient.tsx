@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { FORMATS, ASPECT_RATIOS } from "@/features/producciones/shared";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -59,8 +60,6 @@ const PLATFORM_ICONS: Record<string, string> = {
   Instagram: "📸", TikTok: "🎵", Facebook: "👥", YouTube: "▶️",
   WhatsApp: "💬", "X (Twitter)": "🐦", LinkedIn: "💼", Pinterest: "📌",
 };
-const FORMATS = ["Stories", "Reels", "Feed", "Carrusel", "Short", "Video largo", "Live", "Miniatura", "Banner", "Flyer"];
-const ASPECT_RATIOS = ["9:16", "16:9", "1:1", "4:5", "4:3", "3:4", "21:9", "2:3"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -76,6 +75,11 @@ function addDays(d: Date, n: number): Date {
 }
 function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+// Parsea un ISO string de fecha como fecha local evitando desfase UTC (ej: UTC-5 Perú)
+function parseLocalDate(isoString: string): Date {
+  const [y, m, d] = isoString.split("T")[0].split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 function fmtShort(d: Date) { return d.toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short" }); }
 
@@ -239,7 +243,7 @@ export function TareasClient({ userId: _userId, userRole }: Props) {
             <div className="grid grid-cols-7 gap-2">
               {weekDays.map((day, idx) => {
                 const isToday = isSameDay(day, new Date());
-                const dayInstances = instances.filter(inst => isSameDay(new Date(inst.scheduledFor), day));
+                const dayInstances = instances.filter(inst => isSameDay(parseLocalDate(inst.scheduledFor), day));
                 return (
                   <div key={idx} className={`min-h-32 rounded-xl border-2 p-2 ${
                     isToday ? "border-indigo-400 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
@@ -389,7 +393,7 @@ function InstanceDetail({ instance, onBack, onUpdateStatus }: {
   };
 
   const task = instance.task;
-  const scheduledDate = new Date(instance.scheduledFor);
+  const scheduledDate = parseLocalDate(instance.scheduledFor);
 
   return (
     <div className="min-h-screen p-4 md:p-6 max-w-2xl mx-auto">
