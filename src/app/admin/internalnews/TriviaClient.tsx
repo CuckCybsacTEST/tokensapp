@@ -218,6 +218,10 @@ export default function TriviaClient({
   // Emoji picker state
   const [showEmojiPicker, setShowEmojiPicker] = useState<'create' | 'edit' | null>(null);
   const emojiPickerRef = React.useRef<HTMLDivElement>(null);
+  // Link popover state
+  const [showLinkPopover, setShowLinkPopover] = useState<'create' | 'edit' | null>(null);
+  const [linkInputValue, setLinkInputValue] = useState('');
+  const linkPopoverRef = React.useRef<HTMLDivElement>(null);
 
   const EMOJI_CATEGORIES: Record<string, string[]> = {
     'Caras': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐'],
@@ -269,6 +273,27 @@ export default function TriviaClient({
     setShowEmojiPicker(null);
   };
 
+  // Helper: insert a link at the saved selection, always opening in new tab
+  const insertLink = (editorRef: React.RefObject<HTMLDivElement | null>) => {
+    const url = linkInputValue.trim();
+    if (!url) return;
+    const fullUrl = /^https?:\/\/|^\/\//.test(url) ? url : `https://${url}`;
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    restoreSelection();
+    document.execCommand('createLink', false, fullUrl);
+    // Force all links to open in new tab
+    el.querySelectorAll('a').forEach((a) => {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+    saveSelection();
+    updateQuestionSetForm('regulationContent', el.innerHTML);
+    setShowLinkPopover(null);
+    setLinkInputValue('');
+  };
+
   // Close emoji picker on outside click
   React.useEffect(() => {
     if (!showEmojiPicker) return;
@@ -280,6 +305,19 @@ export default function TriviaClient({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker]);
+
+  // Close link popover on outside click
+  React.useEffect(() => {
+    if (!showLinkPopover) return;
+    const handler = (e: MouseEvent) => {
+      if (linkPopoverRef.current && !linkPopoverRef.current.contains(e.target as Node)) {
+        setShowLinkPopover(null);
+        setLinkInputValue('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showLinkPopover]);
 
   // Set initial content ONLY when modal first opens
   const createModalInitialized = React.useRef(false);
@@ -1173,6 +1211,49 @@ export default function TriviaClient({
                         </div>
                       )}
                     </div>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    {/* Enlace */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { saveSelection(); setLinkInputValue(''); setShowLinkPopover(showLinkPopover === 'create' ? null : 'create'); }}
+                        className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                        title="Insertar enlace"
+                      >
+                        🔗
+                      </button>
+                      {showLinkPopover === 'create' && (
+                        <div ref={linkPopoverRef} className="absolute left-0 top-full mt-1 z-[60] w-64 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-xl p-3">
+                          <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 mb-2">Insertar enlace</p>
+                          <input
+                            type="url"
+                            value={linkInputValue}
+                            onChange={(e) => setLinkInputValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); insertLink(regulationContentRef); } }}
+                            placeholder="https://..."
+                            className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-slate-500 rounded bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => insertLink(regulationContentRef)}
+                              className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              Insertar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowLinkPopover(null); setLinkInputValue(''); }}
+                              className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-200 dark:hover:bg-slate-500"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div
@@ -1408,6 +1489,49 @@ export default function TriviaClient({
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-px h-6 bg-gray-300 dark:bg-slate-500 mx-1"></div>
+                    {/* Enlace */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { saveSelection(); setLinkInputValue(''); setShowLinkPopover(showLinkPopover === 'edit' ? null : 'edit'); }}
+                        className="px-2 py-1 text-xs bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded hover:bg-gray-100 dark:hover:bg-slate-500"
+                        title="Insertar enlace"
+                      >
+                        🔗
+                      </button>
+                      {showLinkPopover === 'edit' && (
+                        <div ref={linkPopoverRef} className="absolute left-0 top-full mt-1 z-[60] w-64 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-xl p-3">
+                          <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 mb-2">Insertar enlace</p>
+                          <input
+                            type="url"
+                            value={linkInputValue}
+                            onChange={(e) => setLinkInputValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); insertLink(editRegulationContentRef); } }}
+                            placeholder="https://..."
+                            className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-slate-500 rounded bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => insertLink(editRegulationContentRef)}
+                              className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              Insertar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowLinkPopover(null); setLinkInputValue(''); }}
+                              className="flex-1 px-2 py-1 text-xs bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-300 rounded hover:bg-gray-200 dark:hover:bg-slate-500"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -228,7 +228,7 @@ function describeStatus(status: Status, token: ServerTokenShape | null, redeemed
       return {
         icon: "🚧",
         title: "Cargando el drop",
-        message: "Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.",
+        message: "Aún no soltamos la ruleta. Se enciende a las 6:00 PM. Quédate cerca.",
         boxClass: "border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40",
         iconClass: "",
       };

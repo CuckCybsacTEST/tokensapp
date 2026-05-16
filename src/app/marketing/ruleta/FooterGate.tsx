@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+const FOOTER_POLL_INTERVAL_MS = 80; // frecuencia de polling para detectar overlay
+
 export default function FooterGate() {
   useEffect(() => {
     const footer = document.querySelector<HTMLElement>(".roulette-footer");
@@ -25,7 +27,7 @@ export default function FooterGate() {
     };
 
     // Polling ligero mientras loader exista
-    timer = window.setInterval(tick, 80);
+    timer = window.setInterval(tick, FOOTER_POLL_INTERVAL_MS);
 
     // Fallback por si se paga muy rápido
     rafId = window.requestAnimationFrame(tick);

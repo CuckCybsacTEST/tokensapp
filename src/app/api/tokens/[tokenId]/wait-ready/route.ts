@@ -5,12 +5,15 @@ import { apiError, apiOk } from '@/lib/apiError';
 // GET /api/tokens/[tokenId]/wait-ready
 // Long polling endpoint that waits for functional token to be ready
 // Returns when token is enabled (disabled: false, not reserved)
+
+const MAX_WAIT_MS = 10000;      // tiempo máximo de long polling (10 s)
+const CHECK_INTERVAL_MS = 100;  // intervalo entre consultas a DB (100 ms)
 export async function GET(_req: NextRequest, { params }: { params: { tokenId: string } }) {
   const { tokenId } = params;
   if (!tokenId) return apiError('TOKEN_ID_REQUIRED', 'tokenId requerido', undefined, 400);
 
-  const maxWaitMs = 10000; // 10 seconds maximum
-  const checkIntervalMs = 100; // Check every 100ms
+  const maxWaitMs = MAX_WAIT_MS;
+  const checkIntervalMs = CHECK_INTERVAL_MS;
   const startTime = Date.now();
 
   console.log(`🔄 [wait-ready] Iniciando long polling para token: ${tokenId}`);

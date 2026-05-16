@@ -49,7 +49,7 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
             </Suspense>
           </div>
           <footer className="relative z-[1] pt-0 text-center text-white/50 text-xs roulette-footer">
-            <p>© 2025 Go Lounge!</p>
+            <p>© 2026 Go Lounge!</p>
           </footer>
         </div>
         {/* Eliminado styled-jsx para mantener este Server Component puro y evitar client-only import */}

@@ -10,6 +10,13 @@ import { apiError, apiOk } from '@/lib/apiError';
 // Response (success): { phase: 'DELIVERED', tokenId, prizeId, timings: { revealToDeliverMs }, timestamps: { revealedAt, deliveredAt } }
 // Error codes: TOKEN_NOT_FOUND, NOT_REVEALED, ALREADY_DELIVERED, TWO_PHASE_DISABLED
 
+// Identificadores de actor para trazabilidad de entrega
+const DELIVERED_BY = {
+  client: 'client_device',
+  staff:  'staff_user',
+  admin:  'admin_user',
+} as const;
+
 export async function POST(_req: NextRequest, { params }: { params: { tokenId: string } }) {
   const { tokenId } = params;
   if (!tokenId) {
@@ -71,7 +78,7 @@ export async function POST(_req: NextRequest, { params }: { params: { tokenId: s
       // 3. Intento de actualización atómica condicionada deliveredAt IS NULL para evitar race
       const deliveredAt = new Date();
       const revealToDeliverMs = deliveredAt.getTime() - token.revealedAt.getTime();
-  const deliveredByUserId = allowClient ? 'client_device' : (session?.role === 'STAFF' ? 'staff_user' : 'admin_user');
+  const deliveredByUserId = allowClient ? DELIVERED_BY.client : (session?.role === 'STAFF' ? DELIVERED_BY.staff : DELIVERED_BY.admin);
 
       // Para cualquier token entregado: marcar como canjeado automáticamente
       const updateData = {

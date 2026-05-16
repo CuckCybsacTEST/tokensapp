@@ -199,6 +199,17 @@ export default function CommitmentModal({ userId, initialAcceptedVersion, requir
     }
   }, [step, hasScrolledToBottom, dynamicContent]);
 
+  // Ensure all links in the rendered commitment content open in a new tab
+  useEffect(() => {
+    if (step !== 'READING') return;
+    const container = document.querySelector('.commitment-modal-content');
+    if (!container) return;
+    container.querySelectorAll('a').forEach((a) => {
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+  }, [step, dynamicContent]);
+
   async function finishCommitment() {
     setLoading(true); setError(null);
     try {

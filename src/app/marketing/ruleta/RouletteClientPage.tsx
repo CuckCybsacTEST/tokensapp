@@ -48,6 +48,25 @@ interface RouletteClientPageProps {
   theme?: ThemeName;
 }
 
+/** Configuración centralizada de tiempos y tuning del cliente de ruleta */
+const ROULETTE_CONFIG = {
+  spinBaseOffset: 420,               // offset base del contador de giros
+  fetchTimeoutMs: 8000,              // abort fetch si el backend tarda demasiado
+  minLoaderMs: 900,                  // tiempo mínimo de loader visible
+  loadBudgetMs: 2500,                // presupuesto orientativo de carga total
+  dailyTokensFetchTimeoutMs: 5000,   // timeout del fetch no-crítico de daily-tokens
+  perfSampleRate: 0.15,              // tasa de muestreo para perfSummarize
+  spinDurationMs: { normal: 6000, lowMotion: 3500 },
+  spinBudgetMs:   { normal: 6200, lowMotion: 3600 }, // margen para perfCheckBudget
+  soundStartDelayMs: 300,            // delay antes de iniciar sonidos de giro
+  softSwitchDelayMs: 500,            // delay de transición suave tras retry
+  prizeModalDelayMs: 1500,           // delay antes de mostrar el modal de premio
+  autoRetryDelayMs: 3000,            // delay de auto-reintento en error de servidor
+  retryPollingTimeMs: 30000,         // tiempo máximo de polling en RetryOverlay
+  smallViewportWidth: 380,           // ancho mínimo para heurística de low motion
+  smallViewportHeight: 680,          // alto mínimo para heurística de low motion
+} as const;
+
 export default function RouletteClientPage({ theme: propTheme = "default" }: RouletteClientPageProps) {
   const searchParams = useSearchParams();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -70,7 +89,6 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
   const [activeTokenId, setActiveTokenId] = useState<string>(tokenId);
   // Bandera para transición suave (no mostrar overlay) - ahora ref para evitar re-ejecuciones
   const softSwitchRef = useRef(false);
-  // const [pendingAutoSpin, setPendingAutoSpin] = useState(false); // OBSOLETO
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<TokenShape | null>(null);
   const [elements, setElements] = useState<RouletteElement[]>([]);
@@ -97,13 +115,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
   const [rouletteHeadingHeight, setRouletteHeadingHeight] = useState(0);
-  // Contador de giros (offset base 420). Se obtiene de métricas del periodo "today".
-  const SPIN_BASE_OFFSET = 420;
   const [spinCounter, setSpinCounter] = useState<number | null>(null);
-  // Tuning constants
-  const FETCH_TIMEOUT_MS = 8000; // abort fetch if backend stalls
-  const MIN_LOADER_MS = 900; // shorter minimum loader time to feel snappy
-  const LOAD_BUDGET_MS = 2500; // presupuesto orientativo para load_total
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -134,7 +146,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
           : null;
       const deviceMem = (navigator as any)?.deviceMemory || 0; // heurística (no estándar en todos los navs)
       const smallViewport =
-        typeof window !== "undefined" && (window.innerWidth < 380 || window.innerHeight < 680);
+        typeof window !== "undefined" && (window.innerWidth < ROULETTE_CONFIG.smallViewportWidth || window.innerHeight < ROULETTE_CONFIG.smallViewportHeight);
       const isLow = (!!mq && mq.matches) || (deviceMem > 0 && deviceMem <= 2) || smallViewport;
       setLowMotion(!!isLow);
     } catch {}
@@ -148,18 +160,18 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
         // A falta de conteo de giros centralizado en nuevo modelo, inicializamos sólo con base fija.
         const res = await fetch(`/api/admin/daily-tokens?day=${y}-${m}-${d}`, {
           cache: "no-store",
-          signal: AbortSignal.timeout(5000), // 5 second timeout for this non-critical call
+          signal: AbortSignal.timeout(ROULETTE_CONFIG.dailyTokensFetchTimeoutMs),
         });
         if (!res.ok) {
-          setSpinCounter(SPIN_BASE_OFFSET);
+          setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
           return;
         }
         // El endpoint diario todavía no expone spins; dejamos base sola.
-        if (!abort) setSpinCounter(SPIN_BASE_OFFSET);
+        if (!abort) setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
       } catch (dailyTokensError) {
         // Silently fail for daily tokens - not critical for roulette functionality
         console.warn("Failed to load daily tokens stats:", dailyTokensError);
-        if (!abort) setSpinCounter(SPIN_BASE_OFFSET);
+        if (!abort) setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
       }
     })();
     return () => {
@@ -228,14 +240,14 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     }
 
     let abort = false;
-    const minPromise = new Promise<void>((resolve) => setTimeout(resolve, MIN_LOADER_MS));
+    const minPromise = new Promise<void>((resolve) => setTimeout(resolve, ROULETTE_CONFIG.minLoaderMs));
 
     (async function loadToken() {
       perfMark("load_start");
       try {
         // Control de timeout
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+        const timer = setTimeout(() => controller.abort(), ROULETTE_CONFIG.fetchTimeoutMs);
 
         const doFetch = async () => {
           const response = await fetch(`/api/tokens/${activeTokenId}/roulette-data`, {
@@ -297,7 +309,6 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
           applyData();
           // Listo para auto-giro tras soft load - DESACTIVADO para segundo giro
           setPhase("READY");
-          // setPendingAutoSpin(true);
           // El cierre del overlay ahora se gestiona por un efecto cuando la ruleta está lista (elements>=2)
         } else {
           applyData();
@@ -324,7 +335,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
                 // Trigger reload by updating activeTokenId
                 setActiveTokenId(prev => prev);
               }
-            }, 3000);
+            }, ROULETTE_CONFIG.autoRetryDelayMs);
           } else if (!softSwitchRef.current) {
             setError(err instanceof Error ? err.message : "Error desconocido");
           }
@@ -342,9 +353,9 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
           perfMark("loader_hidden");
           perfMeasure("load_total", "load_start", "loader_hidden");
           // Presupuesto de carga
-          perfCheckBudget("load_total", LOAD_BUDGET_MS, "load");
+          perfCheckBudget("load_total", ROULETTE_CONFIG.loadBudgetMs, "load");
           // Log summary occasionally
-          if (typeof window !== "undefined" && Math.random() < 0.15) perfSummarize();
+          if (typeof window !== "undefined" && Math.random() < ROULETTE_CONFIG.perfSampleRate) perfSummarize();
         }
       }
     })();
@@ -366,9 +377,9 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     setTimeout(() => {
       sounds.playSpinStart();
       // Iniciar loop infinito con desaceleración basada en la duración visual
-      const spinDuration = lowMotion ? 3500 : 6000;
+      const spinDuration = lowMotion ? ROULETTE_CONFIG.spinDurationMs.lowMotion : ROULETTE_CONFIG.spinDurationMs.normal;
       void sounds.playSpinLoop({ expectedDurationMs: spinDuration });
-    }, 300);
+    }, ROULETTE_CONFIG.soundStartDelayMs);
 
     // Audio ya inicializado en useEffect
     try {
@@ -453,7 +464,6 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       }
       softSwitchRef.current = true;
       // Auto-spin desactivado para segundo giro - interacción manual
-      // setPendingAutoSpin(true);
       setActiveTokenId(functionalTokenId!);
       // Limpiar estados de retry completamente
       setFunctionalTokenId(null);
@@ -461,13 +471,13 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       setIsRetryTransition(false);
       setRetryOverlayOpen(false);
       setSuppressRevealed(false);
-    }, 500); // Pequeño delay para que el usuario vea que está listo
+    }, ROULETTE_CONFIG.softSwitchDelayMs);
   };
   const handleSpinEnd = (prize: RouletteElement) => {
     perfMark("spin_end");
     perfMeasure("spin_duration", "spin_start", "spin_end");
     // Presupuesto de animación (varía por lowMotion)
-    perfCheckBudget("spin_duration", lowMotion ? 3600 : 6200, "spin");
+    perfCheckBudget("spin_duration", lowMotion ? ROULETTE_CONFIG.spinBudgetMs.lowMotion : ROULETTE_CONFIG.spinBudgetMs.normal, "spin");
 
     // Detener sonidos de giro y reproducir sonido de parada (sincronizado internamente)
     void sounds.playSpinStop();
@@ -497,7 +507,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     setPrizeWon(prize);
     setShowConfetti(true);
     // Incrementar contador local tras completar un giro exitoso
-    setSpinCounter((c) => (c == null ? SPIN_BASE_OFFSET + 1 : c + 1));
+    setSpinCounter((c) => (c == null ? ROULETTE_CONFIG.spinBaseOffset + 1 : c + 1));
 
     // Reproducir sonido de victoria o derrota según el premio
     if (prize.key === 'lose') {
@@ -509,7 +519,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     // Delay antes de mostrar el modal para que el usuario vea el premio en la ruleta
     setTimeout(() => {
       setPhase("REVEALED_MODAL");
-    }, 1500); // 1.5 segundos de delay
+    }, ROULETTE_CONFIG.prizeModalDelayMs);
   };
 
   // Al cambiar de token (softSwitch), desactivar supresión del panel para el nuevo ciclo
@@ -543,7 +553,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
         open={true}
         functionalTokenId={functionalTokenId}
         onFunctionalTokenReady={handleFunctionalTokenReady}
-        maxPollingTime={30000}
+        maxPollingTime={ROULETTE_CONFIG.retryPollingTimeMs}
       />
     );
   }
@@ -578,7 +588,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
             box: "bg-amber-500/10 border-amber-500/30",
             title: "text-amber-300",
             heading: "Cargando el drop",
-            msg: "Aún no soltamos la ruleta. Se enciende a las 5:00 PM. Quédate cerca.",
+            msg: "Aún no soltamos la ruleta. Se enciende a las 6:00 PM. Quédate cerca.",
           }
         : {
             box: "bg-red-500/10 border-red-500/30",

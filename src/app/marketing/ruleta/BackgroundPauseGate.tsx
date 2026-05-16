@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+const OVERLAY_DETECT_DELAY_MS = 30; // fallback por si el overlay llega tras hidratación
+
 /**
  * Pausa las animaciones del fondo (DiscoBackground) durante 1 frame
  * cuando el loader overlay está presente, para evitar un reinicio visible.
@@ -36,7 +38,7 @@ export default function BackgroundPauseGate() {
       // Por si el overlay se pinta un pelín más tarde (SSR/CSR)
       const t = setTimeout(() => {
         if (hasOverlay()) cleanup = pauseOnce() || undefined;
-      }, 30);
+      }, OVERLAY_DETECT_DELAY_MS);
       return () => clearTimeout(t);
     }
 
