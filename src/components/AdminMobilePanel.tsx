@@ -213,6 +213,7 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
 
   // Configuración dinámica basada en basePath
   const getSidebarGroups = (basePath: 'admin' | 'u'): SidebarGroup[] => {
+    const userRole = userInfo?.role;
     const pathPrefix = basePath === 'admin' ? '/admin' : '/u';
 
     const groups = [
@@ -242,6 +243,15 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
         icon: ICONS.book,
         items: [
           { href: `${pathPrefix}/internalnews`, label: "Noticias", icon: ICONS.book }
+        ]
+      }] : []),
+      ...(basePath === 'admin' || ['ADMIN', 'COORDINATOR'].includes(userRole || '') ? [{
+        title: "RESUMEN DE JORNADA",
+        icon: ICONS.check,
+        items: [
+          { href: `${pathPrefix}/daily-evaluation`, label: "Resumen de Jornada", icon: ICONS.check },
+          { href: `${pathPrefix}/weekly-evaluation`, label: "Resumen Semanal", icon: ICONS.chart },
+          { href: `${pathPrefix}/evolucion`, label: "Evolución", icon: ICONS.chart }
         ]
       }] : []),
       ...(basePath === 'admin' ? [{
@@ -703,3 +713,4 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
     </div>
   );
 }
+

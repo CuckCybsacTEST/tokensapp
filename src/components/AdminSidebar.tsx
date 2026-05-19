@@ -181,7 +181,8 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         icon: ICONS.checkSmall,
         items: [
           { href: `${pathPrefix}/daily-evaluation`, label: "Resumen de Jornada", icon: ICONS.checkSmall },
-          { href: `${pathPrefix}/weekly-evaluation`, label: "Resumen Semanal", icon: ICONS.chart }
+          { href: `${pathPrefix}/weekly-evaluation`, label: "Resumen Semanal", icon: ICONS.chart },
+          { href: `${pathPrefix}/evolucion`, label: "Evolución", icon: ICONS.chart }
         ]
       }] : []),
       {
