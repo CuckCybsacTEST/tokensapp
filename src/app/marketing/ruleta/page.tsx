@@ -37,7 +37,7 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
           - En pantallas muy altas (>=1000px) aplicamos justify-center para centrar el bloque principal.
           Usamos clases utilitarias y una media query inline adicional para casos extremos (>1400px).
         */}
-        <div className="relative h-screen flex flex-col px-0 pt-0 pb-0 roulette-theme-container">
+        <div className="relative min-h-dvh flex flex-col px-0 pt-0 pb-0 roulette-theme-container overflow-x-hidden">
           {/* Fondo compuesto reutilizable intacto: degradado base + efectos */}
           <RouletteBackground />
           <FooterGate />
@@ -48,7 +48,7 @@ export default function RuletaPage({ searchParams }: { searchParams: RuletaSearc
               <RouletteClientPage theme={theme} />
             </Suspense>
           </div>
-          <footer className="relative z-[1] pt-0 text-center text-white/50 text-xs roulette-footer">
+          <footer className="relative z-[1] pb-3 pt-1 text-center text-white/50 text-xs roulette-footer">
             <p>© 2026 Go Lounge!</p>
           </footer>
         </div>

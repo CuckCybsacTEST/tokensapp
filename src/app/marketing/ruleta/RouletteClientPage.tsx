@@ -14,6 +14,7 @@ import { ThemeName } from "@/lib/themes/types";
 import { useRouletteTheme } from "@/lib/themes/useRouletteTheme";
 import { useRouletteSounds } from "@/hooks/useRouletteSounds";
 import { useSearchParams } from "next/navigation";
+import layoutStyles from "./rouletteLayout.module.css";
 
 // Confetti ahora usando canvas para menos costo en DOM
 const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowMotion?: boolean; colors?: string[] }) => (
@@ -24,6 +25,148 @@ const Confetti = ({ active, lowMotion = false, colors }: { active: boolean; lowM
 const getThemeClass = (themeConfig: any) => {
   return themeConfig?.global?.layout?.themeClass || "";
 };
+
+const spinCounterFormatter = new Intl.NumberFormat("en-US", {
+  minimumIntegerDigits: 3,
+  maximumFractionDigits: 0,
+  useGrouping: true,
+});
+
+const PUBLIC_STEPS = ["Escanea", "Gira", "Reclama"] as const;
+
+const GUIDE_SLOT_COUNT = 3;
+
+interface RouletteSidebarInsight {
+  id: string;
+  icon: "spark" | "check" | "trophy" | "gift" | "clock" | "bolt" | "chart";
+  title: string;
+  value: string;
+  detail: string;
+  tone: "gold" | "emerald" | "amber";
+  sortOrder: number;
+}
+
+function getLocalDayIso(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getVisibleGuideInsights(
+  insights: RouletteSidebarInsight[],
+  visibleCount: number,
+  startIndex: number
+) {
+  if (insights.length === 0) return [];
+  const total = Math.min(visibleCount, insights.length);
+  return Array.from({ length: total }, (_, index) => insights[(startIndex + index) % insights.length]);
+}
+
+function getPhaseUi(phase: "READY" | "SPINNING" | "REVEALED_MODAL" | "REVEALED_PANEL" | "DELIVERED") {
+  if (phase === "SPINNING") {
+    return { activeStep: 2 };
+  }
+  if (phase === "REVEALED_MODAL" || phase === "REVEALED_PANEL" || phase === "DELIVERED") {
+    return { activeStep: 3 };
+  }
+  return { activeStep: 1 };
+}
+
+function GuideInsightIcon({ icon }: { icon: RouletteSidebarInsight["icon"] | "placeholder" }) {
+  if (icon === "spark") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3Z" />
+        <path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z" />
+        <path d="M5 14l.7 1.6L7.3 16l-1.6.7L5 18.3l-.7-1.6L2.7 16l1.6-.4L5 14Z" />
+      </svg>
+    );
+  }
+  if (icon === "check") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="m8.5 12.4 2.1 2.1 4.9-5.3" />
+      </svg>
+    );
+  }
+  if (icon === "trophy") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M8 4h8v3a4 4 0 0 1-8 0V4Z" />
+        <path d="M10 14h4" />
+        <path d="M9 18h6" />
+        <path d="M12 11v3" />
+        <path d="M8 6H6a2 2 0 1 0 0 4h2" />
+        <path d="M16 6h2a2 2 0 1 1 0 4h-2" />
+      </svg>
+    );
+  }
+  if (icon === "gift") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M12 8v11" />
+        <path d="M5 10h14" />
+        <path d="M7 10h10v9a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-9Z" />
+        <path d="M6 6a2 2 0 0 1 3.4-1.4L12 7l2.6-2.4A2 2 0 1 1 18 7v3H6V6Z" />
+      </svg>
+    );
+  }
+  if (icon === "clock") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+  if (icon === "bolt") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M13 2 6 13h5l-1 9 8-12h-5l1-8Z" />
+      </svg>
+    );
+  }
+  if (icon === "chart") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M5 19V9" />
+        <path d="M12 19V5" />
+        <path d="M19 19v-7" />
+        <path d="M4 19h16" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8h.01" />
+      <path d="M9 12h6" />
+      <path d="M10 16h4" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12 2.3 2.3 4.7-5" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <rect x="9" y="9" width="10" height="10" rx="2" />
+      <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" />
+      <path d="M7 7h6" />
+      <path d="M7 11h2" />
+    </svg>
+  );
+}
 
 interface TokenShape {
   id: string;
@@ -50,11 +193,13 @@ interface RouletteClientPageProps {
 
 /** Configuración centralizada de tiempos y tuning del cliente de ruleta */
 const ROULETTE_CONFIG = {
-  spinBaseOffset: 420,               // offset base del contador de giros
   fetchTimeoutMs: 8000,              // abort fetch si el backend tarda demasiado
   minLoaderMs: 900,                  // tiempo mínimo de loader visible
   loadBudgetMs: 2500,                // presupuesto orientativo de carga total
-  dailyTokensFetchTimeoutMs: 5000,   // timeout del fetch no-crítico de daily-tokens
+  dailySpinsFetchTimeoutMs: 5000,    // timeout del fetch no-crítico de spins diarios
+  sidebarFetchTimeoutMs: 5000,
+  sidebarRefreshMs: 30000,
+  guideRotationMs: 12000,
   perfSampleRate: 0.15,              // tasa de muestreo para perfSummarize
   spinDurationMs: { normal: 6000, lowMotion: 3500 },
   spinBudgetMs:   { normal: 6200, lowMotion: 3600 }, // margen para perfCheckBudget
@@ -106,16 +251,13 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
   const [suppressRevealed, setSuppressRevealed] = useState(false);
   // Suprime el loader durante la transición RETRY (entre overlay y auto-spin)
   const [suppressLoader, setSuppressLoader] = useState(false);
-  // Marca cuándo se abrió el overlay para garantizar visibilidad mínima (~1s)
-  const retryOverlayOpenedAt = useRef<number | null>(null);
   // Bandera para transición de retry, para suprimir errores
   const [isRetryTransition, setIsRetryTransition] = useState(false);
-  // Bandera para auto-spin en retry, para suprimir errores
-  const [isAutoSpin, setIsAutoSpin] = useState(false);
   const prizeModalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Altura dinámica del heading para espaciar ruleta (se usa sólo en render principal, pero declaramos aquí para orden estable de hooks)
-  const [rouletteHeadingHeight, setRouletteHeadingHeight] = useState(0);
   const [spinCounter, setSpinCounter] = useState<number | null>(null);
+  const [prizeLinkCopied, setPrizeLinkCopied] = useState(false);
+  const [guideInsights, setGuideInsights] = useState<RouletteSidebarInsight[]>([]);
+  const [guideRotationIndex, setGuideRotationIndex] = useState(0);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -136,7 +278,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     };
   }, [theme]);
 
-  // Cargar métrica de giros al montar (period today) para inicializar contador.
+  // Cargar total de giros del día para inicializar el contador visible en marketing.
   useEffect(() => {
     // Detectar modo de bajo movimiento / heurística de dispositivo
     try {
@@ -153,31 +295,69 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     let abort = false;
     (async () => {
       try {
-        const today = new Date();
-        const y = today.getFullYear(),
-          m = String(today.getMonth() + 1).padStart(2, "0"),
-          d = String(today.getDate()).padStart(2, "0");
-        // A falta de conteo de giros centralizado en nuevo modelo, inicializamos sólo con base fija.
-        const res = await fetch(`/api/admin/daily-tokens?day=${y}-${m}-${d}`, {
+        const res = await fetch(`/api/system/tokens/spins?day=${getLocalDayIso()}`, {
           cache: "no-store",
-          signal: AbortSignal.timeout(ROULETTE_CONFIG.dailyTokensFetchTimeoutMs),
+          signal: AbortSignal.timeout(ROULETTE_CONFIG.dailySpinsFetchTimeoutMs),
         });
-        if (!res.ok) {
-          setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
-          return;
-        }
-        // El endpoint diario todavía no expone spins; dejamos base sola.
-        if (!abort) setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
-      } catch (dailyTokensError) {
-        // Silently fail for daily tokens - not critical for roulette functionality
-        console.warn("Failed to load daily tokens stats:", dailyTokensError);
-        if (!abort) setSpinCounter(ROULETTE_CONFIG.spinBaseOffset);
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const totalSpins = data?.metrics?.totalSpins;
+        if (!abort && typeof totalSpins === "number") setSpinCounter(totalSpins);
+      } catch (dailySpinsError) {
+        console.warn("Failed to load daily spins:", dailySpinsError);
       }
     })();
     return () => {
       abort = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSidebarInsights = async () => {
+      try {
+        const res = await fetch(`/api/system/tokens/sidebar?day=${getLocalDayIso()}`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(ROULETTE_CONFIG.sidebarFetchTimeoutMs),
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        const nextInsights = Array.isArray(data?.summary?.insights)
+          ? ([...data.summary.insights] as RouletteSidebarInsight[]).sort((left, right) => left.sortOrder - right.sortOrder)
+          : [];
+        if (!cancelled) {
+          setGuideInsights(nextInsights);
+          setGuideRotationIndex((current) => (nextInsights.length > 0 ? current % nextInsights.length : 0));
+        }
+      } catch (sidebarError) {
+        console.warn("Failed to load sidebar insights:", sidebarError);
+      }
+    };
+
+    void loadSidebarInsights();
+    const intervalId = window.setInterval(loadSidebarInsights, ROULETTE_CONFIG.sidebarRefreshMs);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (guideInsights.length <= GUIDE_SLOT_COUNT) {
+      setGuideRotationIndex(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setGuideRotationIndex((current) => (current + 1) % guideInsights.length);
+    }, ROULETTE_CONFIG.guideRotationMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [guideInsights.length]);
 
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
   useEffect(() => {
@@ -404,7 +584,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       // La animación del componente NewRoulette usará prizeIndex y disparará handleSpinEnd
     } catch (err) {
       console.error("Error al girar:", err);
-      if (!isAutoSpin) setError(err instanceof Error ? err.message : "Error al girar la ruleta");
+      setError(err instanceof Error ? err.message : "Error al girar la ruleta");
       setPhase("READY");
     }
   };
@@ -437,6 +617,18 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       setDeliverError(e?.message || "DELIVER_FAILED");
     } finally {
       setDelivering(false);
+    }
+  };
+
+  const handleCopyPrizeLink = async () => {
+    if (typeof window === "undefined") return;
+    const prizeUrl = new URL(`/marketing/ruleta?tokenId=${encodeURIComponent(activeTokenId)}`, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(prizeUrl);
+      setPrizeLinkCopied(true);
+      window.setTimeout(() => setPrizeLinkCopied(false), 2200);
+    } catch (copyError) {
+      console.error("Failed to copy prize link", copyError);
     }
   };
 
@@ -492,7 +684,6 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       // Mostrar overlay con polling que esperará a que el token esté listo
       setIsRetryTransition(true);
       setRetryOverlayOpen(true);
-      try { retryOverlayOpenedAt.current = Date.now(); } catch {}
       setSuppressRevealed(true);
       // Asegurar que no aparezca overlay de loader
       setLoading(false);
@@ -507,7 +698,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
     setPrizeWon(prize);
     setShowConfetti(true);
     // Incrementar contador local tras completar un giro exitoso
-    setSpinCounter((c) => (c == null ? ROULETTE_CONFIG.spinBaseOffset + 1 : c + 1));
+    setSpinCounter((c) => (c == null ? null : c + 1));
 
     // Reproducir sonido de victoria o derrota según el premio
     if (prize.key === 'lose') {
@@ -688,6 +879,9 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
 
   // UI especial para tokens reservados (bi-token), cuando no hay ruleta disponible o ya fue usado
   const shouldShowReservedPanel = (isReserved && (token?.disabled || elements.length < 2) && !retryOverlayOpen && phase === 'READY') || (isReserved && realTokenUsed);
+  const phaseUi = getPhaseUi(phase);
+  const visibleGuideInsights = getVisibleGuideInsights(guideInsights, GUIDE_SLOT_COUNT, guideRotationIndex);
+  const guideSlots = Array.from({ length: GUIDE_SLOT_COUNT }, (_, index) => visibleGuideInsights[index] ?? null);
 
   return (
     <div
@@ -697,13 +891,34 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       data-roulette-theme={theme || undefined}
     >
       {!retryOverlayOpen && !shouldShowReservedPanel && (
-        <div className="px-4 pt-8 sm:pt-12 text-center max-w-3xl mx-auto">
-          <RouletteHeading
-            kicker="BIENVENIDO A KTDRAL LOUNGE"
-            title="Ruleta Token Show"
-            subtitle="Gírala y prueba tu suerte"
-            onHeight={(h) => setRouletteHeadingHeight(h)}
-          />
+        <div className={layoutStyles.heroShell}>
+          <div className={layoutStyles.heroFrame}>
+            <div className={layoutStyles.heroGlow} aria-hidden="true" />
+            <div className={layoutStyles.heroInner}>
+              <RouletteHeading
+                kicker="BIENVENIDO A KTDRAL LOUNGE"
+                title="Ruleta Token Show"
+                subtitle="Escanea tu QR, gira la rueda y descubre al instante lo que te toca esta noche."
+              />
+              <div className={layoutStyles.stepRail} aria-label="Flujo de la ruleta">
+                {PUBLIC_STEPS.map((step, index) => {
+                  const stepNumber = index + 1;
+                  const active = stepNumber <= phaseUi.activeStep;
+                  return (
+                    <React.Fragment key={step}>
+                      <div
+                        className={`${layoutStyles.stepChip} ${active ? layoutStyles.stepChipActive : ""}`.trim()}
+                      >
+                        <span className={layoutStyles.stepIndex}>{String(stepNumber).padStart(2, "0")}</span>
+                        <span className={layoutStyles.stepLabel}>{step}</span>
+                      </div>
+                      {index < PUBLIC_STEPS.length - 1 && <span className={layoutStyles.stepDivider} aria-hidden="true" />}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
       {/* Confetti animation */}
@@ -763,52 +978,101 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
 
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === "READY" || phase === "SPINNING") && !shouldShowReservedPanel && (
-        <div className="flex items-center justify-center py-6 sm:py-8 min-h-[400px] sm:min-h-[500px]">
-          <NewRoulette
-            elements={elements}
-            onSpin={handleSpin}
-            onSpinEnd={handleSpinEnd} // mantenemos callback legacy para posible animación futura
-            spinning={phase === "SPINNING"}
-            prizeIndex={prizeIndex}
-            variant="inline"
-            lowMotion={lowMotion}
-            theme={theme}
-          />
-        </div>
-      )}
+        <div className={layoutStyles.stageShell}>
+          <div className={layoutStyles.stageCard}>
+            <div className={layoutStyles.stageBackdrop} aria-hidden="true" />
+            <div className={layoutStyles.stageGrid}>
+              <aside className={layoutStyles.guidePanel} aria-label="Como participar">
+                <div className={layoutStyles.guideEyebrow}>Como participar</div>
+                <div className={layoutStyles.guideStack}>
+                  {guideSlots.map((insight, index) => {
+                    const slotNumber = String(index + 1).padStart(2, "0");
+                    return (
+                    <div key={insight?.id ?? slotNumber} className={layoutStyles.guideStep}>
+                      <div className={layoutStyles.guideIndex}>
+                        <GuideInsightIcon icon={insight?.icon ?? "placeholder"} />
+                      </div>
+                      <div>
+                        <div className={layoutStyles.guideTitle}><span className={layoutStyles.guideNumber}>{slotNumber}.</span> {insight?.title ?? "Actividad en vivo"}</div>
+                        {insight ? (
+                          <>
+                            <div className={layoutStyles.guideInsightValue}>{insight.value}</div>
+                            <div className={layoutStyles.guideText}>{insight.detail}</div>
+                          </>
+                        ) : (
+                          <div className={layoutStyles.guideText}>Cargando actividad en vivo...</div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+                {spinCounter != null && (
+                  <div className={layoutStyles.metricCard}>
+                    <div className={layoutStyles.metricLabel}>Giros del dia</div>
+                    <div className={layoutStyles.metricValue}>{spinCounterFormatter.format(spinCounter)}</div>
+                  </div>
+                )}
+              </aside>
 
-      {/* Contador de giros */}
-      {spinCounter != null && !shouldShowReservedPanel && (
-        <div className="mt-3 text-center text-xs sm:text-sm text-white/60 select-none tracking-wide">
-          Giro #{spinCounter}
+              <div className={layoutStyles.wheelPanel}>
+                <div className="flex items-center justify-center py-3 sm:py-4 min-h-[320px] sm:min-h-[420px] lg:min-h-[460px]">
+                  <NewRoulette
+                    elements={elements}
+                    onSpin={handleSpin}
+                    onSpinEnd={handleSpinEnd} // mantenemos callback legacy para posible animación futura
+                    spinning={phase === "SPINNING"}
+                    prizeIndex={prizeIndex}
+                    variant="inline"
+                    lowMotion={lowMotion}
+                    theme={theme}
+                  />
+                </div>
+                <div className={layoutStyles.spinCue}>
+                  Presiona GIRAR para comenzar y espera el resultado en pantalla.
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       )}
 
       {/* Panel permanente tras cerrar modal */}
   {showRevealedPanel && prizeWon && (
-        <div className="text-center py-8 sm:py-12 max-w-md mx-auto px-4">
-          <div
-            className="rounded-lg p-5 sm:p-6 border"
-            style={{ background: "rgba(255,77,46,0.10)", borderColor: "rgba(255,77,46,0.30)" }}
-          >
-            <p className="text-[#FFD166] text-base sm:text-lg font-semibold">¡Premio revelado!</p>
-            <p className="mt-2 text-white/80 text-sm sm:text-base leading-relaxed">
-              Muéstralo en barra para canjearlo. Nuestro staff confirmará la entrega en tu pantalla.
-            </p>
-            <p className="mt-4 text-lg sm:text-xl font-bold break-words px-2">{prizeWon.label}</p>
-            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
-              <button
-                className="px-4 sm:px-5 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition-colors text-sm sm:text-base"
-                onClick={confirmDeliver}
-                disabled={delivering}
-                title="Para uso del STAFF"
-              >
-                {delivering ? "Confirmando…" : "Marcar entregado (staff)"}
-              </button>
+        <div className={layoutStyles.revealedShell}>
+          <div className={layoutStyles.revealedCard}>
+            <div className={layoutStyles.revealedInner}>
+              <div className={layoutStyles.revealedKicker}>Premio revelado</div>
+              <p className={layoutStyles.revealedLead}>
+                Muestralo en barra para canjearlo. Nuestro staff confirmara la entrega en tu pantalla.
+              </p>
+              <div className={layoutStyles.revealedPrizeCard}>
+                <div className={layoutStyles.revealedPrize}>{prizeWon.label}</div>
+              </div>
+              <div className={layoutStyles.revealedActions}>
+                <button
+                  className={layoutStyles.staffButton}
+                  onClick={confirmDeliver}
+                  disabled={delivering}
+                  title="Para uso del STAFF"
+                >
+                  <span className={layoutStyles.actionIcon}><CheckCircleIcon /></span>
+                  {delivering ? "Confirmando..." : "Marcar entregado (staff)"}
+                </button>
+                <button
+                  className={layoutStyles.secondaryAction}
+                  onClick={handleCopyPrizeLink}
+                  type="button"
+                >
+                  <span className={layoutStyles.actionIcon}><CopyIcon /></span>
+                  {prizeLinkCopied ? "Enlace copiado" : "Copiar acceso del premio"}
+                </button>
+              </div>
+              {deliverError && (
+                <div className={layoutStyles.revealedError}>{deliverError}</div>
+              )}
             </div>
-            {deliverError && (
-              <div className="mt-2 text-xs text-rose-400 break-words px-2">{deliverError}</div>
-            )}
           </div>
         </div>
       )}

@@ -9,14 +9,25 @@ function error(code: string, message: string, status = 400) {
 
 export async function GET(req: NextRequest) {
   try {
-    const url = req.nextUrl;
-    const day = url.searchParams.get('day');
+    const day = req.nextUrl.searchParams.get('day');
     if (!day) return error('MISSING_DAY', 'Parámetro day (YYYY-MM-DD) requerido');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return error('INVALID_DAY', 'Formato day inválido');
+
     const data = await getDailyTokenMetrics(day);
-    return NextResponse.json({ ok: true, ...data });
+
+    return NextResponse.json({
+      ok: true,
+      day: data.day,
+      basis: data.basis,
+      metrics: {
+        totalSpins: data.metrics.totalSpins,
+        rouletteSpins: data.metrics.rouletteSpins,
+        retryRevealed: data.metrics.retryRevealed,
+        loseRevealed: data.metrics.loseRevealed,
+      },
+    });
   } catch (e: any) {
-    console.error('daily-tokens error', e);
+    console.error('system/tokens/spins error', e);
     return error('INTERNAL', e?.message || 'internal error', 500);
   }
 }

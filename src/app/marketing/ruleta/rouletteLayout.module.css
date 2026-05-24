@@ -7,37 +7,561 @@
   flex-direction: column;
   justify-content: flex-start;
   padding-top: 0.5rem;
-  padding-bottom: 1rem;
+  padding-bottom: 0.35rem;
+  min-height: 0;
+}
+
+.heroShell {
+  width: min(100%, 66rem);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 0;
+}
+
+.heroFrame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1.75rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+    radial-gradient(circle at top, rgba(255, 209, 102, 0.18), rgba(255, 255, 255, 0) 45%),
+    rgba(10, 12, 19, 0.55);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+}
+
+.heroGlow {
+  position: absolute;
+  inset: -10% 15% auto;
+  height: 9rem;
+  background: radial-gradient(circle, rgba(255, 209, 102, 0.22), rgba(255, 209, 102, 0));
+  pointer-events: none;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.stepRail {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  overflow-x: auto;
+  padding: 0.1rem 0;
+  scrollbar-width: none;
+}
+
+.stepRail::-webkit-scrollbar {
+  display: none;
+}
+
+.stepChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.38rem 0.8rem 0.38rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.66);
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.stepChipActive {
+  color: #fff8e0;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.16), rgba(255, 255, 255, 0.06));
+  border-color: rgba(255, 209, 102, 0.24);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  flex: 0 0 auto;
+}
+
+.stepChipActive .stepIndex {
+  border-color: rgba(255, 209, 102, 0.45);
+  background: radial-gradient(circle at top, rgba(255, 209, 102, 0.34), rgba(255, 209, 102, 0.12));
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.2);
+}
+
+.stepLabel {
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stepDivider {
+  width: 1.15rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.26), rgba(255,255,255,0.05));
+  flex: 0 0 auto;
+}
+
+.stageShell {
+  width: min(100%, 66rem);
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+}
+
+.stageCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(8, 10, 16, 0.78), rgba(11, 13, 20, 0.62));
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.34);
+}
+
+.stageBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgba(255, 209, 102, 0.16), transparent 42%),
+    radial-gradient(circle at bottom, rgba(91, 134, 229, 0.12), transparent 38%);
+  pointer-events: none;
+}
+
+.stageGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.guidePanel,
+.wheelPanel {
+  position: relative;
+  border-radius: 1.4rem;
+  backdrop-filter: blur(10px);
+}
+
+.guidePanel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.guidePanel {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.95rem;
+}
+
+.guideEyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f6c766;
+  margin-bottom: 0.9rem;
+}
+
+.guideStack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.95rem;
+}
+
+.guidePanel .metricCard {
+  margin-top: 1.15rem;
+}
+
+.guideStep {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.95rem;
+  align-items: start;
+  padding: 0.7rem 0.1rem;
+  min-height: 6rem;
+}
+
+.guideIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(246, 199, 102, 0.22);
+  background: linear-gradient(180deg, rgba(246, 199, 102, 0.12), rgba(255, 255, 255, 0.03));
+  color: #ffd166;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.guideIndex svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.guideTitle {
+  color: #fff4df;
+  font-size: 0.96rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+
+.guideNumber {
+  color: #f6c766;
+}
+
+.guideText {
+  margin-top: 0.24rem;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.83rem;
+  line-height: 1.45;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.guideInsightValue {
+  margin-top: 0.26rem;
+  color: #fff7ea;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.wheelPanel {
+  overflow: hidden;
+  background: transparent;
+}
+
+.spinCue {
+  padding: 0 1rem 1rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.metricCard {
+  border-radius: 1rem;
+  border: 1px solid rgba(246, 199, 102, 0.46);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.09), rgba(255, 255, 255, 0.03));
+  padding: 1rem 0.95rem 0.95rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(0,0,0,0.14);
+}
+
+.metricLabel {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.metricValue {
+  text-align: center;
+  margin-top: 0.5rem;
+  font-size: clamp(2.4rem, 4vw, 3rem);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: #ffd166;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.revealedShell {
+  width: min(100%, 66rem);
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+}
+
+.revealedCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  border: 1px solid rgba(255, 140, 66, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 112, 52, 0.1), rgba(255, 255, 255, 0.03)),
+    rgba(18, 10, 10, 0.72);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.24);
+}
+
+.revealedInner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 1.4rem 1.2rem 1.25rem;
+}
+
+.revealedKicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ffd166;
+}
+
+.revealedLead {
+  max-width: 34rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.revealedPrizeCard {
+  width: min(100%, 36rem);
+  border-radius: 1.45rem;
+  border: 1px solid rgba(255, 181, 84, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 181, 84, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(16, 13, 16, 0.82);
+  padding: 1.15rem 1rem 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 22px 50px rgba(0,0,0,0.18);
+}
+
+.revealedPrize {
+  color: #fff7ea;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  font-weight: 900;
+  line-height: 1.22;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.revealedActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.staffButton {
+  border: none;
+  border-radius: 999px;
+  min-width: min(100%, 26rem);
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 1.35rem;
+  background: linear-gradient(135deg, #0f9f76, #0d8b69);
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: 0 12px 26px rgba(13, 139, 105, 0.22);
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.secondaryAction {
+  min-width: min(100%, 26rem);
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 0.95rem 1.35rem;
+  background: rgba(10, 11, 17, 0.48);
+  color: rgba(255,255,255,0.92);
+  font-size: 0.98rem;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.secondaryAction:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 209, 102, 0.28);
+  background: rgba(18, 20, 28, 0.64);
+}
+
+.actionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionIcon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.staffButton:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.staffButton:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.revealedError {
+  color: #ff9c9c;
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 /* En pantallas semi-altas añadimos un pequeño respiro pero sin grandes bloques vacíos */
 @media (min-height: 900px) {
   .rouletteViewport {
-    padding-top: 1.25rem;
-    padding-bottom: 1.75rem; /* aumentar un poco en pantallas semi-altas */
+    padding-top: 1rem;
+    padding-bottom: 0.75rem;
   }
 }
 
 /* En pantallas muy altas controlamos un máximo de expansión y no centramos verticalmente */
 @media (min-height: 1200px) {
   .rouletteViewport {
-    padding-top: 1.75rem;
-    padding-bottom: 2rem;
+    padding-top: 1.25rem;
+    padding-bottom: 1rem;
   }
 }
 
 /* Ultra altas (>1500px) incrementamos levemente sin crear hueco exagerado */
 @media (min-height: 1500px) {
   .rouletteViewport {
-    padding-top: 2rem;
-    padding-bottom: 2.25rem;
+    padding-top: 1.5rem;
+    padding-bottom: 1.15rem;
   }
 }
 
 /* Excepción: dispositivos de poca altura (ej. iPhone SE) mantienen padding inferior reducido */
 @media (max-height: 680px) {
   .rouletteViewport {
-    padding-bottom: 0.5rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.15rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .heroShell {
+    padding-top: 0.9rem;
+  }
+
+  .heroFrame {
+    border-radius: 1.4rem;
+  }
+
+  .heroInner {
+    padding: 1rem 0.95rem 1.1rem;
+  }
+
+  .stepRail {
+    gap: 0.4rem;
+  }
+
+  .stepChip {
+    gap: 0.48rem;
+    padding: 0.32rem 0.62rem 0.32rem 0.34rem;
+  }
+
+  .stepIndex {
+    width: 1.95rem;
+    height: 1.95rem;
+    font-size: 0.8rem;
+  }
+
+  .stepLabel {
+    font-size: 0.74rem;
+  }
+
+  .stepDivider {
+    width: 0.75rem;
+  }
+
+  .stageShell {
+    padding-top: 0.55rem;
+  }
+
+  .stageCard {
+    border-radius: 1.5rem;
+  }
+
+  .stageGrid {
+    padding: 0.8rem;
+  }
+
+  .guidePanel {
+    display: none;
+  }
+
+  .wheelPanel {
+    order: 1;
+  }
+
+  .revealedShell {
+    padding-top: 0.7rem;
+  }
+
+  .revealedCard {
+    border-radius: 1.35rem;
+  }
+
+  .revealedInner {
+    padding: 1.2rem 0.95rem 1.15rem;
+    gap: 0.7rem;
+  }
+
+  .revealedLead {
+    font-size: 0.9rem;
+  }
+
+  .staffButton {
+    width: 100%;
+    max-width: 18rem;
+  }
+
+  .secondaryAction {
+    width: 100%;
+    max-width: 18rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .stageGrid {
+    grid-template-columns: minmax(13.75rem, 15.5rem) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.9rem;
+    padding: 1rem;
+  }
+
+  .guidePanel {
+    min-height: 100%;
+  }
+
+  .guidePanel {
+    grid-column: 1;
+  }
+
+  .wheelPanel {
+    grid-column: 2;
   }
 }
 
