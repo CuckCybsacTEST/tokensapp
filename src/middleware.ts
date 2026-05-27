@@ -151,6 +151,15 @@ export async function middleware(req: NextRequest) {
 
   // ── System APIs (/api/system/*) — requires STAFF+ ──────────────
   if (pathname.startsWith("/api/system/")) {
+    const publicRouletteSystemApis = [
+      '/api/system/tokens/sidebar',
+      '/api/system/tokens/spins',
+    ];
+
+    if (publicRouletteSystemApis.includes(pathname)) {
+      return NextResponse.next();
+    }
+
     // Cron bypass for scheduled operations
     if (pathname === '/api/system/tokens/enable-scheduled' || pathname === '/api/system/tokens/toggle') {
       const cronSecret = req.headers.get('x-cron-secret') || '';

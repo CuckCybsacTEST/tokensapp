@@ -123,7 +123,7 @@
 }
 
 @media (min-width: 1024px) {
-  .rouletteContainer {
+  .rouletteContainer:not([data-variant="inline"]) {
     height: 100vh;
     width: 100vw;
     max-height: 100vh;
@@ -131,6 +131,15 @@
     position: fixed;
     inset: 0;
     padding-top: 110px; /* más espacio para título en desktop */
+  }
+  .rouletteContainer[data-variant="inline"] {
+    position: static;
+    inset: auto;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-top: 0;
   }
   .wheelWrapper {
     /* Tamaño más contenido para asegurar que cabe sin scroll */
