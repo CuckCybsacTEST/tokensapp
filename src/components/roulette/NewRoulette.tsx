@@ -78,8 +78,8 @@ const NewRoulette = ({
   // Radio en píxeles reales (para pasar al frame decorativo)
   const segmentsRadiusReal = segmentsRadiusBase * scale;
 
-  // Bloquear scroll sólo mientras la ruleta está montada (vista dedicada)
-  useNoScroll(lockScroll);
+  // La variante inline vive dentro de una página más larga; no debe fijar el body.
+  useNoScroll(lockScroll && variant === 'fullscreen');
 
   // Calcular la rotación basada en el índice del premio
   const calculatePrizeRotation = (index: number) => {

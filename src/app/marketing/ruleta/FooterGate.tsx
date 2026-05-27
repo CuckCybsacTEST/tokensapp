@@ -9,6 +9,15 @@ export default function FooterGate() {
     const footer = document.querySelector<HTMLElement>(".roulette-footer");
     if (!footer) return;
 
+    const applyResidualScrollGuard = () => {
+      const body = document.body;
+      const html = document.documentElement;
+      const bodyOverflow = body.scrollHeight - window.innerHeight;
+      const htmlOverflow = html.scrollHeight - window.innerHeight;
+      const hasOnlyPhantomOverflow = bodyOverflow > 0 && bodyOverflow <= 2 && htmlOverflow <= 0;
+      body.style.overflowY = hasOnlyPhantomOverflow ? "hidden" : "auto";
+    };
+
     // Garantizar oculto al hidratar
     footer.style.display = "none";
 
@@ -21,6 +30,7 @@ export default function FooterGate() {
       if (check()) {
         // Mostrar cuando no exista overlay de loader
         footer.style.display = "";
+        applyResidualScrollGuard();
         if (timer) window.clearInterval(timer);
         return;
       }
@@ -31,10 +41,13 @@ export default function FooterGate() {
 
     // Fallback por si se paga muy rápido
     rafId = window.requestAnimationFrame(tick);
+    window.addEventListener("resize", applyResidualScrollGuard);
 
     return () => {
       if (timer) window.clearInterval(timer);
       if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", applyResidualScrollGuard);
+      document.body.style.overflowY = "";
     };
   }, []);
 

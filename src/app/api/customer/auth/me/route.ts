@@ -2,15 +2,16 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function guestResponse(code: 'NO_SESSION' | 'INVALID_SESSION' | 'SESSION_EXPIRED') {
+  return NextResponse.json({ ok: false, code });
+}
+
 export async function GET(req: NextRequest) {
   try {
     const sessionToken = req.cookies.get('customer_session')?.value;
 
     if (!sessionToken) {
-      return NextResponse.json(
-        { ok: false, code: 'NO_SESSION' },
-        { status: 401 }
-      );
+      return guestResponse('NO_SESSION');
     }
 
     // Buscar sesión válida
@@ -39,10 +40,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!session) {
-      return NextResponse.json(
-        { ok: false, code: 'INVALID_SESSION' },
-        { status: 401 }
-      );
+      return guestResponse('INVALID_SESSION');
     }
 
     // Verificar si la sesión expiró
@@ -52,10 +50,15 @@ export async function GET(req: NextRequest) {
         where: { id: session.id }
       });
 
-      return NextResponse.json(
-        { ok: false, code: 'SESSION_EXPIRED' },
-        { status: 401 }
-      );
+      const response = guestResponse('SESSION_EXPIRED');
+      response.cookies.set('customer_session', '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        expires: new Date(0),
+      });
+      return response;
     }
 
     // Actualizar lastActivity
