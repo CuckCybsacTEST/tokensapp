@@ -548,7 +548,7 @@ export default function DailyEvaluationPage() {
             {!summary.birthdays || summary.birthdays.total === 0 ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">No hay reservas de cumpleaños para este día.</p>
             ) : (
-              <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-1.5 max-h-72 overflow-y-auto">
                 {summary.birthdays.reservations.map(r => (
                   <div key={r.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-pink-50 dark:bg-pink-900/10">
                     <span className="text-xs font-semibold text-pink-700 dark:text-pink-300 flex-shrink-0 w-10 text-center">{r.timeSlot}</span>
@@ -678,22 +678,75 @@ export default function DailyEvaluationPage() {
             </div>
           )}
 
-          {/* ====== SECCIONES ORDENADAS POR ÁREA ====== */}
-          {/* Multimedia: QR's → Cumpleaños → Ruleta → Invitados */}
-          {/* Seguridad:  Cumpleaños → Invitados → Ruleta → QR's */}
-          {/* Default:    Ruleta → Cumpleaños → Invitados → QR's */}
+          {/* ====== SECCIÓN: COLABORADORES (solo ADMIN/COORDINATOR) ====== */}
+          {canManage && summary && (
+            <>
+              <div className="relative flex items-center gap-3 pt-2">
+                <div className="flex-1 h-px bg-blue-200 dark:bg-blue-700" />
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                  👥 Colaboradores Presentes
+                </span>
+                <div className="flex-1 h-px bg-blue-200 dark:bg-blue-700" />
+              </div>
 
-          {isMultimedia && qrSection}
-          {(isMultimedia || isSecurity) && birthdaysSection}
-          {isSecurity && specialGuestsSection}
+              <button
+                onClick={() => setModalSection('attendance')}
+                className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-xl sm:text-2xl">👥</div>
+                  <div>
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{summary.attendance.length}</div>
+                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Presentes</div>
+                  </div>
+                  {summary.attendance.filter(a => a.missingExit).length > 0 && (
+                    <div className="ml-auto text-[10px] text-amber-600 dark:text-amber-400">{summary.attendance.filter(a => a.missingExit).length} sin salida</div>
+                  )}
+                </div>
+              </button>
 
-          {/* ====== SECCIÓN: RULETA ====== */}
+              {/* Attendance Modal */}
+              {modalSection === 'attendance' && summary.attendance.length > 0 && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+                  <div className="w-full max-w-md rounded-2xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        👥 Colaboradores — {summary.attendance.length} presentes
+                      </h3>
+                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-lg text-slate-400">&times;</span>
+                      </button>
+                    </div>
+                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                      {summary.attendance.map(a => (
+                        <div key={a.person.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/10">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium truncate">{a.person.name}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{a.person.area || '-'} · {formatTime(a.firstIn)} → {formatTime(a.lastOut)}</div>
+                          </div>
+                          <div className="flex-shrink-0">
+                            {a.missingExit ? (
+                              <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Sin salida</span>
+                            ) : (
+                              <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">OK</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ====== SECCIÓN: RULETA TOKENSHOW ====== */}
           {summary && (
             <>
               <div className="relative flex items-center gap-3 pt-1">
                 <div className="flex-1 h-px bg-amber-200 dark:bg-amber-700" />
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                  🎰 Ruleta
+                  🎰 RULETA TOKENSHOW
                 </span>
                 <div className="flex-1 h-px bg-amber-200 dark:bg-amber-700" />
               </div>
@@ -801,76 +854,14 @@ export default function DailyEvaluationPage() {
             </>
           )}
 
-          {/* ====== CUMPLEAÑOS (para áreas que no lo mostraron arriba) ====== */}
-          {!isMultimedia && !isSecurity && birthdaysSection}
+          {/* ====== CUMPLEAÑOS ====== */}
+          {birthdaysSection}
 
-          {/* ====== INVITADOS ESPECIALES (para áreas que no lo mostraron arriba) ====== */}
-          {!isSecurity && specialGuestsSection}
+          {/* ====== QR'S DISPONIBLES ====== */}
+          {qrSection}
 
-          {/* ====== SECCIÓN: COLABORADORES (solo ADMIN/COORDINATOR) ====== */}
-          {canManage && summary && (
-            <>
-              <div className="relative flex items-center gap-3 pt-2">
-                <div className="flex-1 h-px bg-blue-200 dark:bg-blue-700" />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
-                  👥 Colaboradores Presentes
-                </span>
-                <div className="flex-1 h-px bg-blue-200 dark:bg-blue-700" />
-              </div>
-
-              <button
-                onClick={() => setModalSection('attendance')}
-                className="w-full relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-xl sm:text-2xl">👥</div>
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{summary.attendance.length}</div>
-                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Presentes</div>
-                  </div>
-                  {summary.attendance.filter(a => a.missingExit).length > 0 && (
-                    <div className="ml-auto text-[10px] text-amber-600 dark:text-amber-400">{summary.attendance.filter(a => a.missingExit).length} sin salida</div>
-                  )}
-                </div>
-              </button>
-
-              {/* Attendance Modal */}
-              {modalSection === 'attendance' && summary.attendance.length > 0 && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
-                  <div className="w-full max-w-md rounded-2xl border border-blue-200 dark:border-blue-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        👥 Colaboradores — {summary.attendance.length} presentes
-                      </h3>
-                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        <span className="text-lg text-slate-400">&times;</span>
-                      </button>
-                    </div>
-                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                      {summary.attendance.map(a => (
-                        <div key={a.person.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/10">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium truncate">{a.person.name}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{a.person.area || '-'} · {formatTime(a.firstIn)} → {formatTime(a.lastOut)}</div>
-                          </div>
-                          <div className="flex-shrink-0">
-                            {a.missingExit ? (
-                              <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Sin salida</span>
-                            ) : (
-                              <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">OK</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ====== QR's DISPONIBLES (para áreas que no lo mostraron arriba) ====== */}
-          {!isMultimedia && qrSection}
+          {/* ====== INVITADOS ESPECIALES ====== */}
+          {specialGuestsSection}
 
           {/* Modal for reusable group detail (shared) */}
           {modalGroup && (
