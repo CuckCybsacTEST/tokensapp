@@ -258,6 +258,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
   const [prizeLinkCopied, setPrizeLinkCopied] = useState(false);
   const [guideInsights, setGuideInsights] = useState<RouletteSidebarInsight[]>([]);
   const [guideRotationIndex, setGuideRotationIndex] = useState(0);
+  const [mobileSliderIndex, setMobileSliderIndex] = useState(0);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -358,6 +359,15 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       window.clearInterval(intervalId);
     };
   }, [guideInsights.length]);
+
+  useEffect(() => {
+    const totalItems = guideInsights.length + (spinCounter != null ? 1 : 0);
+    if (totalItems <= 1) return;
+    const id = window.setInterval(() => {
+      setMobileSliderIndex((prev) => (prev + 1) % totalItems);
+    }, 3200);
+    return () => window.clearInterval(id);
+  }, [guideInsights.length, spinCounter]);
 
   // Reconstrucción en recarga: si el token ya está revelado / entregado.
   useEffect(() => {
@@ -882,6 +892,13 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
   const phaseUi = getPhaseUi(phase);
   const visibleGuideInsights = getVisibleGuideInsights(guideInsights, GUIDE_SLOT_COUNT, guideRotationIndex);
   const guideSlots = Array.from({ length: GUIDE_SLOT_COUNT }, (_, index) => visibleGuideInsights[index] ?? null);
+  const mobileSliderItems = [
+    ...guideInsights.map((i) => ({ id: i.id, icon: i.icon, title: i.title, value: i.value })),
+    ...(spinCounter != null
+      ? [{ id: '__spins__', icon: undefined as undefined, title: 'Giros hoy', value: spinCounterFormatter.format(spinCounter) }]
+      : []),
+  ];
+  const safeMobileIndex = mobileSliderItems.length > 0 ? mobileSliderIndex % mobileSliderItems.length : 0;
 
   return (
     <div
@@ -893,7 +910,6 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
       {!retryOverlayOpen && !shouldShowReservedPanel && (
         <div className={layoutStyles.heroShell}>
           <div className={layoutStyles.heroFrame}>
-            <div className={layoutStyles.heroGlow} aria-hidden="true" />
             <div className={layoutStyles.heroInner}>
               <RouletteHeading
                 kicker="BIENVENIDO A KTDRAL LOUNGE"
@@ -978,12 +994,13 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
 
       {/* Ruleta solo en READY / SPINNING */}
       {(phase === "READY" || phase === "SPINNING") && !shouldShowReservedPanel && (
+        <>
         <div className={layoutStyles.stageShell}>
           <div className={layoutStyles.stageCard}>
             <div className={layoutStyles.stageBackdrop} aria-hidden="true" />
             <div className={layoutStyles.stageGrid}>
-              <aside className={layoutStyles.guidePanel} aria-label="Como participar">
-                <div className={layoutStyles.guideEyebrow}>Como participar</div>
+              <aside className={layoutStyles.guidePanel} aria-label="En vivo">
+                <div className={layoutStyles.guideEyebrow}>En vivo</div>
                 <div className={layoutStyles.guideStack}>
                   {guideSlots.map((insight, index) => {
                     const slotNumber = String(index + 1).padStart(2, "0");
@@ -993,7 +1010,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
                         <GuideInsightIcon icon={insight?.icon ?? "placeholder"} />
                       </div>
                       <div>
-                        <div className={layoutStyles.guideTitle}><span className={layoutStyles.guideNumber}>{slotNumber}.</span> {insight?.title ?? "Actividad en vivo"}</div>
+                        <div className={layoutStyles.guideTitle}>{insight?.title ?? "Actividad en vivo"}</div>
                         {insight ? (
                           <>
                             <div className={layoutStyles.guideInsightValue}>{insight.value}</div>
@@ -1036,6 +1053,47 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
           </div>
 
         </div>
+
+        {/* Insights en móvil: slider automático (el guidePanel cubre los mismos datos en desktop) */}
+        {mobileSliderItems.length > 0 && (
+          <div className={layoutStyles.mobileInsightsRail}>
+            <div
+              className={layoutStyles.mobileInsightsTrack}
+              style={{ transform: `translateX(-${safeMobileIndex * 100}%)` }}
+            >
+              {mobileSliderItems.map((item) => (
+                <div key={item.id} className={layoutStyles.mobileInsightBubble}>
+                  <div className={layoutStyles.mobileInsightCard}>
+                    {item.icon != null && (
+                      <div className={layoutStyles.mobileInsightIcon}>
+                        <GuideInsightIcon icon={item.icon} />
+                      </div>
+                    )}
+                    <div className={layoutStyles.mobileInsightContent}>
+                      <div className={layoutStyles.mobileInsightLabel}>{item.title}</div>
+                      <div className={layoutStyles.mobileInsightValue}>{item.value}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {mobileSliderItems.length > 1 && (
+              <div className={layoutStyles.mobileSliderDots}>
+                {mobileSliderItems.map((_, i) => (
+                  <div
+                    key={i}
+                    className={
+                      i === safeMobileIndex
+                        ? layoutStyles.mobileSliderDotActive
+                        : layoutStyles.mobileSliderDot
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        </>
       )}
 
       {/* Panel permanente tras cerrar modal */}

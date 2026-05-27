@@ -153,6 +153,7 @@ export default function DailyEvaluationPage() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [evaluation, setEvaluation] = useState<DailyEvaluation | null>(null);
   const [dayBrief, setDayBrief] = useState<{ title?: string | null; show?: string | null; promos?: string | null; notes?: string | null } | null>(null);
+  const [spinCount, setSpinCount] = useState<number | null>(null);
 
   // Fetch user role once
   useEffect(() => {
@@ -185,19 +186,25 @@ export default function DailyEvaluationPage() {
     setSummary(null);
     setEvaluation(null);
     setDayBrief(null);
+    setSpinCount(null);
     setEvalRating('REGULAR');
     setEvalComment('');
     setPersonRatingsMap(new Map());
     setRatingsLocked(false);
     try {
-      const [summaryRes, evalRes, ratingsRes, briefRes] = await Promise.all([
+      const [summaryRes, evalRes, ratingsRes, briefRes, spinsRes] = await Promise.all([
         fetch(`/api/admin/daily-evaluation/summary?day=${selectedDay}`),
         fetch(`/api/admin/daily-evaluation?day=${selectedDay}`),
         fetch(`/api/admin/daily-evaluation/ratings?day=${selectedDay}`),
         fetch(`/api/admin/day-brief?day=${selectedDay}`),
+        fetch(`/api/system/tokens/spins?day=${selectedDay}`),
       ]);
 
       if (summaryRes.ok) setSummary(await summaryRes.json());
+      if (spinsRes.ok) {
+        const spinsData = await spinsRes.json();
+        if (spinsData.ok) setSpinCount(spinsData.metrics?.totalSpins ?? null);
+      }
       if (evalRes.ok) {
         const evalData = await evalRes.json();
         if (evalData.evaluation) {
@@ -733,6 +740,19 @@ export default function DailyEvaluationPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Stat card: Giros del día */}
+              {spinCount != null && (
+                <div className="w-full rounded-xl border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="text-xl sm:text-2xl">🎡</div>
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-bold text-amber-800 dark:text-amber-200">{spinCount}</div>
+                      <div className="text-[10px] sm:text-xs text-amber-700 dark:text-amber-400 font-medium">Giros del día</div>
+                    </div>
                   </div>
                 </div>
               )}

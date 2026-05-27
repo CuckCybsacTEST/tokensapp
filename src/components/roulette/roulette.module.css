@@ -28,6 +28,11 @@
   padding-bottom: 0;
 }
 
+/* En modo inline el roulettePad no debe recortar el puntero que sobresale arriba del wheelWrapper */
+.rouletteContainer[data-variant="inline"] .roulettePad {
+  overflow: visible;
+}
+
 /* Reservar espacio superior para títulos / instrucciones */
 .rouletteContainer.hasTitle { padding-top: clamp(70px, 12vh, 110px); }
 /* Si se aplica un spacing custom via prop (data-has-custom-spacing), no aplicar padding por clase */
@@ -93,8 +98,10 @@
     padding: clamp(2px, 1vw, 8px);
   }
   .wheelWrapper {
-    /* Maximizar rueda en móviles, respetando viewport corto */
-    --wheel-size: min(92vw, 88vmin);
+    /* Tamaño relativo al viewport pero descontando los paddings del contenedor
+       (stageShell 1rem×2 + stageGrid 0.8rem×2 ≈ 3.6rem) + colchón interno de roulettePad.
+       Usando 4.5rem de margen para que la rueda nunca desborde el stageCard (overflow:hidden). */
+    --wheel-size: min(calc(100vw - 4.5rem), 88vmin);
     margin-top: calc(var(--top-offset) + 8px);
     /* Importante: mantener aspecto perfectamente circular */
     aspect-ratio: 1/1;
@@ -109,7 +116,8 @@
   .rouletteContainer.hasTitle:not([data-variant="inline"]) { padding-top: 108px; }
   .rouletteContainer.title-large .wheelWrapper { --top-offset: 52px; }
   .wheelWrapper {
-    --wheel-size: min(94vw, 86vmin);
+    /* Mismo criterio que ≤480px: descontar paddings del contenedor + colchón */
+    --wheel-size: min(calc(100vw - 4.5rem), 86vmin);
     margin-top: calc(var(--top-offset) + 10px);
   }
 }

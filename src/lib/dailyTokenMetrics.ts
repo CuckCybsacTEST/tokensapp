@@ -206,18 +206,6 @@ function buildPublicRouletteSidebarSummary({
         sortOrder: 40,
       },
       {
-        id: 'pending-delivery',
-        icon: 'clock',
-        title: 'Pendientes por entregar',
-        value: formatCount(pendingDeliveryCount),
-        detail:
-          pendingDeliveryCount > 0
-            ? `${formatCount(pendingDeliveryCount)} premios esperan canje`
-            : 'No hay premios pendientes ahora',
-        tone: 'amber',
-        sortOrder: 50,
-      },
-      {
         id: 'delivered-last-hour',
         icon: 'bolt',
         title: 'Canjes en la ultima hora',
@@ -228,18 +216,6 @@ function buildPublicRouletteSidebarSummary({
             : 'Sin entregas reales en los ultimos 60 min',
         tone: 'emerald',
         sortOrder: 60,
-      },
-      {
-        id: 'delivery-rate',
-        icon: 'chart',
-        title: 'Tasa de entrega del dia',
-        value: `${deliveryRate}%`,
-        detail:
-          revealedTotal > 0
-            ? `${formatCount(deliveredTotal)} de ${formatCount(revealedTotal)} premios ya fueron entregados`
-            : 'Aun no hay premios reales revelados hoy',
-        tone: 'amber',
-        sortOrder: 70,
       },
     ],
   };

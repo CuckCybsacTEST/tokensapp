@@ -23,8 +23,7 @@
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 1.75rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
-    radial-gradient(circle at top, rgba(255, 209, 102, 0.18), rgba(255, 255, 255, 0) 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
     rgba(10, 12, 19, 0.55);
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(14px);
@@ -179,7 +178,7 @@
   flex: 1;
   flex-direction: column;
   justify-content: space-between;
-  gap: 0.95rem;
+  gap: 0;
 }
 
 .guidePanel .metricCard {
@@ -189,28 +188,32 @@
 .guideStep {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.95rem;
-  align-items: start;
-  padding: 0.7rem 0.1rem;
-  min-height: 6rem;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0.15rem;
+}
+
+.guideStep + .guideStep {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .guideIndex {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.85rem;
-  height: 2.85rem;
-  border-radius: 999px;
-  border: 1px solid rgba(246, 199, 102, 0.22);
-  background: linear-gradient(180deg, rgba(246, 199, 102, 0.12), rgba(255, 255, 255, 0.03));
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(246, 199, 102, 0.18);
+  background: linear-gradient(135deg, rgba(246, 199, 102, 0.14), rgba(255, 255, 255, 0.02));
   color: #ffd166;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.12);
+  flex: 0 0 auto;
 }
 
 .guideIndex svg {
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .guideTitle {
@@ -473,27 +476,28 @@
     padding: 1rem 0.95rem 1.1rem;
   }
 
+  /* Tamaños reducidos para que los 3 chips quepan en pantallas de 375px+ sin overflow */
   .stepRail {
-    gap: 0.4rem;
+    gap: 0.25rem;
   }
 
   .stepChip {
-    gap: 0.48rem;
-    padding: 0.32rem 0.62rem 0.32rem 0.34rem;
+    gap: 0.35rem;
+    padding: 0.28rem 0.5rem 0.28rem 0.28rem;
   }
 
   .stepIndex {
-    width: 1.95rem;
-    height: 1.95rem;
-    font-size: 0.8rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 0.76rem;
   }
 
   .stepLabel {
-    font-size: 0.74rem;
+    font-size: 0.68rem;
   }
 
   .stepDivider {
-    width: 0.75rem;
+    width: 0.5rem;
   }
 
   .stageShell {
@@ -544,6 +548,33 @@
   }
 }
 
+/* Extra ajuste para teléfonos muy pequeños (≤380px): reducir aún más los chips
+   para que quepan en pantallas de 360px de ancho (ej. Galaxy A, Moto G) */
+@media (max-width: 380px) {
+  .stepRail {
+    gap: 0.18rem;
+  }
+
+  .stepChip {
+    gap: 0.28rem;
+    padding: 0.22rem 0.4rem 0.22rem 0.22rem;
+  }
+
+  .stepIndex {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.7rem;
+  }
+
+  .stepLabel {
+    font-size: 0.62rem;
+  }
+
+  .stepDivider {
+    width: 0.38rem;
+  }
+}
+
 @media (min-width: 1024px) {
   .stageGrid {
     grid-template-columns: minmax(13.75rem, 15.5rem) minmax(0, 1fr);
@@ -568,4 +599,114 @@
 .rouletteViewportChristmas {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+/* ── Slider de insights en móvil ─────────────────────────────────────── */
+.mobileInsightsRail {
+  overflow: hidden;
+  width: 100%;
+  padding: 0.55rem 0 0;
+}
+
+/* En desktop el guidePanel ya cubre estos datos → ocultar slider */
+@media (min-width: 1024px) {
+  .mobileInsightsRail {
+    display: none;
+  }
+}
+
+.mobileInsightsTrack {
+  display: flex;
+  flex-direction: row;
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobileInsightBubble {
+  flex: 0 0 100%;
+  min-width: 0;
+  padding: 0 0.875rem;
+}
+
+.mobileInsightCard {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.55rem 0.85rem;
+  backdrop-filter: blur(8px);
+}
+
+.mobileInsightIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.45rem;
+  background: rgba(246, 199, 102, 0.12);
+  color: #ffd166;
+  flex: 0 0 auto;
+}
+
+.mobileInsightIcon svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.mobileInsightContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobileInsightLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobileInsightValue {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff7ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.05rem;
+  line-height: 1.25;
+}
+
+.mobileSliderDots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0 0.2rem;
+}
+
+.mobileSliderDot {
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.3s ease, width 0.3s ease;
+  flex-shrink: 0;
+}
+
+.mobileSliderDotActive {
+  width: 0.85rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: rgba(246, 199, 102, 0.85);
+  transition: background 0.3s ease, width 0.3s ease;
+  flex-shrink: 0;
 }
