@@ -1033,7 +1033,7 @@ export default function RouletteClientPage({ theme: propTheme = "default" }: Rou
               </aside>
 
               <div className={layoutStyles.wheelPanel}>
-                <div className="flex items-center justify-center py-3 sm:py-4 min-h-[320px] sm:min-h-[420px] lg:min-h-[460px]">
+                <div className={layoutStyles.wheelStage}>
                   <NewRoulette
                     elements={elements}
                     onSpin={handleSpin}
