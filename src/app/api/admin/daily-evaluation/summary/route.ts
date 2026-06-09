@@ -237,6 +237,58 @@ export async function GET(req: NextRequest) {
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
+    // Static batch tokens — 3 metrics for this business day
+    // 1. Delivered today (deliveredAt in day window)
+    const staticDeliveredToday = await prisma.token.findMany({
+      where: {
+        deliveredAt: { gte: startUtc, lt: endUtc },
+        batch: { staticTargetUrl: { not: null } },
+      },
+      include: {
+        prize: { select: { id: true, label: true, color: true } },
+      },
+    });
+
+    // Group delivered by prize label
+    const staticDeliveryMap = new Map<string, { label: string; color: string | null; count: number }>();
+    for (const t of staticDeliveredToday) {
+      const label = t.prize?.label ?? 'Sin premio';
+      const existing = staticDeliveryMap.get(label);
+      if (existing) {
+        existing.count++;
+      } else {
+        staticDeliveryMap.set(label, { label, color: t.prize?.color ?? null, count: 1 });
+      }
+    }
+    const staticDeliveredPrizes = Array.from(staticDeliveryMap.values()).sort((a, b) => b.count - a.count);
+
+    // 2. QRs revealed (scanned) today (revealedAt in day window)
+    const staticRevealedToday = await prisma.token.count({
+      where: {
+        revealedAt: { gte: startUtc, lt: endUtc },
+        batch: { staticTargetUrl: { not: null } },
+      },
+    });
+
+    // 3. Snapshot: currently in circulation (revealed but not delivered, not expired, not disabled)
+    const now2 = new Date();
+    const staticInCirculation = await prisma.token.count({
+      where: {
+        revealedAt: { not: null },
+        deliveredAt: null,
+        disabled: false,
+        expiresAt: { gte: now2 },
+        batch: { staticTargetUrl: { not: null } },
+      },
+    });
+
+    const staticBatchSummary = {
+      deliveredToday: staticDeliveredToday.length,
+      deliveredPrizes: staticDeliveredPrizes,
+      revealedToday: staticRevealedToday,
+      inCirculation: staticInCirculation,
+    };
+
     const reusableGroupsSummary = reusableGroups.map(g => {
       let daySales = 0;
       const prizeAcc: Record<string, { label: string; total: number; daySales: number }> = {};
@@ -268,6 +320,7 @@ export async function GET(req: NextRequest) {
       birthdays: birthdaySummary,
       specialGuests: specialGuestsSummary,
       reusableGroups: reusableGroupsSummary,
+      staticBatches: staticBatchSummary,
     });
   } catch (error) {
     console.error('Error fetching daily summary:', error);
