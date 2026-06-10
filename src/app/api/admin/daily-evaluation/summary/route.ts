@@ -262,17 +262,27 @@ export async function GET(req: NextRequest) {
     }
     const staticDeliveredPrizes = Array.from(staticDeliveryMap.values()).sort((a, b) => b.count - a.count);
 
-    // 2. QRs revealed (scanned) today (revealedAt in day window)
-    const staticRevealedToday = await prisma.token.count({
+    // 2. QRs revealed (scanned) today (revealedAt in day window) — with prize detail
+    const staticRevealedTodayTokens = await prisma.token.findMany({
       where: {
         revealedAt: { gte: startUtc, lt: endUtc },
         batch: { staticTargetUrl: { not: null } },
       },
+      include: {
+        prize: { select: { id: true, label: true, color: true } },
+      },
     });
+    const staticRevealedMap = new Map<string, { label: string; color: string | null; count: number }>();
+    for (const t of staticRevealedTodayTokens) {
+      const label = t.prize?.label ?? 'Sin premio';
+      const existing = staticRevealedMap.get(label);
+      if (existing) { existing.count++; } else { staticRevealedMap.set(label, { label, color: t.prize?.color ?? null, count: 1 }); }
+    }
+    const staticRevealedPrizes = Array.from(staticRevealedMap.values()).sort((a, b) => b.count - a.count);
 
-    // 3. Snapshot: currently in circulation (revealed but not delivered, not expired, not disabled)
+    // 3. Snapshot: currently in circulation (revealed but not delivered, not expired, not disabled) — with prize detail
     const now2 = new Date();
-    const staticInCirculation = await prisma.token.count({
+    const staticInCirculationTokens = await prisma.token.findMany({
       where: {
         revealedAt: { not: null },
         deliveredAt: null,
@@ -280,13 +290,47 @@ export async function GET(req: NextRequest) {
         expiresAt: { gte: now2 },
         batch: { staticTargetUrl: { not: null } },
       },
+      include: {
+        prize: { select: { id: true, label: true, color: true } },
+      },
     });
+    const staticCirculationMap = new Map<string, { label: string; color: string | null; count: number }>();
+    for (const t of staticInCirculationTokens) {
+      const label = t.prize?.label ?? 'Sin premio';
+      const existing = staticCirculationMap.get(label);
+      if (existing) { existing.count++; } else { staticCirculationMap.set(label, { label, color: t.prize?.color ?? null, count: 1 }); }
+    }
+    const staticCirculationPrizes = Array.from(staticCirculationMap.values()).sort((a, b) => b.count - a.count);
+
+    // 4. All available prizes (not disabled, not expired, not delivered) — grouped by label
+    const staticAvailableTokens = await prisma.token.findMany({
+      where: {
+        disabled: false,
+        deliveredAt: null,
+        expiresAt: { gte: now2 },
+        batch: { staticTargetUrl: { not: null } },
+      },
+      include: {
+        prize: { select: { id: true, label: true, color: true } },
+      },
+    });
+    const staticAvailableMap = new Map<string, { label: string; color: string | null; count: number }>();
+    for (const t of staticAvailableTokens) {
+      const label = t.prize?.label ?? 'Sin premio';
+      const existing = staticAvailableMap.get(label);
+      if (existing) { existing.count++; } else { staticAvailableMap.set(label, { label, color: t.prize?.color ?? null, count: 1 }); }
+    }
+    const staticAvailablePrizes = Array.from(staticAvailableMap.values()).sort((a, b) => a.label.localeCompare(b.label));
 
     const staticBatchSummary = {
       deliveredToday: staticDeliveredToday.length,
       deliveredPrizes: staticDeliveredPrizes,
-      revealedToday: staticRevealedToday,
-      inCirculation: staticInCirculation,
+      revealedToday: staticRevealedTodayTokens.length,
+      revealedPrizes: staticRevealedPrizes,
+      inCirculation: staticInCirculationTokens.length,
+      circulationPrizes: staticCirculationPrizes,
+      availableTotal: staticAvailableTokens.length,
+      availablePrizes: staticAvailablePrizes,
     };
 
     const reusableGroupsSummary = reusableGroups.map(g => {

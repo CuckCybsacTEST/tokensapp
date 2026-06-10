@@ -54,7 +54,11 @@ interface StaticBatchSummary {
   deliveredToday: number;
   deliveredPrizes: StaticBatchDeliveredPrize[];
   revealedToday: number;
+  revealedPrizes: StaticBatchDeliveredPrize[];
   inCirculation: number;
+  circulationPrizes: StaticBatchDeliveredPrize[];
+  availableTotal: number;
+  availablePrizes: StaticBatchDeliveredPrize[];
 }
 
 interface SummaryData {
@@ -754,6 +758,196 @@ export default function DailyEvaluationPage() {
             </>
           )}
 
+          {/* ====== TOKENS ESTÁTICOS ====== */}
+          {summary?.staticBatches && (summary.staticBatches.availableTotal > 0 || summary.staticBatches.deliveredToday > 0 || summary.staticBatches.revealedToday > 0 || summary.staticBatches.inCirculation > 0) && (
+            <>
+              <div className="relative flex items-center gap-3 pt-2">
+                <div className="flex-1 h-px bg-indigo-200 dark:bg-indigo-700" />
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
+                  🎟️ TOKEN&apos;s GOLD
+                </span>
+                <div className="flex-1 h-px bg-indigo-200 dark:bg-indigo-700" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Disponibles en la semana */}
+                <button
+                  onClick={() => setModalSection('staticAvailable')}
+                  className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-emerald-200 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 hover:border-emerald-400 dark:hover:border-emerald-500"
+                >
+                  <div className="text-2xl sm:text-3xl font-bold text-emerald-800 dark:text-emerald-200">
+                    {summary.staticBatches.availableTotal}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Disponibles en la semana</div>
+                </button>
+
+                {/* Escaneados hoy */}
+                <button
+                  onClick={() => setModalSection('staticRevealed')}
+                  className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-sky-200 dark:border-sky-700 bg-gradient-to-br from-sky-50 to-cyan-50 dark:from-sky-900/10 dark:to-cyan-900/10 hover:border-sky-400 dark:hover:border-sky-500"
+                >
+                  <div className="text-2xl sm:text-3xl font-bold text-sky-800 dark:text-sky-200">
+                    {summary.staticBatches.revealedToday}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-sky-600 dark:text-sky-400 font-medium mt-0.5">Escaneados hoy</div>
+                </button>
+
+                {/* Entregados hoy */}
+                <button
+                  onClick={() => setModalSection('staticPrizes')}
+                  className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-indigo-200 dark:border-indigo-700 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 hover:border-indigo-400 dark:hover:border-indigo-500"
+                >
+                  <div className="text-2xl sm:text-3xl font-bold text-indigo-800 dark:text-indigo-200">
+                    {summary.staticBatches.deliveredToday}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">Entregados hoy</div>
+                </button>
+
+                {/* En circulación global (snapshot) */}
+                <button
+                  onClick={() => setModalSection('staticCirculation')}
+                  className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-amber-200 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/10 dark:to-yellow-900/10 hover:border-amber-400 dark:hover:border-amber-500"
+                >
+                  <div className="text-2xl sm:text-3xl font-bold text-amber-800 dark:text-amber-200">
+                    {summary.staticBatches.inCirculation}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-medium mt-0.5">En circulación global</div>
+                </button>
+              </div>
+
+              {/* Modal: premios disponibles */}
+              {modalSection === 'staticAvailable' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+                  <div className="w-full max-w-sm rounded-2xl border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        🎟️ Disponibles en la semana — {summary.staticBatches.availableTotal}
+                      </h3>
+                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-lg text-slate-400">&times;</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Tokens activos no expirados ni entregados</p>
+                    {summary.staticBatches.availablePrizes.length === 0 ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Sin premios disponibles.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5 max-h-72 overflow-y-auto">
+                        {summary.staticBatches.availablePrizes.map(p => (
+                          <div key={p.label} className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/10">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {p.color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />}
+                              <span className="text-xs font-medium truncate">{p.label}</span>
+                            </div>
+                            <span className="font-bold text-xs text-emerald-700 dark:text-emerald-300 flex-shrink-0 ml-2">{p.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal: entregados hoy */}
+              {modalSection === 'staticPrizes' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+                  <div className="w-full max-w-sm rounded-2xl border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        🎟️ Entregados hoy — {summary.staticBatches.deliveredToday}
+                      </h3>
+                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-lg text-slate-400">&times;</span>
+                      </button>
+                    </div>
+                    {summary.staticBatches.deliveredPrizes.length === 0 ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {isToday ? 'Sin entregas aún hoy.' : 'No se entregaron tokens estáticos este día.'}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5 max-h-60 overflow-y-auto">
+                        {summary.staticBatches.deliveredPrizes.map(p => (
+                          <div key={p.label} className="flex items-center justify-between p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/10">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {p.color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />}
+                              <span className="text-xs font-medium truncate">{p.label}</span>
+                            </div>
+                            <span className="font-bold text-xs text-indigo-700 dark:text-indigo-300 flex-shrink-0 ml-2">{p.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal: escaneados hoy */}
+              {modalSection === 'staticRevealed' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+                  <div className="w-full max-w-sm rounded-2xl border border-sky-200 dark:border-sky-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        👁️ Escaneados hoy — {summary.staticBatches.revealedToday}
+                      </h3>
+                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-lg text-slate-400">&times;</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">QRs abiertos por clientes hoy</p>
+                    {summary.staticBatches.revealedPrizes.length === 0 ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {isToday ? 'Ningún QR escaneado aún.' : 'No se escanearon tokens este día.'}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5 max-h-60 overflow-y-auto">
+                        {summary.staticBatches.revealedPrizes.map(p => (
+                          <div key={p.label} className="flex items-center justify-between p-2.5 rounded-lg bg-sky-50 dark:bg-sky-900/10">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {p.color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />}
+                              <span className="text-xs font-medium truncate">{p.label}</span>
+                            </div>
+                            <span className="font-bold text-xs text-sky-700 dark:text-sky-300 flex-shrink-0 ml-2">{p.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal: en circulación */}
+              {modalSection === 'staticCirculation' && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+                  <div className="w-full max-w-sm rounded-2xl border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        🔄 En circulación global — {summary.staticBatches.inCirculation}
+                      </h3>
+                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-lg text-slate-400">&times;</span>
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Escaneados por clientes pero aún pendientes de canjear</p>
+                    {summary.staticBatches.circulationPrizes.length === 0 ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Ningún token en circulación.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-1.5 max-h-60 overflow-y-auto">
+                        {summary.staticBatches.circulationPrizes.map(p => (
+                          <div key={p.label} className="flex items-center justify-between p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/10">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {p.color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />}
+                              <span className="text-xs font-medium truncate">{p.label}</span>
+                            </div>
+                            <span className="font-bold text-xs text-amber-700 dark:text-amber-300 flex-shrink-0 ml-2">{p.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* ====== SECCIÓN: RULETA TOKENSHOW ====== */}
           {summary && (
             <>
@@ -873,86 +1067,6 @@ export default function DailyEvaluationPage() {
 
           {/* ====== QR'S DISPONIBLES ====== */}
           {qrSection}
-
-          {/* ====== TOKENS ESTÁTICOS ====== */}
-          {summary?.staticBatches && (summary.staticBatches.deliveredToday > 0 || summary.staticBatches.revealedToday > 0 || summary.staticBatches.inCirculation > 0) && (
-            <>
-              <div className="relative flex items-center gap-3 pt-2">
-                <div className="flex-1 h-px bg-indigo-200 dark:bg-indigo-700" />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">
-                  🎟️ Tokens Estáticos
-                </span>
-                <div className="flex-1 h-px bg-indigo-200 dark:bg-indigo-700" />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {/* Entregados hoy */}
-                <button
-                  onClick={() => setModalSection('staticPrizes')}
-                  className="relative rounded-xl border p-3 sm:p-4 text-left transition-all hover:shadow-md border-indigo-200 dark:border-indigo-700 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 hover:border-indigo-400 dark:hover:border-indigo-500"
-                >
-                  <div className="text-2xl sm:text-3xl font-bold text-indigo-800 dark:text-indigo-200">
-                    {summary.staticBatches.deliveredToday}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">Entregados hoy</div>
-                </button>
-
-                {/* Escaneados hoy */}
-                <div className="relative rounded-xl border p-3 sm:p-4 border-sky-200 dark:border-sky-700 bg-gradient-to-br from-sky-50 to-cyan-50 dark:from-sky-900/10 dark:to-cyan-900/10">
-                  <div className="text-2xl sm:text-3xl font-bold text-sky-800 dark:text-sky-200">
-                    {summary.staticBatches.revealedToday}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-sky-600 dark:text-sky-400 font-medium mt-0.5">Escaneados hoy</div>
-                </div>
-
-                {/* En circulación (snapshot) */}
-                <div className="relative rounded-xl border p-3 sm:p-4 border-amber-200 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/10 dark:to-yellow-900/10">
-                  <div className="text-2xl sm:text-3xl font-bold text-amber-800 dark:text-amber-200">
-                    {summary.staticBatches.inCirculation}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-medium mt-0.5">En circulación</div>
-                </div>
-              </div>
-
-              {/* Modal: desglose de premios estáticos entregados hoy */}
-              {modalSection === 'staticPrizes' && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
-                  <div className="w-full max-w-sm rounded-2xl border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        🎟️ Tokens Estáticos Entregados — {summary.staticBatches.deliveredToday}
-                      </h3>
-                      <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                        <span className="text-lg text-slate-400">&times;</span>
-                      </button>
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                      {summary.staticBatches.inCirculation} en circulación actualmente (pendientes de canjear)
-                    </div>
-                    {summary.staticBatches.deliveredPrizes.length === 0 ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {isToday ? 'Sin entregas aún hoy.' : 'No se entregaron tokens estáticos este día.'}
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-1.5 max-h-60 overflow-y-auto">
-                        {summary.staticBatches.deliveredPrizes.map(p => (
-                          <div key={p.label} className="flex items-center justify-between p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/10">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {p.color && (
-                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                              )}
-                              <span className="text-xs font-medium truncate">{p.label}</span>
-                            </div>
-                            <span className="font-bold text-xs text-indigo-700 dark:text-indigo-300 flex-shrink-0 ml-2">{p.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
 
           {/* ====== INVITADOS ESPECIALES ====== */}
           {specialGuestsSection}
