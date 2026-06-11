@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import { Clock3, Sparkles, Trophy } from "lucide-react";
 import { DateTime } from "luxon";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -82,6 +84,24 @@ const DEFAULT_TIMEZONE = "America/Lima";
 const MOBILE_POSTER_AUTO_ADVANCE_MS = 4500;
 const MOBILE_POSTER_MANUAL_PAUSE_MS = 7000;
 const MOBILE_POSTER_SCROLL_SYNC_MS = 250;
+const softEase = [0.22, 1, 0.36, 1] as const;
+const fadeUpVariants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: softEase } },
+};
+const staggerGroupVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+const modalStepVariants = {
+  hidden: { opacity: 0, y: 14, scale: 0.985 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.28, ease: softEase } },
+  exit: { opacity: 0, y: -10, scale: 0.985, transition: { duration: 0.18, ease: softEase } },
+};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-PE", {
@@ -219,7 +239,12 @@ function MatchPosterCard({ match, index }: { match: MatchItem; index: number }) 
   const statusChip = getPosterStatusChip(match);
 
   return (
-    <div
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={fadeUpVariants}
+      whileTap={{ scale: 0.992 }}
+      whileHover={state.blocked ? undefined : { y: -4, transition: { duration: 0.18 } }}
       className={[
         "rounded-[22px] border px-4 py-4 transition-all duration-200 sm:px-5 sm:py-5",
         accent.cardClass,
@@ -248,18 +273,22 @@ function MatchPosterCard({ match, index }: { match: MatchItem; index: number }) 
           </div>
         </div>
         <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/8 bg-slate-950/20 px-3 py-1 sm:px-3.5 sm:py-1.5">
+          <Clock3 className="h-3.5 w-3.5 text-slate-500/90" />
           <span className="text-[9px] uppercase tracking-[0.24em] text-slate-500/90">Pitazo</span>
           <span className="text-sm font-semibold text-white/92 sm:text-base">{formatMatchTime(match.startsAt)}</span>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:text-[0.95rem]">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Jugando por</span>
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <Trophy className="h-3.5 w-3.5" />
+          Jugando por
+        </span>
         <span className="font-medium leading-tight text-white/88" style={mainPrize?.color ? { color: mainPrize.color } : undefined}>
           {mainPrize?.label || "Premio por confirmar"}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -618,22 +647,22 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(11,95,255,0.16),_transparent_38%),linear-gradient(180deg,_#081220_0%,_#10213b_52%,_#081220_100%)] text-slate-50">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
-        <section className="overflow-hidden rounded-[28px] border border-white/10 bg-white/5 shadow-2xl shadow-sky-950/30 backdrop-blur sm:rounded-[32px]">
+        <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 shadow-2xl shadow-sky-950/30 backdrop-blur sm:rounded-[32px]">
           <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-            <div className="max-w-4xl space-y-5 sm:space-y-6">
-              <span className="inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-sky-200">
+            <motion.div initial="hidden" animate="visible" variants={staggerGroupVariants} className="max-w-4xl space-y-5 sm:space-y-6">
+              <motion.span variants={fadeUpVariants} className="inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-sky-200">
                 MODO MUNDIALISTA
-              </span>
-              <div className="space-y-4">
+              </motion.span>
+              <motion.div variants={fadeUpVariants} className="space-y-4">
                 <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
                   Bienvenido a KTDRAL FAN ZONE.
                 </h1>
                 <p className="max-w-2xl text-sm text-slate-200/85 sm:text-lg">
                   {sectionHint}
                 </p>
-              </div>
+              </motion.div>
 
-              <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,_rgba(2,6,23,0.56),_rgba(15,23,42,0.42))] p-4 sm:p-5">
+              <motion.div variants={fadeUpVariants} className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,_rgba(2,6,23,0.56),_rgba(15,23,42,0.42))] p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div className="space-y-1.5">
                     <div className="text-xs uppercase tracking-[0.3em] text-slate-300">Cartelera del dia</div>
@@ -685,20 +714,20 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                       </div>
                     ) : null}
 
-                    <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-2">
+                    <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="mt-5 hidden gap-3 sm:grid sm:grid-cols-2">
                       {todayMatches.map((match, index) => (
                         <MatchPosterCard key={match.id} match={match} index={index} />
                       ))}
-                    </div>
+                    </motion.div>
                   </>
                 ) : (
                   <div className="mt-4 rounded-[20px] border border-dashed border-white/15 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
                     Hoy no hay partidos en cartelera.
                   </div>
                 )}
-              </div>
+              </motion.div>
 
-              <div className="flex flex-wrap gap-3">
+              <motion.div variants={fadeUpVariants} className="flex flex-wrap gap-3">
                 <button className={`${primaryActionClass} w-full sm:w-auto`} type="button" onClick={openWizard} disabled={openMatches.length === 0}>
                   {openMatches.length > 0 ? "Jugar ahora" : "Hoy no hay partidos disponibles"}
                 </button>
@@ -710,8 +739,8 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                     Ver mi último QR
                   </Link>
                 ) : null}
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
         </section>
       </div>
@@ -771,14 +800,15 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
             </div>
 
             <div className="px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7">
+              <AnimatePresence mode="wait" initial={false}>
               {wizardStep === "match" ? (
-                <div className="space-y-4">
+                <motion.div key="wizard-match" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-4">
                   <p className="text-sm text-slate-300">Revisa la cartelera, elige un encuentro y haz tu jugada antes del pitazo inicial.</p>
-                  <div className="grid gap-3">
+                  <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="grid gap-3">
                     {openMatches.map((match) => {
                       const selected = selectedMatch?.id === match.id;
                       return (
-                        <button
+                        <motion.button
                           key={match.id}
                           type="button"
                           onClick={() => {
@@ -786,6 +816,8 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                             setError(null);
                             setWizardStep("pick");
                           }}
+                          variants={fadeUpVariants}
+                          whileTap={{ scale: 0.992 }}
                           className={[
                             "rounded-[20px] border px-3 py-3 text-left transition sm:rounded-[24px] sm:px-5 sm:py-5",
                             selected
@@ -808,6 +840,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                               </div>
                             </div>
                             <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/10 bg-slate-950/35 px-3 py-1.5 sm:rounded-[20px] sm:px-4 sm:py-2">
+                              <Clock3 className="h-3.5 w-3.5 text-slate-500" />
                               <span className="text-[10px] uppercase tracking-[0.26em] text-slate-500">Pitazo</span>
                               <span className="text-base font-bold text-white sm:text-lg">{formatMatchTime(match.startsAt)}</span>
                             </div>
@@ -818,38 +851,42 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                               {match.prizes.slice(0, 3).map((prize) => (
                                 <span
                                   key={prize.id}
-                                  className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100"
                                   style={prize.color ? { borderColor: `${prize.color}55`, color: prize.color, backgroundColor: `${prize.color}18` } : undefined}
                                 >
+                                  <Sparkles className="h-3.5 w-3.5" />
                                   Premio: {prize.label.charAt(0).toUpperCase() + prize.label.slice(1).toLowerCase()}
                                 </span>
                               ))}
                             </div>
                           ) : null}
-                        </button>
+                        </motion.button>
                       );
                     })}
-                  </div>
+                  </motion.div>
 
                   {openMatches.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-white/15 bg-slate-950/20 px-5 py-6 text-sm text-slate-300">
                       No hay juegos abiertos para la fecha actual de Lima. Cuando la jornada del día tenga pronósticos habilitados, aparecerán aquí.
                     </div>
                   ) : null}
-                </div>
+                </motion.div>
               ) : null}
 
               {wizardStep === "pick" && selectedMatch ? (
-                <div className="space-y-5">
+                <motion.div key="wizard-pick" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-5">
                   <div>
                     <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Tu elección</div>
                     <div className="mt-2 text-xl font-black text-white sm:text-2xl">Marca tu jugada</div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="mt-3 grid gap-3 sm:grid-cols-3">
                       {(["HOME", "DRAW", "AWAY"] as PickValue[]).map((option) => (
-                        <button
+                        <motion.button
                           key={option}
                           type="button"
                           onClick={() => setPick(option)}
+                          variants={fadeUpVariants}
+                          whileTap={{ scale: 0.98 }}
+                          animate={pick === option ? { scale: 1.015 } : { scale: 1 }}
                           className={getPickOptionClasses(option, pick === option)}
                         >
                           <div className={[
@@ -865,25 +902,25 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                             {option === "HOME" ? "Local" : option === "AWAY" ? "Visita" : "Empate"}
                           </div>
                           <div className="mt-2 text-base font-bold sm:text-lg">{getPickCopy(selectedMatch, option)}</div>
-                        </button>
+                        </motion.button>
                       ))}
-                    </div>
+                    </motion.div>
                   </div>
-                </div>
+                </motion.div>
               ) : null}
 
               {wizardStep === "identity" && selectedMatch ? (
-                <form className="space-y-5" onSubmit={handleSubmit}>
-                  <div className="rounded-[22px] border border-sky-300/15 bg-[linear-gradient(180deg,_rgba(56,189,248,0.12),_rgba(8,18,32,0.72))] p-4 text-slate-200 sm:rounded-[24px] sm:p-5">
+                <motion.form key="wizard-identity" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-5" onSubmit={handleSubmit}>
+                  <motion.div variants={fadeUpVariants} className="rounded-[22px] border border-sky-300/15 bg-[linear-gradient(180deg,_rgba(56,189,248,0.12),_rgba(8,18,32,0.72))] p-4 text-slate-200 sm:rounded-[24px] sm:p-5">
                     <div className="text-xs uppercase tracking-[0.24em] text-sky-200/80">Último paso</div>
                     <div className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">Bien, ya casi esta.</div>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
                       Para guardar tu jugada, dejanos tu nombre y WhatsApp.
                     </p>
-                  </div>
+                  </motion.div>
 
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <label className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
+                  <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="grid gap-4 lg:grid-cols-2">
+                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
                       <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
                       <input
                         className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
@@ -892,9 +929,9 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                         placeholder="Escribe tu nombre"
                         required
                       />
-                    </label>
+                    </motion.label>
 
-                    <label className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
+                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
                       <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
                       <input
                         className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
@@ -903,12 +940,12 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                         placeholder="999 999 999 o +51..."
                         required
                       />
-                    </label>
-                  </div>
+                    </motion.label>
+                  </motion.div>
 
                   {error ? <div className="alert alert-danger">{error}</div> : null}
 
-                  <div className="rounded-[20px] border border-sky-300/18 bg-[linear-gradient(180deg,_rgba(56,189,248,0.09),_rgba(15,23,42,0.74))] p-3.5 text-sm text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-[22px] sm:p-4">
+                  <motion.div variants={fadeUpVariants} initial="hidden" animate="visible" className="rounded-[20px] border border-sky-300/18 bg-[linear-gradient(180deg,_rgba(56,189,248,0.09),_rgba(15,23,42,0.74))] p-3.5 text-sm text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-[22px] sm:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-xs uppercase tracking-[0.24em] text-sky-200/80">Resumen</div>
                       <span className="rounded-full border border-sky-300/20 bg-sky-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-100">
@@ -919,7 +956,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                       {selectedMatch.homeTeam} <span className="text-slate-500">vs</span> {selectedMatch.awayTeam}
                     </div>
                     <div className="mt-2 text-slate-300">Pronóstico: {getPickCopy(selectedMatch, pick)}</div>
-                  </div>
+                  </motion.div>
 
                   <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button className={`${secondaryActionClass} w-full sm:w-auto sm:min-w-[140px]`} type="button" onClick={goPrevStep} disabled={submitting}>
@@ -929,48 +966,49 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                       {submitting ? "Guardando jugada..." : "Mandar tu jugada al arco"}
                     </button>
                   </div>
-                </form>
+                </motion.form>
               ) : null}
 
               {wizardStep === "success" ? (
-                <div className="space-y-5">
+                <motion.div key="wizard-success" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-5">
                   {successState ? (
-                    <div className="rounded-[24px] border border-white/10 bg-slate-950/35 p-4 sm:p-5">
+                    <motion.div variants={fadeUpVariants} initial="hidden" animate="visible" className="rounded-[24px] border border-white/10 bg-slate-950/35 p-4 sm:p-5">
                       <div className="space-y-5">
                         <div>
                           <div className="text-xs uppercase tracking-[0.24em] text-slate-400">QR de tu jugada</div>
-                          <div className="mt-4 flex justify-center">
-                            <div className="inline-flex rounded-[20px] bg-white p-3 sm:p-4">
+                          <motion.div variants={fadeUpVariants} initial="hidden" animate="visible" className="mt-4 flex justify-center">
+                            <motion.div initial={{ opacity: 0, scale: 0.92, rotate: -2 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ duration: 0.38, ease: softEase }} className="inline-flex rounded-[20px] bg-white p-3 sm:p-4">
                               <img alt={`QR ${successState.qrCode}`} className="h-auto w-[220px] max-w-full sm:w-[260px]" src={successState.qrImageUrl} />
-                            </div>
-                          </div>
+                            </motion.div>
+                          </motion.div>
                         </div>
 
-                        <div className="space-y-4">
+                        <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="space-y-4">
                           <div>
                             <div className="text-xs uppercase tracking-[0.24em] text-slate-400">Partido</div>
                             <div className="mt-2 text-xl font-black text-white sm:text-2xl">{successState.matchLabel}</div>
                             <div className="mt-2 text-sm text-slate-300">Pronóstico: {successState.pickLabel}</div>
                           </div>
 
-                          <div className="rounded-[20px] border border-sky-300/14 bg-[linear-gradient(180deg,_rgba(56,189,248,0.08),_rgba(15,23,42,0.7))] p-4 text-sm leading-6 text-slate-300">
+                          <motion.div variants={fadeUpVariants} className="rounded-[20px] border border-sky-300/14 bg-[linear-gradient(180deg,_rgba(56,189,248,0.08),_rgba(15,23,42,0.7))] p-4 text-sm leading-6 text-slate-300">
                             Guarda este QR o descargalo ahora. El premio se desbloquea si aciertas.
-                          </div>
+                          </motion.div>
 
-                          <div className="grid gap-3 sm:grid-cols-2">
+                          <motion.div variants={fadeUpVariants} className="grid gap-3 sm:grid-cols-2">
                             <button className={`${successActionClass} w-full`} type="button" onClick={downloadSuccessQr}>
                               Descargar QR
                             </button>
                             <button className={`${secondaryActionClass} w-full sm:col-span-2`} type="button" onClick={closeWizard}>
                               Cerrar
                             </button>
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
                       </div>
-                    </div>
+                    </motion.div>
                   ) : null}
-                </div>
+                </motion.div>
               ) : null}
+              </AnimatePresence>
             </div>
 
             {wizardStep !== "success" ? (

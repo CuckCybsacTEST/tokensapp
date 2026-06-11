@@ -17,6 +17,8 @@ export default function Mundial2026RedeemPanel(props: {
   const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const primaryActionClass =
+    "inline-flex items-center justify-center rounded-full border border-sky-300/45 bg-[linear-gradient(135deg,_rgba(56,189,248,0.96),_rgba(14,165,233,0.82))] px-6 py-3 text-center text-sm font-black tracking-[0.02em] text-slate-950 shadow-[0_14px_32px_rgba(14,165,233,0.3)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(14,165,233,0.36)] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:text-base";
 
   const canRedeem = useMemo(() => {
     return !!props.role && !!props.assignedPrizeLabel && props.predictionStatus === "WON" && props.claimStatus === "AVAILABLE";
@@ -54,7 +56,7 @@ export default function Mundial2026RedeemPanel(props: {
   }
 
   return (
-    <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-left sm:p-5">
+    <div className="text-left">
       {!props.role ? (
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
           Inicia sesión con un perfil operativo para canjear este premio desde aquí.
@@ -62,10 +64,9 @@ export default function Mundial2026RedeemPanel(props: {
       ) : (
         <>
           {canRedeem ? (
-            <div className="space-y-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">Acción</div>
+            <div>
               <button
-                className="btn w-full justify-center rounded-full px-5 py-3 text-sm font-semibold"
+                className={`${primaryActionClass} w-full`}
                 type="button"
                 onClick={() => void handleRedeem()}
                 disabled={redeeming}
@@ -75,8 +76,12 @@ export default function Mundial2026RedeemPanel(props: {
             </div>
           ) : (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-300/8 p-4 text-sm leading-relaxed text-amber-100">
-              {props.claimStatus === "REDEEMED"
+              {props.predictionStatus === "PENDING"
+                ? "La jugada sigue en curso. El canje solo se habilita cuando el partido termine y el resultado quede liquidado."
+                : props.claimStatus === "REDEEMED"
                 ? "Esta jugada ya fue canjeada."
+                : props.claimStatus === "REJECTED"
+                  ? "El jugador no acertó el resultado. Esta jugada no tiene premio para canje. Mejor suerte para la próxima."
                 : props.claimStatus === "AVAILABLE"
                   ? "La jugada tiene premio, pero todavía no cumple todas las condiciones de canje."
                   : "El premio aún no está listo para canje o no fue asignado."}

@@ -88,6 +88,7 @@
     "ra-data-simple-rest": "^5.12.2",
     "react": "18.2.0",
     "react-admin": "^5.12.2",
+    "react-confetti": "^6.4.0",
     "react-culqi-next": "^0.1.2",
     "react-dom": "18.2.0",
     "recharts": "^2.12.0",
