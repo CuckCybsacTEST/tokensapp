@@ -1,9 +1,72 @@
 import bcrypt from 'bcryptjs';
 import { computeBusinessDayFromUtc, getConfiguredCutoffHour } from '../src/lib/attendanceDay';
+import {
+  MUNDIAL2026_CAMPAIGN_SEED,
+  MUNDIAL2026_GROUP_STAGE_MATCHES,
+} from './seed-data/mundial2026';
 // Cargar PrismaClient de forma compatible con distintos setups de tipos
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { PrismaClient } = require('@prisma/client') as { PrismaClient: any };
 const prisma = new PrismaClient();
+
+function shouldRunOnlyMundial2026Seed() {
+  return process.env.SEED_MUNDIAL2026 === '1';
+}
+
+async function seedMundial2026() {
+  const now = Date.now();
+  const campaign = await prisma.mundial2026Campaign.upsert({
+    where: { slug: MUNDIAL2026_CAMPAIGN_SEED.slug },
+    update: {
+      name: MUNDIAL2026_CAMPAIGN_SEED.name,
+      status: 'ACTIVE',
+      timezone: MUNDIAL2026_CAMPAIGN_SEED.timezone,
+      startsAt: new Date(MUNDIAL2026_CAMPAIGN_SEED.startsAtUtc),
+      endsAt: new Date(MUNDIAL2026_CAMPAIGN_SEED.endsAtUtc),
+    },
+    create: {
+      slug: MUNDIAL2026_CAMPAIGN_SEED.slug,
+      name: MUNDIAL2026_CAMPAIGN_SEED.name,
+      status: 'ACTIVE',
+      timezone: MUNDIAL2026_CAMPAIGN_SEED.timezone,
+      startsAt: new Date(MUNDIAL2026_CAMPAIGN_SEED.startsAtUtc),
+      endsAt: new Date(MUNDIAL2026_CAMPAIGN_SEED.endsAtUtc),
+    },
+  });
+
+  const matchIdsByNumber = new Map<number, string>();
+  for (const match of MUNDIAL2026_GROUP_STAGE_MATCHES) {
+    const startsAt = new Date(match.startsAtUtc);
+    const predictionClosesAt = new Date(startsAt.getTime() - 15 * 60 * 1000);
+    const status = predictionClosesAt.getTime() > now ? 'OPEN' : 'CLOSED';
+    const externalKey = `fwc26-match-${String(match.matchNumber).padStart(3, '0')}`;
+    const savedMatch = await prisma.mundial2026Match.upsert({
+      where: { externalKey },
+      update: {
+        campaignId: campaign.id,
+        stage: `Grupo ${match.group} - Fecha ${match.matchday}`,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        startsAt,
+        predictionClosesAt,
+      },
+      create: {
+        campaignId: campaign.id,
+        externalKey,
+        stage: `Grupo ${match.group} - Fecha ${match.matchday}`,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        startsAt,
+        predictionClosesAt,
+        status,
+      },
+      select: { id: true },
+    });
+    matchIdsByNumber.set(match.matchNumber, savedMatch.id);
+  }
+
+  console.log(`seed_info: mundial2026 campaign=${campaign.slug} prizes=0 matches=${MUNDIAL2026_GROUP_STAGE_MATCHES.length}`);
+}
 
 // Seed guard: HARD DISABLE by default. Only run when ALLOW_SEED=1 explicitly.
 async function shouldSkipSeed() {
@@ -39,6 +102,16 @@ async function shouldSkipSeed() {
 }
 
 async function main() {
+  if (shouldRunOnlyMundial2026Seed()) {
+    if (process.env.ALLOW_SEED !== '1') {
+      console.log('seed_skip: ALLOW_SEED!=1 (seed deshabilitado por defecto en todos los entornos)');
+      return;
+    }
+    await seedMundial2026();
+    console.log('seed_done');
+    return;
+  }
+
   if (await shouldSkipSeed()) return;
   await prisma.systemConfig.upsert({
     where: { id: 1 },
@@ -372,6 +445,9 @@ async function main() {
   } catch (e) {
     // no bloquear seed si el modelo aún no existe
   }
+
+  await seedMundial2026();
+
   // simple stdout to mark completion (avoid importing app code here)
   console.log('seed_done');
 }

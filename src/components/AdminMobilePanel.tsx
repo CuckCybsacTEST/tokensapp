@@ -314,6 +314,14 @@ export default function AdminMobilePanel({ basePath = 'admin', userInfo }: Admin
           { href: `${pathPrefix}/intercambiocliente?tab=stats`, label: "Estadísticas", icon: ICONS.chart },
           { href: "/intercambio", label: "Página Pública", icon: ICONS.star }
         ]
+      }, {
+        title: "MUNDIAL 2026",
+        icon: ICONS.star,
+        items: [
+          { href: `${pathPrefix}/mundial2026`, label: "Premios y liquidación", icon: ICONS.star },
+          { href: `${pathPrefix}/mundial/insights`, label: "Insights", icon: ICONS.chart },
+          { href: "/mundial2026", label: "Página pública", icon: ICONS.qr }
+        ]
       }] : []),
       ...(basePath === 'admin' ? [{
         title: "GESTION DE OFERTAS",

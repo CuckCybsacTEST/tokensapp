@@ -238,6 +238,14 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
           { href: `${pathPrefix}/intercambiocliente?tab=stats`, label: "Estadísticas", icon: ICONS.chart },
           { href: "/intercambio", label: "Página Pública", icon: ICONS.starSmall }
         ]
+      }, {
+        title: "MUNDIAL 2026",
+        icon: ICONS.starSmall,
+        items: [
+          { href: `${pathPrefix}/mundial2026`, label: "Premios y liquidación", icon: ICONS.starSmall },
+          { href: `${pathPrefix}/mundial/insights`, label: "Insights", icon: ICONS.chart },
+          { href: "/mundial2026", label: "Página pública", icon: ICONS.qr }
+        ]
       }] : []),
       ...(basePath === 'admin' ? [{
         title: "GESTION DE OFERTAS",

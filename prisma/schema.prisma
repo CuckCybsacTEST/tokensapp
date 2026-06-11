@@ -295,6 +295,8 @@ model User {
   ideaReactions             IdeaReaction[]         @relation("IdeaReactor")
   ideaComments              IdeaComment[]          @relation("IdeaCommentAuthor")
   recurringTaskInstances    RecurringTaskInstance[] @relation("TaskInstanceCompleter")
+  mundial2026Redemptions    Mundial2026Prediction[] @relation("Mundial2026RedeemedBy")
+  mundial2026RedemptionLogs Mundial2026RedemptionLog[] @relation("Mundial2026LogActor")
 
   @@index([commitmentVersionAccepted], map: "idx_user_commitment_version")
 }
@@ -1310,6 +1312,165 @@ model GalleryImage {
   @@map("marketing_gallery")
 }
 
+model Mundial2026Campaign {
+  id           String               @id @default(cuid())
+  slug         String               @unique
+  name         String
+  status       Mundial2026CampaignStatus @default(DRAFT)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  timezone     String               @default("America/Lima")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  matches      Mundial2026Match[]
+  participants Mundial2026Participant[]
+  predictions  Mundial2026Prediction[]
+  prizes       Mundial2026Prize[]
+
+  @@index([status])
+}
+
+model Mundial2026Match {
+  id                 String                    @id @default(cuid())
+  campaignId         String
+  externalKey        String                    @unique
+  stage              String?
+  homeTeam           String
+  awayTeam           String
+  startsAt           DateTime
+  predictionClosesAt DateTime
+  status             Mundial2026MatchStatus    @default(DRAFT)
+  result             Mundial2026MatchResult?
+  settledAt          DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  campaign           Mundial2026Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  matchPrizes        Mundial2026MatchPrize[]
+  predictions        Mundial2026Prediction[]
+
+  @@index([campaignId])
+  @@index([startsAt])
+  @@index([status])
+  @@index([predictionClosesAt])
+}
+
+model Mundial2026Prize {
+  id               String                 @id @default(cuid())
+  campaignId       String
+  key              String
+  label            String
+  description      String?
+  color            String?
+  imageUrl         String?
+  stockTotal       Int?
+  stockReserved    Int                    @default(0)
+  stockClaimed     Int                    @default(0)
+  active           Boolean                @default(true)
+  priority         Int                    @default(0)
+  claimWindowHours Int                    @default(24)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  campaign         Mundial2026Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assignedPredictions Mundial2026Prediction[]
+  matchPrizes      Mundial2026MatchPrize[]
+
+  @@unique([campaignId, key])
+  @@index([campaignId])
+  @@index([active])
+  @@index([priority])
+}
+
+model Mundial2026MatchPrize {
+  id             String                        @id @default(cuid())
+  matchId        String
+  prizeId        String
+  assignmentMode Mundial2026PrizeAssignmentMode @default(DIRECT_FIRST_N)
+  maxWinners     Int?
+  sortOrder      Int                           @default(0)
+  active         Boolean                       @default(true)
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+  match          Mundial2026Match              @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  prize          Mundial2026Prize              @relation(fields: [prizeId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, prizeId])
+  @@index([matchId])
+  @@index([prizeId])
+  @@index([active])
+}
+
+model Mundial2026Participant {
+  id                 String                  @id @default(cuid())
+  campaignId         String
+  name               String
+  whatsappRaw        String
+  whatsappNormalized String
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  campaign           Mundial2026Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  predictions        Mundial2026Prediction[]
+
+  @@unique([campaignId, whatsappNormalized])
+  @@index([campaignId])
+  @@index([name])
+}
+
+model Mundial2026Prediction {
+  id               String                      @id @default(cuid())
+  campaignId       String
+  matchId          String
+  participantId    String
+  pick             Mundial2026PredictionPick
+  status           Mundial2026PredictionStatus @default(PENDING)
+  qrCode           String                      @unique
+  signature        String
+  signatureVersion Int                         @default(1)
+  claimStatus      Mundial2026ClaimStatus      @default(BLOCKED)
+  assignedPrizeId  String?
+  availableAt      DateTime?
+  claimExpiresAt   DateTime?
+  redeemedAt       DateTime?
+  redeemedByUserId String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  assignedPrize    Mundial2026Prize?           @relation(fields: [assignedPrizeId], references: [id], onDelete: SetNull)
+  campaign         Mundial2026Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  match            Mundial2026Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  participant      Mundial2026Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  redeemedByUser   User?                       @relation("Mundial2026RedeemedBy", fields: [redeemedByUserId], references: [id], onDelete: SetNull)
+  redemptionLogs   Mundial2026RedemptionLog[]
+
+  @@unique([matchId, participantId])
+  @@index([campaignId])
+  @@index([matchId])
+  @@index([participantId])
+  @@index([status])
+  @@index([claimStatus])
+  @@index([createdAt])
+  @@index([assignedPrizeId])
+  @@index([redeemedByUserId])
+}
+
+model Mundial2026RedemptionLog {
+  id           String                        @id @default(cuid())
+  predictionId String
+  action       Mundial2026RedemptionAction
+  result       Mundial2026RedemptionResult
+  byUserId     String?
+  device       String?
+  location     String?
+  notes        String?
+  createdAt    DateTime                      @default(now())
+  prediction   Mundial2026Prediction         @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  byUser       User?                         @relation("Mundial2026LogActor", fields: [byUserId], references: [id], onDelete: SetNull)
+
+  @@index([predictionId])
+  @@index([createdAt])
+  @@index([byUserId])
+  @@index([action])
+  @@index([result])
+}
+
 enum PurchaseStatus {
   PENDING
   CONFIRMED
@@ -1361,6 +1522,72 @@ enum OrderStatus {
   READY
   DELIVERED
   CANCELLED
+}
+
+enum Mundial2026CampaignStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum Mundial2026MatchStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  FINISHED
+  SETTLED
+  CANCELLED
+}
+
+enum Mundial2026MatchResult {
+  HOME
+  DRAW
+  AWAY
+  VOID
+}
+
+enum Mundial2026PrizeAssignmentMode {
+  DIRECT_FIRST_N
+  FALLBACK
+  RAFFLE_POOL
+}
+
+enum Mundial2026PredictionPick {
+  HOME
+  DRAW
+  AWAY
+}
+
+enum Mundial2026PredictionStatus {
+  PENDING
+  WON
+  LOST
+  VOID
+  EXPIRED
+}
+
+enum Mundial2026ClaimStatus {
+  BLOCKED
+  AVAILABLE
+  REDEEMED
+  EXPIRED
+  REJECTED
+}
+
+enum Mundial2026RedemptionAction {
+  VALIDATE
+  REDEEM
+  REJECT
+}
+
+enum Mundial2026RedemptionResult {
+  OK
+  ALREADY_REDEEMED
+  BLOCKED
+  EXPIRED
+  NOT_WINNER
+  INVALID
 }
 
 enum NotificationType {

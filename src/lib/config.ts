@@ -71,13 +71,16 @@ export function getBirthdayQrBaseUrl(urlOrReq?: string | URL): string {
  * Returns the public base URL for composing links (QRs, redirects, etc.).
  * Priority:
  * 1) `process.env.PUBLIC_BASE_URL` (recommended for server-side generation)
- * 2) Origin from provided request URL (when available)
- * 3) `process.env.NEXT_PUBLIC_BASE_URL` as fallback for mixed contexts
- * 4) `http://localhost:3000`
+ * 2) `process.env.NEXT_PUBLIC_QR_BASE_URL` for externally scannable QR links
+ * 3) Origin from provided request URL (when available)
+ * 4) `process.env.NEXT_PUBLIC_BASE_URL` as fallback for mixed contexts
+ * 5) `http://localhost:3000`
  */
 export function getPublicBaseUrl(urlOrReq?: string | URL): string {
   const env = (process.env.PUBLIC_BASE_URL || '').trim();
   if (env) return env.replace(/\/$/, '');
+  const qr = (process.env.NEXT_PUBLIC_QR_BASE_URL || '').trim();
+  if (qr) return qr.replace(/\/$/, '');
   try {
     const u = typeof urlOrReq === 'string' ? new URL(urlOrReq) : urlOrReq;
     if (u && u.origin) return u.origin.replace(/\/$/, '');
