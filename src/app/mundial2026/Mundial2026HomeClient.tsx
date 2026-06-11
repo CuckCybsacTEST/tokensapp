@@ -246,7 +246,7 @@ function MatchPosterCard({ match, index }: { match: MatchItem; index: number }) 
       whileTap={{ scale: 0.992 }}
       whileHover={state.blocked ? undefined : { y: -4, transition: { duration: 0.18 } }}
       className={[
-        "rounded-[22px] border px-4 py-4 transition-all duration-200 sm:px-5 sm:py-5",
+        "rounded-[20px] border px-3.5 py-3.5 transition-all duration-200 sm:rounded-[22px] sm:px-5 sm:py-5 [@media(max-height:820px)]:px-3 [@media(max-height:820px)]:py-3",
         accent.cardClass,
         state.cardClass,
         state.blocked ? "" : "md:hover:-translate-y-1",
@@ -256,7 +256,7 @@ function MatchPosterCard({ match, index }: { match: MatchItem; index: number }) 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span
             className={[
-              "rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
+              "rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] sm:px-3 sm:text-[10px] sm:tracking-[0.22em]",
               accent.chipClass,
               state.chipClass,
             ].join(" ")}
@@ -266,25 +266,25 @@ function MatchPosterCard({ match, index }: { match: MatchItem; index: number }) 
         </div>
       ) : null}
 
-      <div className={`${statusChip ? "mt-4" : "mt-1"} flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between`}>
+      <div className={`${statusChip ? "mt-3" : "mt-1"} flex flex-col gap-2.5 sm:mt-4 sm:gap-3 sm:flex-row sm:items-end sm:justify-between`}>
         <div className="min-w-0 flex-1">
-          <div className={["text-xl font-black leading-tight sm:text-[2rem]", accent.titleClass].join(" ")}>
+          <div className={["text-[1.05rem] font-black leading-tight sm:text-[2rem] [@media(max-height:820px)]:text-base", accent.titleClass].join(" ")}>
             {match.homeTeam} <span className="text-slate-500">vs</span> {match.awayTeam}
           </div>
         </div>
-        <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/8 bg-slate-950/20 px-3 py-1 sm:px-3.5 sm:py-1.5">
+        <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-white/8 bg-slate-950/20 px-2.5 py-1 sm:gap-2 sm:px-3.5 sm:py-1.5">
           <Clock3 className="h-3.5 w-3.5 text-slate-500/90" />
-          <span className="text-[9px] uppercase tracking-[0.24em] text-slate-500/90">Pitazo</span>
+          <span className="text-[9px] uppercase tracking-[0.18em] text-slate-500/90 sm:tracking-[0.24em]">Pitazo</span>
           <span className="text-sm font-semibold text-white/92 sm:text-base">{formatMatchTime(match.startsAt)}</span>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:text-[0.95rem]">
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:mt-3 sm:text-[0.95rem]">
+        <span className="inline-flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:text-[10px] sm:tracking-[0.24em]">
           <Trophy className="h-3.5 w-3.5" />
           Jugando por
         </span>
-        <span className="font-medium leading-tight text-white/88" style={mainPrize?.color ? { color: mainPrize.color } : undefined}>
+        <span className="font-medium leading-tight text-white/88 [@media(max-height:820px)]:text-[0.95rem]" style={mainPrize?.color ? { color: mainPrize.color } : undefined}>
           {mainPrize?.label || "Premio por confirmar"}
         </span>
       </div>
@@ -646,29 +646,29 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(11,95,255,0.16),_transparent_38%),linear-gradient(180deg,_#081220_0%,_#10213b_52%,_#081220_100%)] text-slate-50">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
-        <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-white/5 shadow-2xl shadow-sky-950/30 backdrop-blur sm:rounded-[32px]">
-          <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-            <motion.div initial="hidden" animate="visible" variants={staggerGroupVariants} className="max-w-4xl space-y-5 sm:space-y-6">
-              <motion.span variants={fadeUpVariants} className="inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-sky-200">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8 [@media(max-height:820px)]:gap-3 [@media(max-height:820px)]:py-3">
+        <section className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/5 shadow-2xl shadow-sky-950/30 backdrop-blur sm:rounded-[32px]">
+          <div className="px-3.5 py-4 sm:px-6 sm:py-8 lg:px-10 lg:py-10 [@media(max-height:820px)]:px-3 [@media(max-height:820px)]:py-3.5">
+            <motion.div initial="hidden" animate="visible" variants={staggerGroupVariants} className="max-w-4xl space-y-4 sm:space-y-6 [@media(max-height:820px)]:space-y-3">
+              <motion.span variants={fadeUpVariants} className="inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-sky-200 sm:text-xs sm:tracking-[0.32em]">
                 MODO MUNDIALISTA
               </motion.span>
-              <motion.div variants={fadeUpVariants} className="space-y-4">
-                <h1 className="max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <motion.div variants={fadeUpVariants} className="space-y-3 [@media(max-height:820px)]:space-y-2.5">
+                <h1 className="max-w-3xl text-[clamp(2.35rem,10.5vw,3.6rem)] font-black tracking-tight leading-[0.94] text-white sm:text-5xl lg:text-6xl [@media(max-height:820px)]:text-[clamp(2rem,9vw,3rem)]">
                   Bienvenido a KTDRAL FAN ZONE.
                 </h1>
-                <p className="max-w-2xl text-sm text-slate-200/85 sm:text-lg">
+                <p className="max-w-2xl text-sm leading-7 text-slate-200/85 sm:text-lg [@media(max-height:820px)]:leading-6">
                   {sectionHint}
                 </p>
               </motion.div>
 
-              <motion.div variants={fadeUpVariants} className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,_rgba(2,6,23,0.56),_rgba(15,23,42,0.42))] p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <motion.div variants={fadeUpVariants} className="rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,_rgba(2,6,23,0.56),_rgba(15,23,42,0.42))] p-3.5 sm:rounded-[22px] sm:p-5 [@media(max-height:820px)]:p-3">
+                <div className="flex flex-col gap-2.5 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div className="space-y-1.5">
-                    <div className="text-xs uppercase tracking-[0.3em] text-slate-300">Cartelera del dia</div>
-                    <div className="text-xl font-black text-white sm:text-2xl">{sectionTitle}</div>
+                    <div className="text-[11px] uppercase tracking-[0.22em] text-slate-300 sm:text-xs sm:tracking-[0.3em]">Cartelera del dia</div>
+                    <div className="text-[1.65rem] font-black leading-tight text-white sm:text-2xl">{sectionTitle}</div>
                   </div>
-                  <div className="inline-flex self-start rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-sky-100">
+                  <div className="inline-flex self-start rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-100 sm:text-xs sm:tracking-[0.22em]">
                     {todayMatches.length} en cartelera
                   </div>
                 </div>
@@ -685,7 +685,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                       onTouchEnd={settleMobilePosterInteraction}
                       onTouchCancel={settleMobilePosterInteraction}
                       onWheel={pauseMobilePosterAutoSlide}
-                      className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 touch-pan-x overscroll-x-contain sm:hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                      className="mt-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 touch-pan-x overscroll-x-contain sm:hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [@media(max-height:820px)]:mt-3"
                     >
                       {todayMatches.map((match, index) => (
                         <div key={match.id} className="min-w-0 shrink-0 basis-full snap-start">
@@ -695,7 +695,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                     </div>
 
                     {todayMatches.length > 1 ? (
-                      <div className="mt-3 flex items-center justify-center gap-2 sm:hidden">
+                      <div className="mt-2.5 flex items-center justify-center gap-2 sm:hidden">
                         {todayMatches.map((match, index) => (
                           <button
                             key={`${match.id}-dot`}
@@ -727,7 +727,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, se
                 )}
               </motion.div>
 
-              <motion.div variants={fadeUpVariants} className="flex flex-wrap gap-3">
+              <motion.div variants={fadeUpVariants} className="flex flex-wrap gap-2.5 [@media(max-height:820px)]:gap-2">
                 <button className={`${primaryActionClass} w-full sm:w-auto`} type="button" onClick={openWizard} disabled={openMatches.length === 0}>
                   {openMatches.length > 0 ? "Jugar ahora" : "Hoy no hay partidos disponibles"}
                 </button>
