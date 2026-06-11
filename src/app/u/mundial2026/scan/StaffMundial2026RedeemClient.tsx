@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Snapshot = {
   predictionId: string;
@@ -45,6 +46,7 @@ function formatDate(value: string | null) {
 }
 
 export default function StaffMundial2026RedeemClient() {
+  const searchParams = useSearchParams();
   const [scanInput, setScanInput] = useState("");
   const [device, setDevice] = useState("");
   const [location, setLocation] = useState("");
@@ -53,8 +55,12 @@ export default function StaffMundial2026RedeemClient() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [payload, setPayload] = useState<ResponsePayload | null>(null);
+  const initialAutoValidateDoneRef = useRef(false);
 
-  async function submit(action: "validate" | "redeem") {
+  async function submit(action: "validate" | "redeem", inputOverride?: string) {
+    const effectiveScanInput = (inputOverride ?? scanInput).trim();
+    if (!effectiveScanInput) return;
+
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -64,7 +70,7 @@ export default function StaffMundial2026RedeemClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ action, scanInput, device, location, notes }),
+        body: JSON.stringify({ action, scanInput: effectiveScanInput, device, location, notes }),
       });
       const body = (await response.json()) as ResponsePayload & { message?: string };
       if (!response.ok) throw new Error(body?.message || "No se pudo procesar la jugada.");
@@ -77,6 +83,21 @@ export default function StaffMundial2026RedeemClient() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const scanParam = searchParams.get("scan")?.trim();
+    if (!scanParam) return;
+    setScanInput(scanParam);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const scanParam = searchParams.get("scan")?.trim();
+    if (!scanParam || initialAutoValidateDoneRef.current) return;
+
+    initialAutoValidateDoneRef.current = true;
+    setScanInput(scanParam);
+    void submit("validate", scanParam);
+  }, [searchParams]);
 
   return (
     <div className="space-y-6">

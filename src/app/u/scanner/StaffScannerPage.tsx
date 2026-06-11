@@ -18,7 +18,7 @@ type Result = { getText(): string };
 type ScanHistoryEntry = {
   id: string;
   ts: number;
-  type: "offer" | "birthday" | "invitation" | "reusable" | "error";
+  type: "offer" | "birthday" | "invitation" | "reusable" | "mundial2026" | "error";
   label: string;
   detail?: string;
   variant: "success" | "error" | "info";
@@ -78,6 +78,42 @@ function decodeBirthdayQrFromText(text: string): BirthdayClaim | null {
     }
   } catch {}
   return null;
+}
+
+function isMundial2026Qr(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+
+  if (/^M26_[A-Z0-9]+$/i.test(value)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+    if (/^\/mundial2026\/jugada\/[^/?#]+$/i.test(url.pathname)) {
+      return true;
+    }
+  } catch {
+    // Not a URL.
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "type" in parsed &&
+      (parsed as { type?: unknown }).type === "mundial2026_prediction" &&
+      "qrCode" in parsed &&
+      typeof (parsed as { qrCode?: unknown }).qrCode === "string"
+    ) {
+      return true;
+    }
+  } catch {
+    // Not JSON.
+  }
+
+  return false;
 }
 
 function beep(freq = 880, duration = 120, type: OscillatorType = "sine", volume = 0.08) {
@@ -338,6 +374,18 @@ export default function StaffScannerPage() {
       }
     } catch {
       // Not a URL, continue with normal processing
+    }
+
+    // 3.9) Detect MUNDIAL 2026 QR: redirect to Mundial 2026 redeem flow
+    if (isMundial2026Qr(text)) {
+      addHistory({ type: "mundial2026", label: "Jugada Mundial 2026", variant: "success" });
+      setBanner({ variant: "success", message: "Jugada Mundial 2026 detectada - Redirigiendo..." });
+      beep(880, 120, "sine");
+      vibrate(60);
+      setCooldownUntil(Date.now() + 2000);
+      window.location.href = `/u/mundial2026/scan?scan=${encodeURIComponent(text)}`;
+      processingRef.current = false;
+      return;
     }
 
     // Unrecognized QR
