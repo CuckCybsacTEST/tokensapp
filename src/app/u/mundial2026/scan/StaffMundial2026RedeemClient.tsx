@@ -57,6 +57,10 @@ export default function StaffMundial2026RedeemClient() {
   const [payload, setPayload] = useState<ResponsePayload | null>(null);
   const initialAutoValidateDoneRef = useRef(false);
 
+  function getScanParam() {
+    return searchParams?.get("scan")?.trim() ?? "";
+  }
+
   async function submit(action: "validate" | "redeem", inputOverride?: string) {
     const effectiveScanInput = (inputOverride ?? scanInput).trim();
     if (!effectiveScanInput) return;
@@ -85,13 +89,13 @@ export default function StaffMundial2026RedeemClient() {
   }
 
   useEffect(() => {
-    const scanParam = searchParams.get("scan")?.trim();
+    const scanParam = getScanParam();
     if (!scanParam) return;
     setScanInput(scanParam);
   }, [searchParams]);
 
   useEffect(() => {
-    const scanParam = searchParams.get("scan")?.trim();
+    const scanParam = getScanParam();
     if (!scanParam || initialAutoValidateDoneRef.current) return;
 
     initialAutoValidateDoneRef.current = true;

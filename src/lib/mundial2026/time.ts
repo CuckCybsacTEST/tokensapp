@@ -41,7 +41,7 @@ export function isMundial2026PredictionWindowOpen(args: { status: string; starts
     typeof args.startsAt === "string"
       ? DateTime.fromISO(args.startsAt).setZone(DEFAULT_TIMEZONE)
       : DateTime.fromJSDate(args.startsAt).setZone(DEFAULT_TIMEZONE);
-  const nowLima = DateTime.fromMillis(args.nowMs ?? getMundial2026NowMs()).setZone(DEFAULT_TIMEZONE);
+  const nowLima = DateTime.fromJSDate(new Date(args.nowMs ?? getMundial2026NowMs())).setZone(DEFAULT_TIMEZONE);
 
   if (["FINISHED", "SETTLED", "CANCELLED", "DRAFT"].includes(args.status)) {
     return false;
@@ -51,5 +51,5 @@ export function isMundial2026PredictionWindowOpen(args: { status: string; starts
     return false;
   }
 
-  return nowLima.startOf("minute").toMillis() <= startsAtLima.startOf("minute").toMillis();
+  return nowLima.startOf("minute").toJSDate().getTime() <= startsAtLima.startOf("minute").toJSDate().getTime();
 }
