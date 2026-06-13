@@ -1,3 +1,6 @@
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+
 import { Mundial2026CampaignStatus, Mundial2026MatchStatus } from "@prisma/client";
 import { DateTime } from "luxon";
 
@@ -9,8 +12,27 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const MATCH_CARD_BACKGROUND_PATTERN = /^mundial2026-card-\d+\.(avif|webp|png|jpe?g)$/i;
+const MATCH_CARD_BACKGROUND_FALLBACK = "/posters/mundial2026-hero.webp";
+
 const DEFAULT_CAMPAIGN_SLUG = "mundial2026";
 const DEFAULT_TIMEZONE = "America/Lima";
+
+async function loadMatchCardBackgrounds() {
+  try {
+    const postersDir = path.join(process.cwd(), "public", "posters");
+    const files = await readdir(postersDir, { withFileTypes: true });
+
+    const backgrounds = files
+      .filter((entry) => entry.isFile() && MATCH_CARD_BACKGROUND_PATTERN.test(entry.name))
+      .map((entry) => `/posters/${entry.name}`)
+      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
+
+    return backgrounds.length > 0 ? backgrounds : [MATCH_CARD_BACKGROUND_FALLBACK];
+  } catch {
+    return [MATCH_CARD_BACKGROUND_FALLBACK];
+  }
+}
 
 async function loadPublicMatches() {
   const campaign = await prisma.mundial2026Campaign.findFirst({
@@ -127,6 +149,16 @@ async function loadPublicMatches() {
 
 export default async function Mundial2026Page() {
   const { campaignSlug, matches, sectionHint, sectionTitle, simulatedNowIso } = await loadPublicMatches();
+  const matchCardBackgrounds = await loadMatchCardBackgrounds();
 
-  return <Mundial2026HomeClient campaignSlug={campaignSlug} initialMatches={matches} sectionHint={sectionHint} sectionTitle={sectionTitle} simulatedNowIso={simulatedNowIso} />;
+  return (
+    <Mundial2026HomeClient
+      campaignSlug={campaignSlug}
+      initialMatches={matches}
+      matchCardBackgrounds={matchCardBackgrounds}
+      sectionHint={sectionHint}
+      sectionTitle={sectionTitle}
+      simulatedNowIso={simulatedNowIso}
+    />
+  );
 }
