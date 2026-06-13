@@ -1125,10 +1125,10 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
               {wizardStep === "identity" && selectedMatch ? (
                 <motion.form key="wizard-identity" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-5" onSubmit={handleSubmit}>
                   <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="grid gap-4 lg:grid-cols-2">
-                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
-                      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
+                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/12 bg-slate-950/48 p-3.5 shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm sm:rounded-[22px] sm:p-4">
+                      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">Nombre</span>
                       <input
-                        className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                        className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={name}
                         onChange={(event) => setName(event.target.value)}
                         placeholder="Escribe tu nombre"
@@ -1136,10 +1136,10 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                       />
                     </motion.label>
 
-                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/10 bg-slate-950/35 p-3.5 sm:rounded-[22px] sm:p-4">
-                      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
+                    <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/12 bg-slate-950/48 p-3.5 shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm sm:rounded-[22px] sm:p-4">
+                      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">WhatsApp</span>
                       <input
-                        className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                        className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={whatsapp}
                         onChange={(event) => setWhatsapp(event.target.value)}
                         placeholder="999 999 999 o +51..."
