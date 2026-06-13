@@ -481,6 +481,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
   const mobilePosterAutoPauseUntilRef = useRef(0);
   const mobilePosterSyncTimeoutRef = useRef<number | null>(null);
   const mobilePosterSettleTimeoutRef = useRef<number | null>(null);
+  const mobilePosterGestureStartIndexRef = useRef(0);
   const mobilePosterProgrammaticScrollRef = useRef(false);
   const mobilePosterInteractingRef = useRef(false);
 
@@ -600,7 +601,10 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
       const nextIndex = getClosestPosterIndex(container);
       mobilePosterInteractingRef.current = false;
       setMobilePosterIndex((current) => {
-        const boundedIndex = Math.max(0, Math.min(nextIndex, Math.max(0, displayMatches.length - 1)));
+        const maxIndex = Math.max(0, displayMatches.length - 1);
+        const startIndex = Math.max(0, Math.min(mobilePosterGestureStartIndexRef.current, maxIndex));
+        const clampedByGesture = Math.max(startIndex - 1, Math.min(nextIndex, startIndex + 1));
+        const boundedIndex = Math.max(0, Math.min(clampedByGesture, maxIndex));
         return current === boundedIndex ? current : boundedIndex;
       });
       mobilePosterSettleTimeoutRef.current = null;
@@ -612,6 +616,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
   }
 
   function startMobilePosterInteraction() {
+    mobilePosterGestureStartIndexRef.current = mobilePosterIndex;
     mobilePosterInteractingRef.current = true;
     pauseMobilePosterAutoSlide();
   }

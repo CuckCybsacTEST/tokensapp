@@ -104,7 +104,7 @@ export const MUNDIAL2026_GROUP_STAGE_MATCHES: Mundial2026SeedMatch[] = [
   { matchNumber: 5, group: 'C', matchday: 1, homeTeam: 'Haiti', awayTeam: 'Escocia', startsAtUtc: '2026-06-14T01:00:00.000Z' },
   { matchNumber: 6, group: 'D', matchday: 1, homeTeam: 'Australia', awayTeam: 'Turquia', startsAtUtc: '2026-06-14T04:00:00.000Z' },
   { matchNumber: 7, group: 'C', matchday: 1, homeTeam: 'Brasil', awayTeam: 'Marruecos', startsAtUtc: '2026-06-13T22:00:00.000Z' },
-  { matchNumber: 8, group: 'B', matchday: 1, homeTeam: 'Catar', awayTeam: 'Suiza', startsAtUtc: '2026-06-13T16:00:00.000Z' },
+  { matchNumber: 8, group: 'B', matchday: 1, homeTeam: 'Catar', awayTeam: 'Suiza', startsAtUtc: '2026-06-13T19:00:00.000Z' },
   { matchNumber: 9, group: 'E', matchday: 1, homeTeam: 'Costa de Marfil', awayTeam: 'Ecuador', startsAtUtc: '2026-06-15T00:00:00.000Z' },
   { matchNumber: 10, group: 'E', matchday: 1, homeTeam: 'Alemania', awayTeam: 'Curazao', startsAtUtc: '2026-06-14T17:00:00.000Z' },
   { matchNumber: 11, group: 'F', matchday: 1, homeTeam: 'Paises Bajos', awayTeam: 'Japon', startsAtUtc: '2026-06-14T20:00:00.000Z' },
