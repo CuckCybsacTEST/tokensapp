@@ -421,6 +421,10 @@ function getPickOptionClasses(option: PickValue, active: boolean) {
   return `${base} border-rose-300/55 bg-[linear-gradient(180deg,_rgba(244,63,94,0.2),_rgba(2,6,23,0.74))] text-white shadow-[0_14px_28px_rgba(244,63,94,0.16)]`;
 }
 
+function getRecoveryMatchLabel(match: MatchItem) {
+  return `${match.homeTeam} vs ${match.awayTeam} · ${formatLimaShortDay(getLimaDate(match.startsAt))} · ${formatMatchTime(match.startsAt)}`;
+}
+
 function hashString(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -771,9 +775,17 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
     event.preventDefault();
     if (!recoveryMatchId) return;
 
-    const nameError = getMundial2026NameValidationError(recoveryName);
+    const recoveryNameValue = recoveryName.trim().replace(/\s+/g, " ");
+    const recoveryWhatsappValue = recoveryWhatsapp.trim();
+
+    const nameError = getMundial2026NameValidationError(recoveryNameValue);
     if (nameError) {
       setRecoveryError(nameError);
+      return;
+    }
+
+    if (!recoveryWhatsappValue) {
+      setRecoveryError("Ingresa tu WhatsApp.");
       return;
     }
 
@@ -789,8 +801,8 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
         body: JSON.stringify({
           campaignSlug,
           matchId: recoveryMatchId,
-          name: recoveryName,
-          whatsapp: recoveryWhatsapp,
+          name: recoveryNameValue,
+          whatsapp: recoveryWhatsappValue,
         }),
       });
 
@@ -800,6 +812,8 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
       }
 
       const data = payload as RecoveryResponse;
+      setRecoveryName(recoveryNameValue);
+      setRecoveryWhatsapp(recoveryWhatsappValue);
       setSuccessPath(data.prediction.detailPath);
       setIsRecoveryOpen(false);
       if (typeof window !== "undefined") {
@@ -1291,65 +1305,64 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
           <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={closeRecovery} />
           <div className="relative z-10 my-auto w-full max-w-2xl overflow-hidden rounded-[24px] border border-white/10 bg-[#091423] shadow-2xl shadow-black/40 max-h-[calc(100vh-1.5rem)] overflow-y-auto sm:max-h-[calc(100vh-2rem)] sm:rounded-[28px]">
             <div className="border-b border-white/10 bg-white/[0.03] px-4 py-4 sm:px-6 sm:py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
+              <div className="min-w-0">
                   <div className="text-xs uppercase tracking-[0.3em] text-sky-200">Recuperar jugada</div>
-                  <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">Busca tu QR con datos seguros</h2>
-                  <p className="mt-2 text-sm text-slate-300">Ingresa el mismo WhatsApp, el partido y el nombre recordable con el que registraste tu jugada.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeRecovery}
-                  disabled={recoverySubmitting}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-200 transition hover:bg-white/10 disabled:opacity-40"
-                >
-                  Cerrar
-                </button>
+                  <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">Busca tus QR's</h2>
+                  <p className="mt-2 text-sm text-slate-300">Elige el partido y usa el mismo nombre y WhatsApp con el que registraste tu jugada.</p>
               </div>
             </div>
 
             <form className="space-y-5 px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7" onSubmit={handleRecoverPrediction}>
-              <label className="space-y-2 rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+              <label className="block space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Partido</span>
-                <select
-                  className="input h-12 border-white/10 bg-slate-950/65 text-sm font-semibold text-white sm:h-14 sm:text-base"
-                  value={recoveryMatchId}
-                  onChange={(event) => setRecoveryMatchId(event.target.value)}
-                  required
-                >
-                  {initialMatches.map((match) => (
-                    <option key={match.id} value={match.id}>
-                      {match.homeTeam} vs {match.awayTeam} · {formatDate(match.startsAt)}
-                    </option>
-                  ))}
-                </select>
+                <span className="block text-sm text-slate-400">Selecciona el juego.</span>
+                <div className="relative">
+                  <select
+                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-sm font-semibold text-white sm:h-14 sm:text-base"
+                    value={recoveryMatchId}
+                    onChange={(event) => {
+                      setRecoveryMatchId(event.target.value);
+                      if (recoveryError) setRecoveryError(null);
+                    }}
+                    required
+                  >
+                    {initialMatches.map((match) => (
+                      <option key={match.id} value={match.id}>
+                        {getRecoveryMatchLabel(match)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </label>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-2 rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                <label className="block space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
                   <input
-                    className="input h-12 border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryName}
                     onChange={(event) => {
                       setRecoveryName(event.target.value);
                       if (recoveryError) setRecoveryError(null);
                     }}
                     placeholder="Tu nombre"
+                    autoComplete="name"
                     required
                   />
                 </label>
 
-                <label className="space-y-2 rounded-[22px] border border-white/10 bg-slate-950/35 p-4">
+                <label className="block space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
                   <input
-                    className="input h-12 border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryWhatsapp}
                     onChange={(event) => {
                       setRecoveryWhatsapp(event.target.value);
                       if (recoveryError) setRecoveryError(null);
                     }}
                     placeholder="Tu WhatsApp"
+                    autoComplete="tel"
+                    inputMode="tel"
                     required
                   />
                 </label>
@@ -1357,16 +1370,12 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
 
               {recoveryError ? <div className="alert alert-danger">{recoveryError}</div> : null}
 
-              <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4 text-sm text-slate-300">
-                Usa un nombre que recuerdes fácilmente. Solo recuperaremos tu jugada si coinciden partido, nombre y WhatsApp con el registro guardado.
-              </div>
-
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                <button className={secondaryActionClass} type="button" onClick={closeRecovery} disabled={recoverySubmitting}>
+                <button className={`${secondaryActionClass} w-full sm:w-auto`} type="button" onClick={closeRecovery} disabled={recoverySubmitting}>
                   Cancelar
                 </button>
-                <button className={recoveryActionClass} disabled={recoverySubmitting} type="submit">
-                  {recoverySubmitting ? "Buscando jugada..." : "Buscar mi QR"}
+                <button className={`${recoveryActionClass} w-full sm:w-auto`} disabled={recoverySubmitting} type="submit">
+                  {recoverySubmitting ? "Buscando jugada..." : "Recuperar mi Jugada"}
                 </button>
               </div>
             </form>
