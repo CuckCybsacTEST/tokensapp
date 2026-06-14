@@ -270,6 +270,19 @@ function getPosterStatusChip(match: MatchItem) {
   return null;
 }
 
+function getWizardMatchStatusChip(match: MatchItem) {
+  if (match.status === "SETTLED") {
+    return "Jugada liquidada";
+  }
+  if (match.status === "FINISHED") {
+    return "Partido finalizado";
+  }
+  if (!match.predictionsOpen) {
+    return "Jugada cerrada";
+  }
+  return "Jugada abierta";
+}
+
 function MatchPosterCard({ match, index, backgroundSrc }: { match: MatchItem; index: number; backgroundSrc: string }) {
   const accent = getHeroMatchAccent(index);
   const state = getHeroMatchState(match);
@@ -306,7 +319,7 @@ function MatchPosterCard({ match, index, backgroundSrc }: { match: MatchItem; in
 
       <div className="relative z-10">
       {statusChip ? (
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="pointer-events-none absolute right-0 top-0 z-20 flex justify-end">
           <span
             className={[
               "rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] sm:px-3 sm:text-[10px] sm:tracking-[0.22em]",
@@ -319,14 +332,16 @@ function MatchPosterCard({ match, index, backgroundSrc }: { match: MatchItem; in
         </div>
       ) : null}
 
-      <div className={`${statusChip ? "mt-3" : "mt-1"} space-y-3 sm:mt-4`}>
-        <div className="flex justify-end">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-slate-950/34 px-2.5 py-1 sm:gap-2 sm:px-3.5 sm:py-1.5">
-            <Clock3 className="h-3.5 w-3.5 text-slate-500/90" />
-            <span className="text-[9px] uppercase tracking-[0.18em] text-slate-500/90 sm:tracking-[0.24em]">Pitazo</span>
-            <span className="text-sm font-semibold text-white/92 sm:text-base">{formatMatchTime(match.startsAt)}</span>
+      <div className={["space-y-3 sm:mt-0", statusChip ? "pt-8 sm:pt-9" : ""].join(" ")}>
+        {!statusChip ? (
+          <div className="flex justify-end">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-slate-950/34 px-2.5 py-1 sm:gap-2 sm:px-3.5 sm:py-1.5">
+              <Clock3 className="h-3.5 w-3.5 text-slate-500/90" />
+              <span className="text-[9px] uppercase tracking-[0.18em] text-slate-500/90 sm:tracking-[0.24em]">Pitazo</span>
+              <span className="text-sm font-semibold text-white/92 sm:text-base">{formatMatchTime(match.startsAt)}</span>
+            </div>
           </div>
-        </div>
+        ) : null}
         <div className="min-w-0 space-y-1.5">
           <div className={["break-words text-[1.7rem] font-black leading-[0.92] sm:text-[2.2rem] lg:text-[2rem] [@media(max-height:820px)]:text-[1.45rem]", accent.titleClass].join(" ")}>
             {match.homeTeam}
@@ -455,7 +470,10 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
     }
     return DateTime.now().setZone(DEFAULT_TIMEZONE).toJSDate();
   }, [simulatedNowIso]);
-  const displayMatches = initialMatches;
+  const displayMatches = useMemo(
+    () => initialMatches.slice().sort((left, right) => Number(right.predictionsOpen) - Number(left.predictionsOpen)),
+    [initialMatches]
+  );
   const homeCardBackgrounds = useMemo(
     () => getStableMatchCardBackgrounds(displayMatches, matchCardBackgrounds),
     [displayMatches, matchCardBackgrounds]
@@ -1005,38 +1023,49 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
               {wizardStep === "match" ? (
                 <motion.div key="wizard-match" variants={modalStepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-4">
                   <motion.div variants={staggerGroupVariants} initial="hidden" animate="visible" className="grid gap-3 xl:grid-cols-2">
-                    {openMatches.map((match) => {
+                    {displayMatches.map((match) => {
                       const selected = selectedMatch?.id === match.id;
                       const mainPrize = match.prizes[0] || null;
+                      const blocked = !match.predictionsOpen;
+                      const statusChip = getWizardMatchStatusChip(match);
                       return (
                         <motion.button
                           key={match.id}
                           type="button"
                           onClick={() => {
+                            if (blocked) return;
                             setSelectedMatchId(match.id);
                             setError(null);
                             setWizardStep("pick");
                           }}
                           variants={fadeUpVariants}
                           whileTap={{ scale: 0.992 }}
+                          disabled={blocked}
                           className={[
                             "relative overflow-hidden rounded-[20px] border px-3 py-3 text-left transition sm:rounded-[24px] sm:px-5 sm:py-5",
-                            selected
+                            blocked
+                              ? "cursor-not-allowed border-white/8 bg-[linear-gradient(180deg,_rgba(148,163,184,0.06),_rgba(8,18,32,0.78))] opacity-70 grayscale saturate-0"
+                              : selected
                               ? "border-sky-300/45 bg-[linear-gradient(180deg,_rgba(56,189,248,0.1),_rgba(8,18,32,0.82))] shadow-lg shadow-sky-900/20"
                               : "border-white/10 bg-[linear-gradient(180deg,_rgba(255,255,255,0.04),_rgba(8,18,32,0.82))] hover:border-white/20 hover:bg-white/[0.06]",
                           ].join(" ")}
                         >
-                          <div className="pointer-events-none absolute inset-0 opacity-35" style={getFieldBackdropStyle("center 92%", "165% auto")} />
-                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,_rgba(3,8,20,0.9)_0%,_rgba(4,9,21,0.76)_22%,_rgba(4,9,20,0.62)_58%,_rgba(3,8,19,0.84)_100%)]" />
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-[linear-gradient(180deg,_rgba(34,197,94,0)_0%,_rgba(34,197,94,0.05)_30%,_rgba(20,83,45,0.14)_100%)]" />
+                          <div className={["pointer-events-none absolute inset-0 opacity-35", blocked ? "grayscale blur-[2px]" : ""].join(" ")} style={getFieldBackdropStyle("center 92%", "165% auto")} />
+                          <div className={["pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,_rgba(3,8,20,0.9)_0%,_rgba(4,9,21,0.76)_22%,_rgba(4,9,20,0.62)_58%,_rgba(3,8,19,0.84)_100%)]", blocked ? "bg-[linear-gradient(180deg,_rgba(15,23,42,0.94)_0%,_rgba(30,41,59,0.85)_24%,_rgba(30,41,59,0.72)_60%,_rgba(15,23,42,0.9)_100%)]" : ""].join(" ")} />
+                          <div className={["pointer-events-none absolute inset-x-0 bottom-0 h-[38%] bg-[linear-gradient(180deg,_rgba(34,197,94,0)_0%,_rgba(34,197,94,0.05)_30%,_rgba(20,83,45,0.14)_100%)]", blocked ? "opacity-40" : ""].join(" ")} />
                           <div className="relative z-10 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 <span className="rounded-full border border-white/10 bg-slate-950/28 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-200">
                                   {formatMatchStageLabel(match.stage)}
                                 </span>
-                                <span className="rounded-full bg-emerald-400/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-100">
-                                  Jugada abierta
+                                <span
+                                  className={[
+                                    "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]",
+                                    blocked ? "bg-white/10 text-slate-300" : "bg-emerald-400/18 text-emerald-100",
+                                  ].join(" ")}
+                                >
+                                  {statusChip}
                                 </span>
                               </div>
                               <div className="mt-2.5 text-xl font-black leading-[0.94] text-white sm:text-[2rem]">
@@ -1061,15 +1090,21 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                             </span>
                             <span
                               className="min-w-0 basis-full break-words font-semibold leading-tight text-white/96 sm:basis-auto sm:flex-1"
-                              style={mainPrize?.color ? { color: mainPrize.color } : undefined}
+                              style={mainPrize?.color && !blocked ? { color: mainPrize.color } : undefined}
                             >
                               {mainPrize?.label || "Premio por confirmar"}
                             </span>
                           </div>
 
-                          {selected ? (
+                          {selected && !blocked ? (
                             <div className="relative z-10 mt-3 inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-400/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-100">
                               Partido seleccionado
+                            </div>
+                          ) : null}
+
+                          {blocked ? (
+                            <div className="relative z-10 mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+                              No disponible para jugar
                             </div>
                           ) : null}
                         </motion.button>
@@ -1077,7 +1112,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                     })}
                   </motion.div>
 
-                  {openMatches.length === 0 ? (
+                  {displayMatches.length === 0 ? (
                     <div className="rounded-[22px] border border-dashed border-white/15 bg-slate-950/20 px-5 py-6 text-sm text-slate-300">
                       No hay juegos abiertos para la fecha actual de Lima. Cuando la jornada del día tenga pronósticos habilitados, aparecerán aquí.
                     </div>
@@ -1147,7 +1182,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                           setName(event.target.value);
                           if (error) setError(null);
                         }}
-                        placeholder="Nombre y apellido"
+                        placeholder="Tu nombre"
                         required
                       />
                     </motion.label>
@@ -1180,6 +1215,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                       {selectedMatch.homeTeam} <span className="text-slate-500">vs</span> {selectedMatch.awayTeam}
                     </div>
                     <div className="mt-2 text-slate-300">Pronóstico: {getPickCopy(selectedMatch, pick)}</div>
+                    <div className="mt-2 text-slate-300">Usa un nombre que recuerdes bien: lo necesitarás para recuperar tu QR.</div>
                   </motion.div>
 
                   <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -1259,7 +1295,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                 <div>
                   <div className="text-xs uppercase tracking-[0.3em] text-sky-200">Recuperar jugada</div>
                   <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">Busca tu QR con datos seguros</h2>
-                  <p className="mt-2 text-sm text-slate-300">Ingresa el mismo WhatsApp, el partido y el nombre con el que registraste tu jugada.</p>
+                  <p className="mt-2 text-sm text-slate-300">Ingresa el mismo WhatsApp, el partido y el nombre recordable con el que registraste tu jugada.</p>
                 </div>
                 <button
                   type="button"
@@ -1299,7 +1335,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                       setRecoveryName(event.target.value);
                       if (recoveryError) setRecoveryError(null);
                     }}
-                    placeholder="Tu nombre y apellido"
+                    placeholder="Tu nombre"
                     required
                   />
                 </label>
@@ -1322,7 +1358,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
               {recoveryError ? <div className="alert alert-danger">{recoveryError}</div> : null}
 
               <div className="rounded-[22px] border border-white/10 bg-slate-950/35 p-4 text-sm text-slate-300">
-                Solo recuperaremos tu jugada si coinciden partido, nombre y WhatsApp exactamente con el registro guardado.
+                Usa un nombre que recuerdes fácilmente. Solo recuperaremos tu jugada si coinciden partido, nombre y WhatsApp con el registro guardado.
               </div>
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">

@@ -19,8 +19,8 @@ export function normalizeMundial2026Name(value: string) {
 
 export function getMundial2026NameValidationError(value: string) {
   const trimmed = value.trim().replace(/\s+/g, " ");
-  if (trimmed.length < 5) {
-    return "Ingresa tu nombre y apellido.";
+  if (trimmed.length < 3) {
+    return "Ingresa un nombre recordable.";
   }
 
   if (!MUNDIAL2026_NAME_ALLOWED_REGEX.test(trimmed)) {
@@ -32,8 +32,8 @@ export function getMundial2026NameValidationError(value: string) {
     .map((word) => word.replace(/['-]+/g, ""))
     .filter(Boolean);
 
-  if (words.length < 2 || words.some((word) => word.length < 2)) {
-    return "Ingresa tu nombre y apellido.";
+  if (words.length === 0 || words.some((word) => word.length < 2)) {
+    return "Ingresa un nombre recordable.";
   }
 
   if (words.some(hasClearlyInvalidWord)) {
