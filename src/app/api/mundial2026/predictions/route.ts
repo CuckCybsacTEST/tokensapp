@@ -9,6 +9,7 @@ import {
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { getMundial2026NameValidationError } from "@/lib/mundial2026/name";
 import {
   buildMundial2026PredictionQrPayload,
   CURRENT_MUNDIAL2026_SIGNATURE_VERSION,
@@ -81,6 +82,11 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data;
+    const nameError = getMundial2026NameValidationError(data.name);
+    if (nameError) {
+      return apiError("INVALID_NAME", nameError, { name: data.name }, 400);
+    }
+
     const whatsappNormalized = normalizeMundial2026WhatsApp(data.whatsapp);
     if (!whatsappNormalized) {
       return apiError("INVALID_WHATSAPP", "WhatsApp inválido", { whatsapp: data.whatsapp }, 400);

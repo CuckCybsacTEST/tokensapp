@@ -8,6 +8,7 @@ import { DateTime } from "luxon";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateQrPngDataUrl } from "@/lib/qr";
+import { getMundial2026NameValidationError } from "@/lib/mundial2026/name";
 
 type MatchPrize = {
   id: string;
@@ -698,6 +699,12 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
     event.preventDefault();
     if (!selectedMatch) return;
 
+    const nameError = getMundial2026NameValidationError(name);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setSuccessPath(null);
@@ -745,6 +752,12 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
   async function handleRecoverPrediction(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!recoveryMatchId) return;
+
+    const nameError = getMundial2026NameValidationError(recoveryName);
+    if (nameError) {
+      setRecoveryError(nameError);
+      return;
+    }
 
     setRecoverySubmitting(true);
     setRecoveryError(null);
@@ -1130,8 +1143,11 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                       <input
                         className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        placeholder="Escribe tu nombre"
+                        onChange={(event) => {
+                          setName(event.target.value);
+                          if (error) setError(null);
+                        }}
+                        placeholder="Nombre y apellido"
                         required
                       />
                     </motion.label>
@@ -1141,8 +1157,11 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                       <input
                         className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={whatsapp}
-                        onChange={(event) => setWhatsapp(event.target.value)}
-                        placeholder="999 999 999 o +51..."
+                        onChange={(event) => {
+                          setWhatsapp(event.target.value);
+                          if (error) setError(null);
+                        }}
+                        placeholder="Tu WhatsApp"
                         required
                       />
                     </motion.label>
@@ -1276,8 +1295,11 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                   <input
                     className="input h-12 border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryName}
-                    onChange={(event) => setRecoveryName(event.target.value)}
-                    placeholder="Tu nombre registrado"
+                    onChange={(event) => {
+                      setRecoveryName(event.target.value);
+                      if (recoveryError) setRecoveryError(null);
+                    }}
+                    placeholder="Tu nombre y apellido"
                     required
                   />
                 </label>
@@ -1287,8 +1309,11 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                   <input
                     className="input h-12 border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryWhatsapp}
-                    onChange={(event) => setRecoveryWhatsapp(event.target.value)}
-                    placeholder="999 999 999 o +51..."
+                    onChange={(event) => {
+                      setRecoveryWhatsapp(event.target.value);
+                      if (recoveryError) setRecoveryError(null);
+                    }}
+                    placeholder="Tu WhatsApp"
                     required
                   />
                 </label>

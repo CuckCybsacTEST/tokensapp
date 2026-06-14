@@ -2,6 +2,7 @@ import { Mundial2026CampaignStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { getMundial2026NameValidationError, normalizeMundial2026Name } from "@/lib/mundial2026/name";
 import { buildMundial2026PredictionQrPayload } from "@/lib/mundial2026/signing";
 import { normalizeMundial2026WhatsApp } from "@/lib/mundial2026/whatsapp";
 import { prisma } from "@/lib/prisma";
@@ -19,15 +20,6 @@ const recoverPredictionSchema = z.object({
   whatsapp: z.string().trim().min(6, "WhatsApp es requerido").max(30, "WhatsApp inválido"),
 });
 
-function normalizeName(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
 export async function POST(req: Request) {
   try {
     const json = await req.json();
@@ -37,6 +29,11 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data;
+    const nameError = getMundial2026NameValidationError(data.name);
+    if (nameError) {
+      return apiError("INVALID_NAME", nameError, { name: data.name }, 400);
+    }
+
     const whatsappNormalized = normalizeMundial2026WhatsApp(data.whatsapp);
     if (!whatsappNormalized) {
       return apiError("INVALID_WHATSAPP", "WhatsApp inválido", {}, 400);
@@ -67,7 +64,7 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!participant || normalizeName(participant.name) !== normalizeName(data.name)) {
+    if (!participant || normalizeMundial2026Name(participant.name) !== normalizeMundial2026Name(data.name)) {
       return apiError("PREDICTION_NOT_FOUND", "No encontramos una jugada con esos datos.", {}, 404);
     }
 
