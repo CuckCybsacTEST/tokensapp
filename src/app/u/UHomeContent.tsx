@@ -299,6 +299,19 @@ export default function UHomeContent({ session, isStaff, hasCartaAccess, lastTyp
                 <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver jornada →</div>
               </Link>
 
+              {isCoordinator && (
+                <Link href="/u/evolucion" className="block rounded-xl border-2 border-cyan-300 bg-gradient-to-br from-cyan-50 to-sky-50 p-4 sm:p-5 shadow-md hover:shadow-lg transition-all ring-1 ring-cyan-200/60 dark:border-cyan-700 dark:from-cyan-900/20 dark:to-sky-900/20 dark:ring-cyan-700/30">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-cyan-100 dark:bg-cyan-800/40">
+                      <IconRefresh className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-600 dark:text-cyan-400" />
+                    </div>
+                    <div className="text-lg sm:text-xl font-semibold text-cyan-900 dark:text-cyan-100">Evolución</div>
+                  </div>
+                  <p className="text-sm text-cyan-700 dark:text-cyan-300 ml-12 sm:ml-[52px]">Sigue la evolución operativa por semanas y compara tendencias reales del equipo.</p>
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 text-cyan-700 dark:text-cyan-300 font-medium text-sm ml-12 sm:ml-[52px]">Ver evolución →</div>
+                </Link>
+              )}
+
               {!isMultimedia && (
               <Link href="/u/checklist" className="block rounded-lg border border-amber-200 bg-white p-3 sm:p-5 shadow-sm hover:shadow-md transition dark:border-amber-800/60 dark:bg-slate-800">
                 <div className="flex items-center gap-3 mb-2">

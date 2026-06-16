@@ -49,6 +49,7 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     participantsTotal,
     participants,
     matches,
+    predictions,
     predictionStatusRows,
     claimStatusRows,
     assignedPredictionsTotal,
@@ -92,6 +93,45 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
             status: true,
             claimStatus: true,
             assignedPrizeId: true,
+          },
+        },
+      },
+    }),
+    prisma.mundial2026Prediction.findMany({
+      where: { campaignId: campaign.id },
+      orderBy: [{ match: { startsAt: "desc" } }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        pick: true,
+        status: true,
+        claimStatus: true,
+        createdAt: true,
+        availableAt: true,
+        claimExpiresAt: true,
+        redeemedAt: true,
+        participant: {
+          select: {
+            id: true,
+            name: true,
+            whatsappNormalized: true,
+          },
+        },
+        match: {
+          select: {
+            id: true,
+            stage: true,
+            homeTeam: true,
+            awayTeam: true,
+            startsAt: true,
+            result: true,
+            status: true,
+          },
+        },
+        assignedPrize: {
+          select: {
+            id: true,
+            label: true,
+            color: true,
           },
         },
       },
@@ -249,6 +289,39 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     };
   });
 
+  const predictionsBreakdown = predictions.map((prediction) => ({
+    id: prediction.id,
+    participant: {
+      id: prediction.participant.id,
+      name: prediction.participant.name,
+      whatsappNormalized: prediction.participant.whatsappNormalized,
+    },
+    match: {
+      id: prediction.match.id,
+      stage: prediction.match.stage,
+      homeTeam: prediction.match.homeTeam,
+      awayTeam: prediction.match.awayTeam,
+      startsAt: prediction.match.startsAt.toISOString(),
+      result: prediction.match.result,
+      status: prediction.match.status,
+    },
+    pick: prediction.pick,
+    status: prediction.status,
+    claimStatus: prediction.claimStatus,
+    isCorrect: prediction.status === Mundial2026PredictionStatus.WON,
+    createdAt: prediction.createdAt.toISOString(),
+    availableAt: prediction.availableAt ? prediction.availableAt.toISOString() : null,
+    claimExpiresAt: prediction.claimExpiresAt ? prediction.claimExpiresAt.toISOString() : null,
+    redeemedAt: prediction.redeemedAt ? prediction.redeemedAt.toISOString() : null,
+    assignedPrize: prediction.assignedPrize
+      ? {
+          id: prediction.assignedPrize.id,
+          label: prediction.assignedPrize.label,
+          color: prediction.assignedPrize.color,
+        }
+      : null,
+  }));
+
   const prizesBreakdown = prizes.map((prize) => {
     const assignedPredictions = prize.assignedPredictions.length;
     const winners = prize.assignedPredictions.filter((prediction) => prediction.status === "WON").length;
@@ -357,6 +430,7 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     ],
     participants: participantsBreakdown,
     matches: matchesBreakdown,
+    predictions: predictionsBreakdown,
     prizes: prizesBreakdown,
     redemption: {
       results: redemptionResults,

@@ -73,6 +73,7 @@ type SuccessState = {
 type Props = {
   campaignSlug: string;
   initialMatches: MatchItem[];
+  recoveryMatches: MatchItem[];
   matchCardBackgrounds: string[];
   sectionTitle: string;
   sectionHint: string;
@@ -467,7 +468,7 @@ function getFieldBackdropStyle(position: string = "center 88%", size: string = "
     : undefined;
 }
 
-export default function Mundial2026HomeClient({ campaignSlug, initialMatches, matchCardBackgrounds, sectionTitle, sectionHint, simulatedNowIso }: Props) {
+export default function Mundial2026HomeClient({ campaignSlug, initialMatches, recoveryMatches, matchCardBackgrounds, sectionTitle, sectionHint, simulatedNowIso }: Props) {
   const nowLima = useMemo(() => {
     if (simulatedNowIso) {
       return DateTime.fromISO(simulatedNowIso).setZone(DEFAULT_TIMEZONE).toJSDate();
@@ -494,7 +495,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<WizardStep>("match");
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
-  const [recoveryMatchId, setRecoveryMatchId] = useState(initialMatches[0]?.id || "");
+  const [recoveryMatchId, setRecoveryMatchId] = useState(recoveryMatches[0]?.id || initialMatches[0]?.id || "");
   const [recoveryName, setRecoveryName] = useState("");
   const [recoveryWhatsapp, setRecoveryWhatsapp] = useState("");
   const [recoverySubmitting, setRecoverySubmitting] = useState(false);
@@ -530,7 +531,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
         <button className={`${primaryActionClass} w-full sm:w-auto`} type="button" onClick={openWizard} disabled={openMatches.length === 0}>
           {openMatches.length > 0 ? "Jugar ahora" : "Hoy no hay partidos disponibles"}
         </button>
-        <button className={`${recoveryActionClass} w-full sm:w-auto`} type="button" onClick={openRecovery} disabled={initialMatches.length === 0}>
+        <button className={`${recoveryActionClass} w-full sm:w-auto`} type="button" onClick={openRecovery} disabled={recoveryMatches.length === 0}>
           Recuperar mi jugada
         </button>
         {successPath ? (
@@ -682,8 +683,9 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
   }
 
   function openRecovery() {
-    if (initialMatches.length === 0) return;
-    setRecoveryMatchId(selectedMatch?.id || initialMatches[0]?.id || "");
+    if (recoveryMatches.length === 0) return;
+    const selectedRecoveryMatch = recoveryMatches.find((match) => match.id === selectedMatch?.id);
+    setRecoveryMatchId(selectedRecoveryMatch?.id || recoveryMatches[0]?.id || "");
     setRecoveryName("");
     setRecoveryWhatsapp("");
     setRecoveryError(null);
@@ -1326,7 +1328,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, ma
                     }}
                     required
                   >
-                    {initialMatches.map((match) => (
+                    {recoveryMatches.map((match) => (
                       <option key={match.id} value={match.id}>
                         {getRecoveryMatchLabel(match)}
                       </option>

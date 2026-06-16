@@ -63,6 +63,7 @@ async function loadPublicMatches() {
   const nowMs = getMundial2026NowMs();
   const todayStart = nowLima.startOf("day").toJSDate();
   const todayEnd = nowLima.endOf("day").toJSDate();
+  const recoveryWindowEnd = nowLima.plus({ days: 7 }).endOf("day").toJSDate();
   const visibleStatuses = [
     Mundial2026MatchStatus.SCHEDULED,
     Mundial2026MatchStatus.OPEN,
@@ -102,6 +103,19 @@ async function loadPublicMatches() {
     include: includePrizes,
   });
 
+  const recoveryMatches = await prisma.mundial2026Match.findMany({
+    where: {
+      campaignId: campaign.id,
+      startsAt: {
+        gte: todayStart,
+        lte: recoveryWindowEnd,
+      },
+      status: { in: visibleStatuses },
+    },
+    orderBy: { startsAt: "asc" },
+    include: includePrizes,
+  });
+
   const sourceMatches =
     todayMatches.length > 0
       ? todayMatches
@@ -116,15 +130,8 @@ async function loadPublicMatches() {
           include: includePrizes,
         });
 
-  return {
-    campaignSlug: campaign.slug,
-    sectionTitle: todayMatches.length > 0 ? "Partidos del día" : "Próximos partidos abiertos para pronóstico",
-    sectionHint:
-      todayMatches.length > 0
-        ? "Elige uno de los partidos activos de hoy y registra tu jugada antes del cierre."
-        : "Todavía no empieza la jornada de hoy en Lima. Ya puedes preparar tus jugadas para los próximos cruces.",
-    simulatedNowIso: getMundial2026SimulatedNowIso(),
-    matches: sourceMatches.map((match) => ({
+  function serializeMatch(match: (typeof sourceMatches)[number]) {
+    return {
       id: match.id,
       externalKey: match.externalKey,
       stage: match.stage,
@@ -143,18 +150,31 @@ async function loadPublicMatches() {
         assignmentMode: item.assignmentMode,
         maxWinners: item.maxWinners,
       })),
-    })),
+    };
+  }
+
+  return {
+    campaignSlug: campaign.slug,
+    sectionTitle: todayMatches.length > 0 ? "Partidos del día" : "Próximos partidos abiertos para pronóstico",
+    sectionHint:
+      todayMatches.length > 0
+        ? "Elige uno de los partidos activos de hoy y registra tu jugada antes del cierre."
+        : "Todavía no empieza la jornada de hoy en Lima. Ya puedes preparar tus jugadas para los próximos cruces.",
+    simulatedNowIso: getMundial2026SimulatedNowIso(),
+    matches: sourceMatches.map(serializeMatch),
+    recoveryMatches: (recoveryMatches.length > 0 ? recoveryMatches : sourceMatches).map(serializeMatch),
   };
 }
 
 export default async function Mundial2026Page() {
-  const { campaignSlug, matches, sectionHint, sectionTitle, simulatedNowIso } = await loadPublicMatches();
+  const { campaignSlug, matches, recoveryMatches, sectionHint, sectionTitle, simulatedNowIso } = await loadPublicMatches();
   const matchCardBackgrounds = await loadMatchCardBackgrounds();
 
   return (
     <Mundial2026HomeClient
       campaignSlug={campaignSlug}
       initialMatches={matches}
+      recoveryMatches={recoveryMatches}
       matchCardBackgrounds={matchCardBackgrounds}
       sectionHint={sectionHint}
       sectionTitle={sectionTitle}

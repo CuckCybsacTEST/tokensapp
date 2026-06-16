@@ -46,6 +46,7 @@ const MATCHERS: TitleMatcher[] = [
   { test: p => p.startsWith('/u/checklist'), build: () => 'Checklist' },
   { test: p => p.startsWith('/u/attendance'), build: () => 'Asistencia' },
   { test: p => p.startsWith('/u/assistance'), build: () => 'Ayuda' },
+  { test: p => p.startsWith('/u/evolucion'), build: () => 'Evolución' },
   { test: p => p.startsWith('/u/birthdays/'), build: p => 'Cumpleaños ' + p.split('/').pop() },
   { test: p => p.startsWith('/u/birthdays'), build: () => 'Cumpleaños' },
   { test: p => p.startsWith('/u/caja'), build: () => 'Caja' },

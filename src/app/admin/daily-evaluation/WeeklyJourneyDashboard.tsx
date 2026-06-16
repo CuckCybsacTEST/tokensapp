@@ -193,6 +193,8 @@ function MultiLineChartCard({
   historicalTotal?: number;
 }) {
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const canShowOnlyTotal = Boolean(totalSeriesKey) && series.some((item) => item.key === totalSeriesKey) && series.length > 1;
+  const isOnlyTotalVisible = canShowOnlyTotal && series.every((item) => item.key === totalSeriesKey || hiddenKeys.has(item.key));
 
   function toggleKey(key: string) {
     setHiddenKeys((prev) => {
@@ -205,6 +207,11 @@ function MultiLineChartCard({
 
   function showAll() {
     setHiddenKeys(new Set());
+  }
+
+  function showOnlyTotal() {
+    if (!totalSeriesKey) return;
+    setHiddenKeys(new Set(series.filter((item) => item.key !== totalSeriesKey).map((item) => item.key)));
   }
 
   return (
@@ -239,6 +246,19 @@ function MultiLineChartCard({
 
           {/* Leyenda interactiva: clic para mostrar/ocultar · conteos acumulados del periodo */}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {canShowOnlyTotal && (
+              <button
+                type="button"
+                onClick={showOnlyTotal}
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all ${
+                  isOnlyTotalVisible
+                    ? 'border-cyan-300 bg-cyan-50 text-cyan-800 dark:border-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                    : 'border-cyan-200 bg-white text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:bg-slate-800 dark:text-cyan-300 dark:hover:bg-cyan-900/20'
+                }`}
+              >
+                Desactivar todos menos el total
+              </button>
+            )}
             {series.map((item) => {
               const hidden = hiddenKeys.has(item.key);
               const count = keyTotals?.[item.key];
