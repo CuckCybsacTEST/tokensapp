@@ -2,6 +2,7 @@ import { Mundial2026PrizeAssignmentMode } from "@prisma/client";
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { reassignMundial2026MatchPrizes } from "@/lib/mundial2026/operations";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -25,8 +26,8 @@ export async function POST(req: Request, { params }: { params: { matchId: string
     }
 
     const [match, prize] = await Promise.all([
-      prisma.mundial2026Match.findUnique({ where: { id: params.matchId }, select: { id: true, campaignId: true } }),
-      prisma.mundial2026Prize.findUnique({ where: { id: parsed.data.prizeId }, select: { id: true, campaignId: true } }),
+      prisma.mundial2026Match.findUnique({ where: { id: params.matchId }, select: { id: true, campaignId: true, status: true } }),
+      prisma.mundial2026Prize.findUnique({ where: { id: parsed.data.prizeId }, select: { id: true, campaignId: true, stockReserved: true, stockClaimed: true } }),
     ]);
 
     if (!match) {
@@ -36,30 +37,49 @@ export async function POST(req: Request, { params }: { params: { matchId: string
       return apiError("PRIZE_NOT_FOUND", "Premio no encontrado para esta campaña.", { prizeId: parsed.data.prizeId }, 404);
     }
 
-    const matchPrize = await prisma.mundial2026MatchPrize.upsert({
-      where: {
-        matchId_prizeId: {
+    const targetStockTotal = parsed.data.maxWinners == null
+      ? null
+      : Math.max(parsed.data.maxWinners, prize.stockReserved + prize.stockClaimed);
+
+    const matchPrize = await prisma.$transaction(async (tx) => {
+      const saved = await tx.mundial2026MatchPrize.upsert({
+        where: {
+          matchId_prizeId: {
+            matchId: params.matchId,
+            prizeId: parsed.data.prizeId,
+          },
+        },
+        update: {
+          assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
+          maxWinners: parsed.data.maxWinners ?? null,
+          sortOrder: parsed.data.sortOrder,
+          active: parsed.data.active,
+        },
+        create: {
           matchId: params.matchId,
           prizeId: parsed.data.prizeId,
+          assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
+          maxWinners: parsed.data.maxWinners ?? null,
+          sortOrder: parsed.data.sortOrder,
+          active: parsed.data.active,
         },
-      },
-      update: {
-        assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
-        maxWinners: parsed.data.maxWinners ?? null,
-        sortOrder: parsed.data.sortOrder,
-        active: parsed.data.active,
-      },
-      create: {
-        matchId: params.matchId,
-        prizeId: parsed.data.prizeId,
-        assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
-        maxWinners: parsed.data.maxWinners ?? null,
-        sortOrder: parsed.data.sortOrder,
-        active: parsed.data.active,
-      },
+      });
+
+      if (targetStockTotal != null) {
+        await tx.mundial2026Prize.update({
+          where: { id: parsed.data.prizeId },
+          data: { stockTotal: targetStockTotal },
+        });
+      }
+
+      return saved;
     });
 
-    return apiOk({ matchPrize }, 201);
+    const reassignment = match.status === "SETTLED"
+      ? await reassignMundial2026MatchPrizes({ matchId: params.matchId })
+      : null;
+
+    return apiOk({ matchPrize, reassignment }, 201);
   } catch (error) {
     console.error("Error assigning Mundial 2026 prize to match:", error);
     return apiError("ASSIGN_FAILED", "No se pudo asignar el premio al partido.", { matchId: params.matchId }, 500);

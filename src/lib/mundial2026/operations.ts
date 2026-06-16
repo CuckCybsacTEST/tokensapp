@@ -554,3 +554,117 @@ export async function settleMundial2026Match(args: {
     };
   });
 }
+
+export async function reassignMundial2026MatchPrizes(args: {
+  matchId: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const match = await tx.mundial2026Match.findUnique({
+      where: { id: args.matchId },
+      include: {
+        matchPrizes: {
+          where: { active: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          include: {
+            prize: true,
+          },
+        },
+        predictions: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!match) {
+      throw new Error("Partido no encontrado.");
+    }
+
+    if (match.status !== Mundial2026MatchStatus.SETTLED) {
+      throw new Error("Solo se pueden reasignar premios en partidos liquidados.");
+    }
+
+    if (!match.result || match.result === Mundial2026MatchResult.VOID) {
+      return {
+        matchId: match.id,
+        winners: 0,
+        reassigned: 0,
+        remainingRejectedWinners: 0,
+        totalPredictions: match.predictions.length,
+      };
+    }
+
+    const winners = match.predictions.filter((prediction) => prediction.pick === match.result && prediction.status === Mundial2026PredictionStatus.WON);
+    const rejectedWinners = winners.filter((prediction) => prediction.claimStatus === Mundial2026ClaimStatus.REJECTED && !prediction.assignedPrizeId);
+
+    const extraCapacity = match.matchPrizes.flatMap((matchPrize) => {
+      const maxByRule = matchPrize.maxWinners ?? 1;
+      const alreadyAssigned = match.predictions.filter((prediction) => prediction.assignedPrizeId === matchPrize.prizeId).length;
+      const remainingByRule = Math.max(0, maxByRule - alreadyAssigned);
+      const stockTotal = matchPrize.prize.stockTotal ?? 0;
+      const availableStock = Math.max(0, stockTotal - matchPrize.prize.stockReserved - matchPrize.prize.stockClaimed);
+      const assignable = Math.max(0, Math.min(remainingByRule, availableStock));
+      return Array.from({ length: assignable }, () => matchPrize);
+    });
+
+    if (rejectedWinners.length === 0 || extraCapacity.length === 0) {
+      return {
+        matchId: match.id,
+        winners: winners.length,
+        reassigned: 0,
+        remainingRejectedWinners: rejectedWinners.length,
+        totalPredictions: match.predictions.length,
+      };
+    }
+
+    const now = new Date();
+    const reassignmentMap = new Map<string, { prizeId: string; claimExpiresAt: Date | null }>();
+    rejectedWinners.forEach((prediction, index) => {
+      const slot = extraCapacity[index];
+      if (!slot) return;
+      const claimExpiresAt = slot.prize.claimWindowHours ? new Date(now.getTime() + slot.prize.claimWindowHours * 60 * 60 * 1000) : null;
+      reassignmentMap.set(prediction.id, {
+        prizeId: slot.prizeId,
+        claimExpiresAt,
+      });
+    });
+
+    await Promise.all(
+      Array.from(reassignmentMap.entries()).map(([predictionId, assigned]) =>
+        tx.mundial2026Prediction.update({
+          where: { id: predictionId },
+          data: {
+            status: Mundial2026PredictionStatus.WON,
+            claimStatus: Mundial2026ClaimStatus.AVAILABLE,
+            assignedPrizeId: assigned.prizeId,
+            availableAt: now,
+            claimExpiresAt: assigned.claimExpiresAt,
+          },
+        })
+      )
+    );
+
+    const increments = new Map<string, number>();
+    reassignmentMap.forEach((value) => {
+      increments.set(value.prizeId, (increments.get(value.prizeId) || 0) + 1);
+    });
+
+    await Promise.all(
+      Array.from(increments.entries()).map(([prizeId, count]) =>
+        tx.mundial2026Prize.update({
+          where: { id: prizeId },
+          data: {
+            stockReserved: { increment: count },
+          },
+        })
+      )
+    );
+
+    return {
+      matchId: match.id,
+      winners: winners.length,
+      reassigned: reassignmentMap.size,
+      remainingRejectedWinners: Math.max(0, rejectedWinners.length - reassignmentMap.size),
+      totalPredictions: match.predictions.length,
+    };
+  });
+}

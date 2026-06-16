@@ -84,7 +84,7 @@ const claimStatusLabelByStatus: Record<string, string> = {
   AVAILABLE: "Jugada ganadora",
   REDEEMED: "Canjeado",
   EXPIRED: "Expirado",
-  REJECTED: "No acerto",
+  REJECTED: "Sin premio disponible",
 };
 
 const claimStatusCompactLabelByStatus: Record<string, string> = {
@@ -92,7 +92,7 @@ const claimStatusCompactLabelByStatus: Record<string, string> = {
   AVAILABLE: "Disponible",
   REDEEMED: "Canjeado",
   EXPIRED: "Expirado",
-  REJECTED: "No acerto",
+  REJECTED: "Sin premio",
 };
 
 const claimStatusCompactClassByStatus: Record<string, string> = {
@@ -109,6 +109,14 @@ function getUiClaimState(args: { matchStatus: string; predictionStatus: string; 
       label: "Jugada en curso",
       compactLabel: "Jugada en curso",
       className: "text-sky-200",
+    };
+  }
+
+  if (args.predictionStatus === "WON" && args.claimStatus === "REJECTED") {
+    return {
+      label: "Acertaste, pero te quedaste sin premio",
+      compactLabel: "Sin premio disponible",
+      className: "text-amber-200",
     };
   }
 
@@ -130,6 +138,13 @@ function getPublicOutcomeCopy(prediction: { status: string; claimStatus: string;
         : prediction.assignedPrizeLabel
           ? `Acércate a Ktdral Lounge, muestra tu QR y reclama ${prediction.assignedPrizeLabel}.`
           : "Acércate a Ktdral Lounge, muestra tu QR y reclama tu premio.",
+    };
+  }
+
+  if (prediction.status === "WON" && prediction.claimStatus === "REJECTED") {
+    return {
+      title: `Hola ${firstName}, acertaste la jugada.`,
+      description: "Esta vez el premio asignado al partido ya no tuvo cupos disponibles, por eso tu jugada quedó sin premio para reclamar.",
     };
   }
 
@@ -226,7 +241,8 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
   const displayPrize = prediction.assignedPrize ?? globalPrize;
   const publicPrizeLabel = prediction.assignedPrize?.label || (globalPrize.label !== "Premio por confirmar" ? globalPrize.label : null);
   const isPredictionInCourse = prediction.match.status !== "SETTLED" && prediction.status === "PENDING";
-  const isRejectedPrediction = prediction.claimStatus === "REJECTED" || prediction.status === "LOST";
+  const isLostPrediction = prediction.status === "LOST";
+  const isWinnerWithoutPrize = prediction.status === "WON" && prediction.claimStatus === "REJECTED";
   const uiClaimState = getUiClaimState({
     matchStatus: prediction.match.status,
     predictionStatus: prediction.status,
@@ -304,7 +320,7 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
                   </div>
                 ) : (
                   <>
-                    {isRejectedPrediction ? (
+                    {isLostPrediction ? (
                       <div className="mt-3 w-full rounded-[22px] border border-rose-300/20 bg-rose-400/10 px-4 py-4 sm:rounded-[24px] sm:px-6 sm:py-6 text-left">
                         <div className="mb-2 text-xs sm:text-sm font-medium uppercase tracking-wider text-rose-100/80">Resultado</div>
                         <h2 className="text-lg font-bold leading-tight break-words text-rose-50 sm:text-xl lg:text-2xl">
@@ -316,41 +332,57 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
                       </div>
                     ) : null}
 
+                    {isWinnerWithoutPrize ? (
+                      <div className="mt-3 w-full rounded-[22px] border border-amber-300/20 bg-amber-400/10 px-4 py-4 sm:rounded-[24px] sm:px-6 sm:py-6 text-left">
+                        <div className="mb-2 text-xs sm:text-sm font-medium uppercase tracking-wider text-amber-100/80">Resultado</div>
+                        <h2 className="text-lg font-bold leading-tight break-words text-amber-50 sm:text-xl lg:text-2xl">
+                          Acertaste, pero el premio ya no tuvo cupo.
+                        </h2>
+                        <div className="mt-3 text-xs leading-6 text-amber-100/85 sm:text-sm sm:leading-relaxed">
+                          Tu jugada fue correcta, pero el premio asignado al partido ya alcanzó su capacidad máxima antes de llegar a esta jugada.
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div
                       className={[
                         "mt-3 w-full rounded-[22px] px-4 py-4 sm:rounded-[24px] sm:px-6 sm:py-6 text-left",
-                        isRejectedPrediction
+                        (isLostPrediction || isWinnerWithoutPrize)
                           ? "border border-white/8 bg-white/[0.03]"
                           : "border border-white/10 bg-gradient-to-b from-white/10 to-transparent",
                       ].join(" ")}
                     >
                       <div className={[
                         "mb-2 text-xs sm:text-sm font-medium uppercase tracking-wider",
-                        isRejectedPrediction ? "text-white/40" : "text-white/60",
+                        (isLostPrediction || isWinnerWithoutPrize) ? "text-white/40" : "text-white/60",
                       ].join(" ")}>
-                        {isRejectedPrediction ? "Premio del partido" : "Premio"}
+                        {(isLostPrediction || isWinnerWithoutPrize) ? "Premio del partido" : "Premio"}
                       </div>
                       <h2
                         className={[
                           "break-words font-bold leading-tight",
-                          isRejectedPrediction ? "text-lg sm:text-xl text-white/72" : "text-xl sm:text-2xl lg:text-3xl text-white",
+                          (isLostPrediction || isWinnerWithoutPrize) ? "text-lg sm:text-xl text-white/72" : "text-xl sm:text-2xl lg:text-3xl text-white",
                         ].join(" ")}
-                        style={!isRejectedPrediction && displayPrize.color ? { color: displayPrize.color } : undefined}
+                        style={!(isLostPrediction || isWinnerWithoutPrize) && displayPrize.color ? { color: displayPrize.color } : undefined}
                       >
                         {displayPrize.label}
                       </h2>
                       {displayPrize.description ? (
-                        <div className={[
+                        <div
+                          className={[
                           "mt-3 text-xs sm:text-sm leading-relaxed",
-                          isRejectedPrediction ? "text-white/60" : "text-white/80",
-                        ].join(" ")}>
+                          (isLostPrediction || isWinnerWithoutPrize) ? "text-white/60" : "text-white/80",
+                        ].join(" ")}
+                        >
                           {displayPrize.description}
                         </div>
                       ) : null}
-                      <div className={[
-                        "mt-3 text-[11px] sm:text-sm",
-                        isRejectedPrediction ? "text-white/45" : "text-white/55",
-                      ].join(" ")}>
+                      <div
+                        className={[
+                          "mt-3 text-[11px] sm:text-sm",
+                          (isLostPrediction || isWinnerWithoutPrize) ? "text-white/45" : "text-white/55",
+                        ].join(" ")}
+                      >
                         WhatsApp {maskMundial2026WhatsApp(prediction.participant.whatsappNormalized)}
                       </div>
                     </div>
@@ -370,7 +402,7 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
                   ) : null}
                 </div>
 
-                {!isPredictionInCourse && !isRejectedPrediction ? (
+                {!isPredictionInCourse && !isLostPrediction && !isWinnerWithoutPrize ? (
                   <div className="mt-4 w-full sm:mt-5">
                     <Mundial2026RedeemPanel
                       qrPayload={qrPayload}

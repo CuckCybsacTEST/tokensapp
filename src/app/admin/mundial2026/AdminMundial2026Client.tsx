@@ -100,12 +100,14 @@ type SettlementResponse = {
   };
 };
 
-const RESULT_OPTIONS = [
-  { value: "HOME", label: "Gana local" },
-  { value: "DRAW", label: "Empate" },
-  { value: "AWAY", label: "Gana visita" },
-  { value: "VOID", label: "Void / anulado" },
-] as const;
+function getResultOptions(match: MatchItem) {
+  return [
+    { value: "HOME", label: `Gana ${match.homeTeam}` },
+    { value: "DRAW", label: "Empate" },
+    { value: "AWAY", label: `Gana ${match.awayTeam}` },
+    { value: "VOID", label: "Void / anulado" },
+  ] as const;
+}
 
 const ASSIGNMENT_MODE_OPTIONS = [
   { value: "DIRECT_FIRST_N", label: "Primeros N ganadores" },
@@ -588,7 +590,7 @@ export default function AdminMundial2026Client() {
                   />
                 </label>
                 <label className="space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Stock total</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Stock base</span>
                   <input
                     className="input bg-slate-950/45 text-white"
                     value={prizeForm.stockTotal}
@@ -596,6 +598,7 @@ export default function AdminMundial2026Client() {
                     placeholder="50"
                     inputMode="numeric"
                   />
+                  <span className="block text-[11px] leading-5 text-slate-500">En Mundial 2026, el stock efectivo se sincroniza automáticamente con el mayor valor de Max configurado en los partidos.</span>
                 </label>
                 <label className="space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Prioridad</span>
@@ -733,7 +736,7 @@ export default function AdminMundial2026Client() {
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{prize.key}</div>
                               <div className="font-semibold" style={prize.color ? { color: prize.color } : undefined}>{prize.label}</div>
                               <div className="mt-1 text-xs text-slate-400">
-                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · ventana {prize.claimWindowHours ?? 24}h
+                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · el stock se sincroniza con Max · ventana {prize.claimWindowHours ?? 24}h
                               </div>
                             </div>
                             <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_92px_92px] xl:grid-cols-[minmax(0,1.4fr)_92px_92px_auto] xl:items-end">
@@ -905,7 +908,7 @@ export default function AdminMundial2026Client() {
                       onChange={(event) => setResults((current) => ({ ...current, [match.id]: event.target.value }))}
                       disabled={!match.canSettle || submittingFor === match.id}
                     >
-                      {RESULT_OPTIONS.map((option) => (
+                      {getResultOptions(match).map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>

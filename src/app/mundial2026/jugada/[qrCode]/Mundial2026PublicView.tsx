@@ -51,8 +51,11 @@ export default function Mundial2026PublicView(props: Props) {
   const showWinnerCelebration = useMemo(() => {
     return props.predictionStatus === "WON" && ["AVAILABLE", "REDEEMED"].includes(props.claimStatus);
   }, [props.claimStatus, props.predictionStatus]);
+  const showWinnerWithoutPrize = useMemo(() => {
+    return props.predictionStatus === "WON" && props.claimStatus === "REJECTED";
+  }, [props.claimStatus, props.predictionStatus]);
   const showLostOutcome = useMemo(() => {
-    return props.predictionStatus === "LOST" || props.claimStatus === "REJECTED";
+    return props.predictionStatus === "LOST";
   }, [props.claimStatus, props.predictionStatus]);
 
   return (
@@ -141,6 +144,31 @@ export default function Mundial2026PublicView(props: Props) {
                 className="mt-3 max-w-[26rem] text-sm leading-7 text-rose-50/88 sm:text-base"
               >
                 Esta vez no se abrió el premio. Puedes volver a intentarlo en el próximo partido.
+              </motion.p>
+            </motion.div>
+          ) : showWinnerWithoutPrize ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1, boxShadow: "0 0 0 1px rgba(251,191,36,0.16), 0 22px 44px rgba(217,119,6,0.14)" }}
+              transition={{ duration: 0.42, ease: softEase, delay: 0.14 }}
+              className="mt-4 w-full rounded-[22px] border border-amber-300/20 bg-[linear-gradient(180deg,_rgba(245,158,11,0.12),_rgba(15,23,42,0.4))] px-4 py-5 text-left sm:mt-5 sm:rounded-[24px] sm:px-6 sm:py-6"
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-100/70">Resultado</div>
+              <motion.h2
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.36, ease: softEase, delay: 0.2 }}
+                className="mt-3 break-words text-[clamp(1.7rem,8vw,2.2rem)] font-black leading-tight text-white"
+              >
+                Acertaste, pero esta jugada quedó sin premio.
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.36, ease: softEase, delay: 0.26 }}
+                className="mt-3 max-w-[26rem] text-sm leading-7 text-amber-50/88 sm:text-base"
+              >
+                El resultado fue correcto, pero el premio del partido alcanzó su capacidad máxima antes de llegar a esta jugada.
               </motion.p>
             </motion.div>
           ) : (
