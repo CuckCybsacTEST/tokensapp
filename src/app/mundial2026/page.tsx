@@ -53,6 +53,7 @@ async function loadPublicMatches() {
     return {
       campaignSlug: DEFAULT_CAMPAIGN_SLUG,
       matches: [],
+      recoveryMatches: [],
       sectionTitle: "Campaña no disponible",
       sectionHint: "Aún no se activó la campaña pública de Mundial 2026.",
       simulatedNowIso: getMundial2026SimulatedNowIso(),
