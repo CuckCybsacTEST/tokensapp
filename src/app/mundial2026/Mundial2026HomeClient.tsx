@@ -1192,13 +1192,17 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
                     <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/12 bg-slate-950/48 p-3.5 shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm sm:rounded-[22px] sm:p-4">
                       <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">Nombre</span>
                       <input
-                        className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
+                        className="mundial2026-field input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={name}
                         onChange={(event) => {
                           setName(event.target.value);
                           if (error) setError(null);
                         }}
                         placeholder="Tu nombre"
+                        autoComplete="name"
+                        autoCapitalize="words"
+                        autoCorrect="off"
+                        spellCheck={false}
                         required
                       />
                     </motion.label>
@@ -1206,13 +1210,17 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
                     <motion.label variants={fadeUpVariants} className="min-w-0 space-y-2 rounded-[20px] border border-white/12 bg-slate-950/48 p-3.5 shadow-[0_10px_24px_rgba(2,6,23,0.18)] backdrop-blur-sm sm:rounded-[22px] sm:p-4">
                       <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">WhatsApp</span>
                       <input
-                        className="input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
+                        className="mundial2026-field input h-12 w-full border-white/20 bg-slate-950/88 text-base font-semibold text-white caret-white placeholder:text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:h-14 sm:text-lg"
                         value={whatsapp}
                         onChange={(event) => {
                           setWhatsapp(event.target.value);
                           if (error) setError(null);
                         }}
                         placeholder="Tu WhatsApp"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        autoCorrect="off"
+                        spellCheck={false}
                         required
                       />
                     </motion.label>
@@ -1341,7 +1349,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
                 <label className="block space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
                   <input
-                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                    className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryName}
                     onChange={(event) => {
                       setRecoveryName(event.target.value);
@@ -1349,6 +1357,9 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
                     }}
                     placeholder="Tu nombre"
                     autoComplete="name"
+                    autoCapitalize="words"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                   />
                 </label>
@@ -1356,7 +1367,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
                 <label className="block space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
                   <input
-                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                    className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
                     value={recoveryWhatsapp}
                     onChange={(event) => {
                       setRecoveryWhatsapp(event.target.value);

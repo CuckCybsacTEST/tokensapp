@@ -7,7 +7,6 @@
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts",
     "src/test/setupTestDb.ts"
   ],
   "exclude": [

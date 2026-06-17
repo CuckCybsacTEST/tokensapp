@@ -204,6 +204,22 @@ body {
 .prio-medium { @apply badge; background: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning-border); }
 .prio-low { @apply badge; background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success-border); }
 .input { @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 shadow-sm placeholder-slate-400 focus:border-brand-500 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:placeholder-slate-500 dark:text-slate-100; }
+.mundial2026-field {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-fill-color: currentColor;
+  color-scheme: dark;
+}
+.mundial2026-field:-webkit-autofill,
+.mundial2026-field:-webkit-autofill:hover,
+.mundial2026-field:-webkit-autofill:focus,
+.mundial2026-field:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.88) inset !important;
+  box-shadow: 0 0 0 1000px rgba(15, 23, 42, 0.88) inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  transition: background-color 9999s ease-in-out 0s;
+}
 .input-sm { @apply input px-2 py-1 text-sm; }
 .input-xs { @apply input px-2 py-0.5 text-xs; }
 .badge { @apply inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200; }
