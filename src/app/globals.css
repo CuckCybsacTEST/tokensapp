@@ -207,8 +207,8 @@ body {
 .mundial2026-field {
   -webkit-appearance: none;
   appearance: none;
-  -webkit-text-fill-color: currentColor;
-  color-scheme: dark;
+  background-color: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
 }
 .mundial2026-field:-webkit-autofill,
 .mundial2026-field:-webkit-autofill:hover,
