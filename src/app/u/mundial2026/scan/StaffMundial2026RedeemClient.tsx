@@ -44,7 +44,7 @@ type ResponsePayload = {
 
 function formatDate(value: string | null) {
   if (!value) return "Pendiente";
-  return new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" }).format(new Date(value));
 }
 
 export default function StaffMundial2026RedeemClient() {

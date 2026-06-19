@@ -20,6 +20,7 @@ function formatDate(value: Date | null) {
   return new Intl.DateTimeFormat("es-PE", {
     dateStyle: "full",
     timeStyle: "short",
+    timeZone: "America/Lima",
   }).format(value);
 }
 
@@ -37,6 +38,7 @@ function formatShortDate(value: Date | null) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Lima",
   }).format(value);
 }
 

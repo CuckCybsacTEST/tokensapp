@@ -139,7 +139,7 @@ type InsightsPayload = {
 
 function formatDate(value: string | null) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" }).format(new Date(value));
 }
 
 function formatPick(pick: "HOME" | "DRAW" | "AWAY", homeTeam: string, awayTeam: string) {
