@@ -43,7 +43,7 @@ export default async function Mundial2026TablaPage() {
     .filter((prediction) => prediction.status === "WON")
     .map((prediction) => ({
       id: prediction.id,
-      detailPath: prediction.detailPath,
+      detailPath: `/mundial2026?recover=1&match=${encodeURIComponent(prediction.match.id)}`,
       participantName: prediction.participant.name,
       matchLabel: `${prediction.match.homeTeam} vs ${prediction.match.awayTeam}`,
       matchStageLabel: prediction.match.stage || "Partido",
@@ -58,14 +58,10 @@ export default async function Mundial2026TablaPage() {
 
   const pageProps: Mundial2026TablaProps = {
     generatedAtLabel: formatDate(insights.generatedAt),
+    winnersTotal: insights.summary.wonTotal,
+    aciertosTotal: insights.summary.wonTotal,
+    availableTotal: insights.summary.availableTotal,
     claimWindowHours: MUNDIAL2026_CLAIM_WINDOW_HOURS,
-    summary: {
-      winnersTotal: winners.length,
-      aciertosTotal: winners.length,
-      availableTotal: insights.summary.availableTotal,
-      redeemedTotal: insights.summary.redeemedTotal,
-      expiredTotal: insights.summary.expiredClaimTotal,
-    },
     winners,
   };
 

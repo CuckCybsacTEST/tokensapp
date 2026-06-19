@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock3, Sparkles, Star, Trophy } from "lucide-react";
 import { DateTime } from "luxon";
@@ -504,6 +505,8 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   const [recoverySubmitting, setRecoverySubmitting] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [mobilePosterIndex, setMobilePosterIndex] = useState(0);
+  const hasAutoOpenedRecoveryRef = useRef(false);
+  const searchParams = useSearchParams();
   const mobilePosterRef = useRef<HTMLDivElement | null>(null);
   const mobilePosterAutoPauseUntilRef = useRef(0);
   const mobilePosterSyncTimeoutRef = useRef<number | null>(null);
@@ -534,9 +537,13 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
         <button className={`${primaryActionClass} w-full sm:w-auto`} type="button" onClick={openWizard} disabled={openMatches.length === 0}>
           {openMatches.length > 0 ? "Jugar ahora" : "Hoy no hay partidos disponibles"}
         </button>
-        <button className={`${recoveryActionClass} w-full sm:w-auto`} type="button" onClick={openRecovery} disabled={recoveryMatches.length === 0}>
+        <button className={`${recoveryActionClass} w-full sm:w-auto`} type="button" onClick={() => openRecovery()} disabled={recoveryMatches.length === 0}>
           Recuperar mi jugada
         </button>
+        <Link href="/mundial2026/tabla" className={`${secondaryActionClass} w-full gap-2 sm:w-auto`}>
+          <Trophy className="h-4 w-4" />
+          Tabla de aciertos
+        </Link>
         {successPath ? (
           <Link href={successPath} className={`${secondaryActionClass} hidden sm:inline-flex sm:w-auto`}>
             Ver mi último QR
@@ -549,6 +556,18 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   useEffect(() => {
     setMobilePosterIndex(0);
   }, [displayMatches.length]);
+
+  useEffect(() => {
+    const recoverQuery = searchParams?.get("recover");
+    const matchQuery = searchParams?.get("match");
+
+    if (hasAutoOpenedRecoveryRef.current) return;
+    if (recoverQuery !== "1") return;
+    if (recoveryMatches.length === 0) return;
+
+    hasAutoOpenedRecoveryRef.current = true;
+    openRecovery(matchQuery || undefined);
+  }, [openRecovery, recoveryMatches.length, searchParams]);
 
   useEffect(() => {
     if (displayMatches.length <= 1) return;
@@ -685,9 +704,11 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
     }
   }
 
-  function openRecovery() {
+  function openRecovery(targetMatchId?: string) {
     if (recoveryMatches.length === 0) return;
-    const selectedRecoveryMatch = recoveryMatches.find((match) => match.id === selectedMatch?.id);
+    const selectedRecoveryMatch =
+      recoveryMatches.find((match) => match.id === targetMatchId) ||
+      recoveryMatches.find((match) => match.id === selectedMatch?.id);
     setRecoveryMatchId(selectedRecoveryMatch?.id || recoveryMatches[0]?.id || "");
     setRecoveryName("");
     setRecoveryWhatsapp("");

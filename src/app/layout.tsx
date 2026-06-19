@@ -22,7 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className="h-full theme-hydrated" suppressHydrationWarning>
       <head>
-        <style>{`html{background:var(--color-bg,#ffffff);color-scheme:dark light}`}</style>
+        <style
+          id="root-theme-base"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: "html{background:var(--color-bg,#ffffff);color-scheme:dark light}" }}
+        />
         <ThemeScript />
   <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
   {/* Theme colors (light/dark) usando la paleta brand */}
