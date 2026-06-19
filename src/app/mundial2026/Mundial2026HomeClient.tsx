@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock3, Sparkles, Star, Trophy } from "lucide-react";
 import { DateTime } from "luxon";
@@ -503,10 +504,13 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   const [recoveryName, setRecoveryName] = useState("");
   const [recoveryWhatsapp, setRecoveryWhatsapp] = useState("");
   const [recoverySubmitting, setRecoverySubmitting] = useState(false);
+  const [recoveryRedirecting, setRecoveryRedirecting] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryLocked, setRecoveryLocked] = useState(false);
   const [mobilePosterIndex, setMobilePosterIndex] = useState(0);
   const hasAutoOpenedRecoveryRef = useRef(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const mobilePosterRef = useRef<HTMLDivElement | null>(null);
   const mobilePosterAutoPauseUntilRef = useRef(0);
   const mobilePosterSyncTimeoutRef = useRef<number | null>(null);
@@ -518,6 +522,10 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   const selectedMatch = useMemo(
     () => openMatches.find((match) => match.id === selectedMatchId) || openMatches[0] || null,
     [openMatches, selectedMatchId]
+  );
+  const selectedRecoveryMatch = useMemo(
+    () => recoveryMatches.find((match) => match.id === recoveryMatchId) || recoveryMatches[0] || null,
+    [recoveryMatches, recoveryMatchId]
   );
   const wizardCopy = WIZARD_STEP_COPY[wizardStep];
 
@@ -560,13 +568,14 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   useEffect(() => {
     const recoverQuery = searchParams?.get("recover");
     const matchQuery = searchParams?.get("match");
+    const nameQuery = searchParams?.get("name");
 
     if (hasAutoOpenedRecoveryRef.current) return;
     if (recoverQuery !== "1") return;
     if (recoveryMatches.length === 0) return;
 
     hasAutoOpenedRecoveryRef.current = true;
-    openRecovery(matchQuery || undefined);
+    openRecovery(matchQuery || undefined, nameQuery || undefined);
   }, [openRecovery, recoveryMatches.length, searchParams]);
 
   useEffect(() => {
@@ -704,22 +713,25 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
     }
   }
 
-  function openRecovery(targetMatchId?: string) {
+  function openRecovery(targetMatchId?: string, targetName?: string) {
     if (recoveryMatches.length === 0) return;
     const selectedRecoveryMatch =
       recoveryMatches.find((match) => match.id === targetMatchId) ||
       recoveryMatches.find((match) => match.id === selectedMatch?.id);
     setRecoveryMatchId(selectedRecoveryMatch?.id || recoveryMatches[0]?.id || "");
-    setRecoveryName("");
+    setRecoveryName(targetName ? targetName.trim().replace(/\s+/g, " ") : "");
     setRecoveryWhatsapp("");
     setRecoveryError(null);
+    setRecoveryLocked(Boolean(targetName));
+    setRecoveryRedirecting(false);
     setIsRecoveryOpen(true);
   }
 
   function closeRecovery() {
-    if (recoverySubmitting) return;
+    if (recoverySubmitting || recoveryRedirecting) return;
     setIsRecoveryOpen(false);
     setRecoveryError(null);
+    setRecoveryLocked(false);
   }
 
   function goNextStep() {
@@ -817,6 +829,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
 
     setRecoverySubmitting(true);
     setRecoveryError(null);
+    setRecoveryRedirecting(false);
 
     try {
       const response = await fetch("/api/mundial2026/recover", {
@@ -841,10 +854,12 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
       setRecoveryName(recoveryNameValue);
       setRecoveryWhatsapp(recoveryWhatsappValue);
       setSuccessPath(data.prediction.detailPath);
-      setIsRecoveryOpen(false);
-      if (typeof window !== "undefined") {
-        window.location.assign(data.prediction.detailPath);
-      }
+      setRecoveryRedirecting(true);
+      setRecoveryError(null);
+      router.prefetch(data.prediction.detailPath);
+      window.setTimeout(() => {
+        router.push(data.prediction.detailPath);
+      }, 320);
     } catch (recoverError) {
       setRecoveryError(getErrorMessage(recoverError));
     } finally {
@@ -1347,72 +1362,103 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
             </div>
 
             <form className="space-y-5 px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7" onSubmit={handleRecoverPrediction}>
-              <label className="block space-y-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Partido</span>
-                <span className="block text-sm text-slate-400">Solo aparecen jugadas liquidadas recientemente.</span>
-                <div className="relative">
-                  <select
-                    className="input h-12 w-full border-white/10 bg-slate-950/65 text-sm font-semibold text-white sm:h-14 sm:text-base"
-                    value={recoveryMatchId}
-                    onChange={(event) => {
-                      setRecoveryMatchId(event.target.value);
-                      if (recoveryError) setRecoveryError(null);
-                    }}
-                    required
-                  >
-                    {recoveryMatches.map((match) => (
-                      <option key={match.id} value={match.id}>
-                        {getRecoveryMatchLabel(match)}
-                      </option>
-                    ))}
-                  </select>
+              {recoveryRedirecting ? (
+                <div className="rounded-[22px] border border-emerald-300/16 bg-[linear-gradient(180deg,_rgba(16,185,129,0.12),_rgba(15,23,42,0.78))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className="flex items-start gap-4">
+                    <div className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-300/25 bg-emerald-300/12">
+                      <Clock3 className="h-5 w-5 animate-pulse text-emerald-200" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200/80">Jugada encontrada</div>
+                      <div className="mt-1 text-lg font-black text-white">Abriendo tu token...</div>
+                      <div className="mt-2 text-sm leading-6 text-slate-300">
+                        Estamos preparando tu QR para <span className="font-semibold text-white">{recoveryName || "tu jugada"}</span>.
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ) : null}
+
+              {recoveryLocked ? (
+                <div className="grid gap-3 rounded-[20px] border border-sky-300/14 bg-white/[0.03] p-4 sm:grid-cols-2">
+                  <div className="rounded-[16px] border border-white/10 bg-slate-950/45 px-4 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Partido</div>
+                    <div className="mt-1 text-sm font-semibold text-white">{selectedRecoveryMatch ? getRecoveryMatchLabel(selectedRecoveryMatch) : "Partido seleccionado"}</div>
+                  </div>
+                  <div className="rounded-[16px] border border-white/10 bg-slate-950/45 px-4 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</div>
+                    <div className="mt-1 text-sm font-semibold text-white">{recoveryName || "Nombre registrado"}</div>
+                  </div>
+                  <p className="text-sm leading-6 text-slate-300 sm:col-span-2">Ya tenemos tu partido y tu nombre. Solo confirma el WhatsApp para recuperar tu jugada.</p>
+                </div>
+              ) : (
+                <>
+                  <label className="block space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Partido</span>
+                    <span className="block text-sm text-slate-400">Solo aparecen jugadas liquidadas recientemente.</span>
+                    <div className="relative">
+                      <select
+                        className="input h-12 w-full border-white/10 bg-slate-950/65 text-sm font-semibold text-white sm:h-14 sm:text-base"
+                        value={recoveryMatchId}
+                        onChange={(event) => {
+                          setRecoveryMatchId(event.target.value);
+                          if (recoveryError) setRecoveryError(null);
+                        }}
+                        required
+                      >
+                        {recoveryMatches.map((match) => (
+                          <option key={match.id} value={match.id}>
+                            {getRecoveryMatchLabel(match)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </label>
+
+                  <label className="block space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
+                    <input
+                      className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                      value={recoveryName}
+                      onChange={(event) => {
+                        setRecoveryName(event.target.value);
+                        if (recoveryError) setRecoveryError(null);
+                      }}
+                      placeholder="Tu nombre"
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      required
+                    />
+                  </label>
+                </>
+              )}
+
+              <label className="block space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
+                <input
+                  className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
+                  value={recoveryWhatsapp}
+                  onChange={(event) => {
+                    setRecoveryWhatsapp(event.target.value);
+                    if (recoveryError) setRecoveryError(null);
+                  }}
+                  placeholder="Tu WhatsApp"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                />
               </label>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Nombre</span>
-                  <input
-                    className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
-                    value={recoveryName}
-                    onChange={(event) => {
-                      setRecoveryName(event.target.value);
-                      if (recoveryError) setRecoveryError(null);
-                    }}
-                    placeholder="Tu nombre"
-                    autoComplete="name"
-                    autoCapitalize="words"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    required
-                  />
-                </label>
-
-                <label className="block space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">WhatsApp</span>
-                  <input
-                    className="mundial2026-field input h-12 w-full border-white/10 bg-slate-950/65 text-base font-semibold text-white placeholder:text-slate-500 sm:h-14 sm:text-lg"
-                    value={recoveryWhatsapp}
-                    onChange={(event) => {
-                      setRecoveryWhatsapp(event.target.value);
-                      if (recoveryError) setRecoveryError(null);
-                    }}
-                    placeholder="Tu WhatsApp"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    required
-                  />
-                </label>
-              </div>
 
               {recoveryError ? <div className="alert alert-danger">{recoveryError}</div> : null}
 
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                <button className={`${secondaryActionClass} w-full sm:w-auto`} type="button" onClick={closeRecovery} disabled={recoverySubmitting}>
+                <button className={`${secondaryActionClass} w-full sm:w-auto`} type="button" onClick={closeRecovery} disabled={recoverySubmitting || recoveryRedirecting}>
                   Cancelar
                 </button>
-                <button className={`${recoveryActionClass} w-full sm:w-auto`} disabled={recoverySubmitting} type="submit">
-                  {recoverySubmitting ? "Buscando jugada..." : "Recuperar mi Jugada"}
+                <button className={`${recoveryActionClass} w-full sm:w-auto`} disabled={recoverySubmitting || recoveryRedirecting} type="submit">
+                  {recoveryRedirecting ? "Abriendo token..." : recoverySubmitting ? "Buscando jugada..." : "Recuperar mi Jugada"}
                 </button>
               </div>
             </form>

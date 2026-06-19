@@ -43,7 +43,7 @@ export default async function Mundial2026TablaPage() {
     .filter((prediction) => prediction.status === "WON")
     .map((prediction) => ({
       id: prediction.id,
-      detailPath: `/mundial2026?recover=1&match=${encodeURIComponent(prediction.match.id)}`,
+      detailPath: `/mundial2026?recover=1&match=${encodeURIComponent(prediction.match.id)}&name=${encodeURIComponent(prediction.participant.name)}`,
       participantName: prediction.participant.name,
       matchLabel: `${prediction.match.homeTeam} vs ${prediction.match.awayTeam}`,
       matchStageLabel: prediction.match.stage || "Partido",
