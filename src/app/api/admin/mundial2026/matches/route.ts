@@ -2,6 +2,7 @@ import { Mundial2026MatchStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { getMundial2026EffectiveClaimStatus } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -43,6 +44,8 @@ export async function GET() {
             id: true,
             status: true,
             claimStatus: true,
+            claimExpiresAt: true,
+            redeemedAt: true,
             assignedPrizeId: true,
           },
         },
@@ -68,6 +71,7 @@ export async function GET() {
       },
     });
 
+    const now = new Date();
     return apiOk({
       total: matches.length,
       matches: matches.map((match) => ({
@@ -84,8 +88,22 @@ export async function GET() {
         stats: {
           totalPredictions: match.predictions.length,
           won: match.predictions.filter((item) => item.status === "WON").length,
-          available: match.predictions.filter((item) => item.claimStatus === "AVAILABLE").length,
-          redeemed: match.predictions.filter((item) => item.claimStatus === "REDEEMED").length,
+          available: match.predictions.filter((item) =>
+            getMundial2026EffectiveClaimStatus({
+              claimStatus: item.claimStatus,
+              claimExpiresAt: item.claimExpiresAt,
+              redeemedAt: item.redeemedAt,
+              now,
+            }) === "AVAILABLE"
+          ).length,
+          redeemed: match.predictions.filter((item) =>
+            getMundial2026EffectiveClaimStatus({
+              claimStatus: item.claimStatus,
+              claimExpiresAt: item.claimExpiresAt,
+              redeemedAt: item.redeemedAt,
+              now,
+            }) === "REDEEMED"
+          ).length,
         },
         canSettle: settleableStatuses.includes(match.status),
         prizes: match.matchPrizes.map((item) => ({

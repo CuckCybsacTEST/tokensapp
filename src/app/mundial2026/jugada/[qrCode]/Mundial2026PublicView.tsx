@@ -6,6 +6,8 @@ import Confetti from "react-confetti";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock3, QrCode, ShieldCheck, Sparkles, Ticket, Trophy } from "lucide-react";
 
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS } from "@/lib/mundial2026/time";
+
 type Props = {
   publicOutcomeCopy: {
     title: string;
@@ -283,7 +285,7 @@ export default function Mundial2026PublicView(props: Props) {
               <div className="inline-flex w-full items-center justify-center rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-center text-xs leading-5 text-sky-200/90 sm:text-sm">
                 <span className="inline-flex flex-wrap items-center justify-center gap-1.5">
                   <Clock3 className="h-3.5 w-3.5" />
-                  Expira: {props.claimExpiresAtLabel}
+                  Expira ({MUNDIAL2026_CLAIM_WINDOW_HOURS}h): {props.claimExpiresAtLabel}
                 </span>
               </div>
             </motion.div>

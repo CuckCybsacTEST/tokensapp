@@ -1,4 +1,5 @@
 import { apiError, apiOk } from "@/lib/apiError";
+import { getMundial2026EffectiveClaimStatus } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,16 @@ export async function GET(_req: Request, { params }: { params: { qrCode: string 
       return apiError("PREDICTION_NOT_FOUND", "Jugada no encontrada", { qrCode: params.qrCode }, 404);
     }
 
-    return apiOk({ prediction }, 200);
+    return apiOk({
+      prediction: {
+        ...prediction,
+        claimStatus: getMundial2026EffectiveClaimStatus({
+          claimStatus: prediction.claimStatus,
+          claimExpiresAt: prediction.claimExpiresAt,
+          redeemedAt: prediction.redeemedAt,
+        }),
+      },
+    }, 200);
   } catch (error) {
     console.error("Error fetching mundial2026 prediction:", error);
     return apiError("INTERNAL_ERROR", "Error interno del servidor", {}, 500);

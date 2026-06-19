@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -13,7 +14,6 @@ const updatePrizeSchema = z.object({
   description: z.string().trim().max(280).optional().or(z.literal("")),
   stockTotal: z.coerce.number().int().min(1).nullable().optional(),
   priority: z.coerce.number().int().min(0).max(999),
-  claimWindowHours: z.coerce.number().int().min(1).max(720),
   active: z.coerce.boolean(),
 });
 
@@ -33,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: { prizeId: strin
         description: parsed.data.description || null,
         stockTotal: parsed.data.stockTotal ?? null,
         priority: parsed.data.priority,
-        claimWindowHours: parsed.data.claimWindowHours,
+        claimWindowHours: MUNDIAL2026_CLAIM_WINDOW_HOURS,
         active: parsed.data.active,
       },
     });

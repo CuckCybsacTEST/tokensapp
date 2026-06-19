@@ -7,6 +7,7 @@ import Mundial2026RedeemPanel from "./Mundial2026RedeemPanel";
 import { verifyUserSessionCookie } from "@/lib/auth";
 import { generateQrPngDataUrl } from "@/lib/qr";
 import { buildMundial2026PredictionQrPayload } from "@/lib/mundial2026/signing";
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS, getMundial2026EffectiveClaimStatus } from "@/lib/mundial2026/time";
 import { maskMundial2026WhatsApp } from "@/lib/mundial2026/whatsapp";
 import { prisma } from "@/lib/prisma";
 
@@ -120,6 +121,14 @@ function getUiClaimState(args: { matchStatus: string; predictionStatus: string; 
     };
   }
 
+  if (args.predictionStatus === "WON" && args.claimStatus === "EXPIRED") {
+    return {
+      label: "Acertaste, pero el premio venció",
+      compactLabel: "Vencido",
+      className: "text-rose-200",
+    };
+  }
+
   return {
     label: claimStatusLabelByStatus[args.claimStatus] || args.claimStatus,
     compactLabel: claimStatusCompactLabelByStatus[args.claimStatus] || args.claimStatus,
@@ -145,6 +154,13 @@ function getPublicOutcomeCopy(prediction: { status: string; claimStatus: string;
     return {
       title: `Hola ${firstName}, acertaste la jugada.`,
       description: "Esta vez el premio asignado al partido ya no tuvo cupos disponibles, por eso tu jugada quedó sin premio para reclamar.",
+    };
+  }
+
+  if (prediction.status === "WON" && prediction.claimStatus === "EXPIRED") {
+    return {
+      title: `Hola ${firstName}, acertaste la jugada.`,
+      description: "Tu premio ya venció. La ventana de canje cerró y esta jugada ya no puede reclamarse.",
     };
   }
 
@@ -236,25 +252,30 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
     urlOrReq: requestBaseUrl,
   });
   const qrImage = await generateQrPngDataUrl(qrPayload);
-  const isClaimBlocked = prediction.claimStatus === "BLOCKED";
+  const effectiveClaimStatus = getMundial2026EffectiveClaimStatus({
+    claimStatus: prediction.claimStatus,
+    claimExpiresAt: prediction.claimExpiresAt,
+    redeemedAt: prediction.redeemedAt,
+  });
+  const isClaimBlocked = effectiveClaimStatus === "BLOCKED" || effectiveClaimStatus === "EXPIRED";
   const globalPrize = getGlobalPrizeCopy(prediction.match.matchPrizes.map((item) => item.prize));
   const displayPrize = prediction.assignedPrize ?? globalPrize;
   const publicPrizeLabel = prediction.assignedPrize?.label || (globalPrize.label !== "Premio por confirmar" ? globalPrize.label : null);
   const isPredictionInCourse = prediction.match.status !== "SETTLED" && prediction.status === "PENDING";
   const isLostPrediction = prediction.status === "LOST";
-  const isWinnerWithoutPrize = prediction.status === "WON" && prediction.claimStatus === "REJECTED";
+  const isWinnerWithoutPrize = prediction.status === "WON" && effectiveClaimStatus === "REJECTED";
   const uiClaimState = getUiClaimState({
     matchStatus: prediction.match.status,
     predictionStatus: prediction.status,
-    claimStatus: prediction.claimStatus,
+    claimStatus: effectiveClaimStatus,
   });
   const publicOutcomeCopy = getPublicOutcomeCopy({
     status: prediction.status,
-    claimStatus: prediction.claimStatus,
+    claimStatus: effectiveClaimStatus,
     participantName: prediction.participant.name,
     assignedPrizeLabel: publicPrizeLabel,
   });
-  const shouldShowClaimDates = ["AVAILABLE", "REDEEMED", "EXPIRED"].includes(prediction.claimStatus);
+  const shouldShowClaimDates = ["AVAILABLE", "REDEEMED", "EXPIRED"].includes(effectiveClaimStatus);
   const qrDownloadName = `${slugifyDownloadPart(prediction.participant.name || "jugada") || "jugada"}_${prediction.qrCode.toLowerCase()}_mundialktdral.png`;
 
   return (
@@ -392,7 +413,7 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
                 <div className="mt-4 flex w-full flex-wrap items-center justify-center gap-2 sm:mt-5">
                   {shouldShowClaimDates && prediction.claimExpiresAt ? (
                     <div className="inline-flex max-w-full items-center justify-center rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1.5 text-center text-xs leading-5 text-sky-200/90 sm:py-2 sm:text-sm">
-                      Expira: {formatShortDate(prediction.claimExpiresAt)}
+                      Expira ({MUNDIAL2026_CLAIM_WINDOW_HOURS}h): {formatShortDate(prediction.claimExpiresAt)}
                     </div>
                   ) : null}
                   {prediction.redeemedAt ? (
@@ -407,7 +428,7 @@ export default async function Mundial2026PredictionPage({ params }: { params: { 
                     <Mundial2026RedeemPanel
                       qrPayload={qrPayload}
                       role={session?.role || null}
-                      claimStatus={prediction.claimStatus}
+                      claimStatus={effectiveClaimStatus}
                       predictionStatus={prediction.status}
                       assignedPrizeLabel={prediction.assignedPrize?.label || null}
                       availableAt={prediction.availableAt ? prediction.availableAt.toISOString() : null}

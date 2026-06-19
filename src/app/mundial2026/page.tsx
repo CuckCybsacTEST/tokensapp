@@ -2,10 +2,15 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { Mundial2026CampaignStatus, Mundial2026MatchStatus } from "@prisma/client";
-import { DateTime } from "luxon";
 
 import Mundial2026HomeClient from "./Mundial2026HomeClient";
-import { getMundial2026NowInLima, getMundial2026NowMs, getMundial2026SimulatedNowIso, isMundial2026PredictionWindowOpen } from "@/lib/mundial2026/time";
+import {
+  MUNDIAL2026_RECOVERY_WINDOW_HOURS,
+  getMundial2026NowInLima,
+  getMundial2026NowMs,
+  getMundial2026SimulatedNowIso,
+  isMundial2026PredictionWindowOpen,
+} from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -64,7 +69,7 @@ async function loadPublicMatches() {
   const nowMs = getMundial2026NowMs();
   const todayStart = nowLima.startOf("day").toJSDate();
   const todayEnd = nowLima.endOf("day").toJSDate();
-  const recoveryWindowEnd = nowLima.plus({ days: 7 }).endOf("day").toJSDate();
+  const recoveryWindowStart = new Date(nowLima.toJSDate().getTime() - MUNDIAL2026_RECOVERY_WINDOW_HOURS * 60 * 60 * 1000);
   const visibleStatuses = [
     Mundial2026MatchStatus.SCHEDULED,
     Mundial2026MatchStatus.OPEN,
@@ -107,13 +112,13 @@ async function loadPublicMatches() {
   const recoveryMatches = await prisma.mundial2026Match.findMany({
     where: {
       campaignId: campaign.id,
-      startsAt: {
-        gte: todayStart,
-        lte: recoveryWindowEnd,
+      status: Mundial2026MatchStatus.SETTLED,
+      settledAt: {
+        gte: recoveryWindowStart,
+        lte: nowLima.toJSDate(),
       },
-      status: { in: visibleStatuses },
     },
-    orderBy: { startsAt: "asc" },
+    orderBy: { settledAt: "desc" },
     include: includePrizes,
   });
 
@@ -140,6 +145,7 @@ async function loadPublicMatches() {
       awayTeam: match.awayTeam,
       startsAt: match.startsAt.toISOString(),
       predictionClosesAt: match.predictionClosesAt.toISOString(),
+      settledAt: match.settledAt ? match.settledAt.toISOString() : null,
       status: match.status,
       predictionsOpen: isMundial2026PredictionWindowOpen({ status: match.status, startsAt: match.startsAt, nowMs }),
       prizes: match.matchPrizes.map((item) => ({
@@ -163,7 +169,7 @@ async function loadPublicMatches() {
         : "Todavía no empieza la jornada de hoy en Lima. Ya puedes preparar tus jugadas para los próximos cruces.",
     simulatedNowIso: getMundial2026SimulatedNowIso(),
     matches: sourceMatches.map(serializeMatch),
-    recoveryMatches: (recoveryMatches.length > 0 ? recoveryMatches : sourceMatches).map(serializeMatch),
+    recoveryMatches: recoveryMatches.map(serializeMatch),
   };
 }
 

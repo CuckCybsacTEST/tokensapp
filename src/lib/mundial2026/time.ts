@@ -1,6 +1,8 @@
 import { DateTime } from "luxon";
 
 const DEFAULT_TIMEZONE = "America/Lima";
+export const MUNDIAL2026_CLAIM_WINDOW_HOURS = 72;
+export const MUNDIAL2026_RECOVERY_WINDOW_HOURS = MUNDIAL2026_CLAIM_WINDOW_HOURS;
 const SIMULATED_NOW_ENV = "MUNDIAL2026_SIMULATED_NOW";
 const SIMULATED_DAY_ENV = "MUNDIAL2026_SIMULATED_DAY";
 
@@ -34,6 +36,30 @@ export function getMundial2026NowMs() {
 
 export function getMundial2026SimulatedNowIso() {
   return getMundial2026NowInLima().toISO() ?? null;
+}
+
+export function getMundial2026EffectiveClaimStatus(args: {
+  claimStatus: string;
+  claimExpiresAt: Date | string | null;
+  redeemedAt?: Date | string | null;
+  now?: Date;
+}) {
+  if (args.redeemedAt || args.claimStatus === "REDEEMED") {
+    return "REDEEMED";
+  }
+
+  if (args.claimStatus !== "AVAILABLE" || !args.claimExpiresAt) {
+    return args.claimStatus;
+  }
+
+  const now = args.now ?? getMundial2026NowDate();
+  const expiresAt = typeof args.claimExpiresAt === "string" ? new Date(args.claimExpiresAt) : args.claimExpiresAt;
+
+  if (Number.isNaN(expiresAt.getTime())) {
+    return args.claimStatus;
+  }
+
+  return expiresAt.getTime() <= now.getTime() ? "EXPIRED" : args.claimStatus;
 }
 
 export function isMundial2026PredictionWindowOpen(args: { status: string; startsAt: Date | string; nowMs?: number }) {

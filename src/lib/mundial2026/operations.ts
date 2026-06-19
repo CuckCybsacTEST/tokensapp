@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { verifyMundial2026PredictionSignature } from "@/lib/mundial2026/signing";
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 type DbClient = Prisma.TransactionClient | typeof prisma;
@@ -456,7 +457,7 @@ export async function settleMundial2026Match(args: {
     winners.forEach((prediction, index) => {
       const slot = assignmentCapacity[index];
       if (!slot) return;
-      const claimExpiresAt = slot.prize.claimWindowHours ? new Date(now.getTime() + slot.prize.claimWindowHours * 60 * 60 * 1000) : null;
+      const claimExpiresAt = new Date(now.getTime() + MUNDIAL2026_CLAIM_WINDOW_HOURS * 60 * 60 * 1000);
       assignmentMap.set(prediction.id, {
         prizeId: slot.prizeId,
         claimExpiresAt,
@@ -621,7 +622,7 @@ export async function reassignMundial2026MatchPrizes(args: {
     rejectedWinners.forEach((prediction, index) => {
       const slot = extraCapacity[index];
       if (!slot) return;
-      const claimExpiresAt = slot.prize.claimWindowHours ? new Date(now.getTime() + slot.prize.claimWindowHours * 60 * 60 * 1000) : null;
+      const claimExpiresAt = new Date(now.getTime() + MUNDIAL2026_CLAIM_WINDOW_HOURS * 60 * 60 * 1000);
       reassignmentMap.set(prediction.id, {
         prizeId: slot.prizeId,
         claimExpiresAt,

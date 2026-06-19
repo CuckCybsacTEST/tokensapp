@@ -1367,7 +1367,7 @@ model Mundial2026Prize {
   stockClaimed     Int                    @default(0)
   active           Boolean                @default(true)
   priority         Int                    @default(0)
-  claimWindowHours Int                    @default(48)
+  claimWindowHours Int                    @default(72)
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
   campaign         Mundial2026Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)

@@ -43,7 +43,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/u');
-  if (isAdminRoute) { return <>{children}</>; }
 
   const [authState, setAuthState] = useState<AuthState>({
     customer: null,
@@ -52,12 +51,17 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     error: null
   });
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
   const checkAuth = async () => {
+    if (isAdminRoute) {
+      setAuthState({
+        customer: null,
+        session: null,
+        loading: false,
+        error: null
+      });
+      return;
+    }
+
     try {
       const response = await fetch('/api/customer/auth/me');
 
@@ -159,6 +163,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     logout,
     refresh
   };
+
+  useEffect(() => {
+    checkAuth();
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <AuthContext.Provider value={value}>

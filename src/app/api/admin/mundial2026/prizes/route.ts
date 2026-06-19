@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -16,7 +17,6 @@ const createPrizeSchema = z.object({
   description: z.string().trim().max(280, "Descripción demasiado larga").optional().or(z.literal("")),
   stockTotal: z.coerce.number().int().min(1, "Stock debe ser mayor a 0").nullable().optional(),
   priority: z.coerce.number().int().min(0).max(999).default(0),
-  claimWindowHours: z.coerce.number().int().min(1).max(720).default(48),
   active: z.coerce.boolean().default(true),
 });
 
@@ -63,7 +63,7 @@ export async function GET() {
         stockReserved: prize.stockReserved,
         stockClaimed: prize.stockClaimed,
         priority: prize.priority,
-        claimWindowHours: prize.claimWindowHours,
+        claimWindowHours: MUNDIAL2026_CLAIM_WINDOW_HOURS,
         active: prize.active,
         assignedMatches: prize._count.matchPrizes,
         assignedPredictions: prize._count.assignedPredictions,
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
         color: getRandomPrizeColor(),
         stockTotal: parsed.data.stockTotal ?? null,
         priority: parsed.data.priority,
-        claimWindowHours: parsed.data.claimWindowHours,
+        claimWindowHours: MUNDIAL2026_CLAIM_WINDOW_HOURS,
         active: parsed.data.active,
       },
     });

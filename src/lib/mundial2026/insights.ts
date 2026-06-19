@@ -1,5 +1,6 @@
 import { Mundial2026ClaimStatus, Mundial2026PredictionStatus, Mundial2026RedemptionResult } from "@prisma/client";
 
+import { getMundial2026EffectiveClaimStatus, getMundial2026NowDate } from "@/lib/mundial2026/time";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_CAMPAIGN_SLUG = "mundial2026";
@@ -72,6 +73,8 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
             createdAt: true,
             status: true,
             claimStatus: true,
+            claimExpiresAt: true,
+            redeemedAt: true,
           },
         },
       },
@@ -93,6 +96,8 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
             status: true,
             claimStatus: true,
             assignedPrizeId: true,
+            claimExpiresAt: true,
+            redeemedAt: true,
           },
         },
       },
@@ -102,6 +107,7 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
       orderBy: [{ match: { startsAt: "desc" } }, { createdAt: "desc" }],
       select: {
         id: true,
+        qrCode: true,
         pick: true,
         status: true,
         claimStatus: true,
@@ -177,6 +183,8 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
           select: {
             status: true,
             claimStatus: true,
+            claimExpiresAt: true,
+            redeemedAt: true,
           },
         },
         matchPrizes: {
@@ -216,12 +224,17 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
       total: row._count._all,
     }))
   );
-  const claimCounts = toCountMap(
-    claimStatusRows.map((row) => ({
-      key: row.claimStatus,
-      total: row._count._all,
-    }))
-  );
+  const now = getMundial2026NowDate();
+  const claimCounts = predictions.reduce<Record<string, number>>((accumulator, prediction) => {
+    const effectiveClaimStatus = getMundial2026EffectiveClaimStatus({
+      claimStatus: prediction.claimStatus,
+      claimExpiresAt: prediction.claimExpiresAt,
+      redeemedAt: prediction.redeemedAt,
+      now,
+    });
+    accumulator[effectiveClaimStatus] = (accumulator[effectiveClaimStatus] || 0) + 1;
+    return accumulator;
+  }, {});
 
   const predictionsTotal = Object.values(predictionCounts).reduce((total, value) => total + value, 0);
   const settledMatchesTotal = matches.filter((match) => !!match.settledAt || match.status === "SETTLED").length;
@@ -239,9 +252,30 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     const totalPredictions = match.predictions.length;
     const winners = match.predictions.filter((prediction) => prediction.status === "WON").length;
     const losers = match.predictions.filter((prediction) => prediction.status === "LOST").length;
-    const available = match.predictions.filter((prediction) => prediction.claimStatus === "AVAILABLE").length;
-    const redeemed = match.predictions.filter((prediction) => prediction.claimStatus === "REDEEMED").length;
-    const expired = match.predictions.filter((prediction) => prediction.claimStatus === "EXPIRED").length;
+    const available = match.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "AVAILABLE"
+    ).length;
+    const redeemed = match.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "REDEEMED"
+    ).length;
+    const expired = match.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "EXPIRED"
+    ).length;
     const assigned = match.predictions.filter((prediction) => !!prediction.assignedPrizeId).length;
 
     return {
@@ -269,9 +303,30 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     const totalPredictions = participant.predictions.length;
     const won = participant.predictions.filter((prediction) => prediction.status === "WON").length;
     const lost = participant.predictions.filter((prediction) => prediction.status === "LOST").length;
-    const available = participant.predictions.filter((prediction) => prediction.claimStatus === "AVAILABLE").length;
-    const redeemed = participant.predictions.filter((prediction) => prediction.claimStatus === "REDEEMED").length;
-    const expired = participant.predictions.filter((prediction) => prediction.claimStatus === "EXPIRED").length;
+    const available = participant.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "AVAILABLE"
+    ).length;
+    const redeemed = participant.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "REDEEMED"
+    ).length;
+    const expired = participant.predictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "EXPIRED"
+    ).length;
     const lastPredictionAt = participant.predictions[0]?.createdAt || null;
 
     return {
@@ -291,6 +346,8 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
 
   const predictionsBreakdown = predictions.map((prediction) => ({
     id: prediction.id,
+    qrCode: prediction.qrCode,
+    detailPath: `/mundial2026/jugada/${encodeURIComponent(prediction.qrCode)}`,
     participant: {
       id: prediction.participant.id,
       name: prediction.participant.name,
@@ -307,7 +364,12 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
     },
     pick: prediction.pick,
     status: prediction.status,
-    claimStatus: prediction.claimStatus,
+    claimStatus: getMundial2026EffectiveClaimStatus({
+      claimStatus: prediction.claimStatus,
+      claimExpiresAt: prediction.claimExpiresAt,
+      redeemedAt: prediction.redeemedAt,
+      now,
+    }),
     isCorrect: prediction.status === Mundial2026PredictionStatus.WON,
     createdAt: prediction.createdAt.toISOString(),
     availableAt: prediction.availableAt ? prediction.availableAt.toISOString() : null,
@@ -325,9 +387,30 @@ export async function getMundial2026Insights(campaignSlug = DEFAULT_CAMPAIGN_SLU
   const prizesBreakdown = prizes.map((prize) => {
     const assignedPredictions = prize.assignedPredictions.length;
     const winners = prize.assignedPredictions.filter((prediction) => prediction.status === "WON").length;
-    const available = prize.assignedPredictions.filter((prediction) => prediction.claimStatus === "AVAILABLE").length;
-    const redeemed = prize.assignedPredictions.filter((prediction) => prediction.claimStatus === "REDEEMED").length;
-    const expired = prize.assignedPredictions.filter((prediction) => prediction.claimStatus === "EXPIRED").length;
+    const available = prize.assignedPredictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "AVAILABLE"
+    ).length;
+    const redeemed = prize.assignedPredictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "REDEEMED"
+    ).length;
+    const expired = prize.assignedPredictions.filter((prediction) =>
+      getMundial2026EffectiveClaimStatus({
+        claimStatus: prediction.claimStatus,
+        claimExpiresAt: prediction.claimExpiresAt,
+        redeemedAt: prediction.redeemedAt,
+        now,
+      }) === "EXPIRED"
+    ).length;
     const remainingStock = prize.stockTotal == null ? null : Math.max(prize.stockTotal - prize.stockClaimed - prize.stockReserved, 0);
 
     return {

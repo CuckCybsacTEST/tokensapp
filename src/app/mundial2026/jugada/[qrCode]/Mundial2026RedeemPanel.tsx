@@ -82,6 +82,8 @@ export default function Mundial2026RedeemPanel(props: {
                 ? "Esta jugada ya fue canjeada."
                 : props.claimStatus === "REJECTED"
                   ? "El jugador no acertó el resultado. Esta jugada no tiene premio para canje. Mejor suerte para la próxima."
+                : props.claimStatus === "EXPIRED"
+                  ? "La ventana de canje ya venció. Esta jugada no puede reclamarse."
                 : props.claimStatus === "AVAILABLE"
                   ? "La jugada tiene premio, pero todavía no cumple todas las condiciones de canje."
                   : "El premio aún no está listo para canje o no fue asignado."}

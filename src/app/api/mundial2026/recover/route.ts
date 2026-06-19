@@ -1,9 +1,10 @@
-import { Mundial2026CampaignStatus } from "@prisma/client";
+import { Mundial2026CampaignStatus, Mundial2026MatchStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { apiError, apiOk } from "@/lib/apiError";
 import { getMundial2026NameValidationError, normalizeMundial2026Name } from "@/lib/mundial2026/name";
 import { buildMundial2026PredictionQrPayload } from "@/lib/mundial2026/signing";
+import { MUNDIAL2026_RECOVERY_WINDOW_HOURS, getMundial2026NowInLima } from "@/lib/mundial2026/time";
 import { normalizeMundial2026WhatsApp } from "@/lib/mundial2026/whatsapp";
 import { prisma } from "@/lib/prisma";
 
@@ -89,6 +90,34 @@ export async function POST(req: Request) {
 
     if (!prediction || prediction.campaignId !== campaign.id) {
       return apiError("PREDICTION_NOT_FOUND", "No encontramos una jugada con esos datos.", {}, 404);
+    }
+
+    const match = prediction.match;
+    const matchRecord = await prisma.mundial2026Match.findUnique({
+      where: { id: match.id },
+      select: {
+        settledAt: true,
+        status: true,
+      },
+    });
+
+    if (!matchRecord || matchRecord.status !== Mundial2026MatchStatus.SETTLED) {
+      return apiError("MATCH_NOT_RECOVERABLE", "Esta jugada todavía no está disponible para recuperar.", { matchId: match.id }, 409);
+    }
+
+    if (!matchRecord.settledAt) {
+      return apiError("MATCH_NOT_RECOVERABLE", "Esta jugada todavía no está disponible para recuperar.", { matchId: match.id }, 409);
+    }
+
+    const nowLima = getMundial2026NowInLima();
+    const recoveryWindowStart = new Date(nowLima.toJSDate().getTime() - MUNDIAL2026_RECOVERY_WINDOW_HOURS * 60 * 60 * 1000);
+    if (matchRecord.settledAt.getTime() < recoveryWindowStart.getTime()) {
+      return apiError(
+        "MATCH_RECOVERY_EXPIRED",
+        "Esta jugada ya superó el plazo de recuperación de 72 horas.",
+        { matchId: match.id, settledAt: matchRecord.settledAt.toISOString() },
+        410
+      );
     }
 
     const detailPath = `/mundial2026/jugada/${encodeURIComponent(prediction.qrCode)}`;

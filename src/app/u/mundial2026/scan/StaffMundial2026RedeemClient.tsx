@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { MUNDIAL2026_CLAIM_WINDOW_HOURS } from "@/lib/mundial2026/time";
+
 type Snapshot = {
   predictionId: string;
   qrCode: string;
@@ -200,7 +202,7 @@ export default function StaffMundial2026RedeemClient() {
               <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
                 <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Ventana de canje</div>
                 <div className="mt-2">Disponible desde: {formatDate(payload.snapshot.availableAt)}</div>
-                <div className="mt-1">Expira: {formatDate(payload.snapshot.claimExpiresAt)}</div>
+                <div className="mt-1">Expira ({MUNDIAL2026_CLAIM_WINDOW_HOURS}h): {formatDate(payload.snapshot.claimExpiresAt)}</div>
                 <div className="mt-1">Canjeado: {formatDate(payload.snapshot.redeemedAt)}</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">

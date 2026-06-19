@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { generateQrPngDataUrl } from "@/lib/qr";
 import { getMundial2026NameValidationError } from "@/lib/mundial2026/name";
+import { MUNDIAL2026_RECOVERY_WINDOW_HOURS } from "@/lib/mundial2026/time";
 
 type MatchPrize = {
   id: string;
@@ -28,6 +29,7 @@ type MatchItem = {
   awayTeam: string;
   startsAt: string;
   predictionClosesAt: string;
+  settledAt: string | null;
   status: string;
   predictionsOpen: boolean;
   prizes: MatchPrize[];
@@ -423,7 +425,8 @@ function getPickOptionClasses(option: PickValue, active: boolean) {
 }
 
 function getRecoveryMatchLabel(match: MatchItem) {
-  return `${match.homeTeam} vs ${match.awayTeam} · ${formatLimaShortDay(getLimaDate(match.startsAt))} · ${formatMatchTime(match.startsAt)}`;
+  const settledLabel = match.settledAt ? formatDate(match.settledAt) : "liquidada";
+  return `${match.homeTeam} vs ${match.awayTeam} · ${settledLabel}`;
 }
 
 function hashString(value: string) {
@@ -495,7 +498,7 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<WizardStep>("match");
   const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
-  const [recoveryMatchId, setRecoveryMatchId] = useState(recoveryMatches[0]?.id || initialMatches[0]?.id || "");
+  const [recoveryMatchId, setRecoveryMatchId] = useState(recoveryMatches[0]?.id || "");
   const [recoveryName, setRecoveryName] = useState("");
   const [recoveryWhatsapp, setRecoveryWhatsapp] = useState("");
   const [recoverySubmitting, setRecoverySubmitting] = useState(false);
@@ -1318,14 +1321,14 @@ export default function Mundial2026HomeClient({ campaignSlug, initialMatches, re
               <div className="min-w-0">
                   <div className="text-xs uppercase tracking-[0.3em] text-sky-200">Recuperar jugada</div>
                   <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">Busca tus QR's</h2>
-                  <p className="mt-2 text-sm text-slate-300">Elige el partido y usa el mismo nombre y WhatsApp con el que registraste tu jugada.</p>
+                  <p className="mt-2 text-sm text-slate-300">Elige una jugada ya liquidada en las últimas {MUNDIAL2026_RECOVERY_WINDOW_HOURS} horas y usa el mismo nombre y WhatsApp con el que registraste tu jugada.</p>
               </div>
             </div>
 
             <form className="space-y-5 px-4 py-4 sm:px-6 sm:py-6 md:px-7 md:py-7" onSubmit={handleRecoverPrediction}>
               <label className="block space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Partido</span>
-                <span className="block text-sm text-slate-400">Selecciona el juego.</span>
+                <span className="block text-sm text-slate-400">Solo aparecen jugadas liquidadas recientemente.</span>
                 <div className="relative">
                   <select
                     className="input h-12 w-full border-white/10 bg-slate-950/65 text-sm font-semibold text-white sm:h-14 sm:text-base"

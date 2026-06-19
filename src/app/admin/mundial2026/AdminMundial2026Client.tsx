@@ -121,7 +121,7 @@ const emptyPrizeForm: PrizeFormState = {
   description: "",
   stockTotal: "",
   priority: "0",
-  claimWindowHours: "48",
+  claimWindowHours: "72",
   active: true,
 };
 
@@ -272,7 +272,7 @@ export default function AdminMundial2026Client() {
         description: prizeForm.description.trim(),
         stockTotal: prizeForm.stockTotal.trim() ? Number(prizeForm.stockTotal) : null,
         priority: Number(prizeForm.priority || 0),
-        claimWindowHours: Number(prizeForm.claimWindowHours || 48),
+        claimWindowHours: Number(prizeForm.claimWindowHours || 72),
         active: prizeForm.active,
       };
       const response = await fetch(
@@ -612,11 +612,13 @@ export default function AdminMundial2026Client() {
                 <label className="space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Horas de canje</span>
                   <input
-                    className="input bg-slate-950/45 text-white"
-                    value={prizeForm.claimWindowHours}
-                    onChange={(event) => setPrizeForm((current) => ({ ...current, claimWindowHours: event.target.value }))}
+                    className="input bg-slate-950/45 text-white opacity-80"
+                    value="72"
+                    readOnly
+                    disabled
                     inputMode="numeric"
                   />
+                  <span className="block text-[11px] leading-5 text-slate-500">Mundial 2026 usa una ventana fija de 72 horas para todos los premios.</span>
                 </label>
               </div>
 
@@ -736,7 +738,7 @@ export default function AdminMundial2026Client() {
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{prize.key}</div>
                               <div className="font-semibold" style={prize.color ? { color: prize.color } : undefined}>{prize.label}</div>
                               <div className="mt-1 text-xs text-slate-400">
-                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · el stock se sincroniza con Max · ventana {prize.claimWindowHours ?? 48}h
+                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · el stock se sincroniza con Max · ventana {prize.claimWindowHours ?? 72}h
                               </div>
                             </div>
                             <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_92px_92px] xl:grid-cols-[minmax(0,1.4fr)_92px_92px_auto] xl:items-end">
