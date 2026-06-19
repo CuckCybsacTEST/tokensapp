@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type InsightsPayload = {
   campaign: {
@@ -72,6 +72,8 @@ type InsightsPayload = {
   }>;
   predictions: Array<{
     id: string;
+    qrCode: string;
+    detailPath: string;
     participant: {
       id: string;
       name: string;
@@ -154,6 +156,13 @@ function formatPredictionStatus(status: string) {
   return "Pendiente";
 }
 
+function formatMatchWinner(result: string | null, homeTeam: string, awayTeam: string) {
+  if (result === "HOME") return homeTeam;
+  if (result === "AWAY") return awayTeam;
+  if (result === "DRAW") return "Empate";
+  return "Pendiente";
+}
+
 function formatClaimStatus(status: string) {
   if (status === "AVAILABLE") return "Disponible";
   if (status === "REDEEMED") return "Canjeado";
@@ -201,10 +210,13 @@ function MetricCard(props: { title: string; value: string | number; hint: string
   );
 }
 
+type PredictionFilter = "ALL" | "WON" | "LOST" | "VOID" | "EXPIRED" | "PENDING";
+
 export default function AdminMundialInsightsClient() {
   const [data, setData] = useState<InsightsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [predictionFilter, setPredictionFilter] = useState<PredictionFilter>("ALL");
 
   useEffect(() => {
     async function loadInsights() {
@@ -226,6 +238,15 @@ export default function AdminMundialInsightsClient() {
 
     void loadInsights();
   }, []);
+
+  const predictionRows = useMemo(() => {
+    if (!data) return [];
+    return data.predictions.filter((prediction) => {
+      if (predictionFilter === "ALL") return true;
+      if (predictionFilter === "PENDING") return prediction.status === "PENDING";
+      return prediction.status === predictionFilter;
+    });
+  }, [data, predictionFilter]);
 
   if (loading) {
     return (
@@ -251,6 +272,15 @@ export default function AdminMundialInsightsClient() {
       </div>
     );
   }
+
+  const predictionFilterOptions: Array<{ value: PredictionFilter; label: string }> = [
+    { value: "ALL", label: "Todas" },
+    { value: "WON", label: "Acertó" },
+    { value: "LOST", label: "Falló" },
+    { value: "VOID", label: "Nulo" },
+    { value: "EXPIRED", label: "Vencido" },
+    { value: "PENDING", label: "Pendiente" },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 text-slate-900 dark:text-slate-100">
@@ -316,87 +346,45 @@ export default function AdminMundialInsightsClient() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
+      <section className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Partidos</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300">Participación, ganadores y desempeño de canje por partido.</p>
-          </div>
-
-          <div className="mt-5 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                <tr>
-                  <th className="pb-3 pr-4 font-semibold">Partido</th>
-                  <th className="pb-3 pr-4 font-semibold">Predicciones</th>
-                  <th className="pb-3 pr-4 font-semibold">Ganaron</th>
-                  <th className="pb-3 pr-4 font-semibold">Disponibles</th>
-                  <th className="pb-3 pr-4 font-semibold">Canjeados</th>
-                  <th className="pb-3 pr-4 font-semibold">Redención</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.matches.map((match) => (
-                  <tr key={match.id} className="border-t border-slate-100 align-top dark:border-slate-800">
-                    <td className="py-3 pr-4">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">{match.homeTeam} vs {match.awayTeam}</div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{match.stage || "Partido"} · {formatDate(match.startsAt)}</div>
-                    </td>
-                    <td className="py-3 pr-4 font-semibold text-slate-900 dark:text-slate-100">{match.totalPredictions}</td>
-                    <td className="py-3 pr-4">
-                      <div className="font-semibold text-emerald-700">{match.winners}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">{match.winRate}%</div>
-                    </td>
-                    <td className="py-3 pr-4 font-semibold text-amber-700">{match.available}</td>
-                    <td className="py-3 pr-4 font-semibold text-sky-700">{match.redeemed}</td>
-                    <td className="py-3 pr-4">
-                      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                        {match.redemptionRate}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Resultados de canje</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Auditoría de intentos y resultados sobre la ruta de canje.</p>
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Resultados de canje</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Auditoría de intentos y resultados sobre la ruta de canje.</p>
+        <div className="mt-5 space-y-3">
+          {data.redemption.results.map((item) => (
+            <div key={item.key} className="flex items-center justify-between rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-700">
+              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{item.key}</div>
+              <div className="text-lg font-black text-slate-900 dark:text-slate-100">{item.total}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-            <div className="mt-5 space-y-3">
-              {data.redemption.results.map((item) => (
-                <div key={item.key} className="flex items-center justify-between rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-700">
-                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{item.key}</div>
-                  <div className="text-lg font-black text-slate-900 dark:text-slate-100">{item.total}</div>
+      <section className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
+        <div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Operadores</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Top usuarios que registraron canjes exitosos.</p>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {data.redemption.operators.length ? (
+            data.redemption.operators.map((operator) => (
+              <div key={operator.userId} className="rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-700">
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{operator.name}</div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800">OK {operator.redemptionsOk}</span>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">Intentos {operator.attempts}</span>
+                  <span className="rounded-full bg-rose-50 px-2.5 py-1 font-semibold text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-800">Inválidos {operator.invalid}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Operadores</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Top usuarios que registraron canjes exitosos.</p>
-
-            <div className="mt-5 space-y-3">
-              {data.redemption.operators.length ? (
-                data.redemption.operators.map((operator) => (
-                  <div key={operator.userId} className="rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-700">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{operator.name}</div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800">OK {operator.redemptionsOk}</span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">Intentos {operator.attempts}</span>
-                      <span className="rounded-full bg-rose-50 px-2.5 py-1 font-semibold text-rose-700 ring-1 ring-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:ring-rose-800">Inválidos {operator.invalid}</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl bg-white/70 px-4 py-4 text-sm text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:ring-slate-700">Todavía no hay actividad operativa registrada.</div>
-              )}
-            </div>
-          </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl bg-white/70 px-4 py-4 text-sm text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:ring-slate-700">Todavía no hay actividad operativa registrada.</div>
+          )}
         </div>
       </section>
 
@@ -406,33 +394,74 @@ export default function AdminMundialInsightsClient() {
           <p className="text-sm text-slate-600 dark:text-slate-300">Cada apuesta relacionada con su participante, partido, pronóstico y resultado final en una sola tabla.</p>
         </div>
 
+        <div className="mt-5 flex flex-wrap gap-2">
+          {predictionFilterOptions.map((option) => {
+            const active = predictionFilter === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setPredictionFilter(option.value)}
+                className={[
+                  "inline-flex items-center rounded-full border px-4 py-2 text-xs font-semibold transition",
+                  active
+                    ? "border-sky-500 bg-sky-500 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100",
+                ].join(" ")}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+          <div className="flex items-center pl-2 text-xs text-slate-500 dark:text-slate-400">
+            Mostrando {predictionRows.length} de {data.predictions.length}
+          </div>
+        </div>
+
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="pb-3 pr-4 font-semibold">Apostó</th>
+                <th className="pb-3 pr-4 font-semibold">Ver token</th>
                 <th className="pb-3 pr-4 font-semibold">Partido</th>
                 <th className="pb-3 pr-4 font-semibold">Pronóstico</th>
                 <th className="pb-3 pr-4 font-semibold">¿Acertó?</th>
                 <th className="pb-3 pr-4 font-semibold">Premio</th>
+                <th className="pb-3 pr-4 font-semibold">Vencimiento</th>
                 <th className="pb-3 pr-4 font-semibold">Canje</th>
                 <th className="pb-3 pr-4 font-semibold">Registrado</th>
               </tr>
             </thead>
             <tbody>
-              {data.predictions.map((prediction) => (
+              {predictionRows.map((prediction) => (
                 <tr key={prediction.id} className="border-t border-slate-100 align-top dark:border-slate-800">
                   <td className="py-3 pr-4">
                     <div className="font-semibold text-slate-900 dark:text-slate-100">{prediction.participant.name}</div>
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{prediction.participant.whatsappNormalized}</div>
                   </td>
                   <td className="py-3 pr-4">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{prediction.match.homeTeam} vs {prediction.match.awayTeam}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{prediction.match.stage || "Partido"} · {formatDate(prediction.match.startsAt)}</div>
+                    <Link
+                      href={prediction.detailPath}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:border-sky-500/50 hover:bg-sky-500/15 dark:text-sky-300"
+                    >
+                      Ver token
+                    </Link>
                   </td>
                   <td className="py-3 pr-4">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{formatPick(prediction.pick, prediction.match.homeTeam, prediction.match.awayTeam)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Resultado: {prediction.match.result || "Pendiente"}</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
+                      {prediction.match.homeTeam} vs {prediction.match.awayTeam}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {prediction.match.stage || "Partido"} · {formatDate(prediction.match.startsAt)}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
+                      {formatMatchWinner(prediction.match.result, prediction.match.homeTeam, prediction.match.awayTeam)}
+                    </div>
                   </td>
                   <td className="py-3 pr-4">
                     <span className={["inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1", statusBadgeClass(prediction.status)].join(" ")}>
@@ -442,7 +471,9 @@ export default function AdminMundialInsightsClient() {
                   <td className="py-3 pr-4">
                     {prediction.assignedPrize ? (
                       <div>
-                        <div className="font-semibold" style={prediction.assignedPrize.color ? { color: prediction.assignedPrize.color } : undefined}>{prediction.assignedPrize.label}</div>
+                        <div className="font-semibold" style={prediction.assignedPrize.color ? { color: prediction.assignedPrize.color } : undefined}>
+                          {prediction.assignedPrize.label}
+                        </div>
                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Asignado</div>
                       </div>
                     ) : (
@@ -450,15 +481,18 @@ export default function AdminMundialInsightsClient() {
                     )}
                   </td>
                   <td className="py-3 pr-4">
+                    {prediction.claimExpiresAt ? (
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{formatDate(prediction.claimExpiresAt)}</div>
+                    ) : (
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Sin vencimiento</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4">
                     <div className="flex flex-col gap-2">
                       <span className={["inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ring-1", claimBadgeClass(prediction.claimStatus)].join(" ")}>
                         {formatClaimStatus(prediction.claimStatus)}
                       </span>
-                      {prediction.redeemedAt ? (
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Canjeado {formatDate(prediction.redeemedAt)}</span>
-                      ) : prediction.claimExpiresAt ? (
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Vence {formatDate(prediction.claimExpiresAt)}</span>
-                      ) : null}
+                      {prediction.redeemedAt ? <span className="text-xs text-slate-500 dark:text-slate-400">Canjeado {formatDate(prediction.redeemedAt)}</span> : null}
                     </div>
                   </td>
                   <td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{formatDate(prediction.createdAt)}</td>
@@ -501,52 +535,6 @@ export default function AdminMundialInsightsClient() {
                   <td className="py-3 pr-4 font-semibold text-amber-700">{participant.available}</td>
                   <td className="py-3 pr-4 font-semibold text-sky-700">{participant.redeemed}</td>
                   <td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{formatDate(participant.lastPredictionAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/50 sm:p-6">
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">Premios</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Estado del catálogo, asignación y conversión por premio.</p>
-        </div>
-
-        <div className="mt-5 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="pb-3 pr-4 font-semibold">Premio</th>
-                <th className="pb-3 pr-4 font-semibold">Asignado</th>
-                <th className="pb-3 pr-4 font-semibold">Disponibles</th>
-                <th className="pb-3 pr-4 font-semibold">Canjeados</th>
-                <th className="pb-3 pr-4 font-semibold">Vencidos</th>
-                <th className="pb-3 pr-4 font-semibold">Stock</th>
-                <th className="pb-3 pr-4 font-semibold">Redención</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.prizes.map((prize) => (
-                <tr key={prize.id} className="border-t border-slate-100 align-top dark:border-slate-800">
-                  <td className="py-3 pr-4">
-                    <div className="font-semibold" style={prize.color ? { color: prize.color } : undefined}>{prize.label}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{prize.assignedMatches} partidos · prioridad {prize.priority}</div>
-                  </td>
-                  <td className="py-3 pr-4 font-semibold text-slate-900 dark:text-slate-100">{prize.assignedPredictions}</td>
-                  <td className="py-3 pr-4 font-semibold text-amber-700">{prize.available}</td>
-                  <td className="py-3 pr-4 font-semibold text-sky-700">{prize.redeemed}</td>
-                  <td className="py-3 pr-4 font-semibold text-rose-700">{prize.expired}</td>
-                  <td className="py-3 pr-4">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{prize.stockClaimed}/{prize.stockTotal ?? "inf"}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">reservado {prize.stockReserved}{prize.remainingStock != null ? ` · libre ${prize.remainingStock}` : ""}</div>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-                      {prize.redemptionRate}%
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>
