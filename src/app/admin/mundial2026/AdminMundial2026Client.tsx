@@ -121,7 +121,7 @@ const emptyPrizeForm: PrizeFormState = {
   description: "",
   stockTotal: "",
   priority: "0",
-  claimWindowHours: "24",
+  claimWindowHours: "48",
   active: true,
 };
 
@@ -272,7 +272,7 @@ export default function AdminMundial2026Client() {
         description: prizeForm.description.trim(),
         stockTotal: prizeForm.stockTotal.trim() ? Number(prizeForm.stockTotal) : null,
         priority: Number(prizeForm.priority || 0),
-        claimWindowHours: Number(prizeForm.claimWindowHours || 24),
+        claimWindowHours: Number(prizeForm.claimWindowHours || 48),
         active: prizeForm.active,
       };
       const response = await fetch(
@@ -736,7 +736,7 @@ export default function AdminMundial2026Client() {
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{prize.key}</div>
                               <div className="font-semibold" style={prize.color ? { color: prize.color } : undefined}>{prize.label}</div>
                               <div className="mt-1 text-xs text-slate-400">
-                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · el stock se sincroniza con Max · ventana {prize.claimWindowHours ?? 24}h
+                                stock {prize.stockReserved + prize.stockClaimed}/{prize.stockTotal} · el stock se sincroniza con Max · ventana {prize.claimWindowHours ?? 48}h
                               </div>
                             </div>
                             <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_92px_92px] xl:grid-cols-[minmax(0,1.4fr)_92px_92px_auto] xl:items-end">

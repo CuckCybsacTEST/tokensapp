@@ -16,7 +16,7 @@ const createPrizeSchema = z.object({
   description: z.string().trim().max(280, "Descripción demasiado larga").optional().or(z.literal("")),
   stockTotal: z.coerce.number().int().min(1, "Stock debe ser mayor a 0").nullable().optional(),
   priority: z.coerce.number().int().min(0).max(999).default(0),
-  claimWindowHours: z.coerce.number().int().min(1).max(720).default(24),
+  claimWindowHours: z.coerce.number().int().min(1).max(720).default(48),
   active: z.coerce.boolean().default(true),
 });
 

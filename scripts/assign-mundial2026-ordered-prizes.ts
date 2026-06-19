@@ -169,7 +169,7 @@ async function main() {
         stockTotal: appearanceCountByLabel.get(label) ?? 1,
         active: true,
         priority: 1000 - (firstIndexByLabel.get(label) ?? 0),
-        claimWindowHours: 24,
+        claimWindowHours: 48,
       },
       create: {
         campaignId: campaign.id,
@@ -180,7 +180,7 @@ async function main() {
         stockTotal: appearanceCountByLabel.get(label) ?? 1,
         active: true,
         priority: 1000 - (firstIndexByLabel.get(label) ?? 0),
-        claimWindowHours: 24,
+        claimWindowHours: 48,
       },
       select: { id: true },
     });

@@ -40,6 +40,7 @@
     "tasks:clear": "set CONFIRM=YES && tsx scripts/clearTasks.ts",
     "reconcile:prizes": "tsx scripts/reconcile-prizes.ts",
     "reset:mundial2026": "tsx scripts/reset-mundial2026.ts",
+    "backfill:mundial2026:claim-window-hours": "tsx scripts/backfill-mundial2026-claim-window-hours.ts",
     "cleanup:sessions": "tsx scripts/cleanup-customer-sessions.ts",
     "backfill:retry-reservations": "tsx scripts/backfillRetryReservations.ts",
     "backfill:retry-reservations:direct": "tsx scripts/backfillRetryReservationsDirect.ts",

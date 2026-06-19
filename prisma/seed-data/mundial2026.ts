@@ -60,7 +60,7 @@ export const MUNDIAL2026_PRIZE_SEEDS: Mundial2026SeedPrize[] = [
     color: '#E11D48',
     stockTotal: 90,
     priority: 70,
-    claimWindowHours: 24,
+    claimWindowHours: 48,
   },
   {
     key: 'kit-hinchada',
@@ -69,7 +69,7 @@ export const MUNDIAL2026_PRIZE_SEEDS: Mundial2026SeedPrize[] = [
     color: '#F59E0B',
     stockTotal: 180,
     priority: 60,
-    claimWindowHours: 24,
+    claimWindowHours: 48,
   },
   {
     key: 'balde-celebracion',
@@ -78,7 +78,7 @@ export const MUNDIAL2026_PRIZE_SEEDS: Mundial2026SeedPrize[] = [
     color: '#7C3AED',
     stockTotal: 96,
     priority: 50,
-    claimWindowHours: 24,
+    claimWindowHours: 48,
   },
 ];
 
