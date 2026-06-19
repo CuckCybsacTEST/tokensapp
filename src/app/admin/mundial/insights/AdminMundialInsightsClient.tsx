@@ -423,7 +423,7 @@ export default function AdminMundialInsightsClient() {
             <thead className="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="pb-3 pr-4 font-semibold">Apostó</th>
-                <th className="pb-3 pr-4 font-semibold">Ver token</th>
+                <th className="pb-3 pr-4 font-semibold">Recuperar jugada</th>
                 <th className="pb-3 pr-4 font-semibold">Partido</th>
                 <th className="pb-3 pr-4 font-semibold">Pronóstico</th>
                 <th className="pb-3 pr-4 font-semibold">¿Acertó?</th>
@@ -447,7 +447,7 @@ export default function AdminMundialInsightsClient() {
                       rel="noreferrer"
                       className="inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:border-sky-500/50 hover:bg-sky-500/15 dark:text-sky-300"
                     >
-                      Ver token
+                      Recuperar jugada
                     </Link>
                   </td>
                   <td className="py-3 pr-4">
