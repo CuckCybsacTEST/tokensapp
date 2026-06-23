@@ -203,6 +203,24 @@ function shiftDay(dayStr: string, delta: number): string {
 
 const JOURNEY_ROLE_OPTIONS = ['ALL', 'COLLAB', 'STAFF', 'COORDINATOR', 'ADMIN'] as const;
 
+function classifyReusableSourceForJourney(groupName: string | null | undefined) {
+  const normalizedGroup = (groupName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (normalizedGroup.includes('barra')) {
+    return { key: 'bar', label: 'Barra' };
+  }
+  if (normalizedGroup.includes('roll') || normalizedGroup.includes('banner')) {
+    return { key: 'roll-banner', label: 'Roll Banner' };
+  }
+  if (normalizedGroup.includes('domingo')) {
+    return { key: 'domingo', label: 'Tokens Domingo' };
+  }
+  return { key: 'printed-card', label: 'Carta impresa' };
+}
+
 export default function DailyEvaluationPage() {
   const [selectedDay, setSelectedDay] = useState('');
   const [loading, setLoading] = useState(true);
@@ -732,29 +750,6 @@ export default function DailyEvaluationPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Total</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.totalActions}</div>
-              </div>
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Asistencia</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.attendanceScans}</div>
-              </div>
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Reusables</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.reusableDeliveries + journeyStats.totals.reusableRedemptions}</div>
-              </div>
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Entregas</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.reusableDeliveries}</div>
-              </div>
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Custom QR</div>
-                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.customQrRedemptions}</div>
-              </div>
-            </div>
-
             {journeyStats.scope === 'self' ? (
               <div className="space-y-3">
                 <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
@@ -778,19 +773,34 @@ export default function DailyEvaluationPage() {
                     </div>
                   </div>
 
-                  {journeyStats.me.reusableSourceBreakdown.length ? (
+                  {summary?.reusableGroups?.length ? (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {journeyStats.me.reusableSourceBreakdown.map((item) => (
-                        <button
-                          key={item.key}
-                          onClick={() => setModalSection('journey-sources')}
-                          className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
-                        >
-                          <div className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{item.label}</div>
-                          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{item.count}</div>
-                          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Canjes por fuente</div>
-                        </button>
-                      ))}
+                      {summary.reusableGroups.map((group) => {
+                        const source = classifyReusableSourceForJourney(group.name);
+                        const item = journeyStats.me.reusableSourceBreakdown.find((entry) => entry.key === source.key);
+                        const count = item?.count ?? 0;
+
+                        return (
+                          <button
+                            key={group.id}
+                            onClick={() => setModalSection('journey-sources')}
+                            className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
+                          >
+                            <div className="flex items-center gap-1.5 mb-1">
+                              {group.color && (
+                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                              )}
+                              <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                {group.name}
+                              </span>
+                            </div>
+                            <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{count}</div>
+                            <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                              {source.label}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="rounded-lg border border-dashed border-teal-200 dark:border-teal-700 p-4 text-sm text-slate-500 dark:text-slate-400">
