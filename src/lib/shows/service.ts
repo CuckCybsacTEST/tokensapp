@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { ShowStatus } from '@prisma/client'; // keep for types
 import { randomUUID } from 'node:crypto';
+import { normalizeShowImagePath } from './paths';
 
 /**
  * Input para crear un draft. Imagen NO se maneja aquí (uso de replaceImage más adelante).
@@ -519,7 +520,7 @@ export async function listPublic() {
     id: s.id,
     title: s.title,
     slug: s.slug,
-    imageWebpPath: s.imageWebpPath,
+    imageWebpPath: normalizeShowImagePath(s.imageWebpPath),
     imageBlurData: s.imageBlurData,
     width: s.width,
     height: s.height,

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeShowImagePath } from '@/lib/shows/paths';
 
 export async function GET(
   req: Request,
@@ -51,7 +52,10 @@ export async function GET(
 
     return NextResponse.json({
       ok: true,
-      show
+      show: {
+        ...show,
+        imageWebpPath: normalizeShowImagePath(show.imageWebpPath),
+      }
     });
 
   } catch (error: any) {

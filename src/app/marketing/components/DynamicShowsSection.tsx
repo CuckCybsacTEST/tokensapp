@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { brand } from "../styles/brand";
+import { normalizeShowImagePath } from "@/lib/shows/paths";
 
 export interface PublicShow {
   id: string;
@@ -121,6 +122,7 @@ export function DynamicShowsSection({
               day: "2-digit",
               month: "short",
             });
+            const imageSrc = normalizeShowImagePath(s.imageWebpPath);
             return (
               <motion.div
                 key={s.id}
@@ -135,9 +137,9 @@ export function DynamicShowsSection({
                   className="shows-card relative w-full overflow-hidden rounded-xl shadow-lg border border-white/10 bg-[linear-gradient(135deg,#3d0a0a,#5c1111)] group/card block"
                 >
                   <div className="absolute inset-0">
-                    {s.imageWebpPath && (
+                    {imageSrc && (
                       <Image
-                        src={`/shows/${s.imageWebpPath}`}
+                        src={imageSrc}
                         alt={s.title}
                         fill
                         placeholder={s.imageBlurData ? "blur" : undefined}

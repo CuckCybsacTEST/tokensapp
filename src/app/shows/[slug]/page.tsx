@@ -8,6 +8,7 @@ import { Calendar, Clock, MapPin, Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { brand } from "../../marketing/styles/brand";
 import { TicketSelector } from "../../marketing/components/TicketSelector";
+import { normalizeShowImagePath } from "@/lib/shows/paths";
 
 interface ShowDetails {
   id: string;
@@ -99,6 +100,7 @@ export default function ShowDetailsPage() {
 
   const startsDate = new Date(show.startsAt);
   const endsDate = show.endsAt ? new Date(show.endsAt) : null;
+  const imageSrc = normalizeShowImagePath(show.imageWebpPath);
 
   const dateFormatted = startsDate.toLocaleDateString("es-PE", {
     weekday: "long",
@@ -134,9 +136,9 @@ export default function ShowDetailsPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Hero Image */}
         <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-8">
-          {show.imageWebpPath ? (
+          {imageSrc ? (
             <Image
-              src={`/shows/${show.imageWebpPath}`}
+              src={imageSrc}
               alt={show.title}
               fill
               className="object-cover"
