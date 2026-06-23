@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { ALLOWED_AREAS } from '@/lib/areas';
 
 type Rating = 'MALO' | 'REGULAR' | 'BUENO' | 'MUY_BUENO';
 
@@ -127,6 +128,45 @@ interface PersonRating {
   person: PersonInfo;
 }
 
+interface JourneyOperatorStats {
+  userId: string;
+  displayName: string;
+  username: string;
+  role: string;
+  area: string | null;
+  attendanceScans: number;
+  reusableDeliveries: number;
+  reusableRedemptions: number;
+  customQrRedemptions: number;
+  totalActions: number;
+}
+
+interface JourneyStatsResponse {
+  ok: boolean;
+  day: string;
+  scope: 'self' | 'team' | 'all';
+  viewer: {
+    userId: string;
+    displayName: string;
+    username: string;
+    role: string;
+    area: string | null;
+  };
+  filters: {
+    role: string | null;
+    area: string | null;
+  };
+  totals: {
+    attendanceScans: number;
+    reusableDeliveries: number;
+    reusableRedemptions: number;
+    customQrRedemptions: number;
+    totalActions: number;
+  };
+  me: JourneyOperatorStats;
+  operators?: JourneyOperatorStats[];
+}
+
 const RATING_OPTIONS: { value: Rating; label: string; color: string; emoji: string }[] = [
   { value: 'MALO', label: 'Malo', color: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700', emoji: '😞' },
   { value: 'REGULAR', label: 'Regular', color: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-700', emoji: '😐' },
@@ -160,11 +200,14 @@ function shiftDay(dayStr: string, delta: number): string {
   return toLimaDateStr(d);
 }
 
+const JOURNEY_ROLE_OPTIONS = ['ALL', 'COLLAB', 'STAFF', 'COORDINATOR', 'ADMIN'] as const;
+
 export default function DailyEvaluationPage() {
   const [selectedDay, setSelectedDay] = useState('');
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   const [userArea, setUserArea] = useState<string>('');
+  const [userDisplayName, setUserDisplayName] = useState<string>('');
   const [modalGroup, setModalGroup] = useState<ReusableGroup | null>(null);
 
   // Data for selected day
@@ -172,12 +215,20 @@ export default function DailyEvaluationPage() {
   const [evaluation, setEvaluation] = useState<DailyEvaluation | null>(null);
   const [dayBrief, setDayBrief] = useState<{ title?: string | null; show?: string | null; promos?: string | null; notes?: string | null } | null>(null);
   const [spinCount, setSpinCount] = useState<number | null>(null);
+  const [journeyStats, setJourneyStats] = useState<JourneyStatsResponse | null>(null);
+  const [journeyLoading, setJourneyLoading] = useState(false);
+  const [journeyRoleFilter, setJourneyRoleFilter] = useState<string>('ALL');
+  const [journeyAreaFilter, setJourneyAreaFilter] = useState<string>('ALL');
 
   // Fetch user role once
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.role) setUserRole(d.role); if (d?.area) setUserArea(d.area); })
+      .then(d => {
+        if (d?.role) setUserRole(d.role);
+        if (d?.area) setUserArea(d.area);
+        if (d?.displayName) setUserDisplayName(d.displayName);
+      })
       .catch(() => {});
   }, []);
 
@@ -254,6 +305,37 @@ export default function DailyEvaluationPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchJourneyStats = useCallback(async () => {
+    if (!selectedDay) return;
+    setJourneyLoading(true);
+    try {
+      const params = new URLSearchParams({ day: selectedDay });
+      if (userRole === 'ADMIN' && journeyRoleFilter !== 'ALL') {
+        params.set('role', journeyRoleFilter);
+      }
+      if (userRole === 'ADMIN' && journeyAreaFilter !== 'ALL') {
+        params.set('area', journeyAreaFilter);
+      }
+
+      const res = await fetch(`/api/user/journey/stats?${params.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        setJourneyStats(data as JourneyStatsResponse);
+      } else {
+        setJourneyStats(null);
+      }
+    } catch (err) {
+      console.error('Error loading journey stats:', err);
+      setJourneyStats(null);
+    } finally {
+      setJourneyLoading(false);
+    }
+  }, [selectedDay, userRole, journeyRoleFilter, journeyAreaFilter]);
+
+  useEffect(() => {
+    fetchJourneyStats();
+  }, [fetchJourneyStats]);
 
   // Initialize person ratings from attendance when summary loads
   useEffect(() => {
@@ -592,6 +674,164 @@ export default function DailyEvaluationPage() {
     </>
   ) : null;
 
+  const journeySection = journeyStats ? (
+    <>
+      <div className="relative flex items-center gap-3 pt-2">
+        <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
+          🔎 Jornada QR
+        </span>
+        <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
+      </div>
+
+      <div className="rounded-xl border border-teal-200 dark:border-teal-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 p-3 sm:p-4 space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">
+              {journeyStats.scope === 'self' ? 'Tu jornada QR' : 'Ranking de canjes'}
+            </h3>
+            <p className="text-xs text-teal-700 dark:text-teal-300">
+              {journeyStats.day} · {journeyStats.viewer.displayName}
+              {userDisplayName && userDisplayName !== journeyStats.viewer.displayName ? ` · ${userDisplayName}` : ''}
+            </p>
+          </div>
+
+          {userRole === 'ADMIN' && journeyStats.scope !== 'self' && (
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={journeyRoleFilter}
+                onChange={(e) => setJourneyRoleFilter(e.target.value)}
+                className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
+              >
+                {JOURNEY_ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {role === 'ALL' ? 'Todos los roles' : role}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={journeyAreaFilter}
+                onChange={(e) => setJourneyAreaFilter(e.target.value)}
+                className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
+              >
+                <option value="ALL">Todas las áreas</option>
+                {ALLOWED_AREAS.map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {journeyLoading ? (
+          <div className="rounded-lg border border-teal-200/70 dark:border-teal-700/60 bg-white/60 dark:bg-slate-800/60 p-4 text-sm text-teal-700 dark:text-teal-300">
+            Cargando jornada...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Total</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.totalActions}</div>
+              </div>
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Asistencia</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.attendanceScans}</div>
+              </div>
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Reusables</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.reusableDeliveries + journeyStats.totals.reusableRedemptions}</div>
+              </div>
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Entregas</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.reusableDeliveries}</div>
+              </div>
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Custom QR</div>
+                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{journeyStats.totals.customQrRedemptions}</div>
+              </div>
+            </div>
+
+            {journeyStats.scope === 'self' ? (
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tu actividad de hoy</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Canjes y scans registrados con tu sesión</div>
+                  </div>
+                  <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{journeyStats.me.totalActions}</div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Scans</div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.attendanceScans}</div>
+                  </div>
+                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Entregas</div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.reusableDeliveries}</div>
+                  </div>
+                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Canjes</div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.reusableRedemptions}</div>
+                  </div>
+                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
+                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Custom</div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.customQrRedemptions}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800">
+                <div className="max-h-80 overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="sticky top-0 bg-teal-50 dark:bg-slate-900">
+                      <tr className="text-left text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-300">
+                        <th className="px-3 py-2">Colaborador</th>
+                        <th className="px-3 py-2">Área</th>
+                        <th className="px-3 py-2 text-center">Scans</th>
+                        <th className="px-3 py-2 text-center">Reusables</th>
+                        <th className="px-3 py-2 text-center">Custom</th>
+                        <th className="px-3 py-2 text-center">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {journeyStats.operators?.length ? (
+                        journeyStats.operators.map((row) => {
+                          const isMe = row.userId === journeyStats.viewer.userId;
+                          return (
+                            <tr key={row.userId} className={`border-t border-teal-100 dark:border-teal-800 ${isMe ? 'bg-teal-50/70 dark:bg-teal-900/20' : ''}`}>
+                              <td className="px-3 py-2">
+                                <div className="font-medium text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">{row.role}</div>
+                              </td>
+                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{row.area || '-'}</td>
+                              <td className="px-3 py-2 text-center">{row.attendanceScans}</td>
+                              <td className="px-3 py-2 text-center">{row.reusableDeliveries + row.reusableRedemptions}</td>
+                              <td className="px-3 py-2 text-center">{row.customQrRedemptions}</td>
+                              <td className="px-3 py-2 text-center font-semibold text-slate-900 dark:text-slate-100">{row.totalActions}</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={6}>
+                            No hay actividad para este día con los filtros actuales.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  ) : null;
+
   return (
     <div className="space-y-4">
       {/* Header compacto con date picker inline */}
@@ -695,6 +935,9 @@ export default function DailyEvaluationPage() {
               )}
             </div>
           )}
+
+          {/* ====== JORNADA QR ====== */}
+          {journeySection}
 
           {/* ====== SECCIÓN: COLABORADORES (solo ADMIN/COORDINATOR) ====== */}
           {canManage && summary && (
