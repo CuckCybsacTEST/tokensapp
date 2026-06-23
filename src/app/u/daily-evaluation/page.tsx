@@ -226,7 +226,6 @@ export default function DailyEvaluationPage() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   const [userArea, setUserArea] = useState<string>('');
-  const [userDisplayName, setUserDisplayName] = useState<string>('');
   const [modalGroup, setModalGroup] = useState<ReusableGroup | null>(null);
 
   // Data for selected day
@@ -246,7 +245,6 @@ export default function DailyEvaluationPage() {
       .then(d => {
         if (d?.role) setUserRole(d.role);
         if (d?.area) setUserArea(d.area);
-        if (d?.displayName) setUserDisplayName(d.displayName);
       })
       .catch(() => {});
   }, []);
@@ -705,15 +703,14 @@ export default function DailyEvaluationPage() {
 
       <div className="rounded-xl border border-teal-200 dark:border-teal-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 p-3 sm:p-4 space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">
-              {journeyStats.scope === 'self' ? 'Tu jornada QR' : 'Ranking de canjes'}
-            </h3>
-            <p className="text-xs text-teal-700 dark:text-teal-300">
-              {journeyStats.day} · {journeyStats.viewer.displayName}
-              {userDisplayName && userDisplayName !== journeyStats.viewer.displayName ? ` · ${userDisplayName}` : ''}
-            </p>
-          </div>
+          {journeyStats.scope === 'self' ? (
+            <div className="text-sm font-semibold text-teal-900 dark:text-teal-200">Tu jornada QR</div>
+          ) : (
+            <div>
+              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Ranking de canjes</h3>
+              <p className="text-xs text-teal-700 dark:text-teal-300">{journeyStats.day} · {journeyStats.viewer.displayName}</p>
+            </div>
+          )}
 
           {userRole === 'ADMIN' && journeyStats.scope !== 'self' && (
             <div className="flex flex-wrap gap-2">
@@ -751,63 +748,41 @@ export default function DailyEvaluationPage() {
         ) : (
           <>
             {journeyStats.scope === 'self' ? (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tu actividad de hoy</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Se toma como referencia tu sesión de jornada</div>
-                    </div>
-                    <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{journeyStats.me.totalActions}</div>
+              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4 space-y-3">
+                {summary?.reusableGroups?.length ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {summary.reusableGroups.map((group) => {
+                      const source = classifyReusableSourceForJourney(group.name);
+                      const item = journeyStats.me.reusableSourceBreakdown.find((entry) => entry.key === source.key);
+                      const count = item?.count ?? 0;
+
+                      return (
+                        <button
+                          key={group.id}
+                          onClick={() => setModalSection('journey-sources')}
+                          className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {group.color && (
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                            )}
+                            <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                              {group.name}
+                            </span>
+                          </div>
+                          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{count}</div>
+                          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                            {source.label}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-
-                <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tarjetas impresas disponibles</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Desglose real de tus escaneos por fuente</div>
-                    </div>
-                    <div className="text-xs font-medium text-teal-700 dark:text-teal-300">
-                      {journeyStats.me.reusableDeliveries} escaneos
-                    </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-teal-200 dark:border-teal-700 p-4 text-sm text-slate-500 dark:text-slate-400">
+                    No hay fuentes de canje registradas para esta jornada.
                   </div>
-
-                  {summary?.reusableGroups?.length ? (
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {summary.reusableGroups.map((group) => {
-                        const source = classifyReusableSourceForJourney(group.name);
-                        const item = journeyStats.me.reusableSourceBreakdown.find((entry) => entry.key === source.key);
-                        const count = item?.count ?? 0;
-
-                        return (
-                          <button
-                            key={group.id}
-                            onClick={() => setModalSection('journey-sources')}
-                            className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
-                          >
-                            <div className="flex items-center gap-1.5 mb-1">
-                              {group.color && (
-                                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                              )}
-                              <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                {group.name}
-                              </span>
-                            </div>
-                            <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{count}</div>
-                            <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                              {source.label}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-teal-200 dark:border-teal-700 p-4 text-sm text-slate-500 dark:text-slate-400">
-                      No hay fuentes de canje registradas para esta jornada.
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {modalSection === 'journey-sources' && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
