@@ -29,6 +29,12 @@ const STAFF_ALLOWED_ADMIN_APIS = [
   '/api/admin/producciones',
 ];
 
+// ── APIs admin de birthdays que COLLAB puede usar desde /u/birthdays ──
+// Los handlers de cada ruta siguen aplicando permisos más finos.
+const COLLAB_ALLOWED_ADMIN_APIS = [
+  '/api/admin/birthdays',
+];
+
 // ── Acceso por área: un COLLAB con cierta área puede acceder a rutas admin específicas ──
 const AREA_ADMIN_ROUTES: Record<string, string[]> = {
   'DJs':        ['/admin/dj', '/admin/music-orders'],
@@ -139,6 +145,9 @@ export async function middleware(req: NextRequest) {
 
     // STAFF: acceso limitado a APIs configuradas
     if (role === 'STAFF' && matchesAny(pathname, STAFF_ALLOWED_ADMIN_APIS)) return NextResponse.next();
+
+    // COLLAB: birthdays es un flujo operativo compartido y se usa desde /u/birthdays
+    if (role === 'COLLAB' && matchesAny(pathname, COLLAB_ALLOWED_ADMIN_APIS)) return NextResponse.next();
 
     // COLLAB: acceso a daily-evaluation (solo lectura, la ruta valida permisos de escritura)
     if (role === 'COLLAB' && pathname.startsWith('/api/admin/daily-evaluation')) return NextResponse.next();
