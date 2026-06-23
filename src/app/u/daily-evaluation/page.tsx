@@ -755,31 +755,55 @@ export default function DailyEvaluationPage() {
             </div>
 
             {journeyStats.scope === 'self' ? (
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tu actividad de hoy</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Canjes y scans registrados con tu sesión</div>
+              <div className="space-y-3">
+                <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tu actividad de hoy</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Se toma como referencia tu sesión de jornada</div>
+                    </div>
+                    <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{journeyStats.me.totalActions}</div>
                   </div>
-                  <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">{journeyStats.me.totalActions}</div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
-                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Scans</div>
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.attendanceScans}</div>
+
+                <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tarjetas impresas disponibles</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Solo mostramos las tarjetas que vienen de <span className="font-medium">QR&apos;s Disponibles</span></div>
+                    </div>
+                    <div className="text-xs font-medium text-teal-700 dark:text-teal-300">
+                      {summary?.reusableGroups?.length ?? 0} tarjetas
+                    </div>
                   </div>
-                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
-                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Entregas</div>
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.reusableDeliveries}</div>
-                  </div>
-                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
-                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Canjes</div>
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.reusableRedemptions}</div>
-                  </div>
-                  <div className="rounded-md bg-teal-50 dark:bg-teal-900/10 p-2">
-                    <div className="text-[10px] uppercase tracking-wider text-teal-600 dark:text-teal-400">Custom</div>
-                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">{journeyStats.me.customQrRedemptions}</div>
-                  </div>
+
+                  {summary?.reusableGroups?.length ? (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {summary.reusableGroups.map((group) => (
+                        <button
+                          key={group.id}
+                          onClick={() => setModalGroup(group)}
+                          className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {group.color && (
+                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                            )}
+                            <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{group.name}</span>
+                          </div>
+                          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{group.daySales}</div>
+                          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">Utilizados hoy</div>
+                          {group.totalTokens > 0 && (
+                            <div className="text-[10px] text-teal-600 dark:text-teal-400 mt-1">{group.totalTokens} tokens en grupo</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-teal-200 dark:border-teal-700 p-4 text-sm text-slate-500 dark:text-slate-400">
+                      No hay tarjetas impresas disponibles para mostrar en esta jornada.
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
