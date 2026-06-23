@@ -15,9 +15,34 @@ type OperatorJourneyStats = {
   attendanceScans: number;
   reusableDeliveries: number;
   reusableRedemptions: number;
+  reusableSourceBreakdown: Array<{ key: string; label: string; count: number }>;
   customQrRedemptions: number;
   totalActions: number;
 };
+
+type SourceKey = 'printed-card' | 'roll-banner' | 'domingo' | 'bar' | 'other';
+
+function classifyReusableSource(groupName: string | null | undefined, label: string) {
+  const normalizedGroup = (groupName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const normalizedLabel = (label || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (normalizedGroup.includes('barra')) {
+    return { key: 'bar' as const, label: 'Barra' };
+  }
+  if (normalizedGroup.includes('roll') || normalizedGroup.includes('banner') || normalizedLabel.includes('ktboom') || normalizedLabel.includes('tampico')) {
+    return { key: 'roll-banner' as const, label: 'Roll Banner' };
+  }
+  if (normalizedGroup.includes('domingo')) {
+    return { key: 'domingo' as const, label: 'Tokens Domingo' };
+  }
+  return { key: 'printed-card' as const, label: 'Carta impresa' };
+}
 
 function parseDayParam(input: string | null): string {
   if (!input) return currentBusinessDay();
@@ -58,7 +83,7 @@ function sumByString<T extends { key: string | null; count: number }>(rows: T[])
 async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date) {
   if (userIds.length === 0) return [] as OperatorJourneyStats[];
 
-  const [users, scanGroups, reusableByTypeGroups, customQrGroups] = await Promise.all([
+  const [users, scanGroups, reusableByTypeGroups, reusableDeliveries, customQrGroups] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: userIds } },
       select: {
@@ -85,6 +110,22 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
       },
       _count: { _all: true },
     }),
+    prisma.reusableTokenRedemption.findMany({
+      where: {
+        userId: { in: userIds },
+        type: 'deliver',
+        createdAt: { gte: startUtc, lt: endUtc },
+      },
+      select: {
+        userId: true,
+        token: {
+          select: {
+            prize: { select: { label: true } },
+            group: { select: { name: true } },
+          },
+        },
+      },
+    }),
     prisma.customQr.groupBy({
       by: ['redeemedBy'],
       where: {
@@ -99,6 +140,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
   const customCounts = sumByString(customQrGroups.map((row) => ({ key: row.redeemedBy, count: row._count._all })));
 
   const reusableCounts = new Map<string, { deliver: number; redeem: number }>();
+  const reusableSourceCounts = new Map<string, Map<SourceKey, number>>();
   for (const row of reusableByTypeGroups) {
     if (!row.userId) continue;
     const current = reusableCounts.get(row.userId) || { deliver: 0, redeem: 0 };
@@ -106,11 +148,25 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
     if (row.type === 'redeem') current.redeem += row._count._all;
     reusableCounts.set(row.userId, current);
   }
+  for (const redemption of reusableDeliveries) {
+    if (!redemption.userId) continue;
+    const src = classifyReusableSource(redemption.token.group?.name ?? null, redemption.token.prize.label);
+    const userMap = reusableSourceCounts.get(redemption.userId) || new Map<SourceKey, number>();
+    userMap.set(src.key, (userMap.get(src.key) || 0) + 1);
+    reusableSourceCounts.set(redemption.userId, userMap);
+  }
 
   return users.map((user) => {
     const attendanceScans = scanCounts.get(user.id) || 0;
     const reusableDeliveries = reusableCounts.get(user.id)?.deliver || 0;
     const reusableRedemptions = reusableCounts.get(user.id)?.redeem || 0;
+    const sourceMap = reusableSourceCounts.get(user.id) || new Map<SourceKey, number>();
+    const reusableSourceBreakdown = [
+      { key: 'printed-card', label: 'Carta impresa', count: sourceMap.get('printed-card') || 0 },
+      { key: 'roll-banner', label: 'Roll Banner', count: sourceMap.get('roll-banner') || 0 },
+      { key: 'domingo', label: 'Tokens Domingo', count: sourceMap.get('domingo') || 0 },
+      { key: 'bar', label: 'Barra', count: sourceMap.get('bar') || 0 },
+    ].filter((item) => item.count > 0);
     const customQrRedemptions = customCounts.get(user.id) || 0;
     const totalActions = attendanceScans + reusableDeliveries + reusableRedemptions + customQrRedemptions;
     return {
@@ -122,6 +178,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
       attendanceScans,
       reusableDeliveries,
       reusableRedemptions,
+      reusableSourceBreakdown,
       customQrRedemptions,
       totalActions,
     };
@@ -168,6 +225,7 @@ export async function GET(req: NextRequest) {
       attendanceScans: 0,
       reusableDeliveries: 0,
       reusableRedemptions: 0,
+      reusableSourceBreakdown: [],
       customQrRedemptions: 0,
       totalActions: 0,
     };
