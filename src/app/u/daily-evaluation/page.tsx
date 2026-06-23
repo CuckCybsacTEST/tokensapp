@@ -696,165 +696,150 @@ export default function DailyEvaluationPage() {
       <div className="relative flex items-center gap-3 pt-2">
         <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
         <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
-          🔎 Jornada QR
+          ESCANEOS
         </span>
         <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
       </div>
 
-      <div className="rounded-xl border border-teal-200 dark:border-teal-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 p-3 sm:p-4 space-y-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          {journeyStats.scope === 'self' ? (
-            <div className="text-sm font-semibold text-teal-900 dark:text-teal-200">Tu jornada QR</div>
-          ) : (
-            <div>
-              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Ranking de canjes</h3>
-              <p className="text-xs text-teal-700 dark:text-teal-300">{journeyStats.day} · {journeyStats.viewer.displayName}</p>
-            </div>
-          )}
+      {journeyLoading ? (
+        <div className="py-3 text-sm text-teal-700 dark:text-teal-300">Cargando escaneos...</div>
+      ) : journeyStats.scope === 'self' ? (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {summary?.reusableGroups?.length ? (
+              summary.reusableGroups.map((group) => {
+                const source = classifyReusableSourceForJourney(group.name);
+                const item = journeyStats.me.reusableSourceBreakdown.find((entry) => entry.key === source.key);
+                const count = item?.count ?? 0;
 
-          {userRole === 'ADMIN' && journeyStats.scope !== 'self' && (
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={journeyRoleFilter}
-                onChange={(e) => setJourneyRoleFilter(e.target.value)}
-                className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              >
-                {JOURNEY_ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role === 'ALL' ? 'Todos los roles' : role}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={journeyAreaFilter}
-                onChange={(e) => setJourneyAreaFilter(e.target.value)}
-                className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
-              >
-                <option value="ALL">Todas las áreas</option>
-                {ALLOWED_AREAS.map((area) => (
-                  <option key={area} value={area}>
-                    {area}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        {journeyLoading ? (
-          <div className="rounded-lg border border-teal-200/70 dark:border-teal-700/60 bg-white/60 dark:bg-slate-800/60 p-4 text-sm text-teal-700 dark:text-teal-300">
-            Cargando jornada...
-          </div>
-        ) : (
-          <>
-            {journeyStats.scope === 'self' ? (
-              <div className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-3 sm:p-4 space-y-3">
-                {summary?.reusableGroups?.length ? (
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {summary.reusableGroups.map((group) => {
-                      const source = classifyReusableSourceForJourney(group.name);
-                      const item = journeyStats.me.reusableSourceBreakdown.find((entry) => entry.key === source.key);
-                      const count = item?.count ?? 0;
-
-                      return (
-                        <button
-                          key={group.id}
-                          onClick={() => setModalSection('journey-sources')}
-                          className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
-                        >
-                          <div className="flex items-center gap-1.5 mb-1">
-                            {group.color && (
-                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                            )}
-                            <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
-                              {group.name}
-                            </span>
-                          </div>
-                          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{count}</div>
-                          <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                            {source.label}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-teal-200 dark:border-teal-700 p-4 text-sm text-slate-500 dark:text-slate-400">
-                    No hay fuentes de canje registradas para esta jornada.
-                  </div>
-                )}
-
-                {modalSection === 'journey-sources' && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
-                    <div className="w-full max-w-sm rounded-2xl border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Fuentes de canje</h3>
-                        <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                          <span className="text-lg text-slate-400">&times;</span>
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {journeyStats.me.reusableSourceBreakdown.map((item) => (
-                          <div key={item.key} className="flex items-center justify-between rounded-lg bg-teal-50 dark:bg-teal-900/10 px-3 py-2">
-                            <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
-                            <span className="text-sm font-semibold text-teal-700 dark:text-teal-300">{item.count}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800">
-                <div className="max-h-80 overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="sticky top-0 bg-teal-50 dark:bg-slate-900">
-                      <tr className="text-left text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-300">
-                        <th className="px-3 py-2">Colaborador</th>
-                        <th className="px-3 py-2">Área</th>
-                        <th className="px-3 py-2 text-center">Scans</th>
-                        <th className="px-3 py-2 text-center">Reusables</th>
-                        <th className="px-3 py-2 text-center">Custom</th>
-                        <th className="px-3 py-2 text-center">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {journeyStats.operators?.length ? (
-                        journeyStats.operators.map((row) => {
-                          const isMe = row.userId === journeyStats.viewer.userId;
-                          return (
-                            <tr key={row.userId} className={`border-t border-teal-100 dark:border-teal-800 ${isMe ? 'bg-teal-50/70 dark:bg-teal-900/20' : ''}`}>
-                              <td className="px-3 py-2">
-                                <div className="font-medium text-slate-900 dark:text-slate-100">{row.displayName}</div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400">{row.role}</div>
-                              </td>
-                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{row.area || '-'}</td>
-                              <td className="px-3 py-2 text-center">{row.attendanceScans}</td>
-                              <td className="px-3 py-2 text-center">{row.reusableDeliveries + row.reusableRedemptions}</td>
-                              <td className="px-3 py-2 text-center">{row.customQrRedemptions}</td>
-                              <td className="px-3 py-2 text-center font-semibold text-slate-900 dark:text-slate-100">{row.totalActions}</td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={6}>
-                            No hay actividad para este día con los filtros actuales.
-                          </td>
-                        </tr>
+                return (
+                  <button
+                    key={group.id}
+                    onClick={() => setModalSection('journey-sources')}
+                    className="relative rounded-xl border p-3 text-left transition-all hover:shadow-md border-slate-200 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 hover:border-teal-300 dark:hover:border-teal-600"
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      {group.color && (
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
                       )}
-                    </tbody>
-                  </table>
+                      <span className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                        {group.name}
+                      </span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">{count}</div>
+                    <div className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                      {source.label}
+                    </div>
+                  </button>
+                );
+              })
+            ) : null}
+          </div>
+
+          {modalSection === 'journey-sources' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+              <div className="w-full max-w-sm rounded-2xl border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Fuentes de canje</h3>
+                  <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <span className="text-lg text-slate-400">&times;</span>
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {journeyStats.me.reusableSourceBreakdown.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between rounded-lg bg-teal-50 dark:bg-teal-900/10 px-3 py-2">
+                      <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
+                      <span className="text-sm font-semibold text-teal-700 dark:text-teal-300">{item.count}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Ranking de canjes</h3>
+              <p className="text-xs text-teal-700 dark:text-teal-300">{journeyStats.day} ? {journeyStats.viewer.displayName}</p>
+            </div>
+
+            {userRole === 'ADMIN' && (
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={journeyRoleFilter}
+                  onChange={(e) => setJourneyRoleFilter(e.target.value)}
+                  className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
+                >
+                  {JOURNEY_ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {role === 'ALL' ? 'Todos los roles' : role}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={journeyAreaFilter}
+                  onChange={(e) => setJourneyAreaFilter(e.target.value)}
+                  className="rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100"
+                >
+                  <option value="ALL">Todas las areas</option>
+                  {ALLOWED_AREAS.map((area) => (
+                    <option key={area} value={area}>
+                      {area}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
-          </>
-        )}
-      </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800">
+            <div className="max-h-80 overflow-auto">
+              <table className="min-w-full text-sm">
+                <thead className="sticky top-0 bg-teal-50 dark:bg-slate-900">
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-300">
+                    <th className="px-3 py-2">Colaborador</th>
+                    <th className="px-3 py-2">Area</th>
+                    <th className="px-3 py-2 text-center">Scans</th>
+                    <th className="px-3 py-2 text-center">Reusables</th>
+                    <th className="px-3 py-2 text-center">Custom</th>
+                    <th className="px-3 py-2 text-center">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {journeyStats.operators?.length ? (
+                    journeyStats.operators.map((row) => {
+                      const isMe = row.userId === journeyStats.viewer.userId;
+                      return (
+                        <tr key={row.userId} className={`border-t border-teal-100 dark:border-teal-800 ${isMe ? 'bg-teal-50/70 dark:bg-teal-900/20' : ''}`}>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">{row.role}</div>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{row.area || "-"}</td>
+                          <td className="px-3 py-2 text-center">{row.attendanceScans}</td>
+                          <td className="px-3 py-2 text-center">{row.reusableDeliveries + row.reusableRedemptions}</td>
+                          <td className="px-3 py-2 text-center">{row.customQrRedemptions}</td>
+                          <td className="px-3 py-2 text-center font-semibold text-slate-900 dark:text-slate-100">{row.totalActions}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={6}>
+                        No hay actividad para este dia con los filtros actuales.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   ) : null;
-
   return (
     <div className="space-y-4">
       {/* Header compacto con date picker inline */}
