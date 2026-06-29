@@ -243,6 +243,7 @@ export function AdminSidebar({ isCollapsed = false, onToggle, basePath = 'admin'
         icon: ICONS.starSmall,
         items: [
           { href: `${pathPrefix}/mundial2026`, label: "Premios y liquidación", icon: ICONS.starSmall },
+          { href: `${pathPrefix}/mundial2026/data`, label: "Data", icon: ICONS.usersSmall },
           { href: `${pathPrefix}/mundial/insights`, label: "Insights", icon: ICONS.chart },
           { href: "/mundial2026", label: "Página pública", icon: ICONS.qr }
         ]

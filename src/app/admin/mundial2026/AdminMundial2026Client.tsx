@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type AssignmentMode = "DIRECT_FIRST_N" | "RAFFLE";
@@ -453,6 +454,14 @@ export default function AdminMundial2026Client() {
         <p className="mt-2 text-sm text-slate-300">
           Administra el catálogo de premios, asígnalos al fixture y luego liquida resultados cuando corresponda.
         </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/admin/mundial2026/data" className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100">
+            Ver data consolidada
+          </Link>
+          <Link href="/admin/mundial/insights" className="inline-flex rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
+            Abrir insights
+          </Link>
+        </div>
       </div>
 
       {message ? <div className="alert alert-success">{message}</div> : null}
