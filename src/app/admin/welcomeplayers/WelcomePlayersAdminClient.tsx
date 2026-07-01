@@ -59,7 +59,7 @@ export default function WelcomePlayersAdminClient() {
         });
       }
     } catch (err: any) {
-      setError(err?.message || "No se pudo cargar la configuraciÃ³n");
+      setError(err?.message || "No se pudo cargar la configuración");
     } finally {
       setLoading(false);
     }
@@ -195,7 +195,7 @@ export default function WelcomePlayersAdminClient() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Welcome Players</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              ConfiguraciÃ³n de la ruleta pÃºblica independiente.
+              Configuración de la ruleta pública independiente.
             </p>
           </div>
           <div className="flex gap-2">
@@ -226,7 +226,7 @@ export default function WelcomePlayersAdminClient() {
             </h2>
             {editingId && (
               <button type="button" className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-300" onClick={resetForm}>
-                Cancelar ediciÃ³n
+                Cancelar edición
               </button>
             )}
           </div>
@@ -244,12 +244,12 @@ export default function WelcomePlayersAdminClient() {
                 <option value="inactive">Inactivo</option>
               </select>
             </Field>
-            <Field label="DescripciÃ³n">
+            <Field label="Descripción">
               <input className="input" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </Field>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-300">
-            El color y el orden se asignan automÃ¡ticamente para mantener la ruleta coherente y sin colores repetidos contiguos.
+            El color y el orden se asignan automáticamente para mantener la ruleta coherente y sin colores repetidos contiguos.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -270,8 +270,8 @@ export default function WelcomePlayersAdminClient() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Vista pÃºblica</h2>
-            {loading && <span className="text-xs text-slate-500">Cargandoâ€¦</span>}
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Vista pública</h2>
+            {loading && <span className="text-xs text-slate-500">Cargando…</span>}
           </div>
           <div className="mt-4 space-y-3">
             {sorted.map((prize) => (
@@ -285,7 +285,7 @@ export default function WelcomePlayersAdminClient() {
                         {prize.status}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{prize.description || "Sin descripciÃ³n"}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{prize.description || "Sin descripción"}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button type="button" className="btn-outline text-xs" onClick={() => editPrize(prize)}>
@@ -326,5 +326,6 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
 
 
