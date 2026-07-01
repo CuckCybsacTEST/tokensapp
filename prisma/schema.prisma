@@ -227,6 +227,36 @@ model RouletteSpin {
   @@index([prizeId])
 }
 
+model WelcomePlayersSpin {
+  id           String   @id @default(cuid())
+  prizeId      String
+  prizeLabel   String
+  prizeColor   String
+  prizeOrder   Int
+  prizeWeight  Int
+  rotation     Float
+  turns        Int
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([prizeId])
+}
+
+model WelcomePlayersPrize {
+  id          String   @id
+  label       String
+  description String?
+  color       String
+  status      String   @default("active")
+  weight      Int      @default(1)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([order])
+}
+
 model Person {
   id               String             @id @default(cuid())
   code             String             @unique

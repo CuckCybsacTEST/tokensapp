@@ -43,6 +43,16 @@ export default async function AdminDashboard() {
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+            <a href='/admin/welcomeplayers' className='block p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors'>
+              <div className='flex items-center mb-2'>
+                <svg className='h-5 w-5 text-amber-600 dark:text-amber-400 mr-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M11 4.93A8 8 0 0012 20a8 8 0 001-15.07M12 4v16M8 8h8M7 12h10M8 16h8' />
+                </svg>
+                <h3 className='font-semibold text-slate-900 dark:text-slate-100'>Welcome Players</h3>
+              </div>
+              <p className='text-sm text-slate-600 dark:text-slate-400'>Configura premios y control de la nueva ruleta pública</p>
+            </a>
+
             <a href='/admin/tokens' className='block p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors'>
               <div className='flex items-center mb-2'>
                 <svg className='h-5 w-5 text-emerald-600 dark:text-emerald-400 mr-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
