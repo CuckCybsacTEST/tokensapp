@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { WELCOME_PLAYERS_SEED_PRIZES } from "./config";
 
 type PrizeStatus = "active" | "inactive";
 
@@ -55,38 +54,7 @@ function pickRandomWheelColor(prizes: Array<{ color: string }>) {
   return palette[Math.floor(Math.random() * palette.length)];
 }
 
-function buildSeedPrizeRecords() {
-  let current: Array<{ order: number; color: string }> = [];
-
-  return WELCOME_PLAYERS_SEED_PRIZES.map((prize) => {
-    const color = pickRandomWheelColor(current);
-    const order = getAutomaticOrder(current);
-    const record = {
-      id: prize.id,
-      label: prize.label,
-      description: prize.description || null,
-      color,
-      status: prize.status,
-      weight: prize.weight,
-      order,
-    };
-
-    current = [...current, { order, color }];
-    return record;
-  });
-}
-
-export async function ensureWelcomePlayersSeed() {
-  const existingCount = await (prisma as any).welcomePlayersPrize.count();
-  if (existingCount > 0) return false;
-  await (prisma as any).welcomePlayersPrize.createMany({
-    data: buildSeedPrizeRecords(),
-  });
-  return true;
-}
-
 export async function listWelcomePlayersPrizes() {
-  await ensureWelcomePlayersSeed();
   return (await (prisma as any).welcomePlayersPrize.findMany({
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
   })) as WelcomePlayersPrizeRecord[];

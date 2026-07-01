@@ -8,8 +8,13 @@ import { getActiveWelcomePlayersPrizes } from "@/lib/welcomeplayers/repository";
 export async function POST(_req: NextRequest) {
   try {
     const prizes = await getActiveWelcomePlayersPrizes();
-    if (!prizes.length) {
-      return apiError("NO_ACTIVE_PRIZES", "No hay premios activos", undefined, 409);
+    if (prizes.length < 3) {
+      return apiError(
+        "NOT_ENOUGH_PRIZES",
+        "Necesitamos al menos 3 premios activos para activar la ruleta",
+        { minimumRequired: 3, activePrizes: prizes.length },
+        409
+      );
     }
     const result = buildSpinResult(prizes);
     await recordWelcomePlayersSpin(result);

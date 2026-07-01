@@ -31,6 +31,10 @@ const LABEL_RADIAL_PADDING = 34;
 const LABEL_FONT_FAMILY = "ui-sans-serif, system-ui, sans-serif";
 let labelMeasureCanvas: HTMLCanvasElement | null = null;
 
+function normalizeAngle(angle: number) {
+  return ((angle % 360) + 360) % 360;
+}
+
 function buildSegments(prizes: WelcomePlayerPrize[]) {
   return prizes.filter((prize) => prize.status === "active").sort((a, b) => a.order - b.order);
 }
@@ -332,9 +336,9 @@ export default function WelcomePlayersClient() {
       setResult(payload);
       setSpinning(true);
       setShowModal(false);
-      const current = rotation % 360;
-      const target = payload.rotation % 360;
-      const delta = (target - current + 360) % 360;
+      const currentAngle = normalizeAngle(rotation);
+      const targetAngle = normalizeAngle(payload.rotation);
+      const delta = normalizeAngle(targetAngle - currentAngle);
       const fullRotation = rotation + payload.turns * 360 + delta;
       requestAnimationFrame(() => setRotation(fullRotation));
 
@@ -358,6 +362,7 @@ export default function WelcomePlayersClient() {
   };
 
   const activePrizeCount = activePrizes.length;
+  const canSpin = activePrizeCount >= 3;
 
   return (
     <div className="relative min-h-[calc(100dvh-1rem)] overflow-hidden rounded-[2rem] bg-[#060816] px-4 py-4 text-white">
@@ -444,18 +449,25 @@ export default function WelcomePlayersClient() {
           </button>
         </div>
 
+        {!canSpin && (
+          <section className="rounded-[1.25rem] border border-amber-400/25 bg-amber-400/10 px-4 py-4 text-center text-sm leading-relaxed text-amber-100">
+            Necesitamos al menos <span className="font-semibold">3 premios activos</span> para activar la ruleta.
+            Agrega más premios desde coordinación y vuelve a intentarlo.
+          </section>
+        )}
+
         <button
           type="button"
           onClick={spin}
-          disabled={spinning || loadingSpin}
+          disabled={spinning || loadingSpin || !canSpin}
           className="w-full rounded-[1.65rem] border border-white/10 bg-gradient-to-r from-fuchsia-600 via-pink-500 to-amber-400 px-5 py-5 text-center text-[1.05rem] font-black uppercase tracking-[0.24em] text-white shadow-[0_16px_32px_rgba(236,72,153,0.18)] transition-transform active:scale-[0.99] disabled:opacity-70"
         >
-          TOCA PARA GIRAR
+          {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
         </button>
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="GIROS" value={stats?.totalSpins ?? 0} />
-          <StatCard label="PREMIOS ACTIVOS" value={stats?.activePrizes ?? activePrizeCount} />
+          <StatCard label="PREMIOS" value={stats?.activePrizes ?? activePrizeCount} />
         </div>
 
         {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div>}
@@ -489,8 +501,8 @@ export default function WelcomePlayersClient() {
             <h3 className="mt-3 text-[clamp(2.2rem,6.4vw,3.5rem)] font-black leading-none tracking-[-0.05em] text-white">
               {result.prize.label}
             </h3>
-            <p className="mx-auto mt-4 max-w-sm text-[1rem] leading-relaxed text-white/72">
-              Pasa a la barra y muestra esta pantalla para reclamar tu premio.
+            <p className="mx-auto mt-4 max-w-sm text-[1rem] leading-relaxed text-white/78">
+              Disfruta tu recompensa y vacílate en #KtdralLounge.
             </p>
             <button
               type="button"

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { IconEdit, IconEye, IconPlus, IconTrash, IconX } from "@tabler/icons-react";
+import { IconEdit, IconEye, IconPlus, IconRefresh, IconTrash, IconX } from "@tabler/icons-react";
 
 type Prize = {
   id: string;
@@ -89,6 +89,31 @@ export default function WelcomePlayersCoordinatorClient() {
   const closePrizesModal = () => setShowPrizesModal(false);
   const openDeliveredModal = () => setShowDeliveredModal(true);
   const closeDeliveredModal = () => setShowDeliveredModal(false);
+
+  const resetRoulette = () => {
+    if (!window.confirm("¿Reiniciar la ruleta? Esto borrará todos los premios configurados y dejará la sesión en blanco.")) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/admin/welcomeplayers/prizes/reset", { method: "POST" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.message || "No se pudo reiniciar la ruleta");
+        }
+
+        setMessage("Ruleta reiniciada");
+        resetForm();
+        await loadAll();
+      } catch (err: any) {
+        setError(err?.message || "No se pudo reiniciar la ruleta");
+      }
+    });
+  };
 
   const savePrize = () => {
     if (!form.label.trim()) {
@@ -253,11 +278,11 @@ export default function WelcomePlayersCoordinatorClient() {
         </Link>
         <button
           type="button"
-          onClick={resetForm}
+          onClick={resetRoulette}
           className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
         >
-          <IconX className="h-4 w-4" />
-          Limpiar
+          <IconRefresh className="h-4 w-4" />
+          Reiniciar ruleta
         </button>
       </div>
 

@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
   if (denied) return apiError(denied.code, denied.code, undefined, denied.status);
 
   try {
-    await (prisma as any).welcomePlayersPrize.deleteMany({});
-    return apiOk({ prizes: [], reset: true });
+    await (prisma as any).welcomePlayersSpin.deleteMany({});
+    return apiOk({ reset: true, spins: [] });
   } catch (error: any) {
-    return apiError("WELCOMEPLAYERS_RESET_FAILED", error?.message || "No se pudo reiniciar la ruleta", undefined, 500);
+    return apiError("WELCOMEPLAYERS_RESET_SPINS_FAILED", error?.message || "No se pudo reiniciar el contador de giros", undefined, 500);
   }
 }

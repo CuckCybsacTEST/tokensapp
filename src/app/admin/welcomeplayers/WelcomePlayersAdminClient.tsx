@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 
@@ -59,7 +59,7 @@ export default function WelcomePlayersAdminClient() {
         });
       }
     } catch (err: any) {
-      setError(err?.message || "No se pudo cargar la configuración");
+      setError(err?.message || "No se pudo cargar la configuraciÃ³n");
     } finally {
       setLoading(false);
     }
@@ -151,18 +151,39 @@ export default function WelcomePlayersAdminClient() {
   };
 
   const resetToDefaults = () => {
-    if (!window.confirm("¿Restaurar los premios base? Se agregará la configuración inicial si faltara.")) return;
+    if (!window.confirm("¿Reiniciar la ruleta? Esto borrará todos los premios configurados y dejará la rueda lista para una nueva sesión.")) return;
     startTransition(async () => {
       try {
         const res = await fetch("/api/admin/welcomeplayers/prizes/reset", { method: "POST" });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) {
-          throw new Error(data?.message || "No se pudo restaurar");
+          throw new Error(data?.message || "No se pudo reiniciar la ruleta");
         }
-        setMessage("Configuración recargada");
+        setMessage("Ruleta reiniciada");
         await loadAll();
       } catch (err: any) {
-        setError(err?.message || "No se pudo restaurar");
+        setError(err?.message || "No se pudo reiniciar la ruleta");
+      }
+    });
+  };
+
+  const resetSpinCounter = () => {
+    if (!window.confirm("¿Reiniciar el contador de giros? Esto borrará el historial de premios entregados.")) return;
+
+    setError(null);
+    setMessage(null);
+
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/admin/welcomeplayers/spins/reset", { method: "POST" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.message || "No se pudo reiniciar el contador");
+        }
+        setMessage("Contador de giros reiniciado");
+        await loadAll();
+      } catch (err: any) {
+        setError(err?.message || "No se pudo reiniciar el contador");
       }
     });
   };
@@ -174,21 +195,24 @@ export default function WelcomePlayersAdminClient() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Welcome Players</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Configuración de la ruleta pública independiente.
+              ConfiguraciÃ³n de la ruleta pÃºblica independiente.
             </p>
           </div>
           <div className="flex gap-2">
             <a href="/welcomeplayers" className="btn-outline text-xs">
               Ver pública
             </a>
+            <button onClick={resetSpinCounter} className="btn-outline text-xs" type="button" disabled={pending}>
+              Reiniciar giros
+            </button>
             <button onClick={resetToDefaults} className="btn-outline text-xs" type="button" disabled={pending}>
-              Restaurar base
+              Reiniciar ruleta
             </button>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Stat label="Premios activos" value={stats?.activePrizes ?? sorted.filter((p) => p.status === "active").length} />
+          <Stat label="Premios" value={stats?.activePrizes ?? sorted.filter((p) => p.status === "active").length} />
           <Stat label="Giros totales" value={stats?.totalSpins ?? 0} />
           <Stat label="Premios configurados" value={sorted.length} />
         </div>
@@ -202,7 +226,7 @@ export default function WelcomePlayersAdminClient() {
             </h2>
             {editingId && (
               <button type="button" className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-300" onClick={resetForm}>
-                Cancelar edición
+                Cancelar ediciÃ³n
               </button>
             )}
           </div>
@@ -220,12 +244,12 @@ export default function WelcomePlayersAdminClient() {
                 <option value="inactive">Inactivo</option>
               </select>
             </Field>
-            <Field label="Descripción">
+            <Field label="DescripciÃ³n">
               <input className="input" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
             </Field>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-300">
-            El color y el orden se asignan automáticamente para mantener la ruleta coherente y sin colores repetidos contiguos.
+            El color y el orden se asignan automÃ¡ticamente para mantener la ruleta coherente y sin colores repetidos contiguos.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -246,8 +270,8 @@ export default function WelcomePlayersAdminClient() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Vista pública</h2>
-            {loading && <span className="text-xs text-slate-500">Cargando…</span>}
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">Vista pÃºblica</h2>
+            {loading && <span className="text-xs text-slate-500">Cargandoâ€¦</span>}
           </div>
           <div className="mt-4 space-y-3">
             {sorted.map((prize) => (
@@ -261,7 +285,7 @@ export default function WelcomePlayersAdminClient() {
                         {prize.status}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{prize.description || "Sin descripción"}</div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">{prize.description || "Sin descripciÃ³n"}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button type="button" className="btn-outline text-xs" onClick={() => editPrize(prize)}>
@@ -302,3 +326,5 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+

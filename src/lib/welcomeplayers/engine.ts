@@ -9,6 +9,12 @@ export interface WelcomePlayersSpinResult {
   createdAt: string;
 }
 
+const WHEEL_START_ANGLE = -90;
+// In this wheel's visual coordinate system, the pointer sits at the top.
+// The SVG/CSS render uses clockwise-positive rotation, so the pointer angle
+// must be expressed as 0° in the same local geometry used to place segments.
+const POINTER_ANGLE = 0;
+
 export function pickWelcomePlayerPrize(prizes: WelcomePlayerPrize[]) {
   const active = prizes.filter((prize) => prize.status === "active");
   if (!active.length) {
@@ -30,6 +36,14 @@ export function pickWelcomePlayerPrize(prizes: WelcomePlayerPrize[]) {
   return weighted[weighted.length - 1].prize;
 }
 
+function normalizeAngle(angle: number) {
+  return ((angle % 360) + 360) % 360;
+}
+
+function isAlignedToPointer(winnerCenterAngle: number, rotation: number) {
+  return normalizeAngle(winnerCenterAngle + rotation) === normalizeAngle(POINTER_ANGLE);
+}
+
 export function buildSpinResult(prizes: WelcomePlayerPrize[]): WelcomePlayersSpinResult {
   const active = prizes.filter((prize) => prize.status === "active").sort((a, b) => a.order - b.order);
   if (!active.length) {
@@ -40,8 +54,13 @@ export function buildSpinResult(prizes: WelcomePlayerPrize[]): WelcomePlayersSpi
   const prizeIndex = active.findIndex((candidate) => candidate.id === prize.id);
   const turns = 5 + Math.floor(Math.random() * 3);
   const segmentAngle = 360 / active.length;
-  const baseOffset = 360 - (prizeIndex * segmentAngle + segmentAngle / 2);
-  const rotation = turns * 360 + baseOffset;
+  const winnerCenterAngle = WHEEL_START_ANGLE + prizeIndex * segmentAngle + segmentAngle / 2;
+  const alignmentOffset = normalizeAngle(POINTER_ANGLE - winnerCenterAngle);
+  const rotation = turns * 360 + alignmentOffset;
+
+  if (!isAlignedToPointer(winnerCenterAngle, alignmentOffset)) {
+    throw new Error("SPIN_ALIGNMENT_MISMATCH");
+  }
 
   return {
     spinId: crypto.randomUUID(),
@@ -52,4 +71,3 @@ export function buildSpinResult(prizes: WelcomePlayerPrize[]): WelcomePlayersSpi
     createdAt: new Date().toISOString(),
   };
 }
-
