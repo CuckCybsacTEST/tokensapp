@@ -14,6 +14,7 @@ export type Mundial2026TablaProps = {
   winners: Array<{
     id: string;
     detailPath: string;
+    isExpired: boolean;
     participantName: string;
     matchLabel: string;
     matchStageLabel: string;
@@ -22,7 +23,7 @@ export type Mundial2026TablaProps = {
     prizeLabel: string;
     prizeDescription: string | null;
     claimStatusLabel: string;
-    claimStatusTone: "emerald" | "sky" | "amber" | "rose" | "slate";
+    claimStatusTone: "emerald" | "sky" | "amber" | "gray" | "slate";
     claimExpiresAtLabel: string | null;
   }>;
 };
@@ -31,9 +32,27 @@ const toneClasses: Record<Mundial2026TablaProps["winners"][number]["claimStatusT
   emerald: "border-emerald-300/25 bg-emerald-400/12 text-emerald-100",
   sky: "border-sky-300/25 bg-sky-400/12 text-sky-100",
   amber: "border-amber-300/25 bg-amber-400/12 text-amber-100",
-  rose: "border-rose-300/25 bg-rose-400/12 text-rose-100",
+  gray: "border-white/10 bg-white/[0.05] text-white/70",
   slate: "border-white/10 bg-white/[0.06] text-white/80",
 };
+
+function rowClasses(isExpired: boolean) {
+  return isExpired
+    ? "border-t border-white/[0.05] align-top bg-white/[0.025] text-white/45"
+    : "border-t border-white/[0.08] align-top text-white/[0.88]";
+}
+
+function cardClasses(isExpired: boolean) {
+  return isExpired
+    ? "rounded-[18px] border border-white/[0.06] bg-white/[0.025] p-3 opacity-80 shadow-[0_20px_40px_rgba(2,6,23,0.18)]"
+    : "rounded-[18px] border border-white/[0.08] bg-white/[0.04] p-3 shadow-[0_20px_40px_rgba(2,6,23,0.22)]";
+}
+
+function actionClasses(isExpired: boolean) {
+  return isExpired
+    ? "inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.05] px-3.5 py-2 text-sm font-semibold text-white/45 pointer-events-none"
+    : "inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] bg-sky-400 px-3.5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300";
+}
 
 function StatCard(props: { title: string; value: number; hint: string; icon: ReactNode; tone: "sky" | "emerald" | "amber" }) {
   const toneClass =
@@ -135,27 +154,27 @@ export default function Mundial2026TablaClient(props: Mundial2026TablaProps) {
                   </thead>
                   <tbody>
                     {props.winners.map((row) => (
-                      <tr key={row.id} className="border-t border-white/[0.08] align-top text-white/[0.88]">
+                      <tr key={row.id} className={rowClasses(row.isExpired)}>
                         <td className="px-4 py-2.5">
-                          <div className="font-semibold text-white">{row.participantName}</div>
-                          <div className="mt-0.5 text-[11px] text-white/45">{row.matchStageLabel}</div>
+                          <div className={row.isExpired ? "font-semibold text-white/55" : "font-semibold text-white"}>{row.participantName}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[11px] text-white/30" : "mt-0.5 text-[11px] text-white/45"}>{row.matchStageLabel}</div>
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="font-semibold text-white">{row.matchLabel}</div>
-                          <div className="mt-0.5 text-[11px] text-white/45">{row.matchStartsAtLabel}</div>
+                          <div className={row.isExpired ? "font-semibold text-white/55" : "font-semibold text-white"}>{row.matchLabel}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[11px] text-white/30" : "mt-0.5 text-[11px] text-white/45"}>{row.matchStartsAtLabel}</div>
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">
+                          <div className={row.isExpired ? "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50" : "inline-flex items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100"}>
                             Acerto
                           </div>
-                          <div className="mt-2 text-base font-black text-white">{row.pickLabel}</div>
+                          <div className={row.isExpired ? "mt-2 text-base font-black text-white/55" : "mt-2 text-base font-black text-white"}>{row.pickLabel}</div>
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="font-semibold text-sky-100">{row.prizeLabel}</div>
-                          {row.prizeDescription ? <div className="mt-0.5 text-[11px] leading-5 text-white/45">{row.prizeDescription}</div> : null}
+                          <div className={row.isExpired ? "font-semibold text-white/55" : "font-semibold text-sky-100"}>{row.prizeLabel}</div>
+                          {row.prizeDescription ? <div className={row.isExpired ? "mt-0.5 text-[11px] leading-5 text-white/30" : "mt-0.5 text-[11px] leading-5 text-white/45"}>{row.prizeDescription}</div> : null}
                         </td>
                         <td className="px-4 py-2.5">
-                          {row.claimExpiresAtLabel ? <div className="text-sm font-medium text-white">{row.claimExpiresAtLabel}</div> : <div className="text-sm text-white/45">Sin vencimiento</div>}
+                          {row.claimExpiresAtLabel ? <div className={row.isExpired ? "text-sm font-medium text-white/55" : "text-sm font-medium text-white"}>{row.claimExpiresAtLabel}</div> : <div className="text-sm text-white/45">Sin vencimiento</div>}
                         </td>
                         <td className="px-4 py-2.5">
                           <span className={["inline-flex rounded-full border px-3 py-1 text-xs font-semibold", toneClasses[row.claimStatusTone]].join(" ")}>
@@ -163,13 +182,17 @@ export default function Mundial2026TablaClient(props: Mundial2026TablaProps) {
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <Link
-                            href={row.detailPath}
-                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] bg-sky-400 px-3.5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
-                          >
-                            Recuperar jugada
-                            <ArrowUpRight className="h-4 w-4" />
-                          </Link>
+                          {row.isExpired ? (
+                            <span className={actionClasses(true)}>
+                              Vencido
+                              <Clock3 className="h-4 w-4" />
+                            </span>
+                          ) : (
+                            <Link href={row.detailPath} className={actionClasses(false)}>
+                              Recuperar jugada
+                              <ArrowUpRight className="h-4 w-4" />
+                            </Link>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -179,11 +202,11 @@ export default function Mundial2026TablaClient(props: Mundial2026TablaProps) {
 
               <div className="mt-3 space-y-2.5 lg:hidden">
                   {props.winners.map((row) => (
-                    <article key={row.id} className="rounded-[18px] border border-white/[0.08] bg-white/[0.04] p-3 shadow-[0_20px_40px_rgba(2,6,23,0.22)]">
+                    <article key={row.id} className={cardClasses(row.isExpired)}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-[15px] font-bold leading-tight text-white">{row.participantName}</div>
-                          <div className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-white/40">{row.matchStageLabel}</div>
+                          <div className={row.isExpired ? "text-[15px] font-bold leading-tight text-white/55" : "text-[15px] font-bold leading-tight text-white"}>{row.participantName}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[10px] uppercase tracking-[0.16em] text-white/28" : "mt-0.5 text-[10px] uppercase tracking-[0.16em] text-white/40"}>{row.matchStageLabel}</div>
                         </div>
                         <span className={["inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold", toneClasses[row.claimStatusTone]].join(" ")}>
                           {row.claimStatusLabel}
@@ -193,38 +216,42 @@ export default function Mundial2026TablaClient(props: Mundial2026TablaProps) {
                       <div className="mt-2.5 grid grid-cols-1 gap-2.5 min-[460px]:grid-cols-2">
                         <div className="rounded-[15px] border border-white/[0.08] bg-black/10 px-3 py-2.5">
                           <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Partido</div>
-                          <div className="mt-0.5 text-[13px] font-semibold leading-5 text-white">{row.matchLabel}</div>
-                          <div className="mt-0.5 text-[10px] text-white/42">{row.matchStartsAtLabel}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[13px] font-semibold leading-5 text-white/55" : "mt-0.5 text-[13px] font-semibold leading-5 text-white"}>{row.matchLabel}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[10px] text-white/28" : "mt-0.5 text-[10px] text-white/42"}>{row.matchStartsAtLabel}</div>
                         </div>
 
                         <div className="rounded-[15px] border border-white/[0.08] bg-black/10 px-3 py-2.5">
                           <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Pronostico</div>
-                          <div className="mt-0.5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">
+                          <div className={row.isExpired ? "mt-0.5 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50" : "mt-0.5 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100"}>
                             Acerto
                           </div>
-                          <div className="mt-1.5 text-[13px] font-black leading-5 text-white">{row.pickLabel}</div>
+                          <div className={row.isExpired ? "mt-1.5 text-[13px] font-black leading-5 text-white/55" : "mt-1.5 text-[13px] font-black leading-5 text-white"}>{row.pickLabel}</div>
                         </div>
 
                         <div className="rounded-[15px] border border-white/[0.08] bg-black/10 px-3 py-2.5">
                           <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Premio</div>
-                          <div className="mt-0.5 text-[13px] font-semibold leading-5 text-sky-100">{row.prizeLabel}</div>
-                          {row.prizeDescription ? <div className="mt-0.5 text-[10px] leading-4 text-white/42">{row.prizeDescription}</div> : null}
+                          <div className={row.isExpired ? "mt-0.5 text-[13px] font-semibold leading-5 text-white/55" : "mt-0.5 text-[13px] font-semibold leading-5 text-sky-100"}>{row.prizeLabel}</div>
+                          {row.prizeDescription ? <div className={row.isExpired ? "mt-0.5 text-[10px] leading-4 text-white/28" : "mt-0.5 text-[10px] leading-4 text-white/42"}>{row.prizeDescription}</div> : null}
                         </div>
 
                         <div className="rounded-[15px] border border-white/[0.08] bg-black/10 px-3 py-2.5">
                           <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/40">Vence</div>
-                          <div className="mt-0.5 text-[13px] font-medium leading-5 text-white">{row.claimExpiresAtLabel || "Sin vencimiento"}</div>
+                          <div className={row.isExpired ? "mt-0.5 text-[13px] font-medium leading-5 text-white/55" : "mt-0.5 text-[13px] font-medium leading-5 text-white"}>{row.claimExpiresAtLabel || "Sin vencimiento"}</div>
                         </div>
                       </div>
 
                       <div className="mt-3 flex items-center justify-end">
-                        <Link
-                          href={row.detailPath}
-                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] bg-sky-400 px-3.5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 sm:rounded-[10px]"
-                        >
-                          Recuperar jugada
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Link>
+                        {row.isExpired ? (
+                          <span className={actionClasses(true)}>
+                            Vencido
+                            <Clock3 className="h-4 w-4" />
+                          </span>
+                        ) : (
+                          <Link href={row.detailPath} className={`${actionClasses(false)} sm:rounded-[10px]`}>
+                            Recuperar jugada
+                            <ArrowUpRight className="h-4 w-4" />
+                          </Link>
+                        )}
                       </div>
                     </article>
                   ))}

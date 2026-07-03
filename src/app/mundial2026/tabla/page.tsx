@@ -32,7 +32,7 @@ function formatClaimStatus(status: string) {
 function claimTone(status: string): Mundial2026TablaProps["winners"][number]["claimStatusTone"] {
   if (status === "AVAILABLE") return "emerald";
   if (status === "REDEEMED") return "sky";
-  if (status === "EXPIRED") return "rose";
+  if (status === "EXPIRED") return "gray";
   if (status === "REJECTED") return "amber";
   return "slate";
 }
@@ -44,6 +44,7 @@ export default async function Mundial2026TablaPage() {
     .map((prediction) => ({
       id: prediction.id,
       detailPath: `/mundial2026?recover=1&match=${encodeURIComponent(prediction.match.id)}&name=${encodeURIComponent(prediction.participant.name)}`,
+      isExpired: prediction.claimStatus === "EXPIRED",
       participantName: prediction.participant.name,
       matchLabel: `${prediction.match.homeTeam} vs ${prediction.match.awayTeam}`,
       matchStageLabel: prediction.match.stage || "Partido",
