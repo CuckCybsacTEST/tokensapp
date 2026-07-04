@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
 import type { WelcomePlayerPrize, WelcomePlayersRouletteConfig } from "@/lib/welcomeplayers/types";
 
@@ -261,7 +260,6 @@ function SegmentLabel({
 }
 
 export default function WelcomePlayersClient() {
-  const searchParams = useSearchParams();
   const [config, setConfig] = useState<WelcomePlayersRouletteConfig>(WELCOME_PLAYERS_FALLBACK_CONFIG);
   const prizes = config.prizes;
   const activePrizes = useMemo(() => buildSegments(prizes), [prizes]);
@@ -273,6 +271,7 @@ export default function WelcomePlayersClient() {
   const [loadingSpin, setLoadingSpin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setReadyHint] = useState("Toca la ruleta para comenzar");
+  const [debugEnabled, setDebugEnabled] = useState(false);
   const [viewport, setViewport] = useState({
     width: 0,
     height: 0,
@@ -282,7 +281,12 @@ export default function WelcomePlayersClient() {
     kioskPortrait: false,
   });
   const wheelRef = useRef<HTMLButtonElement | null>(null);
-  const debugEnabled = searchParams?.get("debug") === "1";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setDebugEnabled(params.get("debug") === "1");
+  }, []);
 
   useEffect(() => {
     const computeBreakpoint = (width: number, height: number) => {
