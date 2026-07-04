@@ -23,15 +23,12 @@ export async function GET(
         name: true,
         slug: true,
         active: true,
+        approvalStatus: true,
       },
     });
 
     if (!referrer) {
       return apiError('NOT_FOUND', 'Referrer not found', undefined, 404, cors);
-    }
-
-    if (!referrer.active) {
-      return apiError('INACTIVE', 'Referrer is not active', undefined, 404, cors);
     }
 
     return apiOk({ referrer }, 200, cors);

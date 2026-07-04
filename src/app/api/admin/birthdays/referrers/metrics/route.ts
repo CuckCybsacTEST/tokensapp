@@ -7,6 +7,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const systemConfig = await prisma.systemConfig.findUnique({ where: { id: 1 } }).catch(() => null);
+    const commissionAmount = Number(systemConfig?.birthdayReferrerCommissionAmount ?? 10);
+
     // Get all referrers with their reservation stats
     const referrers = await prisma.birthdayReferrer.findMany({
       include: {
@@ -25,9 +28,6 @@ export async function GET(request: NextRequest) {
     const referrerStats = referrers.map((referrer: any) => {
       const totalReservations = referrer.reservations.length;
       const completedReservations = referrer.reservations.filter((r: any) => r.status === 'completed').length;
-      
-      // Use referrer's commission amount, default to 10.00 if not set
-      const commissionAmount = Number(referrer.commissionAmount || 10.00);
       
       // Virtual earnings: all reservations (commission amount each)
       const virtualEarnings = totalReservations * commissionAmount;
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         name: referrer.name,
         slug: referrer.slug,
         active: referrer.active,
+        approvalStatus: referrer.approvalStatus,
         totalReservations,
         completedReservations,
         virtualEarnings,
@@ -89,7 +90,8 @@ export async function GET(request: NextRequest) {
       totalCompletedReservations,
       totalVirtualEarnings,
       totalRealEarnings,
-      averageConversionRate
+      averageConversionRate,
+      commissionAmount
     };
 
     return NextResponse.json({

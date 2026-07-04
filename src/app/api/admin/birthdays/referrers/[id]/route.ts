@@ -9,7 +9,9 @@ const UpdateReferrerSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug debe contener solo letras minúsculas, números y guiones').optional(),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
+  whatsapp: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
   commissionAmount: z.number().min(0).max(1000).optional(),
 });
 
@@ -59,7 +61,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function updateReferrer(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -93,11 +95,25 @@ export async function PUT(
       }
     }
 
+    const nextApprovalStatus = updateData.approvalStatus;
+    const normalizedWhatsapp = updateData.whatsapp !== undefined
+      ? (updateData.whatsapp?.replace(/\D+/g, '').trim() || null)
+      : undefined;
+
     const referrer = await prisma.birthdayReferrer.update({
       where: { id },
       data: {
         ...updateData,
         slug: updateData.slug?.toLowerCase(),
+        whatsapp: normalizedWhatsapp ?? updateData.whatsapp,
+        whatsappNormalized: normalizedWhatsapp,
+        approvedAt: nextApprovalStatus === 'APPROVED' ? new Date() : nextApprovalStatus ? null : undefined,
+        rejectedAt: nextApprovalStatus === 'REJECTED' ? new Date() : nextApprovalStatus ? null : undefined,
+        active: nextApprovalStatus === 'APPROVED'
+          ? (updateData.active ?? true)
+          : nextApprovalStatus === 'REJECTED'
+            ? false
+            : updateData.active,
       }
     });
 
@@ -106,6 +122,20 @@ export async function PUT(
     console.error('Error updating referrer:', error);
     return apiError('UPDATE_ERROR', 'Failed to update referrer', undefined, 500, cors);
   }
+}
+
+export async function PUT(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  return updateReferrer(req, context);
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  return updateReferrer(req, context);
 }
 
 export async function DELETE(

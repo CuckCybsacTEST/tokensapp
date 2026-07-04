@@ -157,6 +157,7 @@ model SystemConfig {
   id                      Int      @id @default(autoincrement())
   tokensEnabled           Boolean  @default(true)
   wednesdaySpecialBottle  String?
+  birthdayReferrerCommissionAmount Decimal @default(10.00) @db.Decimal(10, 2)
   // Marketing section toggles
   marketingHeroEnabled         Boolean @default(true)
   marketingShowsEnabled        Boolean @default(true)
@@ -504,11 +505,22 @@ model BirthdayReservation {
 model BirthdayReferrer {
   id               String                @id @default(cuid())
   name             String
+  firstName        String?
+  lastName         String?
   slug             String                @unique
   code             String                @unique
+  dni              String?
+  dniNormalized    String?               @unique
   email            String?
   phone            String?
+  whatsapp         String?
+  whatsappNormalized String?
   commissionAmount Decimal?              @default(10.00) @db.Decimal(10, 2)
+  approvalStatus   BirthdayReferrerApprovalStatus @default(APPROVED)
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  termsAcceptedAt  DateTime?
+  termsVersion     String?
   active           Boolean               @default(true)
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
@@ -516,6 +528,13 @@ model BirthdayReferrer {
 
   @@index([slug])
   @@index([active])
+  @@index([approvalStatus])
+}
+
+enum BirthdayReferrerApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model InviteToken {

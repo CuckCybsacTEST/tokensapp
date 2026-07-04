@@ -44,10 +44,10 @@ export default function CumpleañosPage() {
   }, [slug, router]);
 
   const handleContinue = () => {
-    if (referrer) {
+    if (referrer?.active && referrer?.approvalStatus === 'APPROVED') {
       router.replace(`/marketing/birthdays/reservar?ref=${referrer.id}`);
     } else {
-      router.replace('/marketing/birthdays/reservar');
+      router.replace('/registrarreferidos');
     }
   };
 
@@ -74,14 +74,20 @@ export default function CumpleañosPage() {
                 <span className="text-2xl">🎉</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                ¡Bienvenido!
+                {referrer.approvalStatus === 'PENDING' ? 'Link en revisión' : '¡Bienvenido!'}
               </h2>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Has sido referido por <span className="font-semibold text-orange-500">{referrer.name}</span>
+                {referrer.approvalStatus === 'PENDING'
+                  ? <>El link de <span className="font-semibold text-amber-500">{referrer.name}</span> está pendiente de aprobación.</>
+                  : <>Has sido referido por <span className="font-semibold text-orange-500">{referrer.name}</span></>}
               </p>
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                  Estás accediendo a través de un enlace especial. Disfruta de beneficios exclusivos y precios especiales para tu celebración.
+                  {referrer.approvalStatus === 'PENDING'
+                    ? 'Tu registro fue recibido. Cuando el equipo lo apruebe, este mismo link quedará habilitado para compartirlo y generar reservas.'
+                    : referrer.active
+                      ? 'Estás accediendo a través de un enlace especial. Disfruta de beneficios exclusivos y precios especiales para tu celebración.'
+                      : 'Este link no está activo por el momento. Puedes recuperar tu estado desde el registro público.'}
                 </p>
               </div>
             </div>
@@ -89,10 +95,12 @@ export default function CumpleañosPage() {
               onClick={handleContinue}
               className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105"
             >
-              Continuar a Reservar
+              {referrer.approvalStatus === 'APPROVED' && referrer.active ? 'Continuar a Reservar' : 'Ir al registro de referidos'}
             </button>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-              Te llevaremos a la página de reservas con beneficios exclusivos
+              {referrer.approvalStatus === 'APPROVED' && referrer.active
+                ? 'Te llevaremos a la página de reservas con beneficios exclusivos'
+                : 'Ahí podrás revisar tu estado y recuperar tu link o QR'}
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 type SystemConfigCache = {
   tokensEnabled: boolean;
+  birthdayReferrerCommissionAmount: number;
   featureFlags: {
     useMarketingRouletteUI: boolean;
   };
@@ -18,6 +19,7 @@ export async function getSystemConfig(force = false) {
     cache = {
       // Safer default: if config row doesn't exist yet, treat system as OFF
       tokensEnabled: cfg?.tokensEnabled ?? false,
+      birthdayReferrerCommissionAmount: Number(cfg?.birthdayReferrerCommissionAmount ?? 10),
       featureFlags: { useMarketingRouletteUI },
       ts: now,
     };

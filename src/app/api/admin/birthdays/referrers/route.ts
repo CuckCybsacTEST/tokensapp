@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { apiOk, apiError } from '@/lib/apiError';
 import { z } from 'zod';
 import { corsHeadersFor } from '@/lib/cors';
+import { normalizePersonName, normalizeReferrerWhatsapp } from '@/lib/birthdays/referrers';
 
 const CreateReferrerSchema = z.object({
   name: z.string().min(1).max(100),
@@ -81,14 +82,27 @@ export async function POST(req: NextRequest) {
     // Generar código único
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+    const systemConfig = await prisma.systemConfig.findUnique({ where: { id: 1 } }).catch(() => null);
+    const normalizedName = normalizePersonName(name);
+    const words = normalizedName.split(' ').filter(Boolean);
+    const firstName = words[0] || normalizedName;
+    const lastName = words.slice(1).join(' ') || null;
+    const normalizedWhatsapp = phone?.trim() ? normalizeReferrerWhatsapp(phone) : null;
+
     const referrer = await prisma.birthdayReferrer.create({
       data: {
-        name: name.trim(),
+        name: normalizedName,
+        firstName,
+        lastName,
         slug: slug.trim().toLowerCase(),
         code,
         email: email?.trim() || null,
         phone: phone?.trim() || null,
-        commissionAmount: commissionAmount || 10.00,
+        whatsapp: normalizedWhatsapp,
+        whatsappNormalized: normalizedWhatsapp,
+        commissionAmount: commissionAmount ?? Number(systemConfig?.birthdayReferrerCommissionAmount ?? 10),
+        approvalStatus: 'APPROVED',
+        approvedAt: new Date(),
         active: true,
       }
     });

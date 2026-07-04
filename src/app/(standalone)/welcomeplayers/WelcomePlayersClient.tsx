@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
 import type { WelcomePlayerPrize, WelcomePlayersRouletteConfig } from "@/lib/welcomeplayers/types";
 
@@ -260,6 +261,7 @@ function SegmentLabel({
 }
 
 export default function WelcomePlayersClient() {
+  const searchParams = useSearchParams();
   const [config, setConfig] = useState<WelcomePlayersRouletteConfig>(WELCOME_PLAYERS_FALLBACK_CONFIG);
   const prizes = config.prizes;
   const activePrizes = useMemo(() => buildSegments(prizes), [prizes]);
@@ -271,7 +273,49 @@ export default function WelcomePlayersClient() {
   const [loadingSpin, setLoadingSpin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setReadyHint] = useState("Toca la ruleta para comenzar");
+  const [viewport, setViewport] = useState({
+    width: 0,
+    height: 0,
+    dpr: 1,
+    viewportMeta: "",
+    breakpoint: "unknown",
+    kioskPortrait: false,
+  });
   const wheelRef = useRef<HTMLButtonElement | null>(null);
+  const debugEnabled = searchParams?.get("debug") === "1";
+
+  useEffect(() => {
+    const computeBreakpoint = (width: number, height: number) => {
+      if (height >= 1200 && width >= 700 && height > width) return "kiosk-portrait";
+      if (width >= 1280) return "xl";
+      if (width >= 1024) return "lg";
+      if (width >= 768) return "md";
+      if (width >= 640) return "sm";
+      if (width >= 480) return "xs-wide";
+      if (width >= 430) return "mobile-430";
+      if (width >= 390) return "mobile-390";
+      return "mobile-compact";
+    };
+
+    const updateViewport = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const viewportMeta = document.querySelector('meta[name="viewport"]')?.getAttribute("content") || "";
+      const breakpoint = computeBreakpoint(width, height);
+      setViewport({
+        width,
+        height,
+        dpr: window.devicePixelRatio || 1,
+        viewportMeta,
+        breakpoint,
+        kioskPortrait: breakpoint === "kiosk-portrait",
+      });
+    };
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -363,35 +407,72 @@ export default function WelcomePlayersClient() {
 
   const activePrizeCount = activePrizes.length;
   const canSpin = activePrizeCount >= 3;
+  const isKioskPortrait = viewport.kioskPortrait;
 
   return (
-    <div className="relative min-h-[calc(100dvh-1rem)] overflow-hidden rounded-[2rem] bg-[#060816] px-4 py-4 text-white">
+    <div
+      className={[
+        "relative h-[100dvh] w-full overflow-hidden bg-[#060816] text-white",
+        isKioskPortrait ? "rounded-none px-8 py-8" : "rounded-[2rem] px-4 py-4",
+      ].join(" ")}
+    >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_42%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.12),_transparent_25%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_16%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(180deg,black,transparent_85%)]" />
 
-      <div className="relative flex min-h-[calc(100dvh-2rem)] flex-col gap-4">
-        <header className="flex flex-col items-center gap-4 pt-1 text-center">
-          <img src="/loungewhite.png" alt="Ktdral Lounge" className="h-12 w-auto object-contain sm:h-14 opacity-95" />
+      {debugEnabled ? (
+        <div className="absolute left-3 top-3 z-[9998] max-w-[min(92vw,28rem)] rounded-2xl border border-lime-400/35 bg-black/70 px-4 py-3 font-mono text-[11px] leading-5 text-lime-100 backdrop-blur-md">
+          <div>window.innerWidth: {viewport.width}</div>
+          <div>window.innerHeight: {viewport.height}</div>
+          <div>window.devicePixelRatio: {viewport.dpr}</div>
+          <div>viewport CSS actual: {viewport.viewportMeta || "(default)"}</div>
+          <div>breakpoint activo: {viewport.breakpoint}</div>
+        </div>
+      ) : null}
 
-          <div className="max-w-[30rem]">
-            <h1 className="text-[clamp(3.4rem,8vw,5.6rem)] font-black leading-[0.9] tracking-[-0.05em] text-white">
+      <div className={[
+        "relative mx-auto flex h-full flex-col",
+        isKioskPortrait ? "w-full max-w-none gap-6" : "max-w-[34rem] gap-4",
+      ].join(" ")}>
+        <header className={[
+          "flex flex-col items-center text-center",
+          isKioskPortrait ? "gap-6 pt-2" : "gap-4 pt-1",
+        ].join(" ")}>
+          <img src="/loungewhite.png" alt="Ktdral Lounge" className={isKioskPortrait ? "h-20 w-auto object-contain opacity-95" : "h-12 w-auto object-contain opacity-95 sm:h-14"} />
+
+          <div className={isKioskPortrait ? "max-w-[56rem]" : "max-w-[30rem]"}>
+            <h1 className={[
+              "font-black leading-[0.9] tracking-[-0.05em] text-white",
+              isKioskPortrait ? "text-[clamp(5rem,7vw,7.4rem)]" : "text-[clamp(3.4rem,8vw,5.6rem)]",
+            ].join(" ")}>
               Toca <span className="bg-gradient-to-r from-fuchsia-500 via-rose-500 to-amber-300 bg-clip-text text-transparent">y gana</span>
             </h1>
-            <p className="mt-4 text-[clamp(1rem,2.7vw,1.4rem)] leading-relaxed text-white/88">
+            <p className={[
+              "mt-4 leading-relaxed text-white/88",
+              isKioskPortrait ? "text-[clamp(1.45rem,2vw,2rem)]" : "text-[clamp(1rem,2.7vw,1.4rem)]",
+            ].join(" ")}>
               Pulsa la pantalla y deja que la ruleta elija tu premio.
             </p>
           </div>
         </header>
 
-        <div className="relative mx-auto flex w-full max-w-[34rem] items-center justify-center py-2">
+        <div className={[
+          "relative mx-auto flex w-full items-center justify-center",
+          isKioskPortrait ? "max-w-none flex-1 py-3" : "max-w-[34rem] py-2",
+        ].join(" ")}>
           <div className="absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-[8%]" aria-hidden="true">
-            <div className="h-0 w-0 border-l-[18px] border-r-[18px] border-t-[30px] border-l-transparent border-r-transparent border-t-amber-300 drop-shadow-[0_6px_16px_rgba(0,0,0,0.28)]" />
+            <div className={[
+              "h-0 w-0 border-l-transparent border-r-transparent border-t-amber-300 drop-shadow-[0_6px_16px_rgba(0,0,0,0.28)]",
+              isKioskPortrait ? "border-l-[28px] border-r-[28px] border-t-[46px]" : "border-l-[18px] border-r-[18px] border-t-[30px]",
+            ].join(" ")} />
           </div>
 
           <button
             ref={wheelRef}
             type="button"
-            className="relative flex aspect-square w-[min(88vw,34rem)] touch-manipulation items-center justify-center overflow-visible rounded-full border border-white/10 bg-[#0A0D16] outline-none select-none ring-1 ring-white/5"
+            className={[
+              "relative flex aspect-square touch-manipulation items-center justify-center overflow-visible rounded-full border border-white/10 bg-[#0A0D16] outline-none select-none ring-1 ring-white/5",
+              isKioskPortrait ? "w-[min(82vw,68dvh,58rem)]" : "w-[min(88vw,34rem)]",
+            ].join(" ")}
             onClick={spin}
             onTouchStart={() => {
               if (!spinning && !loadingSpin) setReadyHint("Listo para girar");
@@ -460,7 +541,10 @@ export default function WelcomePlayersClient() {
           type="button"
           onClick={spin}
           disabled={spinning || loadingSpin || !canSpin}
-          className="w-full rounded-[1.65rem] border border-white/10 bg-gradient-to-r from-fuchsia-600 via-pink-500 to-amber-400 px-5 py-5 text-center text-[1.05rem] font-black uppercase tracking-[0.24em] text-white shadow-[0_16px_32px_rgba(236,72,153,0.18)] transition-transform active:scale-[0.99] disabled:opacity-70"
+          className={[
+            "w-full rounded-[1.65rem] border border-white/10 bg-gradient-to-r from-fuchsia-600 via-pink-500 to-amber-400 text-center font-black uppercase tracking-[0.24em] text-white shadow-[0_16px_32px_rgba(236,72,153,0.18)] transition-transform active:scale-[0.99] disabled:opacity-70",
+            isKioskPortrait ? "px-6 py-6 text-[1.35rem]" : "px-5 py-5 text-[1.05rem]",
+          ].join(" ")}
         >
           {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
         </button>
@@ -478,7 +562,10 @@ export default function WelcomePlayersClient() {
           </section>
         )}
 
-        <footer className="pb-1 pt-1 text-center text-[0.9rem] text-white/45">
+        <footer className={[
+          "text-center text-white/45",
+          isKioskPortrait ? "pb-2 pt-2 text-[1.1rem]" : "pb-1 pt-1 text-[0.9rem]",
+        ].join(" ")}>
           <span className="inline-flex items-center gap-4">
             <span className="h-px w-12 bg-white/15" />
             <span>Un giro por grupo de cinco</span>
@@ -495,18 +582,30 @@ export default function WelcomePlayersClient() {
             aria-label="Cerrar modal"
             onClick={() => setShowModal(false)}
           />
-          <div className="relative z-[1] w-full max-w-md rounded-[2rem] border border-white/10 bg-[#070A12] p-6 text-center shadow-[0_28px_80px_rgba(0,0,0,0.45)]">
+          <div className={[
+            "relative z-[1] w-full rounded-[2rem] border border-white/10 bg-[#070A12] text-center shadow-[0_28px_80px_rgba(0,0,0,0.45)]",
+            isKioskPortrait ? "max-w-2xl p-10" : "max-w-md p-6",
+          ].join(" ")}>
             <div className="mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-fuchsia-500 via-rose-400 to-amber-300" />
             <p className="mt-5 text-[0.72rem] font-semibold uppercase tracking-[0.38em] text-amber-300">¡GANASTE!</p>
-            <h3 className="mt-3 text-[clamp(2.2rem,6.4vw,3.5rem)] font-black leading-none tracking-[-0.05em] text-white">
+            <h3 className={[
+              "mt-3 font-black leading-none tracking-[-0.05em] text-white",
+              isKioskPortrait ? "text-[clamp(3.5rem,5vw,5rem)]" : "text-[clamp(2.2rem,6.4vw,3.5rem)]",
+            ].join(" ")}>
               {result.prize.label}
             </h3>
-            <p className="mx-auto mt-4 max-w-sm text-[1rem] leading-relaxed text-white/78">
+            <p className={[
+              "mx-auto mt-4 leading-relaxed text-white/78",
+              isKioskPortrait ? "max-w-xl text-[1.35rem]" : "max-w-sm text-[1rem]",
+            ].join(" ")}>
               Disfruta tu recompensa y vacílate en #KtdralLounge.
             </p>
             <button
               type="button"
-              className="mt-6 w-full rounded-[1.15rem] border border-amber-300/30 bg-gradient-to-r from-fuchsia-600 via-rose-500 to-amber-400 px-5 py-4 text-[0.92rem] font-black uppercase tracking-[0.24em] text-white shadow-[0_14px_28px_rgba(244,114,182,0.18)] transition-transform active:scale-[0.99]"
+              className={[
+                "mt-6 w-full rounded-[1.15rem] border border-amber-300/30 bg-gradient-to-r from-fuchsia-600 via-rose-500 to-amber-400 font-black uppercase tracking-[0.24em] text-white shadow-[0_14px_28px_rgba(244,114,182,0.18)] transition-transform active:scale-[0.99]",
+                isKioskPortrait ? "px-6 py-5 text-[1.1rem]" : "px-5 py-4 text-[0.92rem]",
+              ].join(" ")}
               onClick={() => setShowModal(false)}
             >
               CERRAR

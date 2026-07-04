@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
         id: config.id,
         tokensEnabled: config.tokensEnabled,
         wednesdaySpecialBottle: config.wednesdaySpecialBottle || null,
+        birthdayReferrerCommissionAmount: Number(config.birthdayReferrerCommissionAmount || 10),
         updatedAt: config.updatedAt.toISOString(),
       }
     });
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json().catch(()=>({}));
-    const { tokensEnabled, wednesdaySpecialBottle } = body;
+    const { tokensEnabled, wednesdaySpecialBottle, birthdayReferrerCommissionAmount } = body;
 
     const data: any = {};
     if (tokensEnabled != null) data.tokensEnabled = !!tokensEnabled;
@@ -48,6 +49,13 @@ export async function PATCH(req: NextRequest) {
       data.wednesdaySpecialBottle = typeof wednesdaySpecialBottle === 'string' && wednesdaySpecialBottle.trim()
         ? wednesdaySpecialBottle.trim()
         : null;
+    }
+    if (birthdayReferrerCommissionAmount != null) {
+      const amount = Number(birthdayReferrerCommissionAmount);
+      if (!Number.isFinite(amount) || amount < 0 || amount > 1000) {
+        return apiError('INVALID_COMMISSION', 'Comisión inválida', undefined, 400);
+      }
+      data.birthdayReferrerCommissionAmount = amount;
     }
 
     if (Object.keys(data).length === 0) return apiError('NO_FIELDS', 'Sin cambios', undefined, 400);
@@ -67,6 +75,7 @@ export async function PATCH(req: NextRequest) {
         id: config.id,
         tokensEnabled: config.tokensEnabled,
         wednesdaySpecialBottle: config.wednesdaySpecialBottle || null,
+        birthdayReferrerCommissionAmount: Number(config.birthdayReferrerCommissionAmount || 10),
         updatedAt: config.updatedAt.toISOString(),
       }
     });
