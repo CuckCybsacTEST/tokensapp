@@ -412,12 +412,13 @@ export default function WelcomePlayersClient() {
   const activePrizeCount = activePrizes.length;
   const canSpin = activePrizeCount >= 3;
   const isKioskPortrait = viewport.kioskPortrait;
+  const isCompactHeight = !isKioskPortrait && viewport.height > 0 && viewport.height < 1100;
 
   return (
     <div
       className={[
-        "relative h-[100dvh] w-full overflow-hidden bg-[#060816] text-white",
-        isKioskPortrait ? "rounded-none px-8 py-8" : "rounded-[2rem] px-4 py-4",
+        "relative w-full bg-[#060816] text-white",
+        isKioskPortrait ? "h-[100dvh] overflow-hidden rounded-none px-8 py-8" : "min-h-[100dvh] overflow-x-hidden overflow-y-visible rounded-[2rem] px-4 py-4",
       ].join(" ")}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_42%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.12),_transparent_25%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_16%)]" />
@@ -434,25 +435,29 @@ export default function WelcomePlayersClient() {
       ) : null}
 
       <div className={[
-        "relative mx-auto flex h-full flex-col",
-        isKioskPortrait ? "w-full max-w-none gap-6" : "max-w-[34rem] gap-4",
+        "relative mx-auto flex flex-col",
+        isKioskPortrait
+          ? "h-full w-full max-w-none gap-6"
+          : isCompactHeight
+            ? "min-h-[calc(100dvh-2rem)] max-w-[34rem] gap-3 pb-6"
+            : "min-h-[calc(100dvh-2rem)] max-w-[34rem] gap-4 pb-6",
       ].join(" ")}>
         <header className={[
           "flex flex-col items-center text-center",
-          isKioskPortrait ? "gap-6 pt-2" : "gap-4 pt-1",
+          isKioskPortrait ? "gap-6 pt-2" : isCompactHeight ? "gap-2 pt-0.5" : "gap-4 pt-1",
         ].join(" ")}>
-          <img src="/loungewhite.png" alt="Ktdral Lounge" className={isKioskPortrait ? "h-20 w-auto object-contain opacity-95" : "h-12 w-auto object-contain opacity-95 sm:h-14"} />
+          <img src="/loungewhite.png" alt="Ktdral Lounge" className={isKioskPortrait ? "h-20 w-auto object-contain opacity-95" : isCompactHeight ? "h-9 w-auto object-contain opacity-95" : "h-12 w-auto object-contain opacity-95 sm:h-14"} />
 
           <div className={isKioskPortrait ? "max-w-[56rem]" : "max-w-[30rem]"}>
             <h1 className={[
               "font-black leading-[0.9] tracking-[-0.05em] text-white",
-              isKioskPortrait ? "text-[clamp(5rem,7vw,7.4rem)]" : "text-[clamp(3.4rem,8vw,5.6rem)]",
+              isKioskPortrait ? "text-[clamp(5rem,7vw,7.4rem)]" : isCompactHeight ? "text-[clamp(2.7rem,5vw,4rem)]" : "text-[clamp(3.4rem,8vw,5.6rem)]",
             ].join(" ")}>
               Toca <span className="bg-gradient-to-r from-fuchsia-500 via-rose-500 to-amber-300 bg-clip-text text-transparent">y gana</span>
             </h1>
             <p className={[
               "mt-4 leading-relaxed text-white/88",
-              isKioskPortrait ? "text-[clamp(1.45rem,2vw,2rem)]" : "text-[clamp(1rem,2.7vw,1.4rem)]",
+              isKioskPortrait ? "text-[clamp(1.45rem,2vw,2rem)]" : isCompactHeight ? "text-[clamp(0.95rem,1.5vw,1.1rem)]" : "text-[clamp(1rem,2.7vw,1.4rem)]",
             ].join(" ")}>
               Pulsa la pantalla y deja que la ruleta elija tu premio.
             </p>
@@ -461,7 +466,7 @@ export default function WelcomePlayersClient() {
 
         <div className={[
           "relative mx-auto flex w-full items-center justify-center",
-          isKioskPortrait ? "max-w-none flex-1 py-3" : "max-w-[34rem] py-2",
+          isKioskPortrait ? "max-w-none flex-1 py-3" : isCompactHeight ? "max-w-[34rem] py-1" : "max-w-[34rem] py-2",
         ].join(" ")}>
           <div className="absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-[8%]" aria-hidden="true">
             <div className={[
@@ -475,7 +480,7 @@ export default function WelcomePlayersClient() {
             type="button"
             className={[
               "relative flex aspect-square touch-manipulation items-center justify-center overflow-visible rounded-full border border-white/10 bg-[#0A0D16] outline-none select-none ring-1 ring-white/5",
-              isKioskPortrait ? "w-[min(82vw,68dvh,58rem)]" : "w-[min(88vw,34rem)]",
+              isKioskPortrait ? "w-[min(82vw,68dvh,58rem)]" : isCompactHeight ? "w-[min(72vw,46dvh,28rem)]" : "w-[min(88vw,34rem)]",
             ].join(" ")}
             onClick={spin}
             onTouchStart={() => {
@@ -547,7 +552,7 @@ export default function WelcomePlayersClient() {
           disabled={spinning || loadingSpin || !canSpin}
           className={[
             "w-full rounded-[1.65rem] border border-white/10 bg-gradient-to-r from-fuchsia-600 via-pink-500 to-amber-400 text-center font-black uppercase tracking-[0.24em] text-white shadow-[0_16px_32px_rgba(236,72,153,0.18)] transition-transform active:scale-[0.99] disabled:opacity-70",
-            isKioskPortrait ? "px-6 py-6 text-[1.35rem]" : "px-5 py-5 text-[1.05rem]",
+            isKioskPortrait ? "px-6 py-6 text-[1.35rem]" : isCompactHeight ? "px-5 py-4 text-[0.95rem]" : "px-5 py-5 text-[1.05rem]",
           ].join(" ")}
         >
           {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
@@ -568,7 +573,7 @@ export default function WelcomePlayersClient() {
 
         <footer className={[
           "text-center text-white/45",
-          isKioskPortrait ? "pb-2 pt-2 text-[1.1rem]" : "pb-1 pt-1 text-[0.9rem]",
+          isKioskPortrait ? "pb-2 pt-2 text-[1.1rem]" : isCompactHeight ? "pb-1 pt-0 text-[0.8rem]" : "pb-1 pt-1 text-[0.9rem]",
         ].join(" ")}>
           <span className="inline-flex items-center gap-4">
             <span className="h-px w-12 bg-white/15" />

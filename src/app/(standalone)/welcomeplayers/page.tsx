@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 export default function WelcomePlayersPage() {
   return (
     <main
-      className="m-0 h-[100dvh] w-screen overflow-hidden p-0 text-white"
+      className="m-0 min-h-[100dvh] w-screen overflow-x-hidden overflow-y-auto p-0 text-white"
       style={{
         background:
           "radial-gradient(circle at top, rgba(245,158,11,0.22), transparent 28%), radial-gradient(circle at 20% 20%, rgba(96,165,250,0.14), transparent 22%), linear-gradient(180deg, #090B12 0%, #05070C 100%)",
       }}
     >
-      <div className="flex h-full w-full">
+      <div className="flex min-h-[100dvh] w-full">
         <WelcomePlayersClient />
       </div>
     </main>
