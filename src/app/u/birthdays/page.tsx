@@ -454,20 +454,12 @@ export default function StaffBirthdaysPage() {
 
 		// Date validation
 		if (cDate) {
-			const selectedDate = new Date(cDate + 'T00:00:00');
 			const today = new Date();
 			const limaToday = new Date(today.getTime() - 5 * 3600 * 1000); // Adjust to Lima timezone
 			const todayStr = limaToday.toISOString().slice(0, 10);
 
 			if (cDate < todayStr) {
 				errors.date = 'La fecha no puede ser en el pasado';
-			}
-
-			// Check if date is too far (max 15 days in the future)
-			const maxFuture = new Date(limaToday.getTime() + 15 * 24 * 3600 * 1000);
-			const maxDate = maxFuture.toISOString().slice(0, 10);
-			if (cDate > maxDate) {
-				errors.date = 'La fecha no puede ser más de 15 días en el futuro';
 			}
 		}
 
