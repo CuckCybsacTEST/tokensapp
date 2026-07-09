@@ -218,7 +218,7 @@ export async function GET(req: NextRequest) {
       })),
     };
 
-    // Reusable token groups — count deliveries for THIS business day
+    // Reusable token groups — count actual usage for THIS business day
     const reusableGroups = await prisma.tokenGroup.findMany({
       where: { locked: false },
       include: {
@@ -227,7 +227,7 @@ export async function GET(req: NextRequest) {
             prize: { select: { id: true, label: true } },
             redemptions: {
               where: {
-                type: 'deliver',
+                type: { in: ['deliver', 'redeem'] },
                 createdAt: { gte: startUtc, lt: endUtc },
               },
             },
@@ -340,7 +340,7 @@ export async function GET(req: NextRequest) {
         const key = t.prize.id;
         if (!prizeAcc[key]) prizeAcc[key] = { label: t.prize.label, total: 0, daySales: 0 };
         prizeAcc[key].total++;
-        const tokenDaySales = t.redemptions.length; // already filtered by day+type in query
+        const tokenDaySales = t.redemptions.length; // already filtered by day+usage type in query
         prizeAcc[key].daySales += tokenDaySales;
         daySales += tokenDaySales;
       }

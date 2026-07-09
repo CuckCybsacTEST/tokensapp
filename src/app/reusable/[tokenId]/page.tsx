@@ -127,6 +127,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
   const [isStaff, setIsStaff] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sessionResolved, setSessionResolved] = useState(false);
 
   useEffect(() => {
     async function checkStaff() {
@@ -138,8 +139,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
       try {
         const res = await fetch('/api/static/session');
         const data = await res.json();
-        // Solo considerar staff si tiene sesión de ADMIN (no usuarios BYOD)
-        const newIsStaff = staffParam || (data.isAdmin === true || data.role === 'ADMIN' || data.role === 'STAFF');
+        const newIsStaff = staffParam || data.isStaff === true || data.isAdmin === true || data.role === 'ADMIN' || data.role === 'STAFF';
         const newIsAdmin = data.isAdmin === true;
         const newIsLoggedIn = data.ok === true;
         setIsStaff(newIsStaff);
@@ -150,6 +150,8 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
         setIsStaff(staffParam);
         setIsAdmin(false);
         setIsLoggedIn(false);
+      } finally {
+        setSessionResolved(true);
       }
     }
     checkStaff();
@@ -186,8 +188,8 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
       loadTokenData();
     }
 
-    // Construir URL del QR para la sesión pública (cliente)
-    if (typeof window !== 'undefined') {
+    // Construir URL del QR solo para la sesión pública (cliente)
+    if (typeof window !== 'undefined' && sessionResolved && !isStaff && !isAdmin) {
       try {
         const fullUrl = window.location.href;
         // Usamos un servicio público de generación de QR (no persistente)
@@ -195,8 +197,10 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
       } catch (e) {
         // silence
       }
+    } else {
+      setQrSrc('');
     }
-  }, [tokenId]);
+  }, [tokenId, sessionResolved, isStaff, isAdmin]);
 
   const [redeeming, setRedeeming] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
@@ -296,6 +300,8 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
     canRedeem = !isExpired && !isDisabled && tokenData.usedCount < maxUses;
     formattedExpiry = DateTime.fromJSDate(new Date(tokenData.expiresAt)).setZone('America/Lima').toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' });
   }
+
+  const isOperationalView = sessionResolved && (isStaff || isAdmin);
 
   // Handle redeem query param
   useEffect(() => {
@@ -447,12 +453,16 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             <div className="mb-4 sm:mb-6 relative">
                 <div className="absolute inset-0 bg-[#FF4D2E] blur-2xl opacity-20 rounded-full" />
                 <h1 className="relative text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-sm">
-                  TOKEN<br/><span className="text-[#FF4D2E]">DISPONIBLE</span>
+                  {isOperationalView ? (
+                    <>TOKEN<br/><span className="text-[#FF4D2E]">VERIFICADO</span></>
+                  ) : (
+                    <>TOKEN<br/><span className="text-[#FF4D2E]">DISPONIBLE</span></>
+                  )}
                 </h1>
             </div>
 
             {/* QR Code Section - Primera posición para máxima relevancia */}
-            {qrSrc && !isStaff && canRedeem && (
+            {qrSrc && sessionResolved && !isOperationalView && canRedeem && (
                 <>
                 <p className="text-white/80 text-sm sm:text-base leading-relaxed mb-4 text-center">
                   ¡Felicidades! Acércate a la barra, muestra este código QR y canjea tu token.
@@ -496,11 +506,11 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             )}
 
             <div className="w-full bg-gradient-to-b from-white/10 to-transparent rounded-2xl p-4 sm:p-6 border border-white/5 mb-4 sm:mb-6">
-                <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">{isStaff || isAdmin ? 'CANJEA' : 'RECLAMA'}</div>
+                <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">{isOperationalView ? 'ENTREGA' : 'RECLAMA'}</div>
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 break-words leading-tight">
                   {tokenData.prize.label}
                 </h2>
-                {isStaff && (
+                {isOperationalView && (
                   <>
                   <div className="h-1 w-12 sm:w-16 bg-[#FF4D2E] mx-auto rounded-full my-3 sm:my-4" />
                   <p className="text-white/80 text-xs sm:text-sm leading-relaxed px-2 sm:px-0">
@@ -511,7 +521,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             </div>
 
             {/* Usage Progress - Solo visible para admin y staff */}
-            {(isAdmin || isStaff) && (
+            {isOperationalView && (
                 <div className="w-full bg-white/5 rounded-2xl p-3 sm:p-4 border border-white/10 mb-3 sm:mb-4">
                     <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wider font-medium mb-2">DISPONIBILIDAD</div>
                     <div className="text-2xl sm:text-3xl font-bold text-[#FF4D2E] mb-2">
@@ -540,7 +550,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             )}
 
             {/* Redeem Button - Only show if logged in and can redeem and not staff */}
-            {canRedeem && isLoggedIn && !isStaff && (
+            {canRedeem && isLoggedIn && !isOperationalView && (
                 <div className="w-full mt-3 sm:mt-4">
                     <button
                         onClick={handleRedeem}
@@ -580,7 +590,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
             )}
 
             {/* Staff Actions */}
-            {isStaff && (
+            {isOperationalView && (
                 <div className="w-full mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
                     {tokenData.usedCount >= maxUses ? (
                         <div className="w-full py-3 sm:py-4 rounded-xl bg-gray-600/50 border border-gray-600/30 text-gray-300 text-center font-medium text-sm sm:text-base cursor-not-allowed">
@@ -650,7 +660,7 @@ export default function ReusableTokenPage({ params, searchParams }: ReusableToke
 
         {/* Footer Info */}
         <div className="text-center space-y-1 sm:space-y-2">
-            {isStaff && (
+            {isOperationalView && (
                 <div className="inline-block px-2 sm:px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] sm:text-[10px] font-mono text-white/40">
                     ID: {tokenData.id.split('-')[0]}...
                 </div>

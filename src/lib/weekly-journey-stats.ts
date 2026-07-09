@@ -507,7 +507,7 @@ export async function getWeeklyQrStats(anchorDay: string, weekCount = DEFAULT_WE
   const [reusableDeliveries, tokenDeliveries, issuedTokens] = await Promise.all([
     prisma.reusableTokenRedemption.findMany({
       where: {
-        type: 'deliver',
+        type: { in: ['deliver', 'redeem'] },
         createdAt: { gte: firstWindow, lt: lastWindow },
       },
       select: {
@@ -588,7 +588,7 @@ async function getWeeklyReusableProducts(anchorDay: string, groupType: 'bar' | '
 
   const deliveries = await prisma.reusableTokenRedemption.findMany({
     where: {
-      type: 'deliver',
+      type: { in: ['deliver', 'redeem'] },
       createdAt: { gte: firstWindow, lt: lastWindow },
     },
     select: {
@@ -1095,7 +1095,7 @@ async function getDailyQrStats(days: DayEntry[]): Promise<WeeklyQrStat[]> {
 
   const [reusableDeliveries, tokenDeliveries, issuedTokens] = await Promise.all([
     prisma.reusableTokenRedemption.findMany({
-      where: { type: 'deliver', createdAt: { gte: firstWindow, lt: lastWindow } },
+      where: { type: { in: ['deliver', 'redeem'] }, createdAt: { gte: firstWindow, lt: lastWindow } },
       select: { createdAt: true },
     }),
     prisma.token.findMany({
@@ -1146,7 +1146,7 @@ async function getDailyReusableProducts(days: DayEntry[], groupType: 'bar' | 'ro
   const lastWindow = businessDayToAttendanceWindow(lastDay).endUtc;
 
   const deliveries = await prisma.reusableTokenRedemption.findMany({
-    where: { type: 'deliver', createdAt: { gte: firstWindow, lt: lastWindow } },
+    where: { type: { in: ['deliver', 'redeem'] }, createdAt: { gte: firstWindow, lt: lastWindow } },
     select: {
       createdAt: true,
       token: { select: { prize: { select: { label: true } }, group: { select: { name: true } } } },

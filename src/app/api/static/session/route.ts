@@ -1,76 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiOk, apiError } from '@/lib/apiError';
-import { getSessionCookieFromRequest, verifySessionCookie } from '@/lib/auth';
-import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
+import { getUserSessionCookieFromRequest, roleAtLeast, verifyUserSessionCookie } from '@/lib/auth';
+import { mapAreaToStaffRole } from '@/lib/staff-roles';
 
 export async function GET(req: Request) {
   try {
-    // Verificar sesión de admin primero
-    const adminCookie = getSessionCookieFromRequest(req);
-    const adminSession = await verifySessionCookie(adminCookie);
-
-    // Verificar sesión de usuario staff
     const userCookie = getUserSessionCookieFromRequest(req);
     const userSession = await verifyUserSessionCookie(userCookie);
 
-    // Si hay sesión de admin
-    if (adminSession && adminSession.role) {
+    if (!userSession) {
       return NextResponse.json({
-        ok: true,
-        isStaff: adminSession.role === 'STAFF' || adminSession.role === 'ADMIN',
-        isAdmin: adminSession.role === 'ADMIN',
-        role: adminSession.role
+        ok: false,
+        isStaff: false,
+        isAdmin: false,
       });
     }
 
-    // Si hay sesión de usuario, verificar si tiene acceso staff
-    if (userSession) {
-      // Para usuarios staff, verificar si tienen área de restaurante
-      try {
-        const { PrismaClient } = require('@prisma/client');
-        const prisma = new PrismaClient();
-
-        const user = await prisma.user.findUnique({
-          where: { id: userSession.userId },
-          include: { person: true }
-        });
-
-        await prisma.$disconnect();
-
-        if (user?.person?.area) {
-          // Mapear área a rol de restaurante
-          const { mapAreaToStaffRole } = require('@/lib/staff-roles');
-          const restaurantRole = mapAreaToStaffRole(user.person.area);
-
-          if (restaurantRole) {
-            return NextResponse.json({
-              ok: true,
-              isStaff: true,
-              isAdmin: false,
-              role: restaurantRole,
-              area: user.person.area
-            });
-          }
-        } else {
-          // Usuario colaborador sin área asignada - permitir acceso a interfaz staff
-          return NextResponse.json({
-            ok: true,
-            isStaff: false,
-            isAdmin: false,
-            isCollaborator: true,
-            role: 'COLLAB'
-          });
-        }
-      } catch (err) {
-        console.error('Error verificando área de usuario:', err);
-      }
+    if (roleAtLeast(userSession.role, 'STAFF')) {
+      return NextResponse.json({
+        ok: true,
+        isStaff: true,
+        isAdmin: userSession.role === 'ADMIN',
+        role: userSession.role,
+        area: userSession.area ?? null,
+      });
     }
 
-    // No hay sesión válida - devolver ok: false para usuarios públicos
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      const user = await prisma.user.findUnique({
+        where: { id: userSession.userId },
+        include: { person: true }
+      });
+
+      await prisma.$disconnect();
+
+      const area = user?.person?.area ?? null;
+      const mappedRole = mapAreaToStaffRole(area);
+      if (mappedRole) {
+        return NextResponse.json({
+          ok: true,
+          isStaff: true,
+          isAdmin: false,
+          role: mappedRole,
+          area,
+        });
+      }
+    } catch (err) {
+      console.error('Error verificando área de usuario:', err);
+    }
+
     return NextResponse.json({
-      ok: false,
+      ok: true,
       isStaff: false,
-      isAdmin: false
+      isAdmin: false,
+      isCollaborator: true,
+      role: userSession.role,
+      area: userSession.area ?? null,
     });
   } catch (err) {
     return apiError('SESSION_ERROR', 'No se pudo obtener la sesión');
