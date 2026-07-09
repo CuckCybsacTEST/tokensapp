@@ -1,9 +1,9 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { verifyUserSessionCookie } from '@/lib/auth';
-import { rangeBusinessDays, type Period } from '@/lib/date';
+import { type Period } from '@/lib/date';
+import { getTokenPeriodMetrics } from '@/lib/tokenPeriodMetrics';
 
 // Esta ruta usa encabezados/cookies para auth dual -> forzar dinámica para evitar intento de prerender
 export const dynamic = 'force-dynamic';
@@ -39,35 +39,24 @@ export async function GET(req: NextRequest) {
     if (!allowed.includes(periodParam)) return error('INVALID_PERIOD', 'Invalid period');
     if (periodParam === 'custom' && (!start || !end)) return error('INVALID_CUSTOM', 'Custom period requires start & end');
 
-  // Usamos business day para today / yesterday (alineado a asistencia con cutoff horario); resto (semana/mes) calendario UTC.
-  const { start: rangeStart, end: rangeEnd, startDay, endDay, name } = rangeBusinessDays(periodParam, start, end);
-
-    // Queries constrained by createdAt for tokens; expiration and redemption inside window
-    const tokenBatchFilter = batchId ? { batchId } : {};
-    // Nota: Para periodos 'today'/'yesterday' ya adaptamos el rango usando business day.
-    // Ajuste: cuando se filtra por batchId queremos que 'total' refleje tokens de ese batch dentro del rango.
-    // (Lógica actual ya lo hace). Se añade protección por si en algún entorno hay tokens con fecha fuera del rango pero businessDay dentro.
-    const periodIsDaily = ['today','yesterday','day_before_yesterday'].includes(periodParam);
-    // Conteo basado en functionalDate para daily: tokens cuyo batch.functionalDate está en rango
-    // o tokens creados en rango cuyo batch.functionalDate es null.
-    const functionalWhere = periodIsDaily ? {
-      OR: [
-        { batch: { functionalDate: { gte: rangeStart, lt: rangeEnd } } },
-        { AND: [ { createdAt: { gte: rangeStart, lt: rangeEnd } }, { batch: { functionalDate: null } } ] }
-      ]
-    } : { createdAt: { gte: rangeStart, lt: rangeEnd } };
-    const baseFilter = { ...tokenBatchFilter } as any;
-    const [total, redeemed, delivered, revealed, disabled, expired, spins] = await Promise.all([
-      prisma.token.count({ where: { ...baseFilter, ...functionalWhere } }),
-      prisma.token.count({ where: { ...baseFilter, redeemedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...baseFilter, deliveredAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...baseFilter, revealedAt: { not: null, gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...baseFilter, disabled: true, createdAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.token.count({ where: { ...baseFilter, expiresAt: { gte: rangeStart, lt: rangeEnd } } }),
-      prisma.rouletteSpin.count({ where: { createdAt: { gte: rangeStart, lt: rangeEnd }, ...(batchId ? { session: { batchId } } : {}) } }),
-    ]);
-    const active = Math.max(0, total - redeemed - expired);
-  return NextResponse.json({ ok: true, period: name, startDay, endDay, totals: { total, redeemed, expired, active, delivered, revealed, disabled }, spins, batchId: batchId || null });
+    const metrics = await getTokenPeriodMetrics({ period: periodParam, startDate: start, endDate: end, batchId });
+    return NextResponse.json({
+      ok: true,
+      period: metrics.period,
+      startDay: metrics.startDay,
+      endDay: metrics.endDay,
+      totals: {
+        total: metrics.tokens,
+        redeemed: metrics.redeemed,
+        expired: metrics.expired,
+        active: metrics.available,
+        delivered: metrics.delivered,
+        revealed: metrics.revealed,
+        disabled: metrics.disabled,
+      },
+      spins: metrics.rouletteSpins,
+      batchId: batchId || null,
+    });
   } catch (e: any) {
     console.error('period-metrics error', e);
     return error('INTERNAL', e?.message || 'internal error', 500);

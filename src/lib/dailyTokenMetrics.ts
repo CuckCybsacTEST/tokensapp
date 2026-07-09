@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getLimaHour, limaCalendarDayWindowUtc } from '@/lib/attendanceDay';
 import { computeBatchStats } from '@/lib/batchStats';
 
 export interface DailyTokenTimelinePoint {
@@ -237,13 +238,13 @@ async function withRetry<T>(operation: () => Promise<T>, maxRetries = 2, delay =
 }
 
 export function getLimaDayRange(dayISO: string) {
-  const [year, month, day] = dayISO.split('-').map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day, 5, 0, 0, 0));
-  const end = new Date(Date.UTC(year, month - 1, day + 1, 4, 59, 59, 999));
-  return { start, end };
+  const { startUtc, endUtcInclusive } = limaCalendarDayWindowUtc(dayISO);
+  return { start: startUtc, end: endUtcInclusive };
 }
 
 export async function getDailyTokenMetrics(day: string): Promise<DailyTokenMetricsResult> {
+  // Estas métricas describen el comportamiento del dia calendario Lima del evento/batch,
+  // no la jornada operativa con cutoff de asistencia.
   const { start: functionalStart, end: functionalEnd } = getLimaDayRange(day);
   const anyPrisma = prisma as any;
   const now = new Date();
@@ -327,13 +328,13 @@ export async function getDailyTokenMetrics(day: string): Promise<DailyTokenMetri
     for (const token of batch.tokens as any[]) {
       const revealedAt: Date | null = token.revealedAt || null;
       if (revealedAt && revealedAt >= functionalStart && revealedAt < functionalEnd) {
-        const hour = new Date(revealedAt.getTime() - 5 * 3600 * 1000).getUTCHours();
+        const hour = getLimaHour(revealedAt);
         hoursRevealed[hour]++;
       }
 
       const deliveredAt: Date | null = token.deliveredAt || null;
       if (deliveredAt && deliveredAt >= functionalStart && deliveredAt < functionalEnd) {
-        const hour = new Date(deliveredAt.getTime() - 5 * 3600 * 1000).getUTCHours();
+        const hour = getLimaHour(deliveredAt);
         hoursDelivered[hour]++;
       }
 

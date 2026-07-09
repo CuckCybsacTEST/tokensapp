@@ -1,4 +1,5 @@
 import { BatchManifestMeta, PrizeRequest } from "@/lib/batch/types";
+import { businessDayWindowUtc, computeBusinessDayFromUtc, getConfiguredCutoffHour, limaCalendarDayWindowUtc } from "@/lib/attendanceDay";
 import { logEvent } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
 import { getPrizesByIds } from "@/lib/prizeCache";
@@ -86,20 +87,13 @@ interface BuildPrizeTokensArgs {
 
 function buildPrizeTokens(args: BuildPrizeTokensArgs) {
   const { prize, count, expirationDays, batchId, supportsSignatureVersion, secret, overrideExpiresAt, overrideDisabled, overrideStartTime, overrideEndTime } = args;
-  
-  // Calculate expiry at 03:00 AM (Lima) of the target business day
-  // We shift 8 hours to align with 03:00 AM business day logic
+
   const now = new Date();
-  const businessDate = new Date(now.getTime() - 8 * 3600 * 1000);
-  
-  // Set to 03:00:00 Lima (08:00:00 UTC) of the day AFTER the business day starts
-  // (e.g. Business Day Jan 13 expires Jan 14 03:00 AM)
-  const expiresAt = overrideExpiresAt || new Date(Date.UTC(
-    businessDate.getUTCFullYear(),
-    businessDate.getUTCMonth(),
-    businessDate.getUTCDate() + (expirationDays || 1),
-    8, 0, 0, 0
-  ));
+  const currentBusinessDay = computeBusinessDayFromUtc(now, getConfiguredCutoffHour());
+  const targetBusinessDayDate = new Date(`${currentBusinessDay}T12:00:00Z`);
+  targetBusinessDayDate.setUTCDate(targetBusinessDayDate.getUTCDate() + Math.max((expirationDays || 1) - 1, 0));
+  const targetBusinessDay = targetBusinessDayDate.toISOString().slice(0, 10);
+  const expiresAt = overrideExpiresAt || businessDayWindowUtc(targetBusinessDay).endUtc;
 
   const rows: any[] = [];
   const tokens: GeneratedToken[] = [];
@@ -162,11 +156,9 @@ function deriveFunctionalDate(description: string | null | undefined, createdAt:
     }
   }
   if (y && m && d) return limaMidnightUtc(y, m, d);
-  
-  // Shift 8 hours back to ensure 00:00-03:00 counts as the previous day
-  const shifted = new Date(createdAt.getTime() - 8 * 3600 * 1000);
-  y = shifted.getUTCFullYear(); m = shifted.getUTCMonth() + 1; d = shifted.getUTCDate();
-  return limaMidnightUtc(y, m, d);
+
+  const fallbackBusinessDay = computeBusinessDayFromUtc(createdAt, getConfiguredCutoffHour());
+  return limaCalendarDayWindowUtc(fallbackBusinessDay).startUtc;
 }
 
 /**

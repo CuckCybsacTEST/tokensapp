@@ -98,6 +98,14 @@ export function limaCalendarDayWindowUtc(day: string) {
   };
 }
 
+export function getLimaHour(date: Date) {
+  return Number(date.toLocaleString('en-US', {
+    timeZone: 'America/Lima',
+    hour: 'numeric',
+    hour12: false,
+  }));
+}
+
 // Pequeña auto-prueba opcional si se ejecuta directamente (node src/lib/attendanceDay.ts)
 if (require.main === module) {
   const cutoff = getConfiguredCutoffHour();
