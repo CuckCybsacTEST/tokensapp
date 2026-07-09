@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { businessDayWindowUtc, limaCalendarDayWindowUtc } from '@/lib/attendanceDay';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -41,17 +42,8 @@ export async function GET(req: NextRequest) {
 
 async function getDaySummary(day: string) {
   // ── Time windows ──────────────────────────────────────────────
-  const dayDate = new Date(day + 'T00:00:00');
-  const startUtc = new Date(dayDate.getTime() + 15 * 60 * 60 * 1000); // 10 AM Lima = 15:00 UTC
-  const nextDay = new Date(dayDate.getTime() + 24 * 60 * 60 * 1000);
-  const endUtc   = new Date(nextDay.getTime()  + 15 * 60 * 60 * 1000);
-
-  const [fY, fM, fD] = day.split('-').map(Number);
-  const fStart = new Date(Date.UTC(fY, fM - 1, fD,     5, 0, 0, 0));
-  const fEnd   = new Date(Date.UTC(fY, fM - 1, fD + 1, 4, 59, 59, 999));
-
-  const dayStart = new Date(day + 'T00:00:00');
-  const dayEnd   = new Date(day + 'T23:59:59.999');
+  const { startUtc, endUtc } = businessDayWindowUtc(day);
+  const { startUtc: fStart, endUtc: calendarEndUtc, endUtcInclusive: fEnd } = limaCalendarDayWindowUtc(day);
 
   // ── 1. Attendance ─────────────────────────────────────────────
   const scans = await prisma.scan.findMany({
@@ -145,7 +137,7 @@ async function getDaySummary(day: string) {
 
   // ── 5. Birthdays ──────────────────────────────────────────────
   const bdays = await prisma.birthdayReservation.findMany({
-    where: { date: { gte: dayStart, lte: dayEnd }, status: { not: 'canceled' } },
+    where: { date: { gte: fStart, lt: calendarEndUtc }, status: { not: 'canceled' } },
     select: {
       id: true, celebrantName: true, timeSlot: true, guestsPlanned: true,
       guestArrivals: true, hostArrivedAt: true, status: true,
@@ -168,7 +160,7 @@ async function getDaySummary(day: string) {
 
   // ── 6. Special events ─────────────────────────────────────────
   const events = await prisma.specialEvent.findMany({
-    where: { date: { gte: dayStart, lte: dayEnd }, status: { not: 'cancelled' } },
+    where: { date: { gte: fStart, lt: calendarEndUtc }, status: { not: 'cancelled' } },
     select: {
       id: true, name: true, timeSlot: true,
       invitations: {

@@ -215,6 +215,17 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
         where: { id: resId }, 
         data: ({ hostArrivedAt: hostArrivalTime } as any) 
       });
+
+      await prisma.tokenRedemption.create({
+        data: {
+          tokenId: tokenPre.id,
+          reservationId: resId,
+          redeemedAt: hostArrivalTime,
+          by: session?.userId || null,
+          device: body.device || null,
+          location: body.location ? `host:${body.location}` : 'host',
+        }
+      });
       
       // Auto-complete the reservation when host arrives
       await prisma.birthdayReservation.update({
@@ -242,7 +253,7 @@ export async function POST(req: NextRequest, { params }: { params: { code: strin
       }, 200, cors);
     } else {
       // guest role: redeem the token
-      redeemedResult = await redeemToken(code, { by: (session as any)?.id, device: body.device, location: body.location }, (session as any)?.id);
+      redeemedResult = await redeemToken(code, { by: session?.userId, device: body.device, location: body.location }, session?.userId);
       // Recalculate total guestArrivals
       const allGuestTokens = await prisma.inviteToken.findMany({
         where: { reservationId: resId, kind: 'guest' },

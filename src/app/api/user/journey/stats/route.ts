@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { currentBusinessDay } from '@/lib/attendanceDay';
+import { businessDayWindowUtc, currentBusinessDay } from '@/lib/attendanceDay';
 import { isValidArea } from '@/lib/areas';
 import { ALL_USER_ROLES, getUserSessionCookieFromRequest, verifyUserSessionCookie, type UserRole } from '@/lib/auth';
 
@@ -15,6 +15,7 @@ type OperatorJourneyStats = {
   attendanceScans: number;
   reusableDeliveries: number;
   reusableRedemptions: number;
+  birthdayRedemptions: number;
   reusableSourceBreakdown: Array<{ key: string; label: string; count: number }>;
   customQrRedemptions: number;
   totalActions: number;
@@ -52,16 +53,6 @@ function parseDayParam(input: string | null): string {
   return input;
 }
 
-function dayWindowUtc(day: string) {
-  const startUtc = new Date(`${day}T05:00:00.000Z`);
-  if (Number.isNaN(startUtc.getTime())) {
-    throw new Error('DAY_INVALID');
-  }
-  const [y, m, d] = day.split('-').map(Number);
-  const endUtc = new Date(Date.UTC(y, m - 1, d + 1, 5, 0, 0, 0));
-  return { startUtc, endUtc };
-}
-
 function sumByUserId<T extends { userId: string | null; count: number }>(rows: T[]) {
   const map = new Map<string, number>();
   for (const row of rows) {
@@ -83,7 +74,7 @@ function sumByString<T extends { key: string | null; count: number }>(rows: T[])
 async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date) {
   if (userIds.length === 0) return [] as OperatorJourneyStats[];
 
-  const [users, scanGroups, reusableByTypeGroups, reusableDeliveries, customQrGroups] = await Promise.all([
+  const [users, scanGroups, reusableByTypeGroups, reusableDeliveries, birthdayGroups, customQrGroups] = await Promise.all([
     prisma.user.findMany({
       where: { id: { in: userIds } },
       select: {
@@ -126,6 +117,15 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
         },
       },
     }),
+    prisma.tokenRedemption.groupBy({
+      by: ['by'],
+      where: {
+        by: { in: userIds },
+        reservationId: { not: null },
+        redeemedAt: { gte: startUtc, lt: endUtc },
+      },
+      _count: { _all: true },
+    }),
     prisma.customQr.groupBy({
       by: ['redeemedBy'],
       where: {
@@ -137,6 +137,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
   ]);
 
   const scanCounts = sumByUserId(scanGroups.map((row) => ({ userId: row.byUser, count: row._count._all })));
+  const birthdayCounts = sumByString(birthdayGroups.map((row) => ({ key: row.by, count: row._count._all })));
   const customCounts = sumByString(customQrGroups.map((row) => ({ key: row.redeemedBy, count: row._count._all })));
 
   const reusableCounts = new Map<string, { deliver: number; redeem: number }>();
@@ -160,6 +161,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
     const attendanceScans = scanCounts.get(user.id) || 0;
     const reusableDeliveries = reusableCounts.get(user.id)?.deliver || 0;
     const reusableRedemptions = reusableCounts.get(user.id)?.redeem || 0;
+    const birthdayRedemptions = birthdayCounts.get(user.id) || 0;
     const sourceMap = reusableSourceCounts.get(user.id) || new Map<SourceKey, number>();
     const reusableSourceBreakdown = [
       { key: 'printed-card', label: 'Carta impresa', count: sourceMap.get('printed-card') || 0 },
@@ -168,7 +170,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
       { key: 'bar', label: 'Barra', count: sourceMap.get('bar') || 0 },
     ].filter((item) => item.count > 0);
     const customQrRedemptions = customCounts.get(user.id) || 0;
-    const totalActions = reusableDeliveries + reusableRedemptions + customQrRedemptions;
+    const totalActions = reusableDeliveries + reusableRedemptions + birthdayRedemptions;
     return {
       userId: user.id,
       displayName: user.person?.name || user.username,
@@ -178,6 +180,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
       attendanceScans,
       reusableDeliveries,
       reusableRedemptions,
+      birthdayRedemptions,
       reusableSourceBreakdown,
       customQrRedemptions,
       totalActions,
@@ -213,7 +216,7 @@ export async function GET(req: NextRequest) {
     } catch {
       return NextResponse.json({ ok: false, code: 'INVALID_DAY', message: 'day must be YYYY-MM-DD' }, { status: 400 });
     }
-    const { startUtc, endUtc } = dayWindowUtc(day);
+    const { startUtc, endUtc } = businessDayWindowUtc(day);
 
     const viewerStats = await buildJourneyStats([viewer.id], startUtc, endUtc);
     const viewerRow = viewerStats[0] || {
@@ -225,6 +228,7 @@ export async function GET(req: NextRequest) {
       attendanceScans: 0,
       reusableDeliveries: 0,
       reusableRedemptions: 0,
+      birthdayRedemptions: 0,
       reusableSourceBreakdown: [],
       customQrRedemptions: 0,
       totalActions: 0,
@@ -240,7 +244,7 @@ export async function GET(req: NextRequest) {
 
     if (canSeeRanking) {
       const candidateUsers = await prisma.user.findMany({
-        ...(isAdmin ? {} : { where: { role: { in: ['COLLAB', 'STAFF'] } } }),
+        ...(isAdmin ? {} : { where: { role: { in: ['COLLAB', 'STAFF', 'COORDINATOR'] } } }),
         select: {
           id: true,
           username: true,
@@ -273,7 +277,7 @@ export async function GET(req: NextRequest) {
       : viewerStats;
 
     const reusableOperatorRows = canSeeRanking
-      ? operatorRows.filter((row) => row.reusableDeliveries + row.reusableRedemptions > 0)
+      ? operatorRows.filter((row) => row.reusableDeliveries + row.reusableRedemptions + row.birthdayRedemptions > 0)
       : operatorRows;
 
     const totals = reusableOperatorRows.reduce(
@@ -281,10 +285,11 @@ export async function GET(req: NextRequest) {
         attendanceScans: acc.attendanceScans + row.attendanceScans,
         reusableDeliveries: acc.reusableDeliveries + row.reusableDeliveries,
         reusableRedemptions: acc.reusableRedemptions + row.reusableRedemptions,
+        birthdayRedemptions: (acc as any).birthdayRedemptions + row.birthdayRedemptions,
         customQrRedemptions: acc.customQrRedemptions + row.customQrRedemptions,
         totalActions: acc.totalActions + row.totalActions,
       }),
-      { attendanceScans: 0, reusableDeliveries: 0, reusableRedemptions: 0, customQrRedemptions: 0, totalActions: 0 }
+      { attendanceScans: 0, reusableDeliveries: 0, reusableRedemptions: 0, birthdayRedemptions: 0, customQrRedemptions: 0, totalActions: 0 }
     );
 
     const operators = reusableOperatorRows.sort((a, b) => {

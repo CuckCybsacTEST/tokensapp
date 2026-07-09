@@ -33,6 +33,12 @@
 
 export const LIMA_TZ_OFFSET = 5; // Horas que se suman a UTC para llegar a hora local Lima (UTC-5)
 
+function parseDayLabel(day: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('DAY_INVALID');
+  const [year, month, date] = day.split('-').map(Number);
+  return { year, month, date };
+}
+
 /**
  * Devuelve el día de trabajo (YYYY-MM-DD) para una marca UTC dada (string ISO o Date).
  * @param isoOrDate  Fecha en ISO o instancia Date (UTC implícito)
@@ -70,6 +76,26 @@ export function getConfiguredCutoffHour(): number {
  */
 export function currentBusinessDay(): string {
   return nowBusinessDay(getConfiguredCutoffHour());
+}
+
+export function businessDayWindowUtc(day: string, cutoffHourLocal = getConfiguredCutoffHour()) {
+  const { year, month, date } = parseDayLabel(day);
+  const utcHour = cutoffHourLocal + LIMA_TZ_OFFSET;
+  return {
+    startUtc: new Date(Date.UTC(year, month - 1, date, utcHour, 0, 0, 0)),
+    endUtc: new Date(Date.UTC(year, month - 1, date + 1, utcHour, 0, 0, 0)),
+  };
+}
+
+export function limaCalendarDayWindowUtc(day: string) {
+  const { year, month, date } = parseDayLabel(day);
+  const startUtc = new Date(Date.UTC(year, month - 1, date, LIMA_TZ_OFFSET, 0, 0, 0));
+  const endUtc = new Date(Date.UTC(year, month - 1, date + 1, LIMA_TZ_OFFSET, 0, 0, 0));
+  return {
+    startUtc,
+    endUtc,
+    endUtcInclusive: new Date(endUtc.getTime() - 1),
+  };
 }
 
 // Pequeña auto-prueba opcional si se ejecuta directamente (node src/lib/attendanceDay.ts)

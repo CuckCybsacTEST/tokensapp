@@ -137,6 +137,7 @@ interface JourneyOperatorStats {
   attendanceScans: number;
   reusableDeliveries: number;
   reusableRedemptions: number;
+  birthdayRedemptions: number;
   reusableSourceBreakdown: Array<{ key: string; label: string; count: number }>;
   customQrRedemptions: number;
   totalActions: number;
@@ -153,6 +154,7 @@ interface JourneyHistoryEvent {
 interface JourneyHistoryResponse {
   ok: boolean;
   day: string;
+  category?: 'reusable' | 'birthday';
   operator: {
     userId: string;
     displayName: string;
@@ -182,6 +184,7 @@ interface JourneyStatsResponse {
     attendanceScans: number;
     reusableDeliveries: number;
     reusableRedemptions: number;
+    birthdayRedemptions: number;
     customQrRedemptions: number;
     totalActions: number;
   };
@@ -378,13 +381,13 @@ export default function DailyEvaluationPage() {
     fetchJourneyStats();
   }, [fetchJourneyStats]);
 
-  const openJourneyHistory = useCallback(async (userId: string) => {
+  const openJourneyHistory = useCallback(async (userId: string, category: 'reusable' | 'birthday') => {
     setModalSection('journey-history');
     setJourneyHistory(null);
     setJourneyHistoryError(null);
     setJourneyHistoryLoading(true);
     try {
-      const params = new URLSearchParams({ day: selectedDay, userId });
+      const params = new URLSearchParams({ day: selectedDay, userId, category });
       const res = await fetch(`/api/user/journey/stats/history?${params.toString()}`);
       const data = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
@@ -806,8 +809,8 @@ export default function DailyEvaluationPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Colaboradores que escanearon tokens disponibles</h3>
-              <p className="text-xs text-teal-700 dark:text-teal-300">Se muestran solo entregas/canjes de tokens reutilizables del local en {journeyStats.day}.</p>
+              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Colaboradores con escaneo de tokens del local</h3>
+              <p className="text-xs text-teal-700 dark:text-teal-300">Se muestran solo colaboradores con canjes/entregas de reusables o validaciones de tokens de cumpleanos en {journeyStats.day}.</p>
             </div>
 
             {userRole === 'ADMIN' && (
@@ -847,6 +850,7 @@ export default function DailyEvaluationPage() {
                     <th className="px-3 py-2">Colaborador</th>
                     <th className="px-3 py-2">Area</th>
                     <th className="px-3 py-2 text-center">Reusables</th>
+                    <th className="px-3 py-2 text-center">Cumpleanos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -863,11 +867,21 @@ export default function DailyEvaluationPage() {
                           <td className="px-3 py-2 text-center">
                             <button
                               type="button"
-                              onClick={() => openJourneyHistory(row.userId)}
+                              onClick={() => openJourneyHistory(row.userId, 'reusable')}
                               className="inline-flex min-w-[2.5rem] items-center justify-center rounded-md px-2 py-1 font-semibold text-teal-700 transition-colors hover:bg-teal-100 hover:text-teal-900 dark:text-teal-300 dark:hover:bg-teal-900/30 dark:hover:text-teal-100"
-                              title="Ver historial de escaneos reutilizables"
+                              title="Ver historial de tokens reutilizables"
                             >
                               {row.reusableDeliveries + row.reusableRedemptions}
+                            </button>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => openJourneyHistory(row.userId, 'birthday')}
+                              className="inline-flex min-w-[2.5rem] items-center justify-center rounded-md px-2 py-1 font-semibold text-pink-700 transition-colors hover:bg-pink-100 hover:text-pink-900 dark:text-pink-300 dark:hover:bg-pink-900/30 dark:hover:text-pink-100"
+                              title="Ver historial de tokens de cumpleanos"
+                            >
+                              {row.birthdayRedemptions}
                             </button>
                           </td>
                         </tr>
@@ -875,8 +889,8 @@ export default function DailyEvaluationPage() {
                     })
                   ) : (
                     <tr>
-                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={3}>
-                        Ningun colaborador escaneo tokens reutilizables en este dia con los filtros actuales.
+                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={4}>
+                        Ningun colaborador escaneo tokens reutilizables o de cumpleanos en este dia con los filtros actuales.
                       </td>
                     </tr>
                   )}
@@ -890,7 +904,7 @@ export default function DailyEvaluationPage() {
               <div className="w-full max-w-lg rounded-2xl border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Historial de tokens reutilizables</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{journeyHistory?.category === 'birthday' ? 'Historial de tokens de cumpleanos' : 'Historial de tokens reutilizables'}</h3>
                     {journeyHistory?.operator && (
                       <p className="text-xs text-slate-500 dark:text-slate-400">{journeyHistory.operator.displayName} · {journeyHistory.day}</p>
                     )}
@@ -914,7 +928,7 @@ export default function DailyEvaluationPage() {
                             {event.groupName && <div className="text-[11px] text-slate-500 dark:text-slate-400">{event.groupName}</div>}
                           </div>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
-                            {event.type === 'deliver' ? 'Entrega' : 'Canje'}
+                            {journeyHistory?.category === 'birthday' ? (event.type === 'host' ? 'Cumpleanero' : 'Invitado') : (event.type === 'deliver' ? 'Entrega' : 'Canje')}
                           </span>
                         </div>
                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -924,7 +938,7 @@ export default function DailyEvaluationPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="py-6 text-sm text-slate-500 dark:text-slate-400">No hay eventos de tokens reutilizables para este colaborador en el dia seleccionado.</div>
+                  <div className="py-6 text-sm text-slate-500 dark:text-slate-400">No hay eventos de {journeyHistory?.category === 'birthday' ? 'cumpleanos' : 'tokens reutilizables'} para este colaborador en el dia seleccionado.</div>
                 )}
               </div>
             </div>

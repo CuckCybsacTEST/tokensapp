@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { businessDayWindowUtc, limaCalendarDayWindowUtc } from '@/lib/attendanceDay';
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -62,10 +63,7 @@ export async function GET(req: NextRequest) {
 
     // Delivered roulette prizes for this business day
     // Business day maps to a date range: day 10:00 AM to day+1 10:00 AM (Lima UTC-5)
-    const dayDate = new Date(day + 'T00:00:00');
-    const startUtc = new Date(dayDate.getTime() + 10 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000); // 10:00 Lima = 15:00 UTC
-    const nextDay = new Date(dayDate.getTime() + 24 * 60 * 60 * 1000);
-    const endUtc = new Date(nextDay.getTime() + 10 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000);
+    const { startUtc, endUtc } = businessDayWindowUtc(day);
 
     const deliveredTokens = await prisma.token.findMany({
       where: {
@@ -92,9 +90,7 @@ export async function GET(req: NextRequest) {
 
     // Distinct prizes from today's batches (using functionalDate)
     // functionalDate is stored as 05:00 UTC (Lima midnight)
-    const [fY, fM, fD] = day.split('-').map(Number);
-    const fStart = new Date(Date.UTC(fY, fM - 1, fD, 5, 0, 0, 0));
-    const fEnd = new Date(Date.UTC(fY, fM - 1, fD + 1, 4, 59, 59, 999));
+    const { startUtc: fStart, endUtc: calendarEndUtc, endUtcInclusive: fEnd } = limaCalendarDayWindowUtc(day);
 
     const batchTokens = await prisma.token.findMany({
       where: {
@@ -119,11 +115,9 @@ export async function GET(req: NextRequest) {
     const dayPrizes = Array.from(prizeMap.values()).sort((a, b) => a.label.localeCompare(b.label));
 
     // Birthday reservations for this day
-    const dayStart = new Date(day + 'T00:00:00');
-    const dayEnd = new Date(day + 'T23:59:59.999');
     const birthdayReservations = await prisma.birthdayReservation.findMany({
       where: {
-        date: { gte: dayStart, lte: dayEnd },
+        date: { gte: fStart, lt: calendarEndUtc },
         status: { not: 'canceled' },
       },
       select: {
@@ -159,7 +153,7 @@ export async function GET(req: NextRequest) {
     // Special event invitations for this day
     const specialEvents = await prisma.specialEvent.findMany({
       where: {
-        date: { gte: dayStart, lte: dayEnd },
+        date: { gte: fStart, lt: calendarEndUtc },
         status: { not: 'cancelled' },
       },
       select: {
@@ -218,7 +212,7 @@ export async function GET(req: NextRequest) {
       })),
     };
 
-    // Reusable token groups — count actual usage for THIS business day
+    // Reusable token groups — count actual usage for the configured business day.
     const reusableGroups = await prisma.tokenGroup.findMany({
       where: { locked: false },
       include: {

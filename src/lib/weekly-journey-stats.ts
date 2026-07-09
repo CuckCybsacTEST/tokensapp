@@ -1,3 +1,4 @@
+import { businessDayWindowUtc, limaCalendarDayWindowUtc } from '@/lib/attendanceDay';
 import { prisma } from '@/lib/prisma';
 
 type WeekRange = {
@@ -270,21 +271,14 @@ function buildWeekRanges(anchorDay: string, weekCount = DEFAULT_WEEK_COUNT) {
 }
 
 function businessDayToAttendanceWindow(day: string) {
-  // Attendance window: 10:00 Lima (UTC-5) = 15:00 UTC on the business day,
-  // through 10:00 Lima next calendar day = 15:00 UTC next day (exclusive).
-  // Uses Date.UTC to be timezone-agnostic regardless of server locale.
-  const [year, month, date] = day.split('-').map(Number);
-  return {
-    startUtc: new Date(Date.UTC(year, month - 1, date, 15, 0, 0, 0)),
-    endUtc: new Date(Date.UTC(year, month - 1, date + 1, 15, 0, 0, 0)),
-  };
+  return businessDayWindowUtc(day);
 }
 
 function businessDayToFunctionalWindow(day: string) {
-  const [year, month, date] = day.split('-').map(Number);
+  const { startUtc, endUtcInclusive } = limaCalendarDayWindowUtc(day);
   return {
-    startUtc: new Date(Date.UTC(year, month - 1, date, 5, 0, 0, 0)),
-    endUtc: new Date(Date.UTC(year, month - 1, date + 1, 4, 59, 59, 999)),
+    startUtc,
+    endUtc: endUtcInclusive,
   };
 }
 
