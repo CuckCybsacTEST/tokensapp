@@ -33,6 +33,7 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
   async function cancel() { if(!confirm('¿Cancelar?')) return; setBusy(true); setErr(null); try { const r=await fetch(`/api/admin/birthdays/${id}/cancel`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
   async function complete() { setBusy(true); setErr(null); try { const r=await fetch(`/api/admin/birthdays/${id}/complete`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
   async function genTokens(force=false) { setBusy(true); setErr(null); try { const url=`/api/admin/birthdays/${id}/tokens${force?'?force=1':''}`; const r=await fetch(url,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
+  async function removeReservation() { if(!confirm('Esto eliminará definitivamente la reserva cancelada y sus QR asociados. ¿Continuar?')) return; setBusy(true); setErr(null); try { const r=await fetch(`/api/pedidos/birthdays/${id}`,{method:'DELETE'}); const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j?.message||j?.code||r.status); window.location.href='/u/birthdays'; } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusy(false); } }
   function downloadCards(){ fetch(`/api/admin/birthdays/${id}/download-cards`).then(async r=>{ if(!r.ok) throw new Error('download'); const b=await r.blob(); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`reservation-${id}-invites.zip`; a.click(); URL.revokeObjectURL(url); }).catch(e=>setErr(String(e?.message||e))); }
 
   if (loading && !resv) return <div className="p-4 text-sm text-slate-400">Cargando…</div>;
@@ -127,6 +128,11 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
                 {resv.status === 'approved' && (
                   <button className="btn flex-1 sm:flex-none" disabled={busy} onClick={complete}>
                     Completar
+                  </button>
+                )}
+                {resv.status === 'canceled' && (
+                  <button className="btn flex-1 sm:flex-none border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-950/30 dark:text-rose-300" disabled={busy} onClick={removeReservation}>
+                    Eliminar
                   </button>
                 )}
               </div>

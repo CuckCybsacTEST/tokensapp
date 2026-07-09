@@ -5,6 +5,7 @@ import { audit } from '@/lib/audit';
 import { signBirthdayClaim, verifyBirthdayClaim } from '@/lib/birthdays/token';
 import { randomBytes } from 'crypto';
 import { DateTime } from 'luxon';
+import { deleteFromSupabase, safeDeleteFile } from '@/lib/supabase-server';
 import { Prisma, type BirthdayReservation, type BirthdayPack, type InviteToken, type TokenRedemption, type CourtesyItem, type PhotoDeliverable } from '@prisma/client';
 
 // Ejecutar prueba de zona horaria al cargar el módulo
@@ -517,6 +518,73 @@ export async function completeReservation(id: string, byUserId?: string): Promis
   const r = await prisma.birthdayReservation.update({ where: { id }, data: { status: 'completed' } });
   await audit('birthday.completeReservation', byUserId, { id });
   return r;
+}
+
+export async function purgeReservations(reservationIds: string[], byUserId?: string): Promise<{ purgedReservations: number; filesRemoved: number }> {
+  const ids = reservationIds.filter(Boolean);
+  if (!ids.length) return { purgedReservations: 0, filesRemoved: 0 };
+
+  const tokens = await prisma.inviteToken.findMany({
+    where: { reservationId: { in: ids } },
+    select: { id: true, reservationId: true },
+  });
+  const tokenIds = tokens.map((token) => token.id);
+
+  const cards = tokenIds.length
+    ? await prisma.$queryRawUnsafe<Array<{ storageKey?: string; filePath?: string }>>(
+        `SELECT "storageKey", "filePath" FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_, index) => '$' + (index + 1)).join(',')})`,
+        ...tokenIds
+      ).catch(() => [])
+    : [];
+
+  for (const card of cards) {
+    if (card.storageKey) {
+      await deleteFromSupabase(card.storageKey).catch(() => undefined);
+    }
+  }
+
+  let filesRemoved = 0;
+  for (const reservationId of [...new Set(tokens.map((token) => token.reservationId))]) {
+    const dir = path.resolve(process.cwd(), 'public', 'birthday-cards', reservationId);
+    for (const name of ['host.png', 'guest.png']) {
+      const filePath = path.join(dir, name);
+      try {
+        await safeDeleteFile(filePath);
+        filesRemoved += 1;
+      } catch {
+        // best effort
+      }
+    }
+    try {
+      const rest = await fs.promises.readdir(dir);
+      if (!rest.length) {
+        await fs.promises.rmdir(dir);
+      }
+    } catch {
+      // best effort
+    }
+  }
+
+  if (tokenIds.length) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `DELETE FROM "InviteTokenCard" WHERE "inviteTokenId" IN (${tokenIds.map((_, index) => '$' + (index + 1)).join(',')})`,
+        ...tokenIds
+      );
+    } catch {
+      // best effort
+    }
+    await prisma.tokenRedemption.deleteMany({ where: { tokenId: { in: tokenIds } } }).catch(() => undefined);
+    await prisma.inviteToken.deleteMany({ where: { id: { in: tokenIds } } }).catch(() => undefined);
+  }
+
+  await prisma.courtesyItem.deleteMany({ where: { reservationId: { in: ids } } }).catch(() => undefined);
+  await prisma.photoDeliverable.deleteMany({ where: { reservationId: { in: ids } } }).catch(() => undefined);
+  await prisma.tokenRedemption.deleteMany({ where: { reservationId: { in: ids } } }).catch(() => undefined);
+  await prisma.birthdayReservation.deleteMany({ where: { id: { in: ids } } });
+
+  await audit('birthday.purgeReservations', byUserId, { reservationIds: ids, filesRemoved });
+  return { purgedReservations: ids.length, filesRemoved };
 }
 
 export async function generateInviteTokens(

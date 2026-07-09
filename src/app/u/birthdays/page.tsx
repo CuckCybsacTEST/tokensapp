@@ -99,12 +99,14 @@ type ReservationCardProps = {
 	r: Reservation;
 	busyApprove: boolean;
 	busyGenerate: boolean;
+	busyDelete: boolean;
 	onApprove: (id:string)=>void;
 	onGenerateCards: (id:string)=>void;
 	onViewCards: (id:string)=>void;
+	onDelete: (id:string)=>void;
 };
 
-const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGenerate, onApprove, onGenerateCards, onViewCards }: ReservationCardProps){
+const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGenerate, busyDelete, onApprove, onGenerateCards, onViewCards, onDelete }: ReservationCardProps){
 	const [showCards, setShowCards] = useState(false);
 	const [cardsLoading, setCardsLoading] = useState(false);
 	const [cardsError, setCardsError] = useState<string|null>(null);
@@ -227,6 +229,11 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 						<a className="btn-outline h-8 px-3 text-xs min-w-[80px] touch-manipulation inline-flex items-center justify-center" href={`/u/birthdays/${encodeURIComponent(r.id)}`}>
 							📋 Detalle
 						</a>
+						{r.status === 'canceled' && (
+							<button className="btn-outline h-8 px-3 text-xs min-w-[80px] touch-manipulation border-rose-300 text-rose-700 dark:border-rose-700 dark:text-rose-300" disabled={busyDelete} onClick={()=>onDelete(r.id)}>
+								{busyDelete ? '⏳ Eliminando…' : '🗑️ Eliminar'}
+							</button>
+						)}
 					</div>
 				</div>
 
@@ -416,6 +423,7 @@ export default function StaffBirthdaysPage() {
 	const [page, setPage] = useState(1);
 	const [busyApprove, setBusyApprove] = useState<Record<string, boolean>>({});
 	const [busyGenerate, setBusyGenerate] = useState<Record<string, boolean>>({});
+	const [busyDelete, setBusyDelete] = useState<Record<string, boolean>>({});
 	// form
 	const [cName, setCName] = useState('');
 	const [cPhone, setCPhone] = useState('');
@@ -498,6 +506,20 @@ export default function StaffBirthdaysPage() {
 
 	async function approve(id:string){ setBusyApprove(p=>({...p,[id]:true})); try { const r=await fetch(`/api/admin/birthdays/${id}/approve`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusyApprove(p=>({...p,[id]:false})); } }
 	async function genTokens(id:string){ setBusyGenerate(p=>({...p,[id]:true})); try { const r=await fetch(`/api/admin/birthdays/${id}/tokens`,{method:'POST'}); const j=await r.json(); if(!r.ok) throw new Error(j?.code||j?.message||r.status); load(); } catch(e:any){ setErr(String(e?.message||e)); } finally { setBusyGenerate(p=>({...p,[id]:false})); } }
+	async function deleteReservation(id:string){
+		if(!confirm('Esto eliminará definitivamente la reserva cancelada y sus QR asociados. ¿Continuar?')) return;
+		setBusyDelete(p=>({...p,[id]:true}));
+		try {
+			const r = await fetch(`/api/pedidos/birthdays/${id}`, { method:'DELETE' });
+			const j = await r.json().catch(()=>({}));
+			if(!r.ok) throw new Error(j?.message || j?.code || r.status);
+			await load();
+		} catch(e:any){
+			setErr(String(e?.message||e));
+		} finally {
+			setBusyDelete(p=>({...p,[id]:false}));
+		}
+	}
 	function viewCards(id:string){
 		// Solicitar clientSecret y abrir la URL con cs
 		(async () => {
@@ -723,9 +745,11 @@ export default function StaffBirthdaysPage() {
 												r={r}
 												busyApprove={!!busyApprove[r.id]}
 												busyGenerate={!!busyGenerate[r.id]}
+												busyDelete={!!busyDelete[r.id]}
 												onApprove={approve}
 												onGenerateCards={genTokens}
 												onViewCards={viewCards}
+												onDelete={deleteReservation}
 											/>
 										))}
 									</div>
