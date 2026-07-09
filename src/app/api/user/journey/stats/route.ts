@@ -168,7 +168,7 @@ async function buildJourneyStats(userIds: string[], startUtc: Date, endUtc: Date
       { key: 'bar', label: 'Barra', count: sourceMap.get('bar') || 0 },
     ].filter((item) => item.count > 0);
     const customQrRedemptions = customCounts.get(user.id) || 0;
-    const totalActions = attendanceScans + reusableDeliveries + reusableRedemptions + customQrRedemptions;
+    const totalActions = reusableDeliveries + reusableRedemptions + customQrRedemptions;
     return {
       userId: user.id,
       displayName: user.person?.name || user.username,
@@ -272,7 +272,11 @@ export async function GET(req: NextRequest) {
       ? await buildJourneyStats(targetUsers, startUtc, endUtc)
       : viewerStats;
 
-    const totals = operatorRows.reduce(
+    const reusableOperatorRows = canSeeRanking
+      ? operatorRows.filter((row) => row.reusableDeliveries + row.reusableRedemptions > 0)
+      : operatorRows;
+
+    const totals = reusableOperatorRows.reduce(
       (acc, row) => ({
         attendanceScans: acc.attendanceScans + row.attendanceScans,
         reusableDeliveries: acc.reusableDeliveries + row.reusableDeliveries,
@@ -283,7 +287,7 @@ export async function GET(req: NextRequest) {
       { attendanceScans: 0, reusableDeliveries: 0, reusableRedemptions: 0, customQrRedemptions: 0, totalActions: 0 }
     );
 
-    const operators = operatorRows.sort((a, b) => {
+    const operators = reusableOperatorRows.sort((a, b) => {
       if (b.totalActions !== a.totalActions) return b.totalActions - a.totalActions;
       return a.displayName.localeCompare(b.displayName);
     });

@@ -142,6 +142,27 @@ interface JourneyOperatorStats {
   totalActions: number;
 }
 
+interface JourneyHistoryEvent {
+  id: string;
+  type: string;
+  label: string;
+  groupName: string | null;
+  createdAt: string;
+}
+
+interface JourneyHistoryResponse {
+  ok: boolean;
+  day: string;
+  operator: {
+    userId: string;
+    displayName: string;
+    username: string;
+    role: string;
+    area: string | null;
+  };
+  events: JourneyHistoryEvent[];
+}
+
 interface JourneyStatsResponse {
   ok: boolean;
   day: string;
@@ -237,6 +258,9 @@ export default function DailyEvaluationPage() {
   const [journeyLoading, setJourneyLoading] = useState(false);
   const [journeyRoleFilter, setJourneyRoleFilter] = useState<string>('ALL');
   const [journeyAreaFilter, setJourneyAreaFilter] = useState<string>('ALL');
+  const [journeyHistory, setJourneyHistory] = useState<JourneyHistoryResponse | null>(null);
+  const [journeyHistoryLoading, setJourneyHistoryLoading] = useState(false);
+  const [journeyHistoryError, setJourneyHistoryError] = useState<string | null>(null);
 
   // Fetch user role once
   useEffect(() => {
@@ -353,6 +377,27 @@ export default function DailyEvaluationPage() {
   useEffect(() => {
     fetchJourneyStats();
   }, [fetchJourneyStats]);
+
+  const openJourneyHistory = useCallback(async (userId: string) => {
+    setModalSection('journey-history');
+    setJourneyHistory(null);
+    setJourneyHistoryError(null);
+    setJourneyHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({ day: selectedDay, userId });
+      const res = await fetch(`/api/user/journey/stats/history?${params.toString()}`);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        setJourneyHistory(data as JourneyHistoryResponse);
+      } else {
+        setJourneyHistoryError(data?.message || data?.code || 'No se pudo cargar el historial.');
+      }
+    } catch (error) {
+      setJourneyHistoryError('No se pudo cargar el historial.');
+    } finally {
+      setJourneyHistoryLoading(false);
+    }
+  }, [selectedDay]);
 
   // Initialize person ratings from attendance when summary loads
   useEffect(() => {
@@ -696,13 +741,13 @@ export default function DailyEvaluationPage() {
       <div className="relative flex items-center gap-3 pt-2">
         <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
         <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
-          ESCANEOS
+          TOKENS DISPONIBLES
         </span>
         <div className="flex-1 h-px bg-teal-200 dark:bg-teal-700" />
       </div>
 
       {journeyLoading ? (
-        <div className="py-3 text-sm text-teal-700 dark:text-teal-300">Cargando escaneos...</div>
+        <div className="py-3 text-sm text-teal-700 dark:text-teal-300">Cargando colaboradores con actividad reusable...</div>
       ) : journeyStats.scope === 'self' ? (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -761,8 +806,8 @@ export default function DailyEvaluationPage() {
         <div className="space-y-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Ranking de canjes</h3>
-              <p className="text-xs text-teal-700 dark:text-teal-300">{journeyStats.day} ? {journeyStats.viewer.displayName}</p>
+              <h3 className="text-sm font-semibold text-teal-900 dark:text-teal-200">Colaboradores que escanearon tokens disponibles</h3>
+              <p className="text-xs text-teal-700 dark:text-teal-300">Se muestran solo entregas/canjes de tokens reutilizables del local en {journeyStats.day}.</p>
             </div>
 
             {userRole === 'ADMIN' && (
@@ -801,10 +846,7 @@ export default function DailyEvaluationPage() {
                   <tr className="text-left text-[10px] uppercase tracking-wider text-teal-700 dark:text-teal-300">
                     <th className="px-3 py-2">Colaborador</th>
                     <th className="px-3 py-2">Area</th>
-                    <th className="px-3 py-2 text-center">Scans</th>
                     <th className="px-3 py-2 text-center">Reusables</th>
-                    <th className="px-3 py-2 text-center">Custom</th>
-                    <th className="px-3 py-2 text-center">Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -818,17 +860,23 @@ export default function DailyEvaluationPage() {
                             <div className="text-[11px] text-slate-500 dark:text-slate-400">{row.role}</div>
                           </td>
                           <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{row.area || "-"}</td>
-                          <td className="px-3 py-2 text-center">{row.attendanceScans}</td>
-                          <td className="px-3 py-2 text-center">{row.reusableDeliveries + row.reusableRedemptions}</td>
-                          <td className="px-3 py-2 text-center">{row.customQrRedemptions}</td>
-                          <td className="px-3 py-2 text-center font-semibold text-slate-900 dark:text-slate-100">{row.totalActions}</td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => openJourneyHistory(row.userId)}
+                              className="inline-flex min-w-[2.5rem] items-center justify-center rounded-md px-2 py-1 font-semibold text-teal-700 transition-colors hover:bg-teal-100 hover:text-teal-900 dark:text-teal-300 dark:hover:bg-teal-900/30 dark:hover:text-teal-100"
+                              title="Ver historial de escaneos reutilizables"
+                            >
+                              {row.reusableDeliveries + row.reusableRedemptions}
+                            </button>
+                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={6}>
-                        No hay actividad para este dia con los filtros actuales.
+                      <td className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400" colSpan={3}>
+                        Ningun colaborador escaneo tokens reutilizables en este dia con los filtros actuales.
                       </td>
                     </tr>
                   )}
@@ -836,6 +884,51 @@ export default function DailyEvaluationPage() {
               </table>
             </div>
           </div>
+
+          {modalSection === 'journey-history' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
+              <div className="w-full max-w-lg rounded-2xl border border-teal-200 dark:border-teal-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Historial de tokens reutilizables</h3>
+                    {journeyHistory?.operator && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{journeyHistory.operator.displayName} · {journeyHistory.day}</p>
+                    )}
+                  </div>
+                  <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <span className="text-lg text-slate-400">&times;</span>
+                  </button>
+                </div>
+
+                {journeyHistoryLoading ? (
+                  <div className="py-6 text-sm text-slate-500 dark:text-slate-400">Cargando historial...</div>
+                ) : journeyHistoryError ? (
+                  <div className="py-6 text-sm text-rose-600 dark:text-rose-400">{journeyHistoryError}</div>
+                ) : journeyHistory && journeyHistory.events.length > 0 ? (
+                  <div className="max-h-80 overflow-auto space-y-2">
+                    {journeyHistory.events.map((event) => (
+                      <div key={event.id} className="rounded-lg bg-teal-50 dark:bg-teal-900/10 px-3 py-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{event.label}</div>
+                            {event.groupName && <div className="text-[11px] text-slate-500 dark:text-slate-400">{event.groupName}</div>}
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                            {event.type === 'deliver' ? 'Entrega' : 'Canje'}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {new Date(event.createdAt).toLocaleString('es-PE', { timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-6 text-sm text-slate-500 dark:text-slate-400">No hay eventos de tokens reutilizables para este colaborador en el dia seleccionado.</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
