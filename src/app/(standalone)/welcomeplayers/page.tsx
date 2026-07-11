@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+﻿import { Metadata } from "next";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG } from "@/lib/welcomeplayers/config";
 import WelcomePlayersClient from "./WelcomePlayersClient";
 
@@ -22,3 +22,4 @@ export default function WelcomePlayersPage() {
     </main>
   );
 }
+

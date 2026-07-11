@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
@@ -290,7 +290,7 @@ export default function WelcomePlayersClient() {
 
   useEffect(() => {
     const computeBreakpoint = (width: number, height: number) => {
-      if (height >= 1200 && width >= 700 && height > width) return "kiosk-portrait";
+      if (height >= 1200 && width <= 700 && height > width) return "kiosk-portrait";
       if (width >= 1280) return "xl";
       if (width >= 1024) return "lg";
       if (width >= 768) return "md";
@@ -634,3 +634,5 @@ function StatCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
+
