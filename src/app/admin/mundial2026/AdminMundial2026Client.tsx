@@ -175,7 +175,10 @@ export default function AdminMundial2026Client() {
   const [existingAssignments, setExistingAssignments] = useState<Record<string, ExistingAssignmentDraft>>({});
 
   async function loadMatches() {
-    const response = await fetch("/api/admin/mundial2026/matches", { credentials: "include" });
+    const response = await fetch(`/api/admin/mundial2026/matches?t=${Date.now()}`, {
+      credentials: "include",
+      cache: "no-store",
+    });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || "No se pudieron cargar los partidos.");
     const nextMatches = payload.matches || [];
@@ -216,10 +219,17 @@ export default function AdminMundial2026Client() {
   }
 
   async function loadPrizes() {
-    const response = await fetch("/api/admin/mundial2026/prizes", { credentials: "include" });
+    const response = await fetch(`/api/admin/mundial2026/prizes?t=${Date.now()}`, {
+      credentials: "include",
+      cache: "no-store",
+    });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || "No se pudieron cargar los premios.");
     setPrizes(payload.prizes || []);
+  }
+
+  async function refreshAdminData() {
+    await Promise.all([loadMatches(), loadPrizes()]);
   }
 
   async function loadAll() {
@@ -385,11 +395,10 @@ export default function AdminMundial2026Client() {
         ...current,
         [matchId]: createDefaultAssignmentDraft(),
       }));
-      await loadMatches();
-      await loadPrizes();
     } catch (assignError) {
       setError(assignError instanceof Error ? assignError.message : "No se pudo asignar el premio al partido.");
     } finally {
+      await refreshAdminData().catch(() => {});
       setSubmittingFor(null);
     }
   }
@@ -415,10 +424,10 @@ export default function AdminMundial2026Client() {
       const body = await response.json();
       if (!response.ok) throw new Error(body?.message || "No se pudo actualizar la asignación.");
       setMessage("Asignación actualizada.");
-      await loadMatches();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "No se pudo actualizar la asignación.");
     } finally {
+      await refreshAdminData().catch(() => {});
       setSubmittingFor(null);
     }
   }
@@ -438,11 +447,10 @@ export default function AdminMundial2026Client() {
       const body = await response.json();
       if (!response.ok) throw new Error(body?.message || "No se pudo quitar el premio del partido.");
       setMessage("Premio retirado del partido.");
-      await loadMatches();
-      await loadPrizes();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "No se pudo quitar el premio del partido.");
     } finally {
+      await refreshAdminData().catch(() => {});
       setSubmittingFor(null);
     }
   }
