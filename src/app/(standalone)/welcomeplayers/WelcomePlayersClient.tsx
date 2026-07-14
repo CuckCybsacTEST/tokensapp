@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
+import {
+  getWelcomePlayersLayoutProfile,
+  normalizeWelcomePlayersDisplayMode,
+  resolveWelcomePlayersDisplayMode,
+  type WelcomePlayersDisplayMode,
+} from "@/lib/welcomeplayers/layout";
 import type { WelcomePlayerPrize, WelcomePlayersRouletteConfig } from "@/lib/welcomeplayers/types";
 
 type SpinResponse = {
@@ -21,6 +27,8 @@ type StatsResponse = {
   prizeCounts: Array<{ prizeId: string; label: string; color: string; count: number }>;
   recentSpins: Array<{ spinId: string; prizeId: string; label: string; color: string; createdAt: string }>;
 };
+
+type WelcomePlayersResolvedDisplayMode = Exclude<WelcomePlayersDisplayMode, "auto">;
 
 const SPIN_DURATION_MS = 5600;
 const VIEWBOX = 1000;
@@ -278,7 +286,7 @@ export default function WelcomePlayersClient() {
     dpr: 1,
     viewportMeta: "",
     breakpoint: "unknown",
-    kioskPortrait: false,
+    displayMode: "standard" as WelcomePlayersResolvedDisplayMode,
   });
   const wheelRef = useRef<HTMLButtonElement | null>(null);
 
@@ -289,30 +297,39 @@ export default function WelcomePlayersClient() {
   }, []);
 
   useEffect(() => {
-    const computeBreakpoint = (width: number, height: number) => {
-      if (height >= 1200 && width <= 700 && height > width) return "kiosk-portrait";
-      if (width >= 1280) return "xl";
-      if (width >= 1024) return "lg";
-      if (width >= 768) return "md";
-      if (width >= 640) return "sm";
-      if (width >= 480) return "xs-wide";
-      if (width >= 430) return "mobile-430";
-      if (width >= 390) return "mobile-390";
-      return "mobile-compact";
-    };
+    const params = new URLSearchParams(window.location.search);
+    const forcedDisplayMode = normalizeWelcomePlayersDisplayMode(params.get("display") || params.get("layout"));
 
     const updateViewport = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       const viewportMeta = document.querySelector('meta[name="viewport"]')?.getAttribute("content") || "";
-      const breakpoint = computeBreakpoint(width, height);
+      const displayMode = resolveWelcomePlayersDisplayMode(width, height, forcedDisplayMode);
+      const breakpoint =
+        displayMode === "kiosk"
+          ? "kiosk-portrait"
+          : width >= 1280
+            ? "xl"
+            : width >= 1024
+              ? "lg"
+              : width >= 768
+                ? "md"
+                : width >= 640
+                  ? "sm"
+                  : width >= 480
+                    ? "xs-wide"
+                    : width >= 430
+                      ? "mobile-430"
+                      : width >= 390
+                        ? "mobile-390"
+                        : "mobile-compact";
       setViewport({
         width,
         height,
         dpr: window.devicePixelRatio || 1,
         viewportMeta,
         breakpoint,
-        kioskPortrait: breakpoint === "kiosk-portrait",
+        displayMode,
       });
     };
 
@@ -411,15 +428,11 @@ export default function WelcomePlayersClient() {
 
   const activePrizeCount = activePrizes.length;
   const canSpin = activePrizeCount >= 3;
-  const isKioskPortrait = viewport.kioskPortrait;
-  const isCompactHeight = !isKioskPortrait && viewport.height > 0 && viewport.height < 1100;
+  const layout = getWelcomePlayersLayoutProfile(viewport.displayMode);
 
   return (
     <div
-      className={[
-        "relative w-full bg-[#060816] text-white",
-        isKioskPortrait ? "h-[100dvh] overflow-hidden rounded-none px-8 py-8" : "min-h-[100dvh] overflow-x-hidden overflow-y-visible rounded-[2rem] px-4 py-4",
-      ].join(" ")}
+      className={layout.shellClassName}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_42%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.12),_transparent_25%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_16%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(180deg,black,transparent_85%)]" />
@@ -431,57 +444,35 @@ export default function WelcomePlayersClient() {
           <div>window.devicePixelRatio: {viewport.dpr}</div>
           <div>viewport CSS actual: {viewport.viewportMeta || "(default)"}</div>
           <div>breakpoint activo: {viewport.breakpoint}</div>
+          <div>modo pantalla: {viewport.displayMode}</div>
         </div>
       ) : null}
 
       <div className={[
-        "relative mx-auto flex flex-col",
-        isKioskPortrait
-          ? "h-full w-full max-w-none gap-6"
-          : isCompactHeight
-            ? "min-h-[calc(100dvh-2rem)] max-w-[34rem] gap-3 pb-6"
-            : "min-h-[calc(100dvh-2rem)] max-w-[34rem] gap-4 pb-6",
+        layout.stageClassName,
       ].join(" ")}>
-        <header className={[
-          "flex flex-col items-center text-center",
-          isKioskPortrait ? "gap-6 pt-2" : isCompactHeight ? "gap-2 pt-0.5" : "gap-4 pt-1",
-        ].join(" ")}>
-          <img src="/loungewhite.png" alt="Ktdral Lounge" className={isKioskPortrait ? "h-20 w-auto object-contain opacity-95" : isCompactHeight ? "h-9 w-auto object-contain opacity-95" : "h-12 w-auto object-contain opacity-95 sm:h-14"} />
+        <header className={layout.headerClassName}>
+          <img src="/loungewhite.png" alt="Ktdral Lounge" className={layout.logoClassName} />
 
-          <div className={isKioskPortrait ? "max-w-[56rem]" : "max-w-[30rem]"}>
-            <h1 className={[
-              "font-black leading-[0.9] tracking-[-0.05em] text-white",
-              isKioskPortrait ? "text-[clamp(5rem,7vw,7.4rem)]" : isCompactHeight ? "text-[clamp(2.7rem,5vw,4rem)]" : "text-[clamp(3.4rem,8vw,5.6rem)]",
-            ].join(" ")}>
+          <div className={layout.introClassName}>
+            <h1 className={layout.titleClassName}>
               Toca <span className="bg-gradient-to-r from-fuchsia-500 via-rose-500 to-amber-300 bg-clip-text text-transparent">y gana</span>
             </h1>
-            <p className={[
-              "mt-4 leading-relaxed text-white/88",
-              isKioskPortrait ? "text-[clamp(1.45rem,2vw,2rem)]" : isCompactHeight ? "text-[clamp(0.95rem,1.5vw,1.1rem)]" : "text-[clamp(1rem,2.7vw,1.4rem)]",
-            ].join(" ")}>
+            <p className={layout.subtitleClassName}>
               Pulsa la pantalla y deja que la ruleta elija tu premio.
             </p>
           </div>
         </header>
 
-        <div className={[
-          "relative mx-auto flex w-full items-center justify-center",
-          isKioskPortrait ? "max-w-none flex-1 py-3" : isCompactHeight ? "max-w-[34rem] py-1" : "max-w-[34rem] py-2",
-        ].join(" ")}>
+        <div className={layout.wheelStageClassName}>
           <div className="absolute left-1/2 top-0 z-[3] -translate-x-1/2 -translate-y-[8%]" aria-hidden="true">
-            <div className={[
-              "h-0 w-0 border-l-transparent border-r-transparent border-t-amber-300 drop-shadow-[0_6px_16px_rgba(0,0,0,0.28)]",
-              isKioskPortrait ? "border-l-[28px] border-r-[28px] border-t-[46px]" : "border-l-[18px] border-r-[18px] border-t-[30px]",
-            ].join(" ")} />
+            <div className={layout.arrowClassName} />
           </div>
 
           <button
             ref={wheelRef}
             type="button"
-            className={[
-              "relative flex aspect-square touch-manipulation items-center justify-center overflow-visible rounded-full border border-white/10 bg-[#0A0D16] outline-none select-none ring-1 ring-white/5",
-              isKioskPortrait ? "w-[min(82vw,68dvh,58rem)]" : isCompactHeight ? "w-[min(72vw,46dvh,28rem)]" : "w-[min(88vw,34rem)]",
-            ].join(" ")}
+            className={layout.wheelClassName}
             onClick={spin}
             onTouchStart={() => {
               if (!spinning && !loadingSpin) setReadyHint("Listo para girar");
@@ -550,17 +541,14 @@ export default function WelcomePlayersClient() {
           type="button"
           onClick={spin}
           disabled={spinning || loadingSpin || !canSpin}
-          className={[
-            "w-full rounded-[1.65rem] border border-white/10 bg-gradient-to-r from-fuchsia-600 via-pink-500 to-amber-400 text-center font-black uppercase tracking-[0.24em] text-white shadow-[0_16px_32px_rgba(236,72,153,0.18)] transition-transform active:scale-[0.99] disabled:opacity-70",
-            isKioskPortrait ? "px-6 py-6 text-[1.35rem]" : isCompactHeight ? "px-5 py-4 text-[0.95rem]" : "px-5 py-5 text-[1.05rem]",
-          ].join(" ")}
+          className={layout.actionButtonClassName}
         >
           {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
         </button>
 
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="GIROS" value={stats?.totalSpins ?? 0} />
-          <StatCard label="PREMIOS" value={stats?.activePrizes ?? activePrizeCount} />
+          <StatCard label="GIROS" value={stats?.totalSpins ?? 0} className={layout.statsCardClassName} />
+          <StatCard label="PREMIOS" value={stats?.activePrizes ?? activePrizeCount} className={layout.statsCardClassName} />
         </div>
 
         {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div>}
@@ -571,10 +559,7 @@ export default function WelcomePlayersClient() {
           </section>
         )}
 
-        <footer className={[
-          "text-center text-white/45",
-          isKioskPortrait ? "pb-2 pt-2 text-[1.1rem]" : isCompactHeight ? "pb-1 pt-0 text-[0.8rem]" : "pb-1 pt-1 text-[0.9rem]",
-        ].join(" ")}>
+        <footer className={layout.footerClassName}>
           <span className="inline-flex items-center gap-4">
             <span className="h-px w-12 bg-white/15" />
             <span>Un giro por grupo de cinco</span>
@@ -591,30 +576,18 @@ export default function WelcomePlayersClient() {
             aria-label="Cerrar modal"
             onClick={() => setShowModal(false)}
           />
-          <div className={[
-            "relative z-[1] w-full rounded-[2rem] border border-white/10 bg-[#070A12] text-center shadow-[0_28px_80px_rgba(0,0,0,0.45)]",
-            isKioskPortrait ? "max-w-2xl p-10" : "max-w-md p-6",
-          ].join(" ")}>
+          <div className={layout.modalClassName}>
             <div className="mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-fuchsia-500 via-rose-400 to-amber-300" />
             <p className="mt-5 text-[0.72rem] font-semibold uppercase tracking-[0.38em] text-amber-300">¡GANASTE!</p>
-            <h3 className={[
-              "mt-3 font-black leading-none tracking-[-0.05em] text-white",
-              isKioskPortrait ? "text-[clamp(3.5rem,5vw,5rem)]" : "text-[clamp(2.2rem,6.4vw,3.5rem)]",
-            ].join(" ")}>
+            <h3 className={layout.modalTitleClassName}>
               {result.prize.label}
             </h3>
-            <p className={[
-              "mx-auto mt-4 leading-relaxed text-white/78",
-              isKioskPortrait ? "max-w-xl text-[1.35rem]" : "max-w-sm text-[1rem]",
-            ].join(" ")}>
+            <p className={layout.modalCopyClassName}>
               Disfruta tu recompensa y vacílate en #KtdralLounge.
             </p>
             <button
               type="button"
-              className={[
-                "mt-6 w-full rounded-[1.15rem] border border-amber-300/30 bg-gradient-to-r from-fuchsia-600 via-rose-500 to-amber-400 font-black uppercase tracking-[0.24em] text-white shadow-[0_14px_28px_rgba(244,114,182,0.18)] transition-transform active:scale-[0.99]",
-                isKioskPortrait ? "px-6 py-5 text-[1.1rem]" : "px-5 py-4 text-[0.92rem]",
-              ].join(" ")}
+              className={layout.modalButtonClassName}
               onClick={() => setShowModal(false)}
             >
               CERRAR
@@ -626,9 +599,9 @@ export default function WelcomePlayersClient() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, className }: { label: string; value: number; className?: string }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-white/4 px-4 py-5 text-center backdrop-blur-sm">
+    <div className={className || "rounded-[1.5rem] border border-white/10 bg-white/4 px-4 py-5 text-center backdrop-blur-sm"}>
       <div className="text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-white/45">{label}</div>
       <div className="mt-2 text-[clamp(2.6rem,5vw,3.4rem)] font-black leading-none text-white">{value}</div>
     </div>
