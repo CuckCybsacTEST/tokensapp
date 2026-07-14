@@ -11,9 +11,9 @@ export const revalidate = 0;
 
 const createMatchPrizeSchema = z.object({
   prizeId: z.string().trim().min(1),
-  assignmentMode: z.enum(["DIRECT_FIRST_N", "RAFFLE"]),
+  assignmentMode: z.enum(["DIRECT_FIRST_N", "RAFFLE", "RAFFLE_POOL", "FALLBACK"]),
   maxWinners: z.coerce.number().int().min(1).nullable().optional(),
-  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
+  sortOrder: z.coerce.number().int().min(0).default(0),
   active: z.coerce.boolean().default(true),
 });
 
@@ -24,6 +24,8 @@ export async function POST(req: Request, { params }: { params: { matchId: string
     if (!parsed.success) {
       return apiError("INVALID_BODY", "Datos inválidos para asignar el premio.", parsed.error.flatten(), 400);
     }
+
+    const normalizedAssignmentMode = parsed.data.assignmentMode === "DIRECT_FIRST_N" ? "DIRECT_FIRST_N" : "RAFFLE_POOL";
 
     const [match, prize] = await Promise.all([
       prisma.mundial2026Match.findUnique({ where: { id: params.matchId }, select: { id: true, campaignId: true, status: true } }),
@@ -50,7 +52,7 @@ export async function POST(req: Request, { params }: { params: { matchId: string
           },
         },
         update: {
-          assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
+          assignmentMode: normalizedAssignmentMode as Mundial2026PrizeAssignmentMode,
           maxWinners: parsed.data.maxWinners ?? null,
           sortOrder: parsed.data.sortOrder,
           active: parsed.data.active,
@@ -58,7 +60,7 @@ export async function POST(req: Request, { params }: { params: { matchId: string
         create: {
           matchId: params.matchId,
           prizeId: parsed.data.prizeId,
-          assignmentMode: parsed.data.assignmentMode as Mundial2026PrizeAssignmentMode,
+          assignmentMode: normalizedAssignmentMode as Mundial2026PrizeAssignmentMode,
           maxWinners: parsed.data.maxWinners ?? null,
           sortOrder: parsed.data.sortOrder,
           active: parsed.data.active,

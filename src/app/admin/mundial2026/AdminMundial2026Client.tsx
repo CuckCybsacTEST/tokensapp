@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type AssignmentMode = "DIRECT_FIRST_N" | "RAFFLE";
+type AssignmentMode = "DIRECT_FIRST_N" | "RAFFLE_POOL";
 
 type PrizeCatalogItem = {
   id: string;
@@ -112,8 +112,12 @@ function getResultOptions(match: MatchItem) {
 
 const ASSIGNMENT_MODE_OPTIONS = [
   { value: "DIRECT_FIRST_N", label: "Primeros N ganadores" },
-  { value: "RAFFLE", label: "Sorteo / selección posterior" },
+  { value: "RAFFLE_POOL", label: "Sorteo / selección posterior" },
 ] as const;
+
+function normalizeAssignmentMode(value: string): AssignmentMode {
+  return value === "DIRECT_FIRST_N" ? "DIRECT_FIRST_N" : "RAFFLE_POOL";
+}
 
 const emptyPrizeForm: PrizeFormState = {
   id: null,
@@ -207,7 +211,7 @@ export default function AdminMundial2026Client() {
       nextMatches.forEach((match: MatchItem) => {
         match.prizes.forEach((prize) => {
           next[prize.id] = {
-            assignmentMode: prize.assignmentMode as AssignmentMode,
+            assignmentMode: normalizeAssignmentMode(prize.assignmentMode),
             maxWinners: prize.maxWinners ? String(prize.maxWinners) : "",
             sortOrder: String(prize.sortOrder ?? 0),
             active: prize.active,
@@ -769,7 +773,7 @@ export default function AdminMundial2026Client() {
                                       ...current,
                                       [prize.id]: {
                                         ...(current[prize.id] || { assignmentMode: "DIRECT_FIRST_N", maxWinners: "", sortOrder: "0", active: true }),
-                                        assignmentMode: event.target.value as AssignmentMode,
+                                        assignmentMode: normalizeAssignmentMode(event.target.value),
                                       },
                                     }))
                                   }
