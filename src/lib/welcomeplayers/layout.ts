@@ -95,7 +95,6 @@ export function resolveWelcomePlayersDisplayMode(
   forcedMode: WelcomePlayersDisplayMode,
 ): Exclude<WelcomePlayersDisplayMode, "auto"> {
   if (forcedMode !== "auto") return forcedMode;
-  if (height > width && height >= 1200 && width >= 720) return "kiosk";
   if (height > 0 && height < 1100) return "compact";
   return "standard";
 }
