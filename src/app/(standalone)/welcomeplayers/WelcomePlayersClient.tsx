@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
 import {
   getWelcomePlayersLayoutProfile,
@@ -178,6 +178,22 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function getWheelSize(viewport: { width: number; height: number; displayMode: WelcomePlayersResolvedDisplayMode }) {
+  const { width, height, displayMode } = viewport;
+  if (!width || !height) return 480;
+
+  const sizing =
+    displayMode === "kiosk"
+      ? { widthFactor: 0.76, heightFactor: 0.36, min: 400, max: 660 }
+      : displayMode === "compact"
+        ? { widthFactor: 0.74, heightFactor: 0.38, min: 280, max: 400 }
+        : { widthFactor: 0.84, heightFactor: 0.44, min: 320, max: 520 };
+
+  const availableByWidth = Math.floor(width * sizing.widthFactor);
+  const availableByHeight = Math.floor(height * sizing.heightFactor);
+  return clamp(Math.min(availableByWidth, availableByHeight), sizing.min, sizing.max);
+}
+
 function fitSegmentLabel(lines: string[], slice: number) {
   const anglePadding = Math.max(12, (RADIUS - INNER_RADIUS) * 0.08);
   const sliceRadians = (slice * Math.PI) / 180;
@@ -296,7 +312,7 @@ export default function WelcomePlayersClient() {
     setDebugEnabled(params.get("debug") === "1");
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const forcedDisplayMode = normalizeWelcomePlayersDisplayMode(params.get("display") || params.get("layout"));
 
@@ -429,11 +445,11 @@ export default function WelcomePlayersClient() {
   const activePrizeCount = activePrizes.length;
   const canSpin = activePrizeCount >= 3;
   const layout = getWelcomePlayersLayoutProfile(viewport.displayMode);
+  const wheelSize = getWheelSize(viewport);
+  const wheelStyle = { ["--wp-wheel-size"]: `${wheelSize}px` } as CSSProperties;
 
   return (
-    <div
-      className={layout.shellClassName}
-    >
+    <div className={layout.shellClassName} style={wheelStyle}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_42%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.12),_transparent_25%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_16%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(180deg,black,transparent_85%)]" />
 
