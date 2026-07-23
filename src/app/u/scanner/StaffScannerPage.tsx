@@ -18,7 +18,7 @@ type Result = { getText(): string };
 type ScanHistoryEntry = {
   id: string;
   ts: number;
-  type: "offer" | "birthday" | "invitation" | "reusable" | "mundial2026" | "error";
+  type: "offer" | "birthday" | "invitation" | "reusable" | "mundial2026" | "fanzone" | "error";
   label: string;
   detail?: string;
   variant: "success" | "error" | "info";
@@ -114,6 +114,27 @@ function isMundial2026Qr(text: string): boolean {
   }
 
   return false;
+}
+
+function extractMundial2026FanZoneCode(text: string): string | null {
+  const value = text.trim();
+  if (!value) return null;
+
+  const extractFromPath = (pathname: string) => {
+    const match = pathname.match(/^(?:\/(?:mundial2026\/)?)?fanzone\/([^/?#]+)$/i);
+    return match?.[1] ? decodeURIComponent(match[1]).trim() : null;
+  };
+
+  try {
+    const url = new URL(value);
+    const code = extractFromPath(url.pathname);
+    if (code) return code;
+  } catch {
+    // Not a URL.
+  }
+
+  const directPath = value.match(/^(?:\/(?:mundial2026\/)?)?fanzone\/([^/?#]+)$/i);
+  return directPath?.[1] ? decodeURIComponent(directPath[1]).trim() : null;
 }
 
 function beep(freq = 880, duration = 120, type: OscillatorType = "sine", volume = 0.08) {
@@ -377,6 +398,18 @@ export default function StaffScannerPage() {
     }
 
     // 3.9) Detect MUNDIAL 2026 QR: redirect to Mundial 2026 redeem flow
+    const fanZoneCode = extractMundial2026FanZoneCode(text);
+    if (fanZoneCode) {
+      addHistory({ type: "fanzone", label: "Fan Zone Mundial 2026", detail: fanZoneCode, variant: "success" });
+      setBanner({ variant: "success", message: "Fan Zone Mundial 2026 detectada - Abriendo canje..." });
+      beep(880, 120, "sine");
+      vibrate(60);
+      setCooldownUntil(Date.now() + 2000);
+      window.location.href = `/admin/mundial2026/fanzone/${encodeURIComponent(fanZoneCode)}`;
+      processingRef.current = false;
+      return;
+    }
+
     if (isMundial2026Qr(text)) {
       addHistory({ type: "mundial2026", label: "Jugada Mundial 2026", variant: "success" });
       setBanner({ variant: "success", message: "Jugada Mundial 2026 detectada - Redirigiendo..." });

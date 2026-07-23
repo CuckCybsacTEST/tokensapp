@@ -470,6 +470,9 @@ export default function AdminMundial2026Client() {
           <Link href="/admin/mundial2026/data" className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100">
             Ver data consolidada
           </Link>
+          <Link href="/admin/mundial2026/fanzone" className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/15">
+            Fan Zone QR
+          </Link>
           <Link href="/admin/mundial/insights" className="inline-flex rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
             Abrir insights
           </Link>

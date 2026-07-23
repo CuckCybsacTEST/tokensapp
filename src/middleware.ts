@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserSessionCookieFromRequest, verifyUserSessionCookie } from "@/lib/auth";
 import { isBirthdaysEnabledPublic } from "@/lib/featureFlags";
 
-// ── Rutas de admin panel que STAFF puede acceder ─────────────────
 const STAFF_ALLOWED_ADMIN_ROUTES = [
   '/admin/attendance',
   '/admin/tokens',
@@ -14,7 +13,6 @@ const STAFF_ALLOWED_ADMIN_ROUTES = [
   '/admin/generadorinvitaciones',
 ];
 
-// ── APIs de admin que STAFF puede acceder ────────────────────────
 const STAFF_ALLOWED_ADMIN_APIS = [
   '/api/admin/attendance',
   '/api/admin/tokens',
@@ -29,37 +27,32 @@ const STAFF_ALLOWED_ADMIN_APIS = [
   '/api/admin/producciones',
 ];
 
-// ── APIs admin de birthdays que COLLAB puede usar desde /u/birthdays ──
-// Los handlers de cada ruta siguen aplicando permisos más finos.
 const COLLAB_ALLOWED_ADMIN_APIS = [
   '/api/admin/birthdays',
 ];
 
-// ── Acceso por área: un COLLAB con cierta área puede acceder a rutas admin específicas ──
 const AREA_ADMIN_ROUTES: Record<string, string[]> = {
-  'DJs':        ['/admin/dj', '/admin/music-orders'],
-  'Animación':  ['/admin/tokens', '/admin/reusable-tokens', '/admin/shows', '/admin/prizes', '/admin/static-batches', '/admin/statics'],
+  'DJs': ['/admin/dj', '/admin/music-orders'],
+  'Animación': ['/admin/tokens', '/admin/reusable-tokens', '/admin/shows', '/admin/prizes', '/admin/static-batches', '/admin/statics'],
   'Multimedia': ['/admin/shows', '/admin/static-batches', '/admin/statics', '/admin/print'],
 };
 
 const AREA_ADMIN_APIS: Record<string, string[]> = {
-  'DJs':        ['/api/admin/music-system'],
-  'Animación':  ['/api/admin/tokens', '/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
+  'DJs': ['/api/admin/music-system'],
+  'Animación': ['/api/admin/tokens', '/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups'],
   'Multimedia': ['/api/admin/reusable-tokens', '/api/admin/reusable-prizes', '/api/admin/token-groups', '/api/admin/producciones'],
 };
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
-  return prefixes.some(p => pathname.startsWith(p));
+  return prefixes.some((p) => pathname.startsWith(p));
 }
 
-/** Verifica si el área del usuario le permite acceder a una ruta de admin */
 function areaAllowsAdminRoute(area: string | undefined, pathname: string): boolean {
   if (!area) return false;
   const allowed = AREA_ADMIN_ROUTES[area];
   return !!allowed && matchesAny(pathname, allowed);
 }
 
-/** Verifica si el área del usuario le permite acceder a una API de admin */
 function areaAllowsAdminAPI(area: string | undefined, pathname: string): boolean {
   if (!area) return false;
   const allowed = AREA_ADMIN_APIS[area];
@@ -69,17 +62,14 @@ function areaAllowsAdminAPI(area: string | undefined, pathname: string): boolean
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Serve marketing content at / (URL stays as /)
   if (pathname === "/") {
     return NextResponse.rewrite(new URL("/marketing", req.url));
   }
 
-  // Backwards-compatible: old /marketing URL redirects to /
   if (pathname === "/marketing") {
     return NextResponse.redirect(new URL("/", req.url), 301);
   }
 
-  // Public routes - no authentication required
   const publicRoutes = [
     "/marketing/",
     "/reservatucumple",
@@ -94,71 +84,61 @@ export async function middleware(req: NextRequest) {
     "/api/customers",
   ];
 
-  if (publicRoutes.some(route => pathname === route || pathname.startsWith(route))) {
+  if (publicRoutes.some((route) => pathname === route || pathname.startsWith(route))) {
     return NextResponse.next();
   }
 
-  // Get user session (unified authentication system)
   const userCookie = getUserSessionCookieFromRequest(req);
   const userSession = userCookie ? await verifyUserSessionCookie(userCookie) : null;
 
   const role = userSession?.role;
   const area = userSession?.area;
 
-  // Helper for login redirect
   const redirectToLogin = () => {
     const loginUrl = new URL('/u/login', req.nextUrl.origin);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
   };
 
-  // ── Collaborator area (/u/*) — requires any valid user session ──
+  if (pathname.startsWith('/api/admin/custom-qrs/') && pathname.endsWith('/redeem')) {
+    if (!userSession) {
+      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+    }
+    if (['ADMIN', 'COORDINATOR', 'STAFF', 'COLLAB'].includes(role || '')) {
+      return NextResponse.next();
+    }
+    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+  }
+
   if (pathname.startsWith("/u/") || pathname === "/u") {
     if (!userSession) return redirectToLogin();
     return NextResponse.next();
   }
 
-  // ── Admin panel (/admin/*) ─────────────────────────────────────
   if (pathname.startsWith("/admin/")) {
     if (!userSession) return redirectToLogin();
 
-    // ADMIN y COORDINATOR: acceso completo al panel
     if (role === 'ADMIN' || role === 'COORDINATOR') return NextResponse.next();
-
-    // STAFF: acceso limitado a rutas configuradas
     if (role === 'STAFF' && matchesAny(pathname, STAFF_ALLOWED_ADMIN_ROUTES)) return NextResponse.next();
-
-    // COLLAB/STAFF: acceso por área funcional a rutas específicas
     if (areaAllowsAdminRoute(area, pathname)) return NextResponse.next();
 
     return redirectToLogin();
   }
 
-  // ── Admin APIs (/api/admin/*) ──────────────────────────────────
   if (pathname.startsWith("/api/admin/")) {
     if (!userSession) {
       return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    // ADMIN y COORDINATOR: acceso completo a todas las APIs admin
     if (role === 'ADMIN' || role === 'COORDINATOR') return NextResponse.next();
-
-    // STAFF: acceso limitado a APIs configuradas
     if (role === 'STAFF' && matchesAny(pathname, STAFF_ALLOWED_ADMIN_APIS)) return NextResponse.next();
-
-    // COLLAB: birthdays es un flujo operativo compartido y se usa desde /u/birthdays
     if (role === 'COLLAB' && matchesAny(pathname, COLLAB_ALLOWED_ADMIN_APIS)) return NextResponse.next();
-
-    // COLLAB: acceso a daily-evaluation (solo lectura, la ruta valida permisos de escritura)
     if (role === 'COLLAB' && pathname.startsWith('/api/admin/daily-evaluation')) return NextResponse.next();
-
-    // Cualquier rol: acceso por área funcional a APIs específicas
     if (areaAllowsAdminAPI(area, pathname)) return NextResponse.next();
 
     return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
   }
 
-  // ── System APIs (/api/system/*) — requires STAFF+ ──────────────
   if (pathname.startsWith("/api/system/")) {
     const publicRouletteSystemApis = [
       '/api/system/tokens/sidebar',
@@ -169,7 +149,6 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
 
-    // Cron bypass for scheduled operations
     if (pathname === '/api/system/tokens/enable-scheduled' || pathname === '/api/system/tokens/toggle') {
       const cronSecret = req.headers.get('x-cron-secret') || '';
       if (cronSecret && cronSecret === (process.env.CRON_SECRET || '')) {
@@ -183,13 +162,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── Scanner routes — requires any valid user session ───────────
   if (pathname.startsWith("/scanner")) {
     if (!userSession) return redirectToLogin();
     return NextResponse.next();
   }
 
-  // ── Protected APIs — require any valid user session ────────────
   const protectedAPIs = [
     "/api/prizes",
     "/api/batch",
@@ -208,8 +185,8 @@ export async function middleware(req: NextRequest) {
     "/api/birthdays/public/",
   ];
 
-  const isProtectedAPI = protectedAPIs.some(api => pathname.startsWith(api));
-  const isPublicBirthdayAPI = publicBirthdayAPIs.some(api => pathname.startsWith(api));
+  const isProtectedAPI = protectedAPIs.some((api) => pathname.startsWith(api));
+  const isPublicBirthdayAPI = publicBirthdayAPIs.some((api) => pathname.startsWith(api));
 
   if (isPublicBirthdayAPI && isBirthdaysEnabledPublic()) return NextResponse.next();
   if (pathname.startsWith("/api/birthdays") && !userSession) {
