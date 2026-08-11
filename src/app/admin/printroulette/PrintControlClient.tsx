@@ -40,6 +40,15 @@ export function PrintControlClient() {
   }
 
   // Función para generar un QR de ejemplo para previsualización
+  const resolveTemplateImagePath = (template: any): string => {
+    const rawPath = template?.storageUrl || template?.filePath || '';
+    if (!rawPath) return '';
+    if (/^https?:\/\//i.test(rawPath) || rawPath.startsWith('blob:') || rawPath.startsWith('data:')) {
+      return rawPath;
+    }
+    return rawPath.replace(/^public\//, '/');
+  };
+
   const generatePreviewQR = async (templateId: string) => {
     try {
       console.log('Solicitando vista previa para templateId:', templateId);
@@ -202,7 +211,7 @@ export function PrintControlClient() {
     
     try {
       // Primero mostrar la imagen de la plantilla base mientras se genera la vista previa con QR
-      const imagePath = selectedTemplate.filePath.replace(/^public\//, '/');
+      const imagePath = resolveTemplateImagePath(selectedTemplate);
       console.log('Mostrando plantilla base en ruta:', imagePath);
       setTemplatePreview(imagePath);
       
@@ -298,12 +307,12 @@ export function PrintControlClient() {
       // Función para precargar la imagen de la plantilla base
       const preloadBasicTemplate = async (template: any): Promise<string> => {
         return new Promise((resolve) => {
-          if (!template || !template.filePath) {
+          const imagePath = resolveTemplateImagePath(template);
+          if (!imagePath) {
             resolve('');
             return;
           }
-          
-          const imagePath = template.filePath.replace(/^public\//, '/');
+
           console.log('Precargando plantilla base:', imagePath);
           
           const img = document.createElement('img');

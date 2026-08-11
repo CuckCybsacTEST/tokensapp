@@ -1,138 +1,122 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import sharp from 'sharp';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import path from 'path';
-import { writeFile, mkdir, unlink } from 'fs/promises';
-import { existsSync } from 'fs';
 import { apiError, apiOk } from '@/lib/apiError';
-import { uploadFileToSupabase, safeDeleteFile, getTempFilePath, deleteFromSupabase } from '@/lib/supabase-server';
+import { STORAGE_BUCKET, supabaseAdmin, uploadBufferToSupabase, deleteFromSupabase } from '@/lib/supabase-server';
 
-// Helper para sanitizar nombres de archivo
-function sanitizeFileName(name: string): string {
-  // Reemplazar espacios con guiones y quitar caracteres no permitidos
-  return name.toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]/g, '')
-    .replace(/-+/g, '-');
-}
+const MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
 
 export async function POST(req: NextRequest) {
-  let tempFilePath: string | null = null;
-
   try {
     const raw = getSessionCookieFromRequest(req);
     const session = await verifySessionCookie(raw);
-  if (!session) return apiError('UNAUTHORIZED','UNAUTHORIZED',undefined,401);
-    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
-  if (!roleCheck.ok) return apiError('FORBIDDEN','FORBIDDEN',undefined,403);
+    if (!session) return apiError('UNAUTHORIZED', 'UNAUTHORIZED', undefined, 401);
 
-    // Procesamiento del formulario multipart
+    const roleCheck = requireRole(session, ['ADMIN', 'COORDINATOR']);
+    if (!roleCheck.ok) return apiError('FORBIDDEN', 'FORBIDDEN', undefined, 403);
+
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return apiError('INVALID_CONTENT_TYPE', 'Tipo de contenido invalido', undefined, 400);
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const name = formData.get('name') as string | null;
 
-    if (!file) {
-      return apiError('FILE_REQUIRED','No se proporcionó ningún archivo',undefined,400);
+    if (!file || !file.size) {
+      return apiError('FILE_REQUIRED', 'No se proporciono ningun archivo', undefined, 400);
     }
 
-    if (!name) {
-      return apiError('NAME_REQUIRED','No se proporcionó un nombre para la plantilla',undefined,400);
+    if (!name || !name.trim()) {
+      return apiError('NAME_REQUIRED', 'No se proporciono un nombre para la plantilla', undefined, 400);
     }
 
-    // Validar que es una imagen
-    if (!file.type.startsWith('image/')) {
-      return apiError('INVALID_IMAGE_TYPE','El archivo debe ser una imagen',{ type: file.type },400);
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return apiError('INVALID_IMAGE_TYPE', 'El archivo debe ser una imagen PNG, JPG o WebP', { type: file.type }, 400);
     }
 
-    // Generar ID único para la plantilla
-    const templateId = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const fileExt = file.name.split('.').pop() || 'png';
-    const storageKey = `templates/${templateId}.${fileExt}`;
+    if (file.size > MAX_BYTES) {
+      return apiError('FILE_TOO_LARGE', 'La plantilla es demasiado grande', { maxBytes: MAX_BYTES }, 400);
+    }
 
-    // Crear archivo temporal
-    tempFilePath = getTempFilePath('template', fileExt);
-    const arrayBuffer = await file.arrayBuffer();
-    await writeFile(tempFilePath, new Uint8Array(arrayBuffer));
+    const contentLength = Number(req.headers.get('content-length') || '0');
+    if (contentLength && contentLength > MAX_BYTES) {
+      return apiError('FILE_TOO_LARGE', 'La plantilla es demasiado grande', { maxBytes: MAX_BYTES }, 400);
+    }
 
-    console.log('Archivo temporal creado:', tempFilePath);
+    const inputBuffer = Buffer.from(await file.arrayBuffer());
+    const optimizedBuffer = await sharp(inputBuffer).rotate().png({ compressionLevel: 9 }).toBuffer();
 
-    // Subir a Supabase
-    const { url, storageKey: finalStorageKey } = await uploadFileToSupabase(
-      tempFilePath,
-      storageKey
-    );
+    const templateId = `template_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    const storageKey = `templates/${templateId}.png`;
 
-    tempFilePath = null; // Ya se limpió
+    try {
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      const bucketExists = buckets?.some((bucket: any) => bucket.name === STORAGE_BUCKET);
+      if (!bucketExists) {
+        await supabaseAdmin.storage.createBucket(STORAGE_BUCKET, {
+          public: true,
+          fileSizeLimit: MAX_BYTES,
+          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+        });
+      }
+    } catch (bucketError) {
+      console.warn('No se pudo verificar/crear el bucket de plantillas:', bucketError);
+    }
 
-    console.log('Archivo subido a Supabase:', { url, storageKey: finalStorageKey });
+    const url = await uploadBufferToSupabase(optimizedBuffer, storageKey, 'image/png', STORAGE_BUCKET);
 
-    // Limpiar plantillas antiguas (más de 1 día)
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
-    // Buscar plantillas antiguas
     const oldTemplates = await prisma.printTemplate.findMany({
       where: {
         createdAt: {
-          lt: oneDayAgo
-        }
+          lt: oneDayAgo,
+        },
       },
       select: {
         id: true,
         storageKey: true,
-        filePath: true
-      }
+      },
     });
 
-    // Eliminar archivos de Supabase de plantillas antiguas
     for (const oldTemplate of oldTemplates) {
       if (oldTemplate.storageKey) {
-        await deleteFromSupabase(oldTemplate.storageKey);
-      }
-      // También intentar eliminar archivo local si existe (compatibilidad)
-      if (oldTemplate.filePath && oldTemplate.filePath.startsWith('public/')) {
-        const absolutePath = path.join(process.cwd(), oldTemplate.filePath);
-        await safeDeleteFile(absolutePath);
+        await deleteFromSupabase(oldTemplate.storageKey, STORAGE_BUCKET);
       }
     }
 
-    // Eliminar registros antiguos
     await prisma.printTemplate.deleteMany({
       where: {
         createdAt: {
-          lt: oneDayAgo
-        }
-      }
+          lt: oneDayAgo,
+        },
+      },
     });
 
-    // Crear registro en la base de datos
     const template = await prisma.printTemplate.create({
       data: {
-        name: name,
-        filePath: `public/templates/${templateId}.${fileExt}`, // Legacy compatibility
+        name: name.trim(),
+        filePath: url,
         storageProvider: 'supabase',
-        storageKey: finalStorageKey,
+        storageKey,
         storageUrl: url,
         meta: JSON.stringify({
           dpi: 300,
           cols: 1,
           rows: 8,
-          qr: { xMm: 150, yMm: 230, widthMm: 30, rotationDeg: 0 }
-        })
-      }
+          qr: { xMm: 150, yMm: 230, widthMm: 30, rotationDeg: 0 },
+        }),
+      },
     });
-
-    console.log('Plantilla registrada en la base de datos:', template);
 
     return apiOk(template);
   } catch (err: any) {
     console.error('Error al subir la plantilla:', err);
-
-    // Limpiar archivo temporal si existe
-    if (tempFilePath) {
-      await safeDeleteFile(tempFilePath);
-    }
-
-    return apiError('INTERNAL_ERROR','Error interno',{ message: err?.message || String(err) },500);
+    return apiError('INTERNAL_ERROR', 'Error interno', { message: err?.message || String(err) }, 500);
   }
 }
