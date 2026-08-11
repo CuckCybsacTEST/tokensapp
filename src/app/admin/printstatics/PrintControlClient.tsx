@@ -293,8 +293,9 @@ export function PrintControlClient() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Error al subir la plantilla');
+        const errorData = await res.json().catch(() => ({} as any));
+        const serverMessage = errorData.message || errorData.error || errorData.details?.message || 'Error al subir la plantilla';
+        throw new Error(serverMessage);
       }
 
       const newTemplate = await res.json();
@@ -499,8 +500,9 @@ export function PrintControlClient() {
                   });
                   
                   if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Error al eliminar las plantillas');
+                    const errorData = await response.json().catch(() => ({} as any));
+                    const serverMessage = errorData.message || errorData.error || errorData.details?.message || 'Error al eliminar las plantillas';
+                    throw new Error(serverMessage);
                   }
                   
                   // Limpiar estado

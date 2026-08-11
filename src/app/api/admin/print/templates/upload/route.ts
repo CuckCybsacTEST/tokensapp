@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server';
 import sharp from 'sharp';
+import path from 'path';
+import { mkdir, writeFile } from 'fs/promises';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { apiError, apiOk } from '@/lib/apiError';
-import { STORAGE_BUCKET, supabaseAdmin, uploadBufferToSupabase, deleteFromSupabase } from '@/lib/supabase-server';
+import { STORAGE_BUCKET, supabaseAdmin, uploadBufferToSupabase, deleteFromSupabase, safeDeleteFile } from '@/lib/supabase-server';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
@@ -67,44 +69,34 @@ export async function POST(req: NextRequest) {
       console.warn('No se pudo verificar/crear el bucket de plantillas:', bucketError);
     }
 
-    const url = await uploadBufferToSupabase(optimizedBuffer, storageKey, 'image/png', STORAGE_BUCKET);
+    const localFileName = `${templateId}.png`;
+    const localPublicPath = `public/templates/${localFileName}`;
 
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    let filePath = localPublicPath;
+    let storageProvider: 'supabase' | 'local' = 'local';
+    let storageUrl: string | null = null;
+    let finalStorageKey: string | null = null;
 
-    const oldTemplates = await prisma.printTemplate.findMany({
-      where: {
-        createdAt: {
-          lt: oneDayAgo,
-        },
-      },
-      select: {
-        id: true,
-        storageKey: true,
-      },
-    });
-
-    for (const oldTemplate of oldTemplates) {
-      if (oldTemplate.storageKey) {
-        await deleteFromSupabase(oldTemplate.storageKey, STORAGE_BUCKET);
-      }
+    try {
+      const url = await uploadBufferToSupabase(optimizedBuffer, storageKey, 'image/png', STORAGE_BUCKET);
+      filePath = url;
+      storageProvider = 'supabase';
+      storageUrl = url;
+      finalStorageKey = storageKey;
+    } catch (uploadError) {
+      console.warn('Supabase upload fallo, usando almacenamiento local:', uploadError);
+      const absDir = path.join(process.cwd(), 'public', 'templates');
+      await mkdir(absDir, { recursive: true });
+      await writeFile(path.join(absDir, localFileName), optimizedBuffer);
     }
-
-    await prisma.printTemplate.deleteMany({
-      where: {
-        createdAt: {
-          lt: oneDayAgo,
-        },
-      },
-    });
 
     const template = await prisma.printTemplate.create({
       data: {
         name: name.trim(),
-        filePath: url,
-        storageProvider: 'supabase',
-        storageKey,
-        storageUrl: url,
+        filePath,
+        storageProvider,
+        storageKey: finalStorageKey,
+        storageUrl,
         meta: JSON.stringify({
           dpi: 300,
           cols: 1,
@@ -113,6 +105,42 @@ export async function POST(req: NextRequest) {
         }),
       },
     });
+
+    try {
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+      const oldTemplates = await prisma.printTemplate.findMany({
+        where: {
+          createdAt: {
+            lt: oneDayAgo,
+          },
+        },
+        select: {
+          id: true,
+          storageKey: true,
+          filePath: true,
+        },
+      });
+
+      for (const oldTemplate of oldTemplates) {
+        if (oldTemplate.storageKey) {
+          await deleteFromSupabase(oldTemplate.storageKey, STORAGE_BUCKET);
+        } else if (oldTemplate.filePath && oldTemplate.filePath.startsWith('public/')) {
+          await safeDeleteFile(path.join(process.cwd(), oldTemplate.filePath));
+        }
+      }
+
+      await prisma.printTemplate.deleteMany({
+        where: {
+          createdAt: {
+            lt: oneDayAgo,
+          },
+        },
+      });
+    } catch (cleanupError) {
+      console.warn('La limpieza de plantillas antiguas fallo, pero la subida se completo:', cleanupError);
+    }
 
     return apiOk(template);
   } catch (err: any) {

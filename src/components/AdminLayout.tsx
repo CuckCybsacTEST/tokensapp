@@ -18,16 +18,8 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', hasSession = true }: AdminLayoutProps) {
-  // Function to check if we're on mobile - only call after hydration
-  const isMobile = () => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768; // md breakpoint in Tailwind
-    }
-    return false;
-  };
-
-  // Start with sidebar collapsed on mobile by default, but use useState with proper hydration
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Get user info from context
@@ -36,10 +28,17 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
   // Update sidebar state when window resizes and after hydration
   useEffect(() => {
     setIsHydrated(true);
-    setSidebarCollapsed(isMobile());
+    const updateViewport = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileView(mobile);
+      setSidebarCollapsed(mobile);
+    };
+
+    updateViewport();
 
     const handleResize = () => {
-      setSidebarCollapsed(isMobile());
+      setIsMobileView(window.innerWidth < 768);
+      setSidebarCollapsed(window.innerWidth < 768);
     };
 
     window.addEventListener('resize', handleResize);
@@ -119,8 +118,6 @@ export function AdminLayout({ children, title, breadcrumbs, basePath = 'admin', 
     );
   }
 
-  // Check if we're on mobile after hydration
-  const isMobileView = isMobile();
   const isAdminRoot = pathname && pathname.startsWith('/admin') && !pathname.includes('/admin/');
   const isOnScanner = pathname === '/admin/scanner' || pathname === '/admin/assistance';
 
