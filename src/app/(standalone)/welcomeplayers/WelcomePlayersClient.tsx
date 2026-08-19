@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import HeroVideo from "@/app/marketing/components/HeroVideo";
 import { WELCOME_PLAYERS_DEFAULT_CONFIG, WELCOME_PLAYERS_FALLBACK_CONFIG } from "@/lib/welcomeplayers/config";
 import {
   getWelcomePlayersLayoutProfile,
@@ -294,7 +295,6 @@ export default function WelcomePlayersClient() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loadingSpin, setLoadingSpin] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [readyHint, setReadyHint] = useState("Toca la ruleta para comenzar");
   const [debugEnabled, setDebugEnabled] = useState(false);
   const [viewport, setViewport] = useState({
     width: 0,
@@ -404,7 +404,6 @@ export default function WelcomePlayersClient() {
     if (spinning || loadingSpin) return;
     setError(null);
     setLoadingSpin(true);
-    setReadyHint("Resolviendo premio...");
 
     try {
       const response = await fetch("/api/welcomeplayers/spin", { method: "POST" });
@@ -426,7 +425,6 @@ export default function WelcomePlayersClient() {
       window.setTimeout(() => {
         setSpinning(false);
         setShowModal(true);
-        setReadyHint(`Premio: ${payload.prize.label}`);
         void fetch("/api/welcomeplayers/stats", { cache: "no-store" })
           .then((res) => res.json())
           .then((fresh) => {
@@ -436,7 +434,6 @@ export default function WelcomePlayersClient() {
       }, SPIN_DURATION_MS);
     } catch (e: any) {
       setError(e?.message || "SPIN_FAILED");
-      setReadyHint("Toca la ruleta para intentar de nuevo");
     } finally {
       setLoadingSpin(false);
     }
@@ -450,8 +447,16 @@ export default function WelcomePlayersClient() {
 
   return (
     <div className={layout.shellClassName} style={wheelStyle}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_42%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.12),_transparent_25%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_16%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(180deg,black,transparent_85%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <HeroVideo
+          showOverlay
+          overlayBlur={10}
+          overlayColor="rgba(3,6,12,0.46)"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.10),_transparent_40%),radial-gradient(circle_at_50%_0%,_rgba(236,72,153,0.10),_transparent_22%),linear-gradient(180deg,_rgba(2,6,23,0.08),_transparent_18%)]" />
+      <div className="pointer-events-none absolute inset-0 z-[1] opacity-[0.12] [background-image:radial-gradient(rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(180deg,black,transparent_85%)]" />
 
       {debugEnabled ? (
         <div className="absolute left-3 top-3 z-[9998] max-w-[min(92vw,28rem)] rounded-2xl border border-lime-400/35 bg-black/70 px-4 py-3 font-mono text-[11px] leading-5 text-lime-100 backdrop-blur-md">
@@ -464,9 +469,7 @@ export default function WelcomePlayersClient() {
         </div>
       ) : null}
 
-      <div className={[
-        layout.stageClassName,
-      ].join(" ")}>
+      <div className={[layout.stageClassName, "relative z-[2]"].join(" ")}>
         <header className={layout.headerClassName}>
           <img src="/loungewhite.png" alt="Ktdral Lounge" className={layout.logoClassName} />
 
@@ -487,15 +490,12 @@ export default function WelcomePlayersClient() {
 
           <button
             ref={wheelRef}
-            type="button"
-            className={layout.wheelClassName}
-            data-wp-state={spinning || loadingSpin ? "spinning" : "idle"}
-            onClick={spin}
-            onTouchStart={() => {
-              if (!spinning && !loadingSpin) setReadyHint("Listo para girar");
-            }}
-            disabled={spinning || loadingSpin}
-            aria-label="Girar la ruleta"
+          type="button"
+          className={layout.wheelClassName}
+          data-wp-state={spinning || loadingSpin ? "spinning" : "idle"}
+          onClick={spin}
+          disabled={spinning || loadingSpin}
+          aria-label="Girar la ruleta"
             style={{
               transform: `rotate(${rotation}deg)`,
               transition: spinning ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.12, 0.05, 0.14, 1)` : "none",
@@ -538,13 +538,6 @@ export default function WelcomePlayersClient() {
                 GIRAR
               </text>
             </svg>
-            <div className="pointer-events-none absolute inset-0 z-[1] overflow-visible">
-              <div className="wp-idle-ring" />
-              <div className="wp-idle-spark wp-idle-spark-1" />
-              <div className="wp-idle-spark wp-idle-spark-2" />
-              <div className="wp-idle-spark wp-idle-spark-3" />
-            </div>
-
             <svg className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-visible" viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}>
               {activePrizes.map((prize, index) => (
                 <SegmentLabel key={`label-${prize.id}`} prize={prize} index={index} total={activePrizeCount} />
@@ -568,14 +561,6 @@ export default function WelcomePlayersClient() {
         >
           {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
         </button>
-
-        <div className="flex items-center justify-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-white/50">
-          <span className="h-px w-9 bg-white/15" />
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70 shadow-lg shadow-black/10">
-            {readyHint}
-          </span>
-          <span className="h-px w-9 bg-white/15" />
-        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="GIROS" value={stats?.totalSpins ?? 0} className={layout.statsCardClassName} />
@@ -638,5 +623,3 @@ function StatCard({ label, value, className }: { label: string; value: number; c
     </div>
   );
 }
-
-

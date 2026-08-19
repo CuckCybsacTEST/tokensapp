@@ -75,100 +75,8 @@
   will-change: transform, box-shadow, filter;
 }
 
-.scene :global(button[aria-label="Girar la ruleta"][data-wp-state="idle"]) {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 48px rgba(236, 72, 153, 0.08), 0 0 88px rgba(14, 165, 233, 0.08);
-}
-
-.scene :global(button[aria-label="Girar la ruleta"])::before {
-  content: "";
-  position: absolute;
-  inset: -15%;
-  border-radius: 9999px;
-  background: conic-gradient(from 0deg, rgba(245, 158, 11, 0.45), rgba(236, 72, 153, 0.42), rgba(14, 165, 233, 0.38), rgba(245, 158, 11, 0.45));
-  filter: blur(22px);
-  opacity: 0.45;
-  z-index: -1;
-  animation: wpHalo 10s linear infinite;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"])::after {
-  content: "";
-  position: absolute;
-  inset: -7%;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.12), 0 0 48px rgba(245, 158, 11, 0.16);
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"] .wp-idle-ring) {
-  position: absolute;
-  inset: -11%;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 0 24px rgba(255, 255, 255, 0.04),
-    0 0 32px rgba(245, 158, 11, 0.1),
-    0 0 72px rgba(236, 72, 153, 0.08);
-  opacity: 0.85;
-  pointer-events: none;
-  animation: wpIdleRing 3.6s ease-in-out infinite;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"][data-wp-state="spinning"] .wp-idle-ring) {
-  opacity: 0.5;
-  animation-duration: 1.4s;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"] .wp-idle-spark) {
-  position: absolute;
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(245, 158, 11, 0.7) 45%, transparent 72%);
-  filter: blur(0.2px) drop-shadow(0 0 10px rgba(245, 158, 11, 0.45));
-  opacity: 0.75;
-  pointer-events: none;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"] .wp-idle-spark-1) {
-  top: 8%;
-  right: 18%;
-  animation: wpSparkDrift1 4.8s ease-in-out infinite;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"] .wp-idle-spark-2) {
-  left: 12%;
-  top: 18%;
-  animation: wpSparkDrift2 5.8s ease-in-out infinite;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"] .wp-idle-spark-3) {
-  right: 10%;
-  bottom: 22%;
-  animation: wpSparkDrift3 6.2s ease-in-out infinite;
-}
-
 .scene :global(button[aria-label="Girar la ruleta"]:not(:disabled)) {
   animation: wpWheelIdle 5.5s ease-in-out infinite;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"]:not(:disabled))::before {
-  opacity: 0.3;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"]:disabled) {
-  filter: saturate(1.05);
-}
-
-.scene :global(button[aria-label="Girar la ruleta"]:disabled)::before {
-  opacity: 0.9;
-  animation-duration: 1.6s;
-}
-
-.scene :global(button[aria-label="Girar la ruleta"]:disabled)::after {
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.24), 0 0 64px rgba(236, 72, 153, 0.22);
 }
 
 @keyframes wpFloat {
@@ -181,50 +89,15 @@
   100% { transform: translate3d(42px, 42px, 0); }
 }
 
-@keyframes wpHalo {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.04); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
 @keyframes wpWheelIdle {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-2px) scale(1.012); }
 }
 
-@keyframes wpIdleRing {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.82;
-  }
-  50% {
-    transform: scale(1.03);
-    opacity: 1;
-  }
-}
-
-@keyframes wpSparkDrift1 {
-  0%, 100% { transform: translate(0, 0) scale(0.9); opacity: 0.55; }
-  50% { transform: translate(-6px, 10px) scale(1.15); opacity: 1; }
-}
-
-@keyframes wpSparkDrift2 {
-  0%, 100% { transform: translate(0, 0) scale(0.85); opacity: 0.45; }
-  50% { transform: translate(7px, 12px) scale(1.08); opacity: 0.95; }
-}
-
-@keyframes wpSparkDrift3 {
-  0%, 100% { transform: translate(0, 0) scale(0.8); opacity: 0.5; }
-  50% { transform: translate(-4px, -10px) scale(1.12); opacity: 0.95; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .orb,
   .grid,
-  .scene :global(button[aria-label="Girar la ruleta"]),
-  .scene :global(button[aria-label="Girar la ruleta"])::before,
-  .scene :global(button[aria-label="Girar la ruleta"] .wp-idle-ring),
-  .scene :global(button[aria-label="Girar la ruleta"] .wp-idle-spark) {
+  .scene :global(button[aria-label="Girar la ruleta"]) {
     animation: none !important;
   }
 }

@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import ShowBackground from "@/components/background/ShowBackground";
 import WelcomePlayersClient from "./WelcomePlayersClient";
 import styles from "./welcomeplayers.module.css";
 
@@ -13,8 +12,6 @@ export default function WelcomePlayersPage() {
     <main
       className={styles.scene}
     >
-      <ShowBackground intensity="high" theme="marketing" />
-
       <div className="pointer-events-none absolute inset-0 z-[1]">
         <div className={`${styles.orb} ${styles.orb1}`} />
         <div className={`${styles.orb} ${styles.orb2}`} />
@@ -29,4 +26,3 @@ export default function WelcomePlayersPage() {
     </main>
   );
 }
-
