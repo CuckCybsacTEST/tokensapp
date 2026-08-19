@@ -12,6 +12,7 @@ type ReservationPublic = {
   celebrantName: string;
   date: string;
   timeSlot: string;
+  wantsPhotoSession?: boolean;
   status: string;
   tokensGeneratedAt?: string | null;
 };
@@ -90,6 +91,9 @@ export default function PublicBirthdayStatusPage() {
             </div>
             <div className="text-sm opacity-80">
               Fecha: {reservation.date} · Horario: {reservation.timeSlot}
+            </div>
+            <div className="text-sm opacity-80">
+              Set fotográfico: {reservation.wantsPhotoSession ? 'Sí' : 'No'}
             </div>
             <div className="text-xs opacity-60">ID: {reservation.id}</div>
             <div className="text-sm mt-2">

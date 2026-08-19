@@ -118,6 +118,7 @@ export type CreateReservationInput = {
   timeSlot: string;
   packId: string;
   guestsPlanned: number;
+  wantsPhotoSession?: boolean;
   referrerId?: string;
   createdBy?: string;
   isAdmin?: boolean;
@@ -301,6 +302,7 @@ export async function createReservation(input: CreateReservationInput): Promise<
         date: dateObj,
         timeSlot: input.timeSlot.trim(),
         packId: input.packId,
+        wantsPhotoSession: Boolean(input.wantsPhotoSession),
         guestsPlanned: input.guestsPlanned,
   status: 'approved',
         createdBy: input.createdBy || null,
@@ -482,6 +484,7 @@ export async function getReservation(id: string): Promise<any | null> {
       perks: reservation.pack.perks ? JSON.parse(reservation.pack.perks) : null,
     },
     guestsPlanned: reservation.guestsPlanned,
+    wantsPhotoSession: reservation.wantsPhotoSession,
     status: reservation.status,
     tokensGeneratedAt: reservation.tokensGeneratedAt?.toISOString() || null,
     hostArrivedAt: reservation.hostArrivedAt?.toISOString() || null,

@@ -9,7 +9,7 @@ type Pack = {
 type Reservation = {
 	id: string; celebrantName: string; phone: string; documento: string; date: string; timeSlot: string;
 	pack: { id: string; name: string; qrCount: number; bottle: string | null } | null;
-	guestsPlanned: number; status: string; tokensGeneratedAt: string | null; createdAt: string;
+	guestsPlanned: number; wantsPhotoSession: boolean; status: string; tokensGeneratedAt: string | null; createdAt: string;
 	// Llegadas
 	hostArrivedAt?: string | null;
 	guestArrivals?: number;
@@ -186,6 +186,10 @@ const ReservationCard = memo(function ReservationCard({ r, busyApprove, busyGene
 						<div className="flex items-center gap-2">
 							<span className="text-slate-400">🎁</span>
 							<span>Pack: {r.pack?.name || '-'}</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-slate-400">📷</span>
+							<span>Set fotográfico: {r.wantsPhotoSession ? 'Sí' : 'No'}</span>
 						</div>
 						<div className="flex items-center gap-2 col-span-1 sm:col-span-2">
 							<span className="text-slate-400">🚪</span>
@@ -431,6 +435,7 @@ export default function StaffBirthdaysPage() {
 	const [cDate, setCDate] = useState('');
 	const [cSlot, setCSlot] = useState('20:00');
 	const [cPack, setCPack] = useState('');
+	const [cPhoto, setCPhoto] = useState(false);
 	const [creating, setCreating] = useState(false);
 	// Validation errors
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -556,6 +561,7 @@ export default function StaffBirthdaysPage() {
 				date: cDate,
 				timeSlot: cSlot,
 				packId: cPack,
+				wantsPhotoSession: cPhoto,
 				guestsPlanned: packs.find(p => p.id === cPack)?.qrCount || 5
 			};
 
@@ -610,6 +616,7 @@ export default function StaffBirthdaysPage() {
 			setCDate('');
 			setCSlot('20:00');
 			setCPack('');
+			setCPhoto(false);
 			setActiveTab('list'); // Switch to list view
 			load(); // Refresh the list
 		} catch (e: any) {
@@ -881,6 +888,36 @@ export default function StaffBirthdaysPage() {
 										{fieldErrors.pack && (
 											<div className="text-xs text-rose-600 dark:text-rose-400">{fieldErrors.pack}</div>
 										)}
+									</div>
+
+									<div className="space-y-1 sm:col-span-2 lg:col-span-1">
+										<label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+											Set fotográfico
+										</label>
+										<div className="grid grid-cols-2 gap-2">
+											<button
+												type="button"
+												onClick={() => setCPhoto(false)}
+												className={`h-10 rounded border px-3 text-sm font-medium transition ${
+													!cPhoto
+														? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+														: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+												}`}
+											>
+												No
+											</button>
+											<button
+												type="button"
+												onClick={() => setCPhoto(true)}
+												className={`h-10 rounded border px-3 text-sm font-medium transition ${
+													cPhoto
+														? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+														: 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+												}`}
+											>
+												Sí
+											</button>
+										</div>
 									</div>
 								</div>
 

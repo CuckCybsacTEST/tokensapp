@@ -24,6 +24,7 @@ async function ensureBirthdayTables() {
     date DATETIME NOT NULL,
     timeSlot TEXT NOT NULL,
     packId TEXT NOT NULL,
+    wantsPhotoSession INTEGER NOT NULL DEFAULT 0,
     guestsPlanned INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'draft',
     tokensGeneratedAt DATETIME,
@@ -114,9 +115,10 @@ describe('Birthdays: create → approve → generate tokens', () => {
 
     const r = await createReservation({
       celebrantName: 'Juan', phone: '123456', documento: '30111222', email: 'j@example.com',
-      date: new Date('2025-10-10T00:00:00Z'), timeSlot: '19:00', packId: 'pack1', guestsPlanned: 10,
+      date: new Date('2025-10-10T00:00:00Z'), timeSlot: '19:00', packId: 'pack1', guestsPlanned: 10, wantsPhotoSession: true,
     });
     expect(r.status).toBe('pending_review');
+    expect(r.wantsPhotoSession).toBe(true);
 
     const approved = await approveReservation(r.id);
     expect(approved.status).toBe('approved');

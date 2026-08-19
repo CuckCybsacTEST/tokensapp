@@ -23,6 +23,7 @@ async function ensureBirthdayTables() {
     date DATETIME NOT NULL,
     timeSlot TEXT NOT NULL,
     packId TEXT NOT NULL,
+    wantsPhotoSession INTEGER NOT NULL DEFAULT 0,
     guestsPlanned INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'draft',
     tokensGeneratedAt DATETIME,

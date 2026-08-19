@@ -20,6 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     timeSlot: r.timeSlot,
     pack: r.pack ? { id: r.pack.id, name: r.pack.name, qrCount: r.pack.qrCount, bottle: r.pack.bottle, perks: r.pack.perks } : null,
     guestsPlanned: r.guestsPlanned,
+    wantsPhotoSession: r.wantsPhotoSession,
     status: r.status,
     tokensGeneratedAt: r.tokensGeneratedAt ? r.tokensGeneratedAt.toISOString() : null,
     createdAt: r.createdAt.toISOString(),

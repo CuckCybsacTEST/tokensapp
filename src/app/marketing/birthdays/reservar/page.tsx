@@ -51,6 +51,7 @@ function ReservarCumplePageInner() {
   });
   const [timeSlot, setTimeSlot] = useState("20:00");
   const [packId, setPackId] = useState<string>("");
+  const [wantsPhotoSession, setWantsPhotoSession] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [phase, setPhase] = useState<"idle" | "creating" | "generating">("idle");
   const [referrerId, setReferrerId] = useState<string | null>(null);
@@ -157,7 +158,7 @@ function ReservarCumplePageInner() {
     setPhase("creating");
     try {
       const guestsPlanned = selectedPack?.qrCount || 5;
-      const payload = { celebrantName: name.trim(), phone: whatsapp.trim(), documento: documento.trim(), email: email.trim() || undefined, date, timeSlot, packId, guestsPlanned, ...(referrerId && { referrerId }) };
+      const payload = { celebrantName: name.trim(), phone: whatsapp.trim(), documento: documento.trim(), email: email.trim() || undefined, date, timeSlot, packId, guestsPlanned, wantsPhotoSession, ...(referrerId && { referrerId }) };
       const res = await fetch("/api/birthdays/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.ok) { const d = getServerErrorDetails(j?.code, j?.message); setModalMessage({ ...d, isOpen: true }); return; }
@@ -355,6 +356,39 @@ function ReservarCumplePageInner() {
               <option className="text-black" key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-xs uppercase tracking-wide font-semibold opacity-75">
+            Set fotográfico
+          </label>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setWantsPhotoSession(false)}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                !wantsPhotoSession
+                  ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200'
+                  : 'border-white/15 bg-white/5 text-white/70 hover:bg-white/10'
+              }`}
+            >
+              No
+            </button>
+            <button
+              type="button"
+              onClick={() => setWantsPhotoSession(true)}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                wantsPhotoSession
+                  ? 'border-emerald-400 bg-emerald-500/15 text-emerald-200'
+                  : 'border-white/15 bg-white/5 text-white/70 hover:bg-white/10'
+              }`}
+            >
+              Sí
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-white/60">
+            Marca si quieres que tu reserva incluya set fotográfico.
+          </p>
         </div>
 
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3">

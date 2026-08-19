@@ -28,6 +28,7 @@ type Reservation = {
   timeSlot: string;
   pack: { id: string; name: string; qrCount: number; bottle: string | null; perks?: any };
   guestsPlanned: number;
+  wantsPhotoSession: boolean;
   status: string;
   tokensGeneratedAt: string | null;
   hostArrivedAt: string | null;
@@ -107,6 +108,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
       timeSlot: r.timeSlot,
       pack: r.pack,
       guestsPlanned: r.guestsPlanned,
+      wantsPhotoSession: r.wantsPhotoSession,
       status: r.status,
       tokensGeneratedAt: r.tokensGeneratedAt,
       hostArrivedAt: r.hostArrivedAt || null,
@@ -185,6 +187,7 @@ export default function AdminBirthdayDetailPage({ params }: Props) {
   <div className="rounded border border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 space-y-2 shadow-sm">
           <div className="text-sm text-slate-300">Fecha: {resv.date} {resv.timeSlot}</div>
           <div className="text-sm text-slate-300">Pack: {resv.pack?.name}</div>
+          <div className="text-sm text-slate-300">Set fotográfico: {resv.wantsPhotoSession ? 'Sí' : 'No'}</div>
           <div className="text-sm text-slate-300">Documento: {resv.documento}</div>
           <div className="text-sm text-slate-300">WhatsApp: {resv.phone}</div>
           <div className="text-sm text-slate-300">Email: {resv.email || '-'}</div>

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         { createdAt: 'desc' }
       ],
       take: 8,
-      select: { id: true, celebrantName: true, documento: true, date: true, tokensGeneratedAt: true, status: true }
+      select: { id: true, celebrantName: true, documento: true, date: true, tokensGeneratedAt: true, status: true, wantsPhotoSession: true }
     });
 
     const items = matches.map(r => ({
@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
       documento: r.documento,
       date: r.date.toISOString().slice(0,10),
       status: r.status,
+      wantsPhotoSession: r.wantsPhotoSession,
       hasCards: !!r.tokensGeneratedAt,
     }));
 

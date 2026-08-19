@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       celebrantName: r.celebrantName,
       date: r.date.toISOString().slice(0,10),
       timeSlot: r.timeSlot,
+      wantsPhotoSession: r.wantsPhotoSession,
       status: r.status,
       tokensGeneratedAt: r.tokensGeneratedAt ? r.tokensGeneratedAt.toISOString() : null,
     };

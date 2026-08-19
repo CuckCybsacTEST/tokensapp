@@ -478,6 +478,7 @@ model BirthdayReservation {
   timeSlot          String
   packId            String
   specialBottle     String?
+  wantsPhotoSession Boolean            @default(false)
   guestsPlanned     Int
   status            String             @default("draft")
   tokensGeneratedAt DateTime?

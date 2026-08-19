@@ -23,6 +23,7 @@ async function ensureBirthdayTables() {
     date DATETIME NOT NULL,
     timeSlot TEXT NOT NULL,
     packId TEXT NOT NULL,
+    wantsPhotoSession INTEGER NOT NULL DEFAULT 0,
     guestsPlanned INTEGER NOT NULL,
     status TEXT NOT NULL DEFAULT 'draft',
     tokensGeneratedAt DATETIME,
@@ -102,12 +103,13 @@ describe('Birthdays: courtesies and photos', () => {
   it('happy path: set courtesy delivered and attach photo', async () => {
     const { createReservation, setCourtesyStatus, attachPhoto } = await import('@/lib/birthdays/service');
 
-    const r = await createReservation({ celebrantName: 'Sofi', phone: '11', documento: '22', date: new Date('2025-10-05T00:00:00Z'), timeSlot: '19:00', packId: 'pack1', guestsPlanned: 3 });
+    const r = await createReservation({ celebrantName: 'Sofi', phone: '11', documento: '22', date: new Date('2025-10-05T00:00:00Z'), timeSlot: '19:00', packId: 'pack1', guestsPlanned: 3, wantsPhotoSession: true });
     const courtesy = await setCourtesyStatus(r.id, 'torta', 'delivered');
     expect(courtesy.status).toBe('delivered');
     const photo = await attachPhoto(r.id, { kind: 'group', url: 'http://img', status: 'ready' });
     expect(photo.url).toBe('http://img');
     expect(photo.status).toBe('ready');
+    expect(r.wantsPhotoSession).toBe(true);
   });
 
   it('edge: invalid courtesy type → throws', async () => {

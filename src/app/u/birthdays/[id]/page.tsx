@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 
-type Reservation = { id:string; celebrantName:string; phone:string; documento:string; email:string|null; date:string; timeSlot:string; pack?: any; guestsPlanned:number; status:string; tokensGeneratedAt:string|null; courtesyItems:any[]; photoDeliveries:any[] };
+type Reservation = { id:string; celebrantName:string; phone:string; documento:string; email:string|null; date:string; timeSlot:string; pack?: any; guestsPlanned:number; wantsPhotoSession:boolean; status:string; tokensGeneratedAt:string|null; courtesyItems:any[]; photoDeliveries:any[] };
 type Token = { id:string; code:string; kind:string; status:string; expiresAt:string; usedCount?:number; maxUses?:number };
 
 export default function StaffBirthdayDetail({ params }: { params: { id: string } }) {
@@ -75,6 +75,12 @@ export default function StaffBirthdayDetail({ params }: { params: { id: string }
                 <span className="font-medium">Pack:</span>
                 <div className="mt-1 text-slate-800 dark:text-slate-200 font-medium">
                   {resv.pack?.name || '-'}
+                </div>
+              </div>
+              <div className="text-slate-600 dark:text-slate-300">
+                <span className="font-medium">Set fotográfico:</span>
+                <div className="mt-1 text-slate-800 dark:text-slate-200 font-medium">
+                  {resv.wantsPhotoSession ? 'Sí' : 'No'}
                 </div>
               </div>
               <div className="text-slate-600 dark:text-slate-300">

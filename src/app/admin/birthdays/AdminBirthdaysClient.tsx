@@ -43,6 +43,7 @@ type Reservation = {
   timeSlot: string;
   pack: { id: string; name: string; qrCount: number; bottle: string | null };
   guestsPlanned: number;
+  wantsPhotoSession: boolean;
   status: string;
   tokensGeneratedAt: string | null;
   hostArrivedAt: string | null;
@@ -87,6 +88,7 @@ const AdminReservationCard = memo(function AdminReservationCard({ r, busyApprove
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Hora llegada:</span> {r.timeSlot}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Invitados (QR):</span> {r.guestsPlanned || r.pack?.qrCount || '-'}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Pack:</span> {r.pack?.name || '-'}</div>
+        <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Set fotográfico:</span> {r.wantsPhotoSession ? 'Sí' : 'No'}</div>
         <div className="text-slate-600 dark:text-slate-300"><span className="font-semibold text-slate-700 dark:text-slate-200">Creada:</span> {fmtLima(r.createdAt)}</div>
         <div className="text-slate-600 dark:text-slate-300 col-span-2">
           <span className="font-semibold text-slate-700 dark:text-slate-200">Llegadas:</span>
@@ -153,6 +155,7 @@ export function AdminBirthdaysPage() {
   const [cDate, setCDate] = useState("");
   const [cSlot, setCSlot] = useState("20:00");
   const [cPackId, setCPackId] = useState("");
+  const [cPhoto, setCPhoto] = useState(false);
   const [creating, setCreating] = useState(false);
   // packs
   const [packs, setPacks] = useState<Array<{id: string, name: string, qrCount: number, bottle: string | null}>>([]);
@@ -431,6 +434,35 @@ export function AdminBirthdaysPage() {
                   ))}
                 </select>
               </div>
+              <div className="col-span-1 sm:col-span-2 lg:col-span-1">
+                <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                  Set fotográfico
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCPhoto(false)}
+                    className={`w-full px-3 py-2 border rounded-md text-sm font-medium transition-colors duration-200 ${
+                      !cPhoto
+                        ? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCPhoto(true)}
+                    className={`w-full px-3 py-2 border rounded-md text-sm font-medium transition-colors duration-200 ${
+                      cPhoto
+                        ? 'border-emerald-400 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    Sí
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
               <button
@@ -460,6 +492,7 @@ export function AdminBirthdaysPage() {
                       date: finalDate,
                       timeSlot: cSlot,
                       packId: cPackId,
+                      wantsPhotoSession: cPhoto,
                       guestsPlanned: selectedPack.qrCount
                     } as any;
                     const res = await fetch('/api/admin/birthdays', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -472,7 +505,7 @@ export function AdminBirthdaysPage() {
                       }
                       throw new Error(j?.code || j?.message || res.status);
                     }
-                    setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPackId('');
+                    setCName(''); setCPhone(''); setCDoc(''); setCEmail(''); setCDate(''); setCSlot('20:00'); setCPackId(''); setCPhoto(false);
                     await load();
                     // Cambiar a la pestaña de lista después de crear
                     setActiveTab('list');

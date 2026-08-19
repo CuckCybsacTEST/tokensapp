@@ -110,6 +110,7 @@ const CreateSchema = z.object({
   timeSlot: z.string().min(1).max(20),
   packId: z.string().min(1),
   guestsPlanned: z.number().int().min(1).max(200),
+  wantsPhotoSession: z.boolean().optional().default(false),
 });
 
 export async function POST(req: NextRequest) {
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const parsed = CreateSchema.safeParse(body);
     if (!parsed.success) return apiError('INVALID_BODY', 'Validation failed', parsed.error.flatten(), 400);
-  const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned } = parsed.data;
+  const { celebrantName, phone, documento, email, date, timeSlot, packId, guestsPlanned, wantsPhotoSession } = parsed.data;
     const dt = limaDateTimeToJSDate(parseDateStringToLima(date));
     if (!isFinite(dt.getTime())) return apiError('INVALID_DATE', 'invalid date', undefined, 400);
 
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
       timeSlot,
       packId,
       guestsPlanned,
+      wantsPhotoSession,
       createdBy: session?.role,
       isAdmin: isAdmin || isUser,
     });
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
       timeSlot: created.timeSlot,
       pack: { id: created.pack.id, name: created.pack.name, qrCount: created.pack.qrCount, bottle: created.pack.bottle, featured: created.pack.featured },
       guestsPlanned: created.guestsPlanned,
+      wantsPhotoSession: created.wantsPhotoSession,
       status: created.status,
       tokensGeneratedAt: created.tokensGeneratedAt ? created.tokensGeneratedAt.toISOString() : null,
       createdAt: created.createdAt.toISOString(),
