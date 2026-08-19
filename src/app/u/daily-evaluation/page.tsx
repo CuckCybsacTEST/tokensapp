@@ -68,22 +68,22 @@ interface SummaryData {
   totalDelivered: number;
   dayPrizes: DayPrize[];
   totalTokensInBatches: number;
-  birthdays: {
-    total: number;
-    arrived: number;
-    totalGuests: number;
-    arrivedGuests: number;
-    reservations: {
-      id: string;
-      celebrantName: string;
-      timeSlot: string;
-      status: string;
-      guestsPlanned: number;
-      guestArrivals: number;
-      hostArrived: boolean;
-      packName: string | null;
-    }[];
-  };
+    birthdays: {
+      total: number;
+      arrived: number;
+      totalGuests: number;
+      arrivedGuests: number;
+      reservations: {
+        id: string;
+        celebrantName: string;
+        status: string;
+        guestsPlanned: number;
+        guestArrivals: number;
+        hostArrived: boolean;
+        wantsPhotoSession: boolean;
+        packName: string | null;
+      }[];
+    };
   specialGuests: {
     total: number;
     arrived: number;
@@ -696,11 +696,11 @@ export default function DailyEvaluationPage() {
 
       {modalSection === 'birthdays' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setModalSection(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-pink-200 dark:border-pink-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                🎂 Cumpleaños — {summary.birthdays?.total ?? 0} reservas
-              </h3>
+              <div className="w-full max-w-sm rounded-2xl border border-pink-200 dark:border-pink-700 bg-white dark:bg-slate-800 p-4 shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    🎂 Cumpleaños — {summary.birthdays?.total ?? 0} reservas
+                  </h3>
               <button onClick={() => setModalSection(null)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                 <span className="text-lg text-slate-400">&times;</span>
               </button>
@@ -713,21 +713,31 @@ export default function DailyEvaluationPage() {
             {!summary.birthdays || summary.birthdays.total === 0 ? (
               <p className="text-xs text-slate-500 dark:text-slate-400">No hay reservas de cumpleaños para este día.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-1.5 max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
                 {summary.birthdays.reservations.map(r => (
-                  <div key={r.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-pink-50 dark:bg-pink-900/10">
-                    <span className="text-xs font-semibold text-pink-700 dark:text-pink-300 flex-shrink-0 w-10 text-center">{r.timeSlot}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">{r.celebrantName}</div>
-                      {r.packName && <div className="text-[10px] text-slate-500">{r.packName}</div>}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-[10px] text-slate-500">{r.guestArrivals}/{r.guestsPlanned}</span>
-                      {r.hostArrived ? (
-                        <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅</span>
-                      ) : (
-                        <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳</span>
-                      )}
+                  <div key={r.id} className="rounded-lg bg-pink-50 dark:bg-pink-900/10 p-3">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 break-words leading-snug">
+                          {r.celebrantName}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                          {r.packName && <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 px-2 py-0.5">{r.packName}</span>}
+                          <span className={`rounded-full px-2 py-0.5 font-medium ${r.wantsPhotoSession ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                            Set fotográfico: {r.wantsPhotoSession ? 'Sí' : 'No'}
+                          </span>
+                          <span className="rounded-full bg-white/70 dark:bg-slate-800 px-2 py-0.5 text-slate-500 dark:text-slate-400">
+                            {r.guestArrivals}/{r.guestsPlanned} invitados
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {r.hostArrived ? (
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅</span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

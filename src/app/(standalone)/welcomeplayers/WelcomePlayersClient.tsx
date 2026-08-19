@@ -294,7 +294,7 @@ export default function WelcomePlayersClient() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loadingSpin, setLoadingSpin] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setReadyHint] = useState("Toca la ruleta para comenzar");
+  const [readyHint, setReadyHint] = useState("Toca la ruleta para comenzar");
   const [debugEnabled, setDebugEnabled] = useState(false);
   const [viewport, setViewport] = useState({
     width: 0,
@@ -489,6 +489,7 @@ export default function WelcomePlayersClient() {
             ref={wheelRef}
             type="button"
             className={layout.wheelClassName}
+            data-wp-state={spinning || loadingSpin ? "spinning" : "idle"}
             onClick={spin}
             onTouchStart={() => {
               if (!spinning && !loadingSpin) setReadyHint("Listo para girar");
@@ -537,6 +538,12 @@ export default function WelcomePlayersClient() {
                 GIRAR
               </text>
             </svg>
+            <div className="pointer-events-none absolute inset-0 z-[1] overflow-visible">
+              <div className="wp-idle-ring" />
+              <div className="wp-idle-spark wp-idle-spark-1" />
+              <div className="wp-idle-spark wp-idle-spark-2" />
+              <div className="wp-idle-spark wp-idle-spark-3" />
+            </div>
 
             <svg className="pointer-events-none absolute inset-0 z-[2] h-full w-full overflow-visible" viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}>
               {activePrizes.map((prize, index) => (
@@ -561,6 +568,14 @@ export default function WelcomePlayersClient() {
         >
           {canSpin ? "TOCA PARA GIRAR" : "AGREGA MÁS PREMIOS"}
         </button>
+
+        <div className="flex items-center justify-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-white/50">
+          <span className="h-px w-9 bg-white/15" />
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70 shadow-lg shadow-black/10">
+            {readyHint}
+          </span>
+          <span className="h-px w-9 bg-white/15" />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="GIROS" value={stats?.totalSpins ?? 0} className={layout.statsCardClassName} />

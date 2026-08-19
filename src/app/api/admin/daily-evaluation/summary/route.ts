@@ -123,11 +123,11 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         celebrantName: true,
-        timeSlot: true,
         status: true,
         guestsPlanned: true,
         guestArrivals: true,
         hostArrivedAt: true,
+        wantsPhotoSession: true,
         pack: { select: { name: true } },
       },
       orderBy: { timeSlot: 'asc' },
@@ -141,11 +141,11 @@ export async function GET(req: NextRequest) {
       reservations: birthdayReservations.map(r => ({
         id: r.id,
         celebrantName: r.celebrantName,
-        timeSlot: r.timeSlot,
         status: r.status,
         guestsPlanned: r.guestsPlanned,
         guestArrivals: r.guestArrivals,
         hostArrived: !!r.hostArrivedAt,
+        wantsPhotoSession: r.wantsPhotoSession,
         packName: r.pack?.name ?? null,
       })),
     };

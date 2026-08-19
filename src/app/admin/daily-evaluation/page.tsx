@@ -58,11 +58,11 @@ interface SummaryData {
     reservations: {
       id: string;
       celebrantName: string;
-      timeSlot: string;
       status: string;
       guestsPlanned: number;
       guestArrivals: number;
       hostArrived: boolean;
+      wantsPhotoSession: boolean;
       packName: string | null;
     }[];
   };
@@ -604,21 +604,27 @@ export default function AdminDailyEvaluationPage() {
                     ) : (
                       <div className="space-y-2">
                         {summary.birthdays.reservations.map(r => (
-                          <div key={r.id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 p-2.5 rounded bg-pink-50 dark:bg-pink-900/10">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                              <span className="text-sm font-medium w-12 text-center text-pink-700 dark:text-pink-300 flex-shrink-0">{r.timeSlot}</span>
+                          <div key={r.id} className="rounded bg-pink-50 dark:bg-pink-900/10 p-3">
+                            <div className="flex items-start gap-2 min-w-0">
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium truncate">{r.celebrantName}</div>
-                                {r.packName && <div className="text-xs text-slate-500">{r.packName}</div>}
+                                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 break-words leading-snug">{r.celebrantName}</div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                  {r.packName && <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 px-2 py-0.5">{r.packName}</span>}
+                                  <span className={`rounded-full px-2 py-0.5 font-medium ${r.wantsPhotoSession ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                                    Set fotográfico: {r.wantsPhotoSession ? 'Sí' : 'No'}
+                                  </span>
+                                  <span className="rounded-full bg-white/70 dark:bg-slate-800 px-2 py-0.5 text-slate-500 dark:text-slate-400">
+                                    {r.guestArrivals}/{r.guestsPlanned} invitados
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 pl-14 sm:pl-0 sm:ml-auto flex-shrink-0">
-                              <span className="text-xs text-slate-500">{r.guestArrivals}/{r.guestsPlanned} inv.</span>
-                              {r.hostArrived ? (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ Llegó</span>
-                              ) : (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳ Esperando</span>
-                              )}
+                              <div className="flex-shrink-0">
+                                {r.hostArrived ? (
+                                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ Llegó</span>
+                                ) : (
+                                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">⏳ Esperando</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -795,17 +801,23 @@ export default function AdminDailyEvaluationPage() {
                       {summary.birthdays.reservations.filter(r => r.hostArrived).length > 0 ? (
                         <div className="space-y-2">
                           {summary.birthdays.reservations.filter(r => r.hostArrived).map(r => (
-                            <div key={r.id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 p-2.5 rounded bg-green-50 dark:bg-green-900/10">
-                              <div className="flex items-center gap-2 sm:gap-3">
-                                <span className="text-sm font-medium w-12 text-center text-pink-700 dark:text-pink-300 flex-shrink-0">{r.timeSlot}</span>
+                            <div key={r.id} className="rounded bg-green-50 dark:bg-green-900/10 p-3">
+                              <div className="flex items-start gap-2 min-w-0">
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">{r.celebrantName}</div>
-                                  {r.packName && <div className="text-xs text-slate-500">{r.packName}</div>}
+                                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 break-words leading-snug">{r.celebrantName}</div>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                    {r.packName && <span className="rounded-full border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800 px-2 py-0.5">{r.packName}</span>}
+                                    <span className={`rounded-full px-2 py-0.5 font-medium ${r.wantsPhotoSession ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                                      Set fotográfico: {r.wantsPhotoSession ? 'Sí' : 'No'}
+                                    </span>
+                                    <span className="rounded-full bg-white/70 dark:bg-slate-800 px-2 py-0.5 text-slate-500 dark:text-slate-400">
+                                      {r.guestArrivals}/{r.guestsPlanned} invitados
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2 pl-14 sm:pl-0 sm:ml-auto flex-shrink-0">
-                                <span className="text-xs text-slate-500">{r.guestArrivals}/{r.guestsPlanned} inv. llegaron</span>
-                                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ Llegó</span>
+                                <div className="flex-shrink-0">
+                                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">✅ Llegó</span>
+                                </div>
                               </div>
                             </div>
                           ))}
