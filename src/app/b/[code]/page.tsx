@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { getSessionCookieFromRequest, verifySessionCookie, requireRole } from '@/lib/auth';
 import { DateTime } from 'luxon';
+import InviteStatePanel from './InviteStatePanel';
 
 // Componente wrapper para manejar el botón fuera del contenedor
 function StaffControlsWrapper({ 
@@ -391,7 +392,8 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   const token = data.token;
   const isPublic = data.public;
   const isStaff = !isPublic;
-  const firstName = isPublic ? token.celebrantName : token.celebrantName.split(/\s+/)[0];
+  const celebrantDisplayName = token.celebrantFullName || token.celebrantName;
+  const firstName = celebrantDisplayName.split(/\s+/)[0];
   // Get hostArrivedAt from the correct location based on user type
   const hostArrivedAt = isPublic ? data.hostArrivedAt : data.reservation?.hostArrivedAt;
 
@@ -399,13 +401,17 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
   const isReservationCanceled = data.reservation?.statusReservation === 'canceled' || data.reservation?.statusReservation === 'cancelled';
   if (isReservationCanceled) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d1a1a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">❌</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Reserva Cancelada</h1>
-        <p className="text-base opacity-80 mb-4">Esta reserva ha sido cancelada y ya no es válida.</p>
-        <div className="text-sm opacity-70 mb-2">Si crees que esto es un error, contacta al soporte.</div>
-        <a href={isPublic ? "/" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
-      </div>
+      <InviteStatePanel
+        variant="cancelled"
+        celebrantName={token.celebrantName}
+        celebrantFullName={token.celebrantFullName}
+        dateISO={data.reservation?.date}
+        timeSlot={data.reservation?.timeSlot}
+        packName={data.token?.packName || null}
+        packBottle={data.token?.packBottle || null}
+        guestsPlanned={data.token?.guestsPlanned ?? null}
+        backHref={isPublic ? "/" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")}
+      />
     );
   }
 
@@ -424,30 +430,54 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
 
   if (isExpired) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#2d0a0a] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">⏰</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#FF4D2E]">Token expirado</h1>
-        <p className="text-base opacity-80 mb-4">Este pase ya expiró y no es válido para ingresar.</p>
-        <div className="text-sm opacity-70 mb-2">Expiró el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
-        <a href={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
-      </div>
+      <InviteStatePanel
+        variant="expired"
+        celebrantName={token.celebrantName}
+        celebrantFullName={token.celebrantFullName}
+        dateISO={data.reservation?.date}
+        timeSlot={data.reservation?.timeSlot}
+        packName={data.token?.packName || null}
+        packBottle={data.token?.packBottle || null}
+        guestsPlanned={data.token?.guestsPlanned ?? null}
+        expiresAt={token.expiresAt}
+        backHref={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")}
+      />
+    );
+  }
+
+  const isReservationCompleted = data.reservation?.statusReservation === 'completed';
+
+  if (isPublic && isReservationCompleted) {
+    return (
+      <InviteStatePanel
+        variant="completed"
+        celebrantName={token.celebrantName}
+        celebrantFullName={token.celebrantFullName}
+        dateISO={data.reservation?.date}
+        timeSlot={data.reservation?.timeSlot}
+        packName={data.token?.packName || null}
+        packBottle={data.token?.packBottle || null}
+        guestsPlanned={data.token?.guestsPlanned ?? null}
+        hostArrivedAt={hostArrivedAt}
+        backHref="/"
+      />
     );
   }
 
   if (!tokenAvailable) {
-    const reservationDate = data.reservation?.date
-      ? DateTime.fromISO(data.reservation.date, { zone: 'America/Lima' })
-      : null;
-    const expiresAtLima = DateTime.fromISO(token.expiresAt).setZone('America/Lima');
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-b from-[#0a2d2d] to-[#07070C] text-white">
-        <div className="text-5xl mb-4">🕒</div>
-        <h1 className="text-3xl font-extrabold mb-2 tracking-tight drop-shadow-lg text-[#2ECFFF]">Token aún no válido</h1>
-        <p className="text-base opacity-80 mb-4">Este pase solo será válido el día de la reserva.</p>
-        <div className="text-sm opacity-70 mb-2">Reserva para: {reservationDate ? reservationDate.toLocaleString({ day: '2-digit', month: '2-digit', year: 'numeric' }, { locale: 'es-ES' }) : 'Fecha desconocida'}</div>
-        <div className="text-sm opacity-70 mb-2">Expira el: {expiresAtLima.toLocaleString(DateTime.DATETIME_SHORT, { locale: 'es-ES' })}</div>
-        <a href={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")} className="inline-block text-xs opacity-70 hover:opacity-100 mt-4 text-white/70 hover:text-white">← Volver</a>
-      </div>
+      <InviteStatePanel
+        variant="future"
+        celebrantName={token.celebrantName}
+        celebrantFullName={token.celebrantFullName}
+        dateISO={data.reservation?.date}
+        timeSlot={data.reservation?.timeSlot}
+        packName={data.token?.packName || null}
+        packBottle={data.token?.packBottle || null}
+        guestsPlanned={data.token?.guestsPlanned ?? null}
+        expiresAt={token.expiresAt}
+        backHref={isPublic ? "/u" : (data.isAdmin ? "/admin/scanner" : "/u/scanner")}
+      />
     );
   }
 
@@ -478,7 +508,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
           </div>
         )}
         {token.isHost && (
-          <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${token.celebrantName}` : '...'}</p>
+          <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">Pase válido solo para{isPublic ? ` ${celebrantDisplayName}` : '...'}</p>
         )}
         {!token.isHost && (
           <p className="mt-2 text-lg md:text-xl font-medium text-center text-white/80">este es un pase para la fiesta de</p>
@@ -493,7 +523,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
         {isPublic && !token.isHost && (
           <>
             <div className="mt-4 rounded-xl border border-white/20 bg-white/5 p-4 text-center shadow-lg">
-              <div className="text-xl font-bold text-[#FF4D2E] uppercase tracking-wider">{token.celebrantName}</div>
+              <div className="text-xl font-bold text-[#FF4D2E] uppercase tracking-wider">{celebrantDisplayName}</div>
             </div>
             <div className="mt-4 p-4 text-base leading-relaxed text-white/90">
               {typeof data.message === 'string'
@@ -553,7 +583,7 @@ export default function BirthdayInvitePage({ params }: { params: { code: string 
           <div className="w-full mt-4 grid gap-3 text-base p-4 rounded-xl border shadow-lg bg-white/5 border-white/10 text-white/90">
             {/* Información de identificación - Lo más importante para el personal */}
             <div className="text-center pb-2 border-b border-white/10">
-              <div className="text-xl font-bold text-[#FF4D2E]">{token.celebrantName}</div>
+              <div className="text-xl font-bold text-[#FF4D2E]">{celebrantDisplayName}</div>
               {data.reservation?.documento && (
                 <div className="text-sm font-medium text-white/70 mt-1">
                   DNI: {data.reservation.documento}

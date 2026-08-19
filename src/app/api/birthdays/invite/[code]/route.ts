@@ -131,7 +131,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       return apiOk({
         public: true,
         message: publicMessage,
-        token: { ...base, celebrantName: firstName }, // Solo primer nombre en vista pública
+        token: { ...base, celebrantName: firstName, celebrantFullName: r.celebrantName }, // Mostrar nombre completo en UI sin perder el saludo corto
         hostArrivedAt: r.hostArrivedAt ? r.hostArrivedAt.toISOString() : null,
         reservation: {
           date: r.date && r.date instanceof Date ? r.date.toISOString() : null,
